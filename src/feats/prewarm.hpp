@@ -38,6 +38,7 @@
 #include <cstdint>
 #include <functional>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -47,6 +48,51 @@ namespace Prewarm
 
 // (depotId, public manifest gid).
 using DepotGid = std::pair<uint32_t, uint64_t>;
+
+// Tracks consecutive per-(depotId, gid) staging failures across pre-warm
+// passes.  The worker re-stages purged manifests every ~30s; a depot that
+// stays inaccessible even after a fresh request-code (delisted, region-
+// locked, no longer on the CDN) would otherwise be retried — and warn-
+// logged — forever.  After kMax consecutive failures the depot is dropped
+// for the rest of the session; a single success clears the streak so a
+// transient miss never permanently drops a depot.  Pure (no I/O), so the
+// runner in prewarm.cpp stays a thin loop and this stays unit-testable.
+class FailureTracker
+{
+public:
+	explicit FailureTracker(int maxConsecutiveFailures)
+	    : m_max(maxConsecutiveFailures) {}
+
+	// The depot's manifest is on disk again: forget any failure streak.
+	void recordSuccess(uint32_t depotId, uint64_t gid)
+	{
+		m_fails.erase(pack(depotId, gid));
+	}
+
+	// The depot's manifest is still missing after a staging attempt.
+	// Returns true only on the attempt that crosses the threshold (so the
+	// caller can log the blacklisting exactly once).
+	bool recordFailure(uint32_t depotId, uint64_t gid)
+	{
+		const int n = ++m_fails[pack(depotId, gid)];
+		return n == m_max;
+	}
+
+	bool isBlacklisted(uint32_t depotId, uint64_t gid) const
+	{
+		const auto it = m_fails.find(pack(depotId, gid));
+		return it != m_fails.end() && it->second >= m_max;
+	}
+
+private:
+	static uint64_t pack(uint32_t depotId, uint64_t gid)
+	{
+		return gid ^ (static_cast<uint64_t>(depotId) * 0x9E3779B97F4A7C15ULL);
+	}
+
+	int m_max;
+	std::unordered_map<uint64_t, int> m_fails;
+};
 
 namespace detail
 {

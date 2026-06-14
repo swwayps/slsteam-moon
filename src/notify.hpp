@@ -52,6 +52,26 @@ namespace Notify
 		}
 	}
 
+	// Decide whether a log at this level should raise a desktop popup.
+	// Three independent gates, all must hold:
+	//   * the level itself notifies (specForLevel(lvl).enabled);
+	//   * the user has notifications turned on (config "Notifications");
+	//   * the CURRENT thread is not suppressing popups.
+	// The last gate exists for the background pre-warm worker: it re-stages
+	// purged DLC manifests every ~30s pass, and a depot that stays gone (or
+	// whose request-code keeps expiring) would otherwise fire one popup per
+	// depot per pass — dozens of popups for a multi-DLC title.  The worker
+	// runs on its own thread and sets the suppress flag, so its warnings
+	// still reach the log file but never the screen, while the synchronous
+	// install path (a different thread) keeps its user-actionable popups.
+	inline bool shouldRaiseNotification(LogLevel lvl, bool notificationsEnabled,
+	                                    bool threadSuppressed)
+	{
+		if (!notificationsEnabled) return false;
+		if (threadSuppressed) return false;
+		return specForLevel(lvl).enabled;
+	}
+
 	// Escape a string for safe inclusion inside a double-quoted shell word.
 	// Without this a stray `"`, `$`, or backtick in a log message could break
 	// the system() command or inject into the shell (fixes the old TODO in

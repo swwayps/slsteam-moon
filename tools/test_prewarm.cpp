@@ -289,6 +289,51 @@ int main()
 		      "workshop: manifest '0' ignored");
 	}
 
+	// 13) FailureTracker: a depot is blacklisted only after it fails to land
+	//     on disk kMax times IN A ROW.  The pre-warm worker re-stages purged
+	//     manifests every pass; a depot that stays inaccessible even after a
+	//     fresh request-code (delisted / region-locked) must stop being
+	//     retried — and re-logged — for the rest of the session, while a
+	//     transient miss that later succeeds must NOT be permanently dropped.
+	{
+		Prewarm::FailureTracker ft(/*maxConsecutiveFailures=*/3);
+
+		CHECK(!ft.isBlacklisted(100, 9), "tracker: unseen depot is not blacklisted");
+
+		CHECK(!ft.recordFailure(100, 9), "tracker: 1st failure does not blacklist");
+		CHECK(!ft.recordFailure(100, 9), "tracker: 2nd failure does not blacklist");
+		CHECK(!ft.isBlacklisted(100, 9), "tracker: below threshold, still allowed");
+		CHECK(ft.recordFailure(100, 9), "tracker: 3rd failure crosses threshold");
+		CHECK(ft.isBlacklisted(100, 9), "tracker: blacklisted after kMax failures");
+	}
+
+	// 14) FailureTracker: a success resets the consecutive-failure count, so a
+	//     depot that recovers is never blacklisted by stale counts.
+	{
+		Prewarm::FailureTracker ft(3);
+		ft.recordFailure(7, 1);
+		ft.recordFailure(7, 1);
+		ft.recordSuccess(7, 1);          // came back -> count cleared
+		ft.recordFailure(7, 1);
+		ft.recordFailure(7, 1);
+		CHECK(!ft.isBlacklisted(7, 1),
+		      "tracker: success resets the streak (2 fails after reset != 3)");
+	}
+
+	// 15) FailureTracker: distinct (depotId, gid) pairs are tracked
+	//     independently — one bad depot doesn't blacklist its siblings.
+	{
+		Prewarm::FailureTracker ft(2);
+		ft.recordFailure(10, 100);
+		ft.recordFailure(10, 100);   // depot 10 now blacklisted
+		CHECK(ft.isBlacklisted(10, 100), "tracker: depot 10 blacklisted");
+		CHECK(!ft.isBlacklisted(11, 101), "tracker: sibling depot 11 unaffected");
+		// Same depotId but a different gid is a different manifest.
+		ft.recordFailure(10, 200);
+		CHECK(!ft.isBlacklisted(10, 200),
+		      "tracker: same depot, different gid tracked separately");
+	}
+
 	if (g_failures == 0) { std::printf("\nALL PASS\n"); return 0; }
 	std::printf("\n%d CHECK(S) FAILED\n", g_failures);
 	return 1;

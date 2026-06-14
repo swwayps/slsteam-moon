@@ -116,6 +116,38 @@ int main()
 		      "command ends with the closing quote (not truncated mid-word)");
 	}
 
+	// 8) shouldRaiseNotification gates the popup on THREE facts: the level
+	//    notifies, the user enabled notifications, and the current thread is
+	//    not suppressing popups.  The background pre-warm worker re-stages
+	//    purged DLC manifests every pass; a genuinely-gone depot warns each
+	//    time, which used to spam a popup per depot per pass.  Suppressing
+	//    popups on that ONE worker thread silences the spam while keeping the
+	//    warning visible in the log AND keeping popups on the install path
+	//    (where a failure is user-actionable).
+	{
+		using Notify::shouldRaiseNotification;
+
+		// Warn notifies when enabled and not suppressed.
+		CHECK(shouldRaiseNotification(LogLevel::Warn, /*enabled=*/true, /*suppressed=*/false),
+		      "Warn pops up when enabled and not suppressed");
+
+		// Suppressed thread: no popup even for a notifying level.
+		CHECK(!shouldRaiseNotification(LogLevel::Warn, true, /*suppressed=*/true),
+		      "Warn does NOT pop up on a suppressed thread");
+		CHECK(!shouldRaiseNotification(LogLevel::NotifyShort, true, true),
+		      "NotifyShort does NOT pop up on a suppressed thread");
+
+		// Notifications globally disabled: never pop up.
+		CHECK(!shouldRaiseNotification(LogLevel::Warn, /*enabled=*/false, false),
+		      "Warn does NOT pop up when notifications are disabled");
+
+		// Non-notifying levels never pop up regardless of the flags.
+		CHECK(!shouldRaiseNotification(LogLevel::Info, true, false),
+		      "Info never pops up");
+		CHECK(!shouldRaiseNotification(LogLevel::Debug, true, false),
+		      "Debug never pops up");
+	}
+
 	if (g_failures == 0) { std::printf("\nALL PASS\n"); return 0; }
 	std::printf("\n%d CHECK(S) FAILED\n", g_failures);
 	return 1;

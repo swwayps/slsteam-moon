@@ -70,6 +70,16 @@ std::optional<uint64_t> cachedCode(uint64_t gid)
 	return it->second;
 }
 
+// Drop a cached request-code so the next runOnce() for this gid re-resolves
+// a fresh one from the provider instead of reusing the expired one.  Codes
+// carry a ~5-min CDN TTL; once the CDN starts answering 401, the cached code
+// is dead and must be evicted or every retry repeats the 401.
+void invalidateCode(uint64_t gid)
+{
+	std::lock_guard<std::mutex> lk(g_codeLock);
+	g_codeByGid.erase(gid);
+}
+
 
 bool parseDigitsOnly(std::string_view body, uint64_t* out)
 {
@@ -347,7 +357,7 @@ bool fetchManifestBlob(uint64_t gid, uint32_t depotId, const std::string& depotc
 		             depotId, static_cast<unsigned long long>(gid));
 		return false;
 	}
-	const uint64_t code = *codeOpt;
+	uint64_t code = *codeOpt;
 
 	// Steam's manifest CDN occasionally answers 503 (overloaded edge)
 	// for a given host.  Try a handful of CDN hosts before giving up so
@@ -361,8 +371,12 @@ bool fetchManifestBlob(uint64_t gid, uint32_t depotId, const std::string& depotc
 		"fastly.cdn.steampipe.steamcontent.com",
 	};
 
+	bool retriedWithFreshCode = false;
+retry_cdn:
 	HttpResponse zipResp;
 	bool gotZip = false;
+	std::vector<CdnOutcome> outcomes;
+	outcomes.reserve(sizeof(kCdnHosts) / sizeof(kCdnHosts[0]));
 	for (const char* host : kCdnHosts)
 	{
 		const std::string cdnUrl = std::string("http://") + host + "/depot/"
@@ -375,15 +389,33 @@ bool fetchManifestBlob(uint64_t gid, uint32_t depotId, const std::string& depotc
 			gotZip = true;
 			break;
 		}
-		// info, not warn: warn fires a critical notify-send popup; a
-		// single edge returning 503 is expected and we just try the
-		// next host.
+		outcomes.push_back({ zipResp.networkError, zipResp.status });
+		// info, not warn: warn fires a notify-send popup; a single edge
+		// returning 503 (or an expired code returning 401) is expected and
+		// we just try the next host.
 		g_pLog->info("ManifestFetch: blob depot=%u gid=%llu host=%s HTTP=%ld err='%s', trying next CDN\n",
 		             depotId, static_cast<unsigned long long>(gid), host,
 		             zipResp.status, zipResp.diagnostic.c_str());
 	}
 	if (!gotZip)
 	{
+		// A unanimous 401 across every host is the signature of an expired
+		// request-code (codes carry a ~5-min CDN TTL).  This is exactly what
+		// the background pre-warm worker hits when it re-stages a DLC depot
+		// Steam purged minutes after the base install committed.  Evict the
+		// stale code, re-resolve a fresh one, and retry the CDN ONCE.
+		if (!retriedWithFreshCode && isExpiredCodeSignature(outcomes))
+		{
+			retriedWithFreshCode = true;
+			invalidateCode(gid);
+			g_pLog->info("ManifestFetch: blob depot=%u gid=%llu code expired (all 401), re-resolving\n",
+			             depotId, static_cast<unsigned long long>(gid));
+			if (auto freshCode = runOnce(gid, /*appId=*/0, depotId))
+			{
+				code = *freshCode;
+				goto retry_cdn;
+			}
+		}
 		g_pLog->warn("ManifestFetch: blob depot=%u gid=%llu all CDN hosts failed (last HTTP=%ld)\n",
 		             depotId, static_cast<unsigned long long>(gid), zipResp.status);
 		return false;

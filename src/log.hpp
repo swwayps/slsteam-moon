@@ -14,6 +14,24 @@
 #include <sstream>
 #include <unordered_set>
 
+// Per-thread popup suppression.  A worker thread can set this so its own
+// log output still reaches the file but never raises a desktop popup.  Used
+// by the background manifest pre-warm worker (feats/prewarm.cpp), whose
+// every-30s re-stage of purged DLC manifests would otherwise fire a notify-
+// send popup per failing depot per pass.  Thread-local: the synchronous
+// install path runs on a different thread and keeps its popups.
+inline thread_local bool t_suppressNotify = false;
+
+// RAII helper to suppress popups for the current scope (restores the prior
+// value on exit), for callers that want scoped rather than whole-thread
+// suppression.
+struct ScopedNotifySuppression
+{
+	bool m_prev;
+	ScopedNotifySuppression() : m_prev(t_suppressNotify) { t_suppressNotify = true; }
+	~ScopedNotifySuppression() { t_suppressNotify = m_prev; }
+};
+
 class CLog
 {
 	std::ofstream ofstream;
@@ -58,7 +76,8 @@ class CLog
 
 		const std::string notifyCmd = Notify::buildCommand(lvl, formatted);
 
-		if (shouldNotify() && !notifyCmd.empty())
+		if (Notify::shouldRaiseNotification(lvl, shouldNotify(), t_suppressNotify)
+		    && !notifyCmd.empty())
 		{
 			system(notifyCmd.c_str());
 			debug("system(\"%s\")\n", notifyCmd.c_str());

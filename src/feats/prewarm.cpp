@@ -116,6 +116,20 @@ void runLoop()
 	// request at once.  We block on our OWN thread, so this just paces us.
 	constexpr auto kPerDepotGap = 200ms;
 
+	// This is our dedicated, session-long worker thread.  Suppress desktop
+	// popups for it: a re-stage failure here is background self-healing, not
+	// a user-actionable event, and a big multi-DLC title (Steam purges its
+	// unused DLC depots after the base commit) would otherwise fire a popup
+	// per failing depot per 30s pass.  The warnings still reach ~/.SLSsteam
+	// .log; the synchronous install path (a different thread) keeps popups.
+	t_suppressNotify = true;
+
+	// Persist across passes: a depot that stays inaccessible even after a
+	// fresh request-code is dropped for the session after kMaxFails passes,
+	// so we stop re-fetching (and re-logging) it every 30s forever.
+	constexpr int kMaxFails = 3;
+	FailureTracker failures(kMaxFails);
+
 	for (;;)
 	{
 		const auto added = g_config.addedAppIds.get();
@@ -178,6 +192,11 @@ void runLoop()
 
 			for (const auto& [depotId, gid] : targets)
 			{
+				// Genuinely-inaccessible depot (delisted / region-locked /
+				// gone from the CDN even with a fresh code): stop retrying it
+				// for the rest of the session.
+				if (failures.isBlacklisted(depotId, gid)) continue;
+
 				// Blocking await ON OUR DEDICATED THREAD serialises the
 				// fetches (no thread storm) and reuses ManifestFetch's
 				// on-disk re-check: present -> returns instantly, purged ->
@@ -185,6 +204,30 @@ void runLoop()
 				// BYldRequestDepotManifest entirely.
 				ManifestFetch::awaitManifestBlob(
 				    gid, depotId, ManifestFetch::getTimeoutSec());
+
+				// Did the manifest actually land on disk?  awaitManifestBlob
+				// returns its own status, but re-checking the file is the
+				// ground truth and lets us drive the per-depot blacklist.
+				if (!steamRoot.empty())
+				{
+					const std::string mpath = steamRoot + "/depotcache/"
+					    + std::to_string(depotId) + "_"
+					    + std::to_string(gid) + ".manifest";
+					std::error_code ec;
+					const auto sz = std::filesystem::file_size(mpath, ec);
+					if (!ec && sz > 0)
+					{
+						failures.recordSuccess(depotId, gid);
+					}
+					else if (failures.recordFailure(depotId, gid))
+					{
+						g_pLog->debug(
+						    "Prewarm: depot=%u gid=%llu blacklisted after %d "
+						    "failed passes (skipping for this session)\n",
+						    depotId, static_cast<unsigned long long>(gid),
+						    kMaxFails);
+					}
+				}
 				std::this_thread::sleep_for(kPerDepotGap);
 			}
 		}
