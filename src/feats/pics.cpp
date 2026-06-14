@@ -198,6 +198,13 @@ void recvProductInfoResponse(CMsgClientPICSProductInfoResponse* resp)
 	);
 
 
+	// AdditionalApps whose live product-info buffer is empty: we must
+	// stage their depot manifests ourselves, SYNCHRONOUSLY before this
+	// handler returns (so they're on disk before Steam plans the install).
+	// We collect them here and stage them CONCURRENTLY after the per-app
+	// loop instead of blocking on each in turn — see the staging pass below.
+	std::vector<AppDepots> toStage;
+
 	const auto added = g_config.addedAppIds.get();
 	for (int i = 0; i < resp->apps_size(); ++i)
 	{
@@ -268,69 +275,84 @@ void recvProductInfoResponse(CMsgClientPICSProductInfoResponse* resp)
 		}
 
 		auto depots = extractDepotsAndGids(warmBuf);
-		for (const auto& [depotId, gid] : depots)
-		{
-			// Only stage depots we can actually decrypt; the provisioned
-			// buffer still lists depots whose keys we don't have (other
-			// OSes, DLC), and staging those just wastes a CDN round-trip.
-			if (DepotKey::getCachedKey(depotId).key.empty())
-			{
-				continue;
-			}
 
-			if (!emptyLiveBuffer)
+		if (!emptyLiveBuffer)
+		{
+			// Library app: Steam drives its own manifest fetch.  A
+			// best-effort async prefetch is harmless but never on the
+			// critical path, so don't block the recv thread.
+			for (const auto& [depotId, gid] : depots)
 			{
-				// Library app: Steam drives its own manifest fetch.  A
-				// best-effort async prefetch is harmless but never on
-				// the critical path, so don't block the recv thread.
+				// Only prefetch depots we can actually decrypt.
+				if (DepotKey::getCachedKey(depotId).key.empty())
+				{
+					continue;
+				}
 				g_pLog->info("PICS: prefetching manifest for app=%u depot=%u gid=%llu\n",
 				             app->appid(), depotId, static_cast<unsigned long long>(gid));
 				ManifestFetch::submitManifestBlob(gid, app->appid(), depotId);
-				continue;
 			}
-
-			// AdditionalApp: stage the manifest SYNCHRONOUSLY, before
-			// this handler returns.
-			//
-			// Why synchronous here is the actual fix (verified on the VM
-			// 2026-06-04, superseding the HANDOFF "timing race" theory):
-			//
-			// Clicking Install triggers a fresh PICS product-info request
-			// for the app; Steam cannot begin update *planning* until that
-			// response is processed (it's what tells Steam which depots /
-			// manifests exist).  So this recv handler strictly precedes
-			// planning.
-			//
-			// During planning Steam decides whether to call
-			// CDepotDownloadMgr::BYldRequestDepotManifest.  Content-log
-			// evidence (both a native-Linux depot 285903 AND a windows
-			// depot 638511) shows:
-			//   - manifest NOT on disk at planning  -> Steam calls BYld ->
-			//     the ORIGINAL BYld returns 'Access Denied' -> the whole
-			//     attempt is canceled with "No connection".  Our injected
-			//     request-code lands in Steam's cache but does NOT rescue
-			//     that in-flight call, so the first attempt always failed.
-			//   - manifest ALREADY on disk at planning -> Steam SKIPS BYld
-			//     entirely and goes straight to Downloading -> success.
-			//     (This is exactly why the ~30s auto-retry always worked:
-			//     attempt 1 left the blob on disk.)
-			//
-			// Staging the blob here, before we return, guarantees the
-			// .manifest is on disk before planning runs, so BYld is never
-			// called on the first attempt and the install succeeds without
-			// the retry.  This runs on a genuine Steam worker thread (the
-			// InitFromPacket detour), the same context the prefetch above
-			// has always used safely; blocking it briefly is acceptable
-			// (the BYld sync fetch already blocked a Steam thread the same
-			// way).
-			g_pLog->info("PICS: staging manifest synchronously for app=%u depot=%u gid=%llu\n",
-			             app->appid(), depotId, static_cast<unsigned long long>(gid));
-			const bool staged = ManifestFetch::awaitManifestBlob(
-			    gid, depotId, ManifestFetch::getTimeoutSec());
-			g_pLog->info("PICS: manifest staging for app=%u depot=%u gid=%llu -> %s\n",
-			             app->appid(), depotId, static_cast<unsigned long long>(gid),
-			             staged ? "on disk" : "FAILED (will fall back to BYld retry)");
+			continue;
 		}
+
+		// AdditionalApp: defer staging to the concurrent pass below.  The
+		// key filter (we only stage depots we hold a key for — staging a
+		// blob we can't decrypt just wastes a CDN round-trip) is applied
+		// there, in buildSyncStagePlan.
+		toStage.push_back({app->appid(), std::move(depots)});
+	}
+
+	// Stage every AdditionalApp depot manifest CONCURRENTLY, before this
+	// handler returns.
+	//
+	// Why staging must finish before we return (verified on the VM
+	// 2026-06-04, superseding the HANDOFF "timing race" theory):
+	// clicking Install triggers a fresh PICS product-info request, and
+	// Steam cannot begin update *planning* until this response is
+	// processed (it's what tells Steam which depots/manifests exist), so
+	// this recv handler strictly precedes planning.  During planning Steam
+	// decides whether to call CDepotDownloadMgr::BYldRequestDepotManifest:
+	//   - manifest NOT on disk at planning -> Steam calls BYld -> the
+	//     ORIGINAL BYld returns 'Access Denied' -> the attempt is canceled
+	//     with "No connection" (only the ~30s auto-retry, which left the
+	//     blob on disk, ever recovered);
+	//   - manifest ALREADY on disk at planning -> Steam SKIPS BYld and goes
+	//     straight to Downloading -> success.
+	// So the blobs must be on disk before we return.  This runs on a
+	// genuine Steam worker thread (the InitFromPacket detour).
+	//
+	// We used to await each depot SEQUENTIALLY (awaitManifestBlob in the
+	// loop above), which on a cold cache cost ~0.4-0.5s per depot and, on a
+	// big title (DL2, 36 depots), blocked this thread — the one that also
+	// answers the Install dialog's button IPCs — for 15s+, freezing every
+	// button.  We now keep the guarantee but kick off ALL fetches first,
+	// then await them, so the wall time is the slowest fetch (~1-2s) rather
+	// than the sum.  ManifestFetch dedups by (gid, depotId) and the await
+	// just joins the in-flight fetch, so this stages exactly the same set,
+	// only concurrently.
+	const auto plan = buildSyncStagePlan(
+	    toStage,
+	    [](uint32_t depotId)
+	    {
+	        return !DepotKey::getCachedKey(depotId).key.empty();
+	    });
+
+	// Pass 1: kick off every fetch (async, deduped at the fetch layer).
+	for (const auto& t : plan)
+	{
+		g_pLog->info("PICS: staging manifest for app=%u depot=%u gid=%llu (concurrent)\n",
+		             t.appId, t.depotId, static_cast<unsigned long long>(t.gid));
+		ManifestFetch::submitManifestBlob(t.gid, t.appId, t.depotId);
+	}
+
+	// Pass 2: block until each lands on disk (joins the in-flight fetch).
+	for (const auto& t : plan)
+	{
+		const bool staged = ManifestFetch::awaitManifestBlob(
+		    t.gid, t.depotId, ManifestFetch::getTimeoutSec());
+		g_pLog->info("PICS: manifest staging for app=%u depot=%u gid=%llu -> %s\n",
+		             t.appId, t.depotId, static_cast<unsigned long long>(t.gid),
+		             staged ? "on disk" : "FAILED (will fall back to BYld retry)");
 	}
 
 	if (resp->unknown_appids_size() > 0)
