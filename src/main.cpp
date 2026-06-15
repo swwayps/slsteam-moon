@@ -243,6 +243,32 @@ static void load()
 		g_modSteamUI.end
 	);
 
+	// Log the GNU build-id of every relevant module so "which build is the
+	// user actually running?" is answerable straight from ~/.SLSsteam.log
+	// (the previous diagnosis required asking the user to run readelf).
+	// libmem resolves modules from /proc/self/maps, so this sees modules in
+	// the main link namespace (steamclient.so, cloud_redirect.so) too, not
+	// just our LD_AUDIT namespace. Missing modules (e.g. no CloudRedirect)
+	// are reported as such rather than skipped.
+	{
+		const auto logBuildId = [](const char* modName)
+		{
+			lm_module_t mod {};
+			if (!LM_FindModule(modName, &mod))
+			{
+				g_pLog->info("buildid: %-18s (not loaded)\n", modName);
+				return;
+			}
+			const std::string id = Utils::getBuildId(mod.path);
+			g_pLog->info("buildid: %-18s %s\n", modName,
+			             id.empty() ? "(no build-id)" : id.c_str());
+		};
+		logBuildId("SLSsteam.so");
+		logBuildId("library-inject.so");
+		logBuildId("steamclient.so");
+		logBuildId("steamui.so");
+		logBuildId("cloud_redirect.so");
+	}
 
 	if (!Updater::verifySafeModeHash())
 	{

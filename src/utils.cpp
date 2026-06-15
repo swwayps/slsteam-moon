@@ -4,6 +4,7 @@
 #include <cstring>
 #include <fstream>
 #include <iomanip>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -175,3 +176,121 @@ std::string Utils::getFileSHA256(const char *filePath)
 	return sha256.str();
 }
 
+
+std::string Utils::getBuildId(const char* filePath)
+{
+	std::ifstream fs(filePath, std::ios::binary);
+	if (!fs.is_open())
+	{
+		return "";
+	}
+
+	unsigned char ident[16];
+	fs.read(reinterpret_cast<char*>(ident), 16);
+	if (fs.gcount() != 16 || memcmp(ident, "\x7f""ELF", 4) != 0)
+	{
+		return "";
+	}
+
+	const bool is64 = (ident[4] == 2); // EI_CLASS: 1 = ELF32, 2 = ELF64
+
+	// Little-endian unsigned read of `n` bytes at absolute file offset.
+	const auto rd = [&fs](std::streamoff off, size_t n) -> uint64_t
+	{
+		unsigned char b[8] = {0};
+		fs.seekg(off);
+		fs.read(reinterpret_cast<char*>(b), static_cast<std::streamsize>(n));
+		uint64_t v = 0;
+		for (size_t i = 0; i < n && i < 8; ++i)
+		{
+			v |= static_cast<uint64_t>(b[i]) << (8 * i);
+		}
+		return v;
+	};
+
+	uint64_t phoff;
+	uint64_t phentsize, phnum;
+	if (is64)
+	{
+		phoff     = rd(0x20, 8);
+		phentsize = rd(0x36, 2);
+		phnum     = rd(0x38, 2);
+	}
+	else
+	{
+		phoff     = rd(0x1C, 4);
+		phentsize = rd(0x2A, 2);
+		phnum     = rd(0x2C, 2);
+	}
+
+	for (uint64_t i = 0; i < phnum; ++i)
+	{
+		const std::streamoff ph = static_cast<std::streamoff>(phoff + i * phentsize);
+		const uint32_t pType = static_cast<uint32_t>(rd(ph, 4));
+		if (pType != 4 /* PT_NOTE */)
+		{
+			continue;
+		}
+
+		uint64_t pOffset, pFilesz;
+		if (is64)
+		{
+			pOffset = rd(ph + 8, 8);
+			pFilesz = rd(ph + 32, 8);
+		}
+		else
+		{
+			pOffset = rd(ph + 4, 4);
+			pFilesz = rd(ph + 16, 4);
+		}
+
+		if (pFilesz == 0 || pFilesz > (1u << 20))
+		{
+			continue; // sanity: notes are tiny
+		}
+
+		std::vector<unsigned char> notes(static_cast<size_t>(pFilesz));
+		fs.seekg(static_cast<std::streamoff>(pOffset));
+		fs.read(reinterpret_cast<char*>(notes.data()), static_cast<std::streamsize>(pFilesz));
+		if (static_cast<uint64_t>(fs.gcount()) != pFilesz)
+		{
+			continue;
+		}
+
+		const auto le32 = [](const unsigned char* p) -> uint32_t
+		{
+			return p[0] | (p[1] << 8) | (p[2] << 16) | (static_cast<uint32_t>(p[3]) << 24);
+		};
+
+		size_t pos = 0;
+		while (pos + 12 <= notes.size())
+		{
+			const uint32_t namesz = le32(&notes[pos]);
+			const uint32_t descsz = le32(&notes[pos + 4]);
+			const uint32_t type   = le32(&notes[pos + 8]);
+			const size_t nameOff  = pos + 12;
+			const size_t descOff  = nameOff + ((namesz + 3) & ~3u);
+			const size_t next     = descOff + ((descsz + 3) & ~3u);
+			if (next > notes.size())
+			{
+				break;
+			}
+
+			if (type == 3 /* NT_GNU_BUILD_ID */ && namesz == 4
+			    && memcmp(&notes[nameOff], "GNU", 4) == 0 && descsz > 0)
+			{
+				std::stringstream hex;
+				for (uint32_t k = 0; k < descsz; ++k)
+				{
+					hex << std::hex << std::setw(2) << std::setfill('0')
+					    << static_cast<int>(notes[descOff + k]);
+				}
+				return hex.str();
+			}
+
+			pos = next;
+		}
+	}
+
+	return "";
+}
