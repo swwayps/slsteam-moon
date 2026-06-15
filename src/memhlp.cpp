@@ -40,7 +40,13 @@ lm_address_t MemHlp::patternScan(const char* pattern, lm_module_t targetModule)
 	const static auto enumSegments = [](lm_segment_t* seg, lm_void_t* arg) -> lm_bool_t
 	{
 		auto rSegments = reinterpret_cast<std::map<lm_address_t, lm_address_t>*>(arg);
-		if(seg->prot & LM_PROT_XR)
+		// Only executable code segments. LM_PROT_XR is the combined mask
+		// (X|R), so `& LM_PROT_XR` is true for ANY readable region — it would
+		// pull in rw-p/r--p DATA segments (heaps, glibc arenas) and scan them.
+		// Those sit next to PROT_NONE guard pages whose layout is ASLR/glibc
+		// dependent, so the linear scan could read into an unmapped page and
+		// SIGSEGV on some machines but not others. Require the execute bit.
+		if((seg->prot & LM_PROT_XR) == LM_PROT_XR)
 		{
 			(*rSegments)[seg->base] = seg->base + seg->size;
 			//g_pLog->debug("Code section at %p to %p\n", seg->base, seg->base + seg->size);
@@ -54,6 +60,11 @@ lm_address_t MemHlp::patternScan(const char* pattern, lm_module_t targetModule)
 	lm_address_t address = LM_ADDRESS_BAD;
 	unsigned int matches = 0;
 
+	if (bytes.empty())
+	{
+		return address;
+	}
+
 	for(const auto& itm : codeSegments)
 	{
 		if (targetModule.base > itm.second)
@@ -65,7 +76,16 @@ lm_address_t MemHlp::patternScan(const char* pattern, lm_module_t targetModule)
 			continue;
 		}
 
-		for (lm_address_t cur = itm.first; cur < itm.second; cur++)
+		// Stop early enough that the whole pattern fits inside the segment;
+		// never dereference past itm.second (the byte one past the segment
+		// may be an unmapped/guard page). The previous `byteAddr > itm.second`
+		// per-byte check was off-by-one (allowed reading itm.second itself).
+		if (itm.second - itm.first < bytes.size())
+		{
+			continue;
+		}
+
+		for (lm_address_t cur = itm.first; cur + bytes.size() <= itm.second; cur++)
 		{
 			bool found = true;
 
@@ -76,14 +96,7 @@ lm_address_t MemHlp::patternScan(const char* pattern, lm_module_t targetModule)
 					continue;
 				}
 
-				lm_address_t byteAddr = cur + i;
-				if (byteAddr > itm.second)
-				{
-					found = false;
-					break;
-				}
-
-				const lm_byte_t* pbyte = reinterpret_cast<lm_byte_t*>(byteAddr);
+				const lm_byte_t* pbyte = reinterpret_cast<lm_byte_t*>(cur + i);
 				if (*pbyte != bytes.at(i))
 				{
 					found = false;
@@ -96,7 +109,7 @@ lm_address_t MemHlp::patternScan(const char* pattern, lm_module_t targetModule)
 				address = cur;
 				matches++;
 
-				if (matches > 1)
+				if (matches > 1 && g_pLog)
 				{
 					g_pLog->debug("Pattern %s found %i times at %p!\n", pattern, matches, cur);
 				}
