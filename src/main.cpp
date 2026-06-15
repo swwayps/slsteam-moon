@@ -199,14 +199,11 @@ static void load()
 
 	// la_objopen fires load() once per audited module that opens — i.e. for
 	// BOTH steamclient.so AND steamui.so. The hooking work below must run
-	// exactly once per process: the first successful pass overwrites the
-	// target functions' prologues with detour jumps, so a second pass would
-	// re-scan that already-patched memory, fail the prologue signatures
-	// ("Required pattern not found"), and clobber the resolved addresses —
-	// breaking features that were correctly hooked on the first pass.
-	// Whether the second pass happens at all is load-order dependent (it
-	// hits only when both modules are already mapped at the first objopen),
-	// which is why it reproduces on some machines but not others.
+	// exactly once per process: the first pass overwrites the target
+	// functions' prologues with detour jumps, so a second pass would re-scan
+	// that already-patched memory, fail the prologue signatures ("Required
+	// pattern not found"), and clobber the resolved addresses — breaking
+	// features that were correctly hooked on the first pass.
 	static bool loadDone = false;
 	if (loadDone)
 	{
@@ -224,6 +221,16 @@ static void load()
 		unload();
 		return;
 	}
+
+	// Claim the one-shot HERE — after both modules are confirmed present (so
+	// a genuine "the other module isn't mapped yet" retry on the next
+	// objopen still works), but BEFORE the heavy work. That work (appinfo
+	// provisioning etc.) can cause Steam to map steamui.so, which fires
+	// la_objopen -> load() RE-ENTRANTLY on this same thread; setting the
+	// flag only at the end let that nested call slip past the guard above
+	// and re-scan our already-hooked code. Setting it now makes the nested
+	// (and any later) call a no-op.
+	loadDone = true;
 
 	auto path = std::filesystem::path(g_modSteamClient.path);
 	auto dir = path.parent_path();
@@ -388,11 +395,6 @@ static void load()
 			g_pLog->notify("Loaded successfully");
 		}
 	}
-
-	// Reached the end: patterns resolved and detours installed. Mark the
-	// one-shot done so later objopen events (the other module) are no-ops
-	// and never re-scan the now-hooked code.
-	loadDone = true;
 }
 
 #include <thread>
