@@ -197,6 +197,21 @@ static void load()
 		return;
 	}
 
+	// la_objopen fires load() once per audited module that opens — i.e. for
+	// BOTH steamclient.so AND steamui.so. The hooking work below must run
+	// exactly once per process: the first successful pass overwrites the
+	// target functions' prologues with detour jumps, so a second pass would
+	// re-scan that already-patched memory, fail the prologue signatures
+	// ("Required pattern not found"), and clobber the resolved addresses —
+	// breaking features that were correctly hooked on the first pass.
+	// Whether the second pass happens at all is load-order dependent (it
+	// hits only when both modules are already mapped at the first objopen),
+	// which is why it reproduces on some machines but not others.
+	static bool loadDone = false;
+	if (loadDone)
+	{
+		return;
+	}
 
 	//This should never happen, but better be safe than sorry in case I refactor someday
 	if (!LM_FindModule("steamclient.so", &g_modSteamClient))
@@ -347,6 +362,11 @@ static void load()
 			g_pLog->notify("Loaded successfully");
 		}
 	}
+
+	// Reached the end: patterns resolved and detours installed. Mark the
+	// one-shot done so later objopen events (the other module) are no-ops
+	// and never re-scan the now-hooked code.
+	loadDone = true;
 }
 
 #include <thread>
