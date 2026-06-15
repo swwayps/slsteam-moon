@@ -21,6 +21,12 @@
 #       steamstub-bypass/          (helper called by setup.sh install_steamstub)
 #         install-steamless.sh
 #         run-steamless.sh
+#         scan-all.sh
+#       steamless-bin/             (Steamless kit, bundled verbatim — see
+#                                   docs/LICENSE/steamless; enables offline
+#                                   SteamStub DRM removal, no download)
+#         Steamless.CLI.exe
+#         Plugins/*.dll
 #
 # Requires: bin/SLSsteam.so + bin/library-inject.so (run scripts/build.sh first).
 #
@@ -90,6 +96,17 @@ cp -r tools/steamstub-bypass "$PKG_DIR/tools/"
 find "$PKG_DIR/tools/steamstub-bypass" -mindepth 1 \
 	! -name '*.sh' \
 	-type f -delete 2>/dev/null || true
+
+# Bundle the Steamless kit verbatim so SteamStub DRM removal works
+# offline — no install-time GitHub download (the silent failure mode
+# behind "Application load error 6").  Steamless is CC BY-NC-ND 4.0:
+# we ship it unmodified and attribute it (docs/LICENSE/steamless).
+if [ ! -f tools/steamless-bin/Steamless.CLI.exe ]; then
+	echo "missing tools/steamless-bin/Steamless.CLI.exe -- the Steamless kit" >&2
+	echo "must be committed so releases are self-contained." >&2
+	exit 1
+fi
+cp -r tools/steamless-bin "$PKG_DIR/tools/"
 
 echo "==> zipping $ZIP_PATH"
 ( cd dist && zip -qr -9 "slsteam-moon-linux-${VERSION}.zip" "slsteam-moon-${VERSION}" )

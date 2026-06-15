@@ -153,6 +153,9 @@ find_wine() {
         candidates+=( "$steam_root/compatibilitytools.d/"*/files/bin/wine )
         candidates+=( "$steam_root/compatibilitytools.d/"*/dist/bin/wine )
     done
+    # System-wide compat tools (e.g. CachyOS ships Proton here).
+    candidates+=( "/usr/share/steam/compatibilitytools.d/"*/files/bin/wine )
+    candidates+=( "/usr/share/steam/compatibilitytools.d/"*/dist/bin/wine )
     candidates+=( "$(command -v wine 2>/dev/null || true)" )
 
     for c in "${candidates[@]}"; do
@@ -192,6 +195,12 @@ export WINEDEBUG="${WINEDEBUG:--all}"
 export WINESERVER="${WINESERVER:-$WINESERVER_BIN}"
 export WINEARCH="${WINEARCH:-win64}"
 
+# Steamless is a .NET app and renders no HTML, so disable Wine's Gecko
+# (mshtml) package — otherwise a fresh prefix pops the "install Gecko"
+# dialog, which hangs a headless run.  Leave Mono (mscoree) at its
+# default so the .NET runtime still loads.
+export WINEDLLOVERRIDES="${WINEDLLOVERRIDES:-mshtml=}"
+
 # Different Steam runtime ships overlapping wineservers. Kill any
 # stragglers before kicking off our own — version mismatch otherwise
 # crashes immediately.
@@ -222,11 +231,22 @@ log "running Steamless on $EXE_PATH"
 cd "$STEAMLESS_HOME"
 
 # 90s timeout is generous; Skyrim's 37 MB exe takes ~3s on a warm prefix.
-if ! timeout 90 "$WINE_BIN" Steamless.CLI.exe \
+# Steamless CLI exit codes: 0 = unpacked OK, 1 = no SteamStub DRM present
+# (benign — treat as "nothing to do"), >1 = real failure.
+set +e
+timeout 90 "$WINE_BIN" Steamless.CLI.exe \
         --quiet --realign --recalcchecksum -f "$WIN_PATH" \
         > /tmp/steamless-bypass.$$.log 2>&1
-then
-    warn "Steamless invocation failed; log follows:"
+sl_rc=$?
+set -e
+
+if [ "$sl_rc" -eq 1 ] && [ ! -f "$EXE_PATH.unpacked.exe" ]; then
+    log "Steamless reports no SteamStub DRM; nothing to do"
+    rm -f /tmp/steamless-bypass.$$.log
+    exit 2
+fi
+if [ "$sl_rc" -ne 0 ]; then
+    warn "Steamless invocation failed (rc=$sl_rc); log follows:"
     sed 's/^/  /' /tmp/steamless-bypass.$$.log >&2
     rm -f /tmp/steamless-bypass.$$.log
     die "Steamless failed" 4

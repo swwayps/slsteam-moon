@@ -328,11 +328,12 @@ void setup(const char* installRoot)
 
 	if (!haveScript || !haveBinary)
 	{
-		g_pLog->debug
+		g_pLog->warn
 		(
 			"SteamStub: helper missing (script=%d binary=%d, root=%s); "
-			"feature disabled — run tools/steamstub-bypass/install-steamless.sh "
-			"to enable\n",
+			"DRM removal DISABLED — games with Steam DRM will fail with "
+			"\"Application load error 6\". Reinstall, or run "
+			"tools/steamstub-bypass/install-steamless.sh to enable.\n",
 			haveScript, haveBinary, root.c_str()
 		);
 		return;

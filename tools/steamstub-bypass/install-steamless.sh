@@ -48,15 +48,28 @@ if [ -f "$TARGET_DIR/Steamless.CLI.exe" ] && [ -f "$TARGET_DIR/Steamless.API.dll
     exit 0
 fi
 
-# Resolve latest release URL from the GitHub API.
+# Resolve latest release URL from the GitHub API.  Pick the first asset
+# whose name looks like a Steamless zip (avoid grabbing an unrelated or
+# source-archive zip if upstream adds more assets later).
 echo "[install-steamless] resolving latest Steamless release..."
+API_JSON="$(curl -fsSL https://api.github.com/repos/atom0s/Steamless/releases/latest || true)"
 ASSET_URL="$(
-    curl -fsSL https://api.github.com/repos/atom0s/Steamless/releases/latest \
-    | grep -oE 'https://[^"]+\.zip' \
+    printf '%s' "$API_JSON" \
+    | grep -oE 'https://[^"]+/releases/download/[^"]+\.zip' \
+    | grep -iE 'steamless' \
     | head -1
 )"
+# Fallback: any download asset ending in .zip.
 if [ -z "$ASSET_URL" ]; then
-    echo "[install-steamless] could not resolve latest release URL" >&2
+    ASSET_URL="$(
+        printf '%s' "$API_JSON" \
+        | grep -oE 'https://[^"]+/releases/download/[^"]+\.zip' \
+        | head -1
+    )"
+fi
+if [ -z "$ASSET_URL" ]; then
+    echo "[install-steamless] could not resolve a release asset URL" >&2
+    echo "[install-steamless] (GitHub API rate limit or no internet?)" >&2
     exit 1
 fi
 echo "[install-steamless] downloading $ASSET_URL"
@@ -78,6 +91,14 @@ cp -r "$TMP/extract/." "$TARGET_DIR/"
 if [ ! -f "$TARGET_DIR/Steamless.API.dll" ] \
    && [ -f "$TARGET_DIR/Plugins/Steamless.API.dll" ]; then
     cp "$TARGET_DIR/Plugins/Steamless.API.dll" "$TARGET_DIR/Steamless.API.dll"
+fi
+
+# Validate the unpack actually produced a usable CLI — otherwise callers
+# would think Steamless is installed when it isn't.
+if [ ! -f "$TARGET_DIR/Steamless.CLI.exe" ]; then
+    echo "[install-steamless] download succeeded but Steamless.CLI.exe is missing" >&2
+    echo "[install-steamless] (unexpected asset layout)" >&2
+    exit 1
 fi
 
 echo "[install-steamless] installed at $TARGET_DIR"

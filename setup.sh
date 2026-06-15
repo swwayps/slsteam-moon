@@ -469,8 +469,31 @@ install_steamstub()
 	          "$TARGET/steamstub-bypass/scan-all.sh"
 
 	echo ""
-	bash "$TARGET/steamstub-bypass/install-steamless.sh" \
-		--target "$TARGET/steamless-bin"
+
+	# Prefer the Steamless kit bundled in the release (offline, no
+	# network).  Only fall back to the GitHub download if the bundle is
+	# absent (e.g. a dev tree).  The download path is the historical
+	# silent-failure source behind "Application load error 6".
+	if [ -f "./tools/steamless-bin/Steamless.CLI.exe" ]; then
+		log_info "Installing bundled Steamless kit"
+		mkdir -p "$TARGET/steamless-bin"
+		cp -r ./tools/steamless-bin/. "$TARGET/steamless-bin/"
+	else
+		log_warn "No bundled Steamless kit; fetching from upstream (needs internet)"
+		bash "$TARGET/steamstub-bypass/install-steamless.sh" \
+			--target "$TARGET/steamless-bin" || true
+	fi
+
+	# Verify the kit actually landed.  A missing CLI means the SteamStub
+	# bypass is silently disabled at runtime and DRM-locked games fail
+	# with "Application load error 6" — make that loud here.
+	if [ -f "$TARGET/steamless-bin/Steamless.CLI.exe" ]; then
+		log_success "Steamless ready ($TARGET/steamless-bin)"
+	else
+		log_warn "Steamless kit NOT installed — games with Steam DRM will"
+		log_warn "fail to launch (Application load error 6). To fix later:"
+		log_warn "  bash $TARGET/steamstub-bypass/install-steamless.sh --target $TARGET/steamless-bin"
+	fi
 	echo ""
 }
 
