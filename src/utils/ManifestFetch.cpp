@@ -305,6 +305,7 @@ std::optional<uint64_t> runOnce(uint64_t gid, uint32_t appId, uint32_t depotId)
 
 	g_pLog->warn("ManifestFetch: gid=%llu all %zu providers exhausted\n",
 	             static_cast<unsigned long long>(gid), chain.size());
+	g_pLog->notifyUser(UserMsg::DownloadAuthUnavailable);
 	return std::nullopt;
 }
 
@@ -355,6 +356,7 @@ bool fetchManifestBlob(uint64_t gid, uint32_t depotId, const std::string& depotc
 	{
 		g_pLog->warn("ManifestFetch: blob depot=%u gid=%llu request-code lookup failed\n",
 		             depotId, static_cast<unsigned long long>(gid));
+		g_pLog->notifyUser(UserMsg::DownloadAuthUnavailable);
 		return false;
 	}
 	uint64_t code = *codeOpt;
@@ -418,6 +420,8 @@ retry_cdn:
 		}
 		g_pLog->warn("ManifestFetch: blob depot=%u gid=%llu all CDN hosts failed (last HTTP=%ld)\n",
 		             depotId, static_cast<unsigned long long>(gid), zipResp.status);
+		g_pLog->notifyUser(UserMsg::ContentServersUnavailable,
+		                   "HTTP " + std::to_string(zipResp.status));
 		return false;
 	}
 
@@ -427,6 +431,7 @@ retry_cdn:
 	{
 		g_pLog->warn("ManifestFetch: blob depot=%u gid=%llu mkstemp failed\n",
 		             depotId, static_cast<unsigned long long>(gid));
+		g_pLog->notifyUser(UserMsg::LocalStorageError);
 		return false;
 	}
 	const ssize_t written =
@@ -437,6 +442,7 @@ retry_cdn:
 		unlink(tmpZip);
 		g_pLog->warn("ManifestFetch: blob depot=%u gid=%llu zip write short\n",
 		             depotId, static_cast<unsigned long long>(gid));
+		g_pLog->notifyUser(UserMsg::LocalStorageError);
 		return false;
 	}
 
@@ -472,6 +478,7 @@ retry_cdn:
 		unlink(tmpOutPath.c_str());
 		g_pLog->warn("ManifestFetch: blob depot=%u gid=%llu rename failed errno=%d\n",
 		             depotId, static_cast<unsigned long long>(gid), errno);
+		g_pLog->notifyUser(UserMsg::LocalStorageError);
 		return false;
 	}
 
@@ -598,6 +605,7 @@ bool awaitManifestBlob(uint64_t manifestGid, uint32_t depotId, int timeoutSec)
 	{
 		g_pLog->warn("ManifestFetch: blob depot=%u gid=%llu await timed out after %ds\n",
 		             depotId, static_cast<unsigned long long>(manifestGid), timeoutSec);
+		g_pLog->notifyUser(UserMsg::DownloadTimedOut);
 		return false;
 	}
 	return fut.get();
@@ -640,6 +648,7 @@ std::optional<uint64_t> resolve(uint64_t jobId)
 	{
 		g_pLog->warn("ManifestFetch: jobId=%llu timed out after %ds\n",
 		             static_cast<unsigned long long>(jobId), budget);
+		g_pLog->notifyUser(UserMsg::DownloadTimedOut);
 		return std::nullopt;
 	}
 	return fut.get();

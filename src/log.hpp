@@ -1,6 +1,7 @@
 #pragma once
 
 #include "notify.hpp" // LogLevel + the notify-send command builder
+#include "usermsg.hpp" // user-facing message catalog (UserMsg/Lang/messageFor)
 
 #include <cstddef>
 #include <cstdio>
@@ -38,6 +39,14 @@ class CLog
 	std::unordered_set<std::string> msgHist {};
 	std::shared_mutex mutex;
 
+	// User-facing popup state. m_lang is resolved once from the environment
+	// at construction; m_notifyThrottle collapses per-category bursts into a
+	// single popup (see Notify::NotifyThrottle). Guarded by m_notifyMu, which
+	// is independent of `mutex` so a popup never contends with file writes.
+	Lang m_lang = Lang::English;
+	Notify::NotifyThrottle m_notifyThrottle {};
+	std::mutex m_notifyMu;
+
 	constexpr const char* logLvlToStr(LogLevel& lvl)
 	{
 		switch(lvl)
@@ -74,14 +83,12 @@ class CLog
 		formatted.resize(size);
 		snprintf(formatted.data(), size, msg, args...);
 
-		const std::string notifyCmd = Notify::buildCommand(lvl, formatted);
-
-		if (Notify::shouldRaiseNotification(lvl, shouldNotify(), t_suppressNotify)
-		    && !notifyCmd.empty())
-		{
-			system(notifyCmd.c_str());
-			debug("system(\"%s\")\n", notifyCmd.c_str());
-		}
+		// NOTE: __log no longer raises desktop popups. Every log level here
+		// (warn/notify/info/...) writes ONLY to the file, so the raw
+		// developer diagnostics stay available for debugging without ever
+		// reaching the user's screen. The single popup path is notifyUser(),
+		// which renders a friendly, localized, throttled message from the
+		// usermsg.hpp catalog instead.
 
 		const auto lock = std::unique_lock(mutex);
 
@@ -192,6 +199,14 @@ public:
 	{
 		__log(LogLevel::Warn, msg, args...);
 	}
+
+	// The ONLY desktop-popup path. Renders a friendly, localized message
+	// from the usermsg.hpp catalog, throttled per-category so a multi-depot
+	// burst collapses into a single popup. `detail` fills the catalog's
+	// "{detail}" slot when present (e.g. "HTTP 503") and is omitted
+	// otherwise. The raw developer diagnostic should still be logged
+	// separately (warn/info) at the call site for debugging.
+	void notifyUser(UserMsg msg, const std::string& detail = "");
 
 	//Do not include config.hpp in this header, otherwise things will break :) (proly due to recursive inclusion)
 	static LogLevel getMinLevel();

@@ -512,6 +512,7 @@ void onLaunchApp(uint32_t appId)
 					"SteamStub: helper failed for %s (rc=%d)\n",
 					pathStr.c_str(), rc
 				);
+				g_pLog->notifyUser(UserMsg::DrmRemovalFailed);
 				break;
 		}
 

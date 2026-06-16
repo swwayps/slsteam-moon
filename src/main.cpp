@@ -316,18 +316,21 @@ static void load()
 		if (g_config.safeMode.get())
 		{
 			g_pLog->warn("Unknown steamclient.so hash! Aborting...");
+			g_pLog->notifyUser(UserMsg::SteamVersionUnsupported);
 			unload();
 			return;
 		}
 		else if (g_config.warnHashMissmatch.get())
 		{
 			g_pLog->warn("steamclient.so hash missmatch! Please update :)");
+			g_pLog->notifyUser(UserMsg::SteamVersionMismatch);
 		}
 	}
 
 	if (!Patterns::init())
 	{
 		g_pLog->warn("Failed to find all patterns! Aborting...");
+		g_pLog->notifyUser(UserMsg::InitializationFailed);
 		return;
 	}
 
@@ -423,10 +426,12 @@ static void load()
 		if (static_cast<unsigned int>(ymd.month()) == 2 && static_cast<unsigned int>(ymd.day()) == 22)
 		{
 			g_pLog->notify("Happy birthday SLSsteam!");
+			g_pLog->notifyUser(UserMsg::BirthdayGreeting);
 		}
 		else
 		{
 			g_pLog->notify("Loaded successfully");
+			g_pLog->notifyUser(UserMsg::LoadSuccess);
 		}
 	}
 }

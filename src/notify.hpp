@@ -14,6 +14,7 @@
 // urgency, so they all auto-dismiss.
 
 #include <string>
+#include <unordered_map>
 
 enum class LogLevel : unsigned int
 {
@@ -119,4 +120,71 @@ namespace Notify
 		cmd += "\"";
 		return cmd;
 	}
+
+	// Build a notify-send command from explicit parts. The user-facing popup
+	// path (CLog::notifyUser) decides title/body/timeout/urgency from the
+	// message catalog + severity, rather than from a LogLevel. Same shell
+	// escaping as buildCommand so a stray quote / metachar in the body can't
+	// break or inject into system().
+	inline std::string buildCommandRaw(const std::string& title,
+	                                   const std::string& body,
+	                                   int timeoutMs,
+	                                   const char* urgency)
+	{
+		std::string cmd = "notify-send -t ";
+		cmd += std::to_string(timeoutMs);
+		cmd += " -u \"";
+		cmd += urgency;
+		cmd += "\" \"";
+		cmd += shellEscapeDoubleQuoted(title);
+		cmd += "\" \"";
+		cmd += shellEscapeDoubleQuoted(body);
+		cmd += "\"";
+		return cmd;
+	}
+
+	// Per-category popup throttle (anti-spam).
+	//
+	// Steam stages every depot of a title near-simultaneously, so a single
+	// transient fault (a 503 edge, an expired request code) can fire the
+	// SAME user-facing failure a dozen times within seconds — one per depot,
+	// one per DLC. Without a gate that becomes a dozen identical popups.
+	//
+	// allow() collapses a burst of one category into a SINGLE popup per
+	// cooldown window. Occurrences inside the window are counted (not shown);
+	// the next allowed popup reports how many were suppressed so the user
+	// still knows the scope. Categories are independent (a CDN failure does
+	// not silence a config error). State is tiny and lock-free here — the
+	// caller (CLog) holds its own mutex around allow().
+	struct NotifyThrottle
+	{
+		long long cooldownMs = 60000;
+
+		struct Entry { long long lastEmitMs; int suppressedSince; };
+		std::unordered_map<int, Entry> entries;
+
+		// Returns true if a popup for `category` should be shown now. On a
+		// true return, `suppressedOut` carries how many occurrences were
+		// suppressed since the previous shown popup (0 the first time).
+		bool allow(int category, long long nowMs, int& suppressedOut)
+		{
+			auto it = entries.find(category);
+			if (it == entries.end())
+			{
+				entries.emplace(category, Entry{ nowMs, 0 });
+				suppressedOut = 0;
+				return true;
+			}
+			Entry& e = it->second;
+			if (nowMs - e.lastEmitMs >= cooldownMs)
+			{
+				suppressedOut = e.suppressedSince;
+				e.lastEmitMs = nowMs;
+				e.suppressedSince = 0;
+				return true;
+			}
+			e.suppressedSince += 1;
+			return false;
+		}
+	};
 }

@@ -1175,6 +1175,15 @@ int provisionAllAddedApps(const std::string& appinfoVdfPath)
 		{
 			++provisioned;
 		}
+		else
+		{
+			// Terminal: both the CM batch and the steamcmd fallback failed
+			// for this app, so it won't be installable this session. One
+			// emit point here (not per-provider) avoids a false popup when
+			// the CM path fails but steamcmd then succeeds. Throttled, so a
+			// fleet-wide outage at startup collapses to a single popup.
+			g_pLog->notifyUser(UserMsg::GamePreparationFailed);
+		}
 	}
 	if (provisioned > 0)
 	{

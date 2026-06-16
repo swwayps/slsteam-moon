@@ -148,6 +148,60 @@ int main()
 		      "Debug never pops up");
 	}
 
+	// 9) buildCommandRaw: the user-facing popup path needs a command builder
+	//    that takes an explicit title, body, timeout and urgency (the catalog
+	//    layer decides those), reusing the same shell-escaping as the
+	//    level-based builder.
+	{
+		const std::string cmd =
+			Notify::buildCommandRaw("SLSsteam-moon", "servers busy", 30000, "normal");
+		CHECK(contains(cmd, "notify-send"),  "raw cmd invokes notify-send");
+		CHECK(contains(cmd, "-t 30000"),     "raw cmd carries the given timeout");
+		CHECK(contains(cmd, "-u \"normal\""),"raw cmd carries the given urgency");
+		CHECK(contains(cmd, "SLSsteam-moon"),"raw cmd carries the title");
+		CHECK(contains(cmd, "servers busy"), "raw cmd carries the body");
+
+		const std::string inj =
+			Notify::buildCommandRaw("t", "x`id`$(id)\"q", 1000, "normal");
+		CHECK(contains(inj, "\\`id\\`") && contains(inj, "\\$(id)") &&
+		      contains(inj, "\\\"q"),
+		      "raw cmd escapes shell metacharacters in the body");
+	}
+
+	// 10) NotifyThrottle: anti-spam. A multi-DLC title can fire the SAME
+	//     failure (e.g. "content servers unavailable") for a dozen depots
+	//     within seconds. The throttle collapses a burst per category into
+	//     ONE popup, counting the suppressed ones so the next allowed popup
+	//     can mention them. Distinct categories are independent.
+	{
+		Notify::NotifyThrottle thr;
+		thr.cooldownMs = 60000;
+		int suppressed = -1;
+
+		// First occurrence of category 1 emits immediately, nothing suppressed.
+		CHECK(thr.allow(1, /*nowMs=*/0, suppressed) && suppressed == 0,
+		      "first occurrence emits (suppressed=0)");
+
+		// A burst within the cooldown window is suppressed.
+		CHECK(!thr.allow(1, 1000, suppressed),  "burst #1 suppressed");
+		CHECK(!thr.allow(1, 2000, suppressed),  "burst #2 suppressed");
+		CHECK(!thr.allow(1, 3000, suppressed),  "burst #3 suppressed");
+
+		// A different category is not affected by category 1's cooldown.
+		CHECK(thr.allow(2, 3000, suppressed) && suppressed == 0,
+		      "distinct category emits independently");
+
+		// After the cooldown elapses, category 1 emits again and reports the
+		// three that were suppressed in between.
+		CHECK(thr.allow(1, 61000, suppressed) && suppressed == 3,
+		      "post-cooldown emit reports the 3 suppressed occurrences");
+
+		// The suppressed counter resets after an allowed emit.
+		CHECK(!thr.allow(1, 61500, suppressed), "next burst suppressed again");
+		CHECK(thr.allow(1, 122000, suppressed) && suppressed == 1,
+		      "counter reset: only 1 suppressed since last emit");
+	}
+
 	if (g_failures == 0) { std::printf("\nALL PASS\n"); return 0; }
 	std::printf("\n%d CHECK(S) FAILED\n", g_failures);
 	return 1;
