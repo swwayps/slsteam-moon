@@ -17,6 +17,11 @@
 
 #include "libmem/libmem.h"
 
+#include <cerrno>
+#include <fcntl.h>
+#include <sys/file.h>
+#include <unistd.h>
+
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -199,11 +204,23 @@ static void load()
 
 	// la_objopen fires load() once per audited module that opens — i.e. for
 	// BOTH steamclient.so AND steamui.so. The hooking work below must run
-	// exactly once per process: the first pass overwrites the target
+	// exactly once PER PROCESS: the first pass overwrites the target
 	// functions' prologues with detour jumps, so a second pass would re-scan
 	// that already-patched memory, fail the prologue signatures ("Required
-	// pattern not found"), and clobber the resolved addresses — breaking
-	// features that were correctly hooked on the first pass.
+	// pattern not found"), and clobber the resolved addresses.
+	//
+	// A per-.so `static` flag is NOT enough: under LD_AUDIT glibc instantiates
+	// the auditor (this .so) once per link-map namespace, and a Steam process
+	// can have more than one namespace — so there are TWO copies of SLSsteam.so
+	// in the process, each with its own `static`, each running load() against
+	// the SAME (shared) steamclient.so. Confirmed on the affected machine: two
+	// SLSsteam.so mappings in the minidump; load() ran twice with an
+	// independent guard each time. The single-instance machines never hit it.
+	//
+	// So the one-shot has to be PROCESS-global, shared across those copies. A
+	// per-pid advisory file lock is: kernel-level (the fd table is per-process,
+	// so both copies see the same inode/lock), atomic against threads, and
+	// auto-released when the process dies (no stale-lock / pid-reuse hazard).
 	static bool loadDone = false;
 	if (loadDone)
 	{
@@ -222,14 +239,31 @@ static void load()
 		return;
 	}
 
-	// Claim the one-shot HERE — after both modules are confirmed present (so
-	// a genuine "the other module isn't mapped yet" retry on the next
-	// objopen still works), but BEFORE the heavy work. That work (appinfo
-	// provisioning etc.) can cause Steam to map steamui.so, which fires
-	// la_objopen -> load() RE-ENTRANTLY on this same thread; setting the
-	// flag only at the end let that nested call slip past the guard above
-	// and re-scan our already-hooked code. Setting it now makes the nested
-	// (and any later) call a no-op.
+	// Claim the process-wide one-shot AFTER both modules are confirmed (so a
+	// genuine "the other module isn't mapped yet" retry on the next objopen
+	// still works) and BEFORE the heavy work.
+	{
+		char lockPath[64];
+		std::snprintf(lockPath, sizeof(lockPath), "/tmp/.slssteam.load.%d", getpid());
+		const int lockFd = open(lockPath, O_CREAT | O_RDWR | O_CLOEXEC, 0600);
+		if (lockFd >= 0)
+		{
+			if (flock(lockFd, LOCK_EX | LOCK_NB) != 0)
+			{
+				// Another SLSsteam.so instance in this process already claimed
+				// the hooking pass. Bail before re-scanning the hooked code.
+				g_pLog->info("load: another instance already claimed the hooking pass (guard %p) -> skipping\n",
+				             static_cast<void*>(&loadDone));
+				close(lockFd);
+				return;
+			}
+			// We won the lock; deliberately keep lockFd open for the lifetime
+			// of the process so the lock is held (released only on exit).
+		}
+		// open() failure falls through: never block hooking on a broken /tmp.
+	}
+	g_pLog->info("load: claimed hooking pass (guard %p, pid %d)\n",
+	             static_cast<void*>(&loadDone), getpid());
 	loadDone = true;
 
 	auto path = std::filesystem::path(g_modSteamClient.path);
