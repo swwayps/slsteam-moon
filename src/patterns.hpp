@@ -121,6 +121,12 @@ namespace Patterns
 		extern Pattern_t Grow;
 	}
 
+	namespace CDepotDownloadMgr
+	{
+		extern Pattern_t ProcessDepotManifest;
+		extern Pattern_t PrepareDepotDownload;
+	}
+
 	namespace IClientUtils
 	{
 		extern Pattern_t RunIPCFrame;

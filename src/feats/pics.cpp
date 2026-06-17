@@ -2,6 +2,7 @@
 #include "pics.hpp"
 
 #include "depotkey.hpp"
+#include "manifeststore.hpp"
 #include "prewarm.hpp"
 
 #include "../config.hpp"
@@ -275,6 +276,20 @@ void recvProductInfoResponse(CMsgClientPICSProductInfoResponse* resp)
 		}
 
 		auto depots = extractDepotsAndGids(warmBuf);
+
+		// Archive every depot manifest the zip shipped (all platforms)
+		// into the purge-proof ManifestStore while they're still in
+		// depotcache — before Steam's post-commit purge removes the
+		// non-mounted ones (e.g. the windows depot of a native-linux
+		// title).  This is what lets a later offline Proton-switch restore
+		// + install the windows depot.  AdditionalApps only.
+		if (emptyLiveBuffer)
+		{
+			std::vector<uint32_t> depotIds;
+			depotIds.reserve(depots.size());
+			for (const auto& [depotId, gid] : depots) depotIds.push_back(depotId);
+			ManifestStore::archiveDepots(depotIds);
+		}
 
 		if (!emptyLiveBuffer)
 		{

@@ -41,7 +41,8 @@ bool Patterns::init()
 	// a safe no-op when unresolved (no regression on builds where the
 	// signature drifts).
 	CUser::NotifyLicensesUpdated.optional = true;
-
+	CDepotDownloadMgr::ProcessDepotManifest.optional = true;
+	CDepotDownloadMgr::PrepareDepotDownload.optional = true;
 	for(auto& pattern : patterns())
 	{
 		if (!pattern->find())
@@ -351,6 +352,48 @@ namespace Patterns
 			"CUtlMemory::Grow",
 			"E8 ? ? ? ? 8B 85 ? ? FF FF 83 C4 10 8B 40 44 89 85 ? ? FF FF 83 C0 01 E9",
 			SigFollowMode::Relative
+		};
+	}
+
+	namespace CDepotDownloadMgr
+	{
+		// Two cooperating hook points in CDepotDownloadMgr, both with the
+		// same 7-dword signature (context, ., appId, depotId, uint64 gid, .)
+		// and both self-contained PIC functions.
+		//
+		// (1) ProcessDepotManifest (the manifest-acquisition LEAF, 5 callers):
+		//     builds "<root>/depotcache/<depot>_<gid>.manifest" from its gid
+		//     arg, checks it on disk, and only calls BYldRequestDepotManifest
+		//     when missing.  Redirecting the gid here makes the on-disk check
+		//     find the locally-staged (zip) manifest and SKIP the request-code
+		//     fetch — this is what lets a providers-down install proceed past
+		//     "No internet connection".  PIC get_pc_thunk is the FIRST insn, so
+		//     fixPICThunkCall must repair the relocated thunk in the tramp.
+		//
+		// (2) PrepareDepotDownload (one of the 5 callers, a LATER pipeline
+		//     stage): after calling the leaf it looks the depot up in the
+		//     per-download table BY the gid it was called with and derefs the
+		//     per-manifest state pointer.  If the leaf was redirected to the
+		//     zip gid but this frame still looks up the public gid -> miss ->
+		//     NULL deref -> SIGSEGV at Reconfiguring (core-dump confirmed; see
+		//     .kiro/research/manifest-fallback-rootcause.md).  Redirecting the
+		//     gid here too keeps the leaf call and the table lookup consistent.
+		//     PIC get_pc_thunk is at +5 (after the 5-byte prologue we relocate)
+		//     so fixPICThunkCall is a harmless no-op for this hook point.
+		//
+		// Both verified: 1 match each in .text.
+		Pattern_t ProcessDepotManifest
+		{
+			"CDepotDownloadMgr::ProcessDepotManifest",
+			"E8 ? ? ? ? 05 ? ? ? ? 55 89 E5 57 56 53 83 EC 4C 8B 55 1C 89 45 C0 8B 45 18 89 55 CC 89 45 C8",
+			SigFollowMode::None
+		};
+
+		Pattern_t PrepareDepotDownload
+		{
+			"CDepotDownloadMgr::PrepareDepotDownload",
+			"55 89 E5 57 56 E8 ? ? ? ? 81 C6 ? ? ? ? 53 83 EC 60 8B 7D 08 8B 45 18 8B 55 1C FF 75 20 89 45 98 52 50 FF 75 14 89 55 9C FF 75 10 FF 75 0C 57 E8 ? ? ? ? 8B 47 4C 83 C4 20 83 F8 FF",
+			SigFollowMode::None
 		};
 	}
 

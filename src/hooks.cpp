@@ -22,6 +22,7 @@
 #include "feats/depotkey.hpp"
 #include "feats/dlc.hpp"
 #include "feats/manifestcode.hpp"
+#include "feats/manifestbind.hpp"
 #include "feats/misc.hpp"
 #include "feats/fakeappid.hpp"
 #include "feats/packagepatch.hpp"
@@ -1046,6 +1047,7 @@ bool Hooks::setup()
 	Hooks::place();
 
 	PackagePatch::setup();
+	ManifestBind::setup();
 
 	return succeeded;
 }
@@ -1154,6 +1156,7 @@ void Hooks::remove()
 	IClientUtils_GetAppId.remove();
 	
 	PackagePatch::remove();
+	ManifestBind::remove();
 
 	if (hkNakedGetSteamId != LM_ADDRESS_BAD)
 	{
