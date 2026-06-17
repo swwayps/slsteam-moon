@@ -274,14 +274,14 @@ std::optional<uint64_t> runOnce(uint64_t gid, uint32_t appId, uint32_t depotId)
 		const auto resp = httpGet(url);
 		if (resp.networkError)
 		{
-			g_pLog->warn("ManifestFetch: gid=%llu provider %zu net err '%s', trying next\n",
+			g_pLog->info("ManifestFetch: gid=%llu provider %zu net err '%s', trying next\n",
 			             static_cast<unsigned long long>(gid),
 			             i + 1, resp.diagnostic.c_str());
 			continue;
 		}
 		if (resp.status != 200)
 		{
-			g_pLog->warn("ManifestFetch: gid=%llu provider %zu HTTP=%ld body_bytes=%zu, trying next\n",
+			g_pLog->info("ManifestFetch: gid=%llu provider %zu HTTP=%ld body_bytes=%zu, trying next\n",
 			             static_cast<unsigned long long>(gid),
 			             i + 1, resp.status, resp.body.size());
 			continue;
@@ -296,14 +296,14 @@ std::optional<uint64_t> runOnce(uint64_t gid, uint32_t appId, uint32_t depotId)
 			cacheCode(gid, code);
 			return code;
 		}
-		g_pLog->warn("ManifestFetch: gid=%llu provider %zu body unparseable (first 64: '%.*s'), trying next\n",
+		g_pLog->info("ManifestFetch: gid=%llu provider %zu body unparseable (first 64: '%.*s'), trying next\n",
 		             static_cast<unsigned long long>(gid),
 		             i + 1,
 		             static_cast<int>(std::min<std::size_t>(resp.body.size(), 64)),
 		             resp.body.c_str());
 	}
 
-	g_pLog->warn("ManifestFetch: gid=%llu all %zu providers exhausted\n",
+	g_pLog->info("ManifestFetch: gid=%llu all %zu providers exhausted\n",
 	             static_cast<unsigned long long>(gid), chain.size());
 	g_pLog->notifyUser(UserMsg::DownloadAuthUnavailable);
 	return std::nullopt;
@@ -354,7 +354,7 @@ bool fetchManifestBlob(uint64_t gid, uint32_t depotId, const std::string& depotc
 	auto codeOpt = runOnce(gid, /*appId=*/0, depotId);
 	if (!codeOpt)
 	{
-		g_pLog->warn("ManifestFetch: blob depot=%u gid=%llu request-code lookup failed\n",
+		g_pLog->info("ManifestFetch: blob depot=%u gid=%llu request-code lookup failed\n",
 		             depotId, static_cast<unsigned long long>(gid));
 		g_pLog->notifyUser(UserMsg::DownloadAuthUnavailable);
 		return false;
@@ -418,7 +418,7 @@ retry_cdn:
 				goto retry_cdn;
 			}
 		}
-		g_pLog->warn("ManifestFetch: blob depot=%u gid=%llu all CDN hosts failed (last HTTP=%ld)\n",
+		g_pLog->info("ManifestFetch: blob depot=%u gid=%llu all CDN hosts failed (last HTTP=%ld)\n",
 		             depotId, static_cast<unsigned long long>(gid), zipResp.status);
 		g_pLog->notifyUser(UserMsg::ContentServersUnavailable,
 		                   "HTTP " + std::to_string(zipResp.status));
@@ -603,7 +603,7 @@ bool awaitManifestBlob(uint64_t manifestGid, uint32_t depotId, int timeoutSec)
 	if (fut.wait_for(std::chrono::seconds(timeoutSec)) !=
 	    std::future_status::ready)
 	{
-		g_pLog->warn("ManifestFetch: blob depot=%u gid=%llu await timed out after %ds\n",
+		g_pLog->info("ManifestFetch: blob depot=%u gid=%llu await timed out after %ds\n",
 		             depotId, static_cast<unsigned long long>(manifestGid), timeoutSec);
 		g_pLog->notifyUser(UserMsg::DownloadTimedOut);
 		return false;
@@ -646,7 +646,7 @@ std::optional<uint64_t> resolve(uint64_t jobId)
 	const int budget = getTimeoutSec() > 0 ? getTimeoutSec() : 12;
 	if (fut.wait_for(std::chrono::seconds(budget)) != std::future_status::ready)
 	{
-		g_pLog->warn("ManifestFetch: jobId=%llu timed out after %ds\n",
+		g_pLog->info("ManifestFetch: jobId=%llu timed out after %ds\n",
 		             static_cast<unsigned long long>(jobId), budget);
 		g_pLog->notifyUser(UserMsg::DownloadTimedOut);
 		return std::nullopt;

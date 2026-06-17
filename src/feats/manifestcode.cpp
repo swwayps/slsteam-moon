@@ -493,7 +493,7 @@ bool hkCDepotDownloadMgr_BYldRequestDepotManifest(void* pthis, uint32_t appId, u
 			}
 			else
 			{
-				g_pLog->warn("BYldRequestDepotManifest: blob fetch failed for depot=%u gid=%llu, falling through to Steam's path\n",
+				g_pLog->info("BYldRequestDepotManifest: blob fetch failed for depot=%u gid=%llu, falling through to Steam's path\n",
 				             depotId, static_cast<unsigned long long>(manifestId));
 			}
 		}
