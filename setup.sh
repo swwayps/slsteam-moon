@@ -291,6 +291,26 @@ if [ -f "$CR_SO" ]; then
 	export LD_PRELOAD="$CR_SO${LD_PRELOAD:+:$LD_PRELOAD}"
 fi
 
+# extest (Steam Input on Wayland): SteamOS and Bazzite ship libextest, an X11
+# XTEST shim that lets the Steam Controller / Steam Input drive the desktop
+# cursor under Wayland (X11 has native XTEST, so it's only needed on Wayland).
+# Their own desktop launchers (bazzite-steam / steam-jupiter) LD_PRELOAD it on
+# Wayland. We launch the Steam binary directly — on purpose, so our LD_AUDIT and
+# CloudRedirect survive (those launchers do `env LD_PRELOAD=...`, which REPLACES
+# the list and would drop cloud_redirect.so) — so we replicate just this one
+# preload, generically: only on Wayland and only when the lib actually exists
+# (a no-op on distros that don't ship it).
+if [ "${XDG_SESSION_TYPE:-}" = "wayland" ]; then
+	for _ext in /usr/lib/extest/libextest.so \
+	            /usr/lib64/extest/libextest.so \
+	            /usr/lib/x86_64-linux-gnu/extest/libextest.so; do
+		if [ -f "$_ext" ]; then
+			export LD_PRELOAD="${LD_PRELOAD:+$LD_PRELOAD:}$_ext"
+			break
+		fi
+	done
+fi
+
 AUDIT="$SLSDIR/library-inject.so:$SLSDIR/SLSsteam.so"
 
 LD_AUDIT="$AUDIT${LD_AUDIT:+:$LD_AUDIT}" exec "$STEAM_BIN" "$@"
