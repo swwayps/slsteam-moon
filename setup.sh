@@ -8,6 +8,12 @@ USER_APPS="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 USER_DESKTOP="$USER_APPS/steam.desktop"
 SYS_DESKTOP="/usr/share/applications/steam.desktop"
 
+# XDG autostart: some images (SteamOS/Bazzite) auto-launch Steam on desktop
+# login via /etc/xdg/autostart/steam.desktop (which calls the distro launcher,
+# bypassing our wrapper). A user-level entry of the same basename overrides it.
+USER_AUTOSTART="${XDG_CONFIG_HOME:-$HOME/.config}/autostart/steam.desktop"
+SYS_AUTOSTART="/etc/xdg/autostart/steam.desktop"
+
 # Tag we drop into patched .desktop files so we can detect/undo them later.
 SLSM_TAG="X-SLSteamMoon-Patched=true"
 
@@ -363,6 +369,68 @@ patch_desktop_file() {
 	fi
 }
 
+# Looser variant of is_real_steam_desktop for autostart entries: the SteamOS/
+# Bazzite autostart calls a distro launcher (bazzite-steam / steam-jupiter) that
+# is_real_steam_desktop's "/steam"-anchored regex doesn't match, so accept any
+# Exec= that mentions steam (still skipping the "Install Steam" stub and our own
+# already-patched file).
+is_autostart_steam_desktop() {
+	local f="$1"
+	[ -f "$f" ] || return 1
+	grep -q "$SLSM_TAG" "$f" 2>/dev/null && return 0
+	grep -q "^Name=Install Steam" "$f" 2>/dev/null && return 1
+	grep -qiE '^Exec=.*steam' "$f" 2>/dev/null
+}
+
+# Rewrite ONLY the first (primary [Desktop Entry]) Exec= line so its launcher
+# token becomes our wrapper, keeping the original arguments (e.g. "-silent %U").
+# Distro-agnostic: works whatever the launcher is (bazzite-steam, steam-jupiter,
+# /usr/bin/steam). Desktop Action Exec lines (steam:// URL handlers) are left
+# pointing at the distro launcher on purpose — they're one-shot forwarders.
+rewrite_primary_exec_to_wrapper() {
+	local f="$1" esc_wrapper
+	esc_wrapper=$(printf '%s' "$SLSDIR/path/steam" | sed -e 's/[\/&]/\\&/g')
+	sed -i "0,/^Exec=/ s|^Exec=[^ ]*\(.*\)\$|Exec=$esc_wrapper\1|" "$f"
+}
+
+# Mirror an existing Steam autostart entry as a user-level XDG override that runs
+# through our wrapper, so Steam is injected even when the desktop session
+# auto-launches it (SteamOS/Bazzite). We ONLY act when an autostart entry
+# already exists (user or system) — we never CREATE autostart where the user had
+# none, so normal desktops are unaffected.
+setup_autostart_override() {
+	if is_patched_desktop "$USER_AUTOSTART"; then
+		log_success "Autostart override already patched ($USER_AUTOSTART)"
+		return 0
+	fi
+
+	local donor=""
+	if is_autostart_steam_desktop "$USER_AUTOSTART"; then
+		donor="$USER_AUTOSTART"            # user's own; back up + patch in place
+	elif is_autostart_steam_desktop "$SYS_AUTOSTART"; then
+		donor="$SYS_AUTOSTART"             # system autostart; seed a user override
+	fi
+	[ -n "$donor" ] || return 0            # no existing autostart -> no-op
+
+	mkdir -p "$(dirname "$USER_AUTOSTART")"
+	if [ "$donor" = "$USER_AUTOSTART" ]; then
+		[ -f "$USER_AUTOSTART.slssteam-backup" ] || cp -- "$USER_AUTOSTART" "$USER_AUTOSTART.slssteam-backup"
+	else
+		log_info "Seeding $USER_AUTOSTART from $donor"
+		cp -- "$donor" "$USER_AUTOSTART"
+	fi
+
+	rewrite_primary_exec_to_wrapper "$USER_AUTOSTART"
+	# Drop any stale marker, then tag once after the [Desktop Entry] header.
+	sed -i "/^$SLSM_TAG\$/d" "$USER_AUTOSTART"
+	if grep -q '^\[Desktop Entry\]' "$USER_AUTOSTART" 2>/dev/null; then
+		sed -i "0,/^\[Desktop Entry\]/ s|^\[Desktop Entry\]\$|[Desktop Entry]\n$SLSM_TAG|" "$USER_AUTOSTART"
+	else
+		echo "$SLSM_TAG" >> "$USER_AUTOSTART"
+	fi
+	log_success "Patched Steam autostart override: $USER_AUTOSTART"
+}
+
 setup_path_and_desktop()
 {
 	log_info "Setting up PATH and desktop integration"
@@ -464,6 +532,11 @@ EOF
 	elif is_patched_desktop "$SYS_DESKTOP"; then
 		log_success "System .desktop already patched"
 	fi
+
+	# --- Autostart override (SteamOS/Bazzite desktop auto-launch) ---------
+	# Ensures injection even when the desktop session auto-starts Steam
+	# (otherwise the user has to manually restart Steam to get injected).
+	setup_autostart_override
 
 	echo ""
 	return 0
