@@ -305,7 +305,10 @@ std::optional<uint64_t> runOnce(uint64_t gid, uint32_t appId, uint32_t depotId)
 
 	g_pLog->info("ManifestFetch: gid=%llu all %zu providers exhausted\n",
 	             static_cast<unsigned long long>(gid), chain.size());
-	g_pLog->notifyUser(UserMsg::DownloadAuthUnavailable);
+	// No user notification here: when the request-code providers are down the
+	// manifest resilience fallback (feats/manifestbind.cpp) installs from a
+	// locally-staged/archived manifest, so the download proceeds for the user.
+	// Keep it log-only.
 	return std::nullopt;
 }
 
@@ -356,7 +359,8 @@ bool fetchManifestBlob(uint64_t gid, uint32_t depotId, const std::string& depotc
 	{
 		g_pLog->info("ManifestFetch: blob depot=%u gid=%llu request-code lookup failed\n",
 		             depotId, static_cast<unsigned long long>(gid));
-		g_pLog->notifyUser(UserMsg::DownloadAuthUnavailable);
+		// Log-only: the manifest resilience fallback handles providers-down
+		// (see the all-providers-exhausted path above).
 		return false;
 	}
 	uint64_t code = *codeOpt;
@@ -420,8 +424,10 @@ retry_cdn:
 		}
 		g_pLog->info("ManifestFetch: blob depot=%u gid=%llu all CDN hosts failed (last HTTP=%ld)\n",
 		             depotId, static_cast<unsigned long long>(gid), zipResp.status);
-		g_pLog->notifyUser(UserMsg::ContentServersUnavailable,
-		                   "HTTP " + std::to_string(zipResp.status));
+		// Log-only: this is our manifest-blob staging fetch; the resilience
+		// fallback (feats/manifestbind.cpp) installs from a local manifest
+		// when it fails, so the download proceeds.  A genuine content-CDN
+		// outage (chunks unreachable) is surfaced by Steam's own UI.
 		return false;
 	}
 
