@@ -181,8 +181,6 @@ static uint32_t hkCAPIJob_GetPlayerStats(void* pAPIJob)
 		res
 	);
 
-	Achievements::getPlayerStats(res);
-
 	return res;
 }
 
@@ -206,6 +204,7 @@ static void hkProtoBufMsgBase_InitFromPacket(CProtoBufMsgBase* pMsg, void* pSrc)
 
 static uint32_t hkProtoBufMsgBase_Send(CProtoBufMsgBase* pMsg)
 {
+	Achievements::sendMessage(pMsg);
 	Apps::sendMsg(pMsg);
 	DepotKey::sendMsg(pMsg);
 	FakeAppIds::sendMsg(pMsg);

@@ -64,6 +64,9 @@ public:
 	MTVariable<bool> notifyInit;
 	MTVariable<bool> api;
 	MTVariable<bool> disableCloud;
+	MTVariable<bool> achievements;
+	MTVariable<uint64_t> achievementOwnerId;
+	MTVariable<std::unordered_map<uint32_t, uint64_t>> achievementOwners;
 	MTVariable<std::string> fakeEmail;
 	MTVariable<int32_t> fakeWalletBalance;
 	MTVariable<unsigned int> logLevel;

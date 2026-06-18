@@ -140,6 +140,8 @@ bool CConfig::loadSettings()
 	fakeEmail = getSetting<std::string>(node, "FakeEmail", "");
 	fakeWalletBalance = getSetting<int32_t>(node, "FakeWalletBalance", 0);
 	disableCloud = getSetting<bool>(node, "DisableCloud", true);
+	achievements = getSetting<bool>(node, "Achievements", true);
+	achievementOwnerId = getSetting<uint64_t>(node, "AchievementOwnerId", 76561198028121353ULL);
 	extendedLogging = getSetting<bool>(node, "ExtendedLogging", false);
 	logLevel = getSetting<unsigned int>(node, "LogLevel", 2);
 
@@ -156,6 +158,7 @@ bool CConfig::loadSettings()
 	g_pLog->info("FakeEmail: %s\n", fakeEmail.get().c_str());
 	g_pLog->info("FakeWalletBalance: %i\n", fakeWalletBalance.get());
 	g_pLog->info("DisableCloud: %i\n", disableCloud.get());
+	g_pLog->info("Achievements: %i\n", achievements.get());
 	g_pLog->info("ExtendedLogging: %i\n", extendedLogging.get());
 	g_pLog->info("LogLevel: %i\n", logLevel.get());
 
@@ -165,6 +168,7 @@ bool CConfig::loadSettings()
 
 	fakeAppIds = getMap<uint32_t, uint32_t>(node, "FakeAppIds");
 	appTokens = getMap<uint32_t, uint64_t>(node, "AppTokens");
+	achievementOwners = getMap<uint32_t, uint64_t>(node, "AchievementOwners");
 	gameTitles = getMap<uint32_t, std::string>(node, "GameTitles");
 	subscriptionTimestamps = getMap<uint32_t, uint32_t>(node, "SubscriptionTimestamps");
 
