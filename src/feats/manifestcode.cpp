@@ -3,6 +3,8 @@
 
 #include "depotkey.hpp"
 #include "manifestid.hpp"
+#include "achievements.hpp"
+#include "playerstats.hpp"
 
 #include "../config.hpp"
 #include "../hooks.hpp"
@@ -46,6 +48,12 @@ bool     g_PatchRxHdr = false;
 uint8_t  g_RxPool[kPacketPoolSize][kMaxPacketSize];
 int      g_RxPoolIdx = 0;
 
+// Outgoing-frame replacement (used to spoof a Player.GetUserStats request).
+// Guarded by g_TxLock; valid only for the duration of one send-hook call.
+uint8_t  g_TxFrame[kMaxPacketSize];
+uint32_t g_TxFrameLen = 0;
+bool     g_PatchTx    = false;
+
 constexpr uint32_t fnvHash(const char* s)
 {
 	uint32_t h = 0x811c9dc5u;
@@ -59,6 +67,9 @@ constexpr uint32_t fnvHash(const char* s)
 
 constexpr uint32_t kHashGetManifestRequestCode =
     fnvHash("ContentServerDirectory.GetManifestRequestCode#1");
+
+constexpr uint32_t kHashPlayerGetUserStats =
+    fnvHash("Player.GetUserStats#1");
 
 
 
@@ -111,6 +122,62 @@ inline void patchRecvFrame(CNetPacket* p,
 	p->m_cubData = newSize;
 
 	g_RxPoolIdx = (g_RxPoolIdx + 1) % kPacketPoolSize;
+}
+
+// Assemble a replacement outgoing frame (MsgHdr + header + new body) into
+// g_TxFrame and flag it for the send hook. `rawEMsg` must keep the proto
+// flag. Caller holds g_TxLock.
+inline void buildReplacementFrame(uint32_t rawEMsg,
+                                  const uint8_t* pHdr, uint32_t cbHdr,
+                                  const uint8_t* pNewBody, uint32_t cbNewBody)
+{
+	const uint32_t newSize = sizeof(MsgHdr) + cbHdr + cbNewBody;
+	if (newSize > sizeof(g_TxFrame))
+	{
+		return;
+	}
+	auto* out = reinterpret_cast<MsgHdr*>(g_TxFrame);
+	out->eMsg         = rawEMsg;
+	out->headerLength = cbHdr;
+	std::memcpy(g_TxFrame + sizeof(MsgHdr), pHdr, cbHdr);
+	if (cbNewBody)
+	{
+		std::memcpy(g_TxFrame + sizeof(MsgHdr) + cbHdr, pNewBody, cbNewBody);
+	}
+	g_TxFrameLen = newSize;
+	g_PatchTx    = true;
+}
+
+// Outgoing Player.GetUserStats#1 (eMsg 151): the modern library page fetches
+// a game's achievement schema through this unified method. For an
+// AdditionalApp the account doesn't own server-side, the request returns
+// empty and the Achievements tab never appears. Rewrite the steamid to a
+// real owner of the game so the server returns a populated schema.
+void handleSend_PlayerGetUserStats(const uint8_t* pBody, uint32_t cbBody,
+                                   const uint8_t* pHdr, uint32_t cbHdr,
+                                   uint32_t eMsg)
+{
+	if (!g_config.achievements.get())
+	{
+		return;
+	}
+
+	const auto appId = PlayerStats::parseRequestAppId(pBody, cbBody);
+	if (!appId || !g_config.isAddedAppId(*appId))
+	{
+		return;
+	}
+
+	const uint64_t owner = Achievements::resolveOwnerSteamId(
+	    *appId,
+	    g_config.achievementOwners.get(),
+	    g_config.achievementOwnerId.get());
+
+	const auto newBody = PlayerStats::buildSpoofedRequest(owner, *appId);
+	buildReplacementFrame(eMsg | kMsgHdrProtoFlag, pHdr, cbHdr,
+	                      newBody.data(), static_cast<uint32_t>(newBody.size()));
+
+	g_pLog->debug("Achievements: spoofing Player.GetUserStats owner for %u\n", *appId);
 }
 
 
@@ -235,6 +302,9 @@ void dispatchSend(uint32_t eMsg,
 	case kHashGetManifestRequestCode:
 		handleSend_GetManifestRequestCode(pBody, cbBody, pHdr, cbHdr);
 		return;
+	case kHashPlayerGetUserStats:
+		handleSend_PlayerGetUserStats(pBody, cbBody, pHdr, cbHdr, eMsg);
+		return;
 	default:
 		return;
 	}
@@ -273,10 +343,16 @@ bool hkBBuildAndAsyncSendFrame(void* pConnection,
 		uint32_t cbHdr = 0, cbBody = 0;
 		if (decodeFrame(pubData, cubData, eMsg, pHdr, cbHdr, pBody, cbBody))
 		{
+			std::lock_guard<std::mutex> lk(g_TxLock);
+			g_PatchTx = false;
 			dispatchSend(eMsg, pBody, cbBody, pHdr, cbHdr);
+			if (g_PatchTx)
+			{
+				return Hooks::CWebSocketConnection_BBuildAndAsyncSendFrame.tramp.fn(
+				    pConnection, eOpCode, g_TxFrame, g_TxFrameLen);
+			}
 		}
 	}
-	(void)g_TxLock; // reserved for future outgoing patching
 	return Hooks::CWebSocketConnection_BBuildAndAsyncSendFrame.tramp.fn(
 	    pConnection, eOpCode, pubData, cubData);
 }
