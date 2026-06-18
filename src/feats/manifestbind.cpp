@@ -5,6 +5,7 @@
 #include "manifestbind.hpp"
 
 #include "depotkey.hpp"
+#include "depotkey_scope.hpp"
 #include "manifeststore.hpp"
 
 #include "../config.hpp"
@@ -136,9 +137,15 @@ namespace
 
 	bool depotInScope(uint32_t appId, uint32_t depotId)
 	{
-		return (appId   && g_config.isAddedAppId(appId))
-		    || (depotId && g_config.isAddedAppId(depotId))
-		    || !DepotKey::getCachedKey(depotId).key.empty();
+		// Only content WE manage.  A merely-observed key (owned game / Proton
+		// runtime) must NOT pull the depot in here: redirectGid would archive
+		// it into the ManifestStore and could redirect an owned depot to a
+		// stale local gid.  The store holds LuaTools depots only.
+		return DepotKey::depotInManifestScope(
+		    appId   && g_config.isAddedAppId(appId),
+		    depotId && g_config.isAddedAppId(depotId),
+		    DepotKey::isManagedDepot(depotId),
+		    /*depotHasPin=*/false);
 	}
 
 	// Shared redirect decision: when the planned (public) gid's manifest is

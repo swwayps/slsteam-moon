@@ -298,8 +298,10 @@ void recvProductInfoResponse(CMsgClientPICSProductInfoResponse* resp)
 			// critical path, so don't block the recv thread.
 			for (const auto& [depotId, gid] : depots)
 			{
-				// Only prefetch depots we can actually decrypt.
-				if (DepotKey::getCachedKey(depotId).key.empty())
+				// Only prefetch depots WE manage (LuaTools).  An owned
+				// library app's depots are Steam's job — touching them here
+				// is needless wudrm traffic for content we don't manage.
+				if (!DepotKey::isManagedDepot(depotId))
 				{
 					continue;
 				}

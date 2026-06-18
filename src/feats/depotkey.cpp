@@ -1,6 +1,8 @@
 
 #include "depotkey.hpp"
 
+#include "depotkey_scope.hpp"
+
 #include "../config.hpp"
 #include "../globals.hpp"
 
@@ -123,6 +125,10 @@ SavedKey getCachedKey(uint32_t depotId)
 		k.appId = node["appId"].as<uint32_t>();
 		k.depotId = node["depotId"].as<uint32_t>();
 		k.key = std::string(base64::from_base64(node["key"].as<std::string>()));
+		// Legacy catalog files (pre managed-tracking) lack the field; a
+		// missing flag means "observed" (the safe default — Steam handles
+		// it).  Lua re-import at startup upgrades genuine LuaTools depots.
+		if (node["managed"]) k.managed = node["managed"].as<bool>();
 	}
 	catch (const std::exception& e)
 	{
@@ -135,7 +141,7 @@ SavedKey getCachedKey(uint32_t depotId)
 	return k;
 }
 
-bool saveKeyToCache(uint32_t appId, uint32_t depotId, const std::string& key)
+bool saveKeyToCache(uint32_t appId, uint32_t depotId, const std::string& key, bool managed)
 {
 	if (key.size() != 32)
 	{
@@ -155,12 +161,17 @@ bool saveKeyToCache(uint32_t appId, uint32_t depotId, const std::string& key)
 			existing.appId = node["appId"].as<uint32_t>();
 			existing.depotId = node["depotId"].as<uint32_t>();
 			existing.key = std::string(base64::from_base64(node["key"].as<std::string>()));
+			if (node["managed"]) existing.managed = node["managed"].as<bool>();
 		}
 		catch (...) { existing = {}; }
 	}
 
 	uint32_t finalAppId = appId ? appId : existing.appId;
-	if (existing.depotId == depotId && existing.key == key && existing.appId == finalAppId)
+	// managed is sticky: a passive re-observation must never downgrade a
+	// LuaTools depot out of manifest scope (depotkey_scope.hpp).
+	const bool finalManaged = mergeManagedFlag(existing.managed, managed);
+	if (existing.depotId == depotId && existing.key == key
+	    && existing.appId == finalAppId && existing.managed == finalManaged)
 	{
 		std::lock_guard<std::mutex> lk(g_cacheMu);
 		g_keyMap[depotId] = existing;
@@ -175,6 +186,8 @@ bool saveKeyToCache(uint32_t appId, uint32_t depotId, const std::string& key)
 	node << YAML::Value << depotId;
 	node << YAML::Key << "key";
 	node << YAML::Value << base64::to_base64(key);
+	node << YAML::Key << "managed";
+	node << YAML::Value << finalManaged;
 	node << YAML::EndMap;
 
 	std::ofstream ofs(path.c_str(), std::ios::out);
@@ -191,9 +204,17 @@ bool saveKeyToCache(uint32_t appId, uint32_t depotId, const std::string& key)
 	k.appId = finalAppId;
 	k.depotId = depotId;
 	k.key = key;
+	k.managed = finalManaged;
 	std::lock_guard<std::mutex> lk(g_cacheMu);
 	g_keyMap[depotId] = k;
 	return true;
+}
+
+
+bool isManagedDepot(uint32_t depotId)
+{
+	const auto k = getCachedKey(depotId);
+	return k.managed && k.key.size() == 32;
 }
 
 
@@ -243,7 +264,7 @@ void importLuaScripts()
 				const std::string keyHex = (*it)[2].str();
 				const std::string keyBin = hexToBytes(keyHex);
 				if (keyBin.size() != 32) continue;
-				if (saveKeyToCache(appIdGuess ? appIdGuess : depotId, depotId, keyBin))
+				if (saveKeyToCache(appIdGuess ? appIdGuess : depotId, depotId, keyBin, /*managed=*/true))
 				{
 					++imported;
 				}
@@ -382,7 +403,10 @@ void recvDepotKey(CMsgClientGetDepotDecryptionKeyResponse* resp)
 	{
 		if (resp->depot_encryption_key().size() == 32)
 		{
-			saveKeyToCache(appId, resp->depot_id(), resp->depot_encryption_key());
+			// Observed from a legitimate Steam response — cache it for
+			// possible substitution, but mark it unmanaged so it does NOT
+			// drag an owned game / runtime into our manifest scope.
+			saveKeyToCache(appId, resp->depot_id(), resp->depot_encryption_key(), /*managed=*/false);
 		}
 		return;
 	}

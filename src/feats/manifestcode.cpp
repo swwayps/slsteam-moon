@@ -136,7 +136,7 @@ void handleSend_GetManifestRequestCode(const uint8_t* pBody, uint32_t cbBody,
 	const bool inScope =
 	    (appId   && g_config.isAddedAppId(appId))
 	    || (depotId && g_config.isAddedAppId(depotId))
-	    || !DepotKey::getCachedKey(depotId).key.empty()
+	    || DepotKey::isManagedDepot(depotId)
 	    || !ManifestId::getPinnedGid(depotId).empty();
 	if (!inScope)
 	{
@@ -430,7 +430,7 @@ bool hkCDepotDownloadMgr_BYldRequestDepotManifest(void* pthis, uint32_t appId, u
 	const bool inScope =
 	    (appId   && g_config.isAddedAppId(appId))
 	    || (depotId && g_config.isAddedAppId(depotId))
-	    || !DepotKey::getCachedKey(depotId).key.empty()
+	    || DepotKey::isManagedDepot(depotId)
 	    || !ManifestId::getPinnedGid(depotId).empty();
 
 	if (!inScope)

@@ -43,6 +43,11 @@ namespace DepotKey
 		uint32_t appId  = 0;
 		uint32_t depotId = 0;
 		std::string key; // raw 32 bytes (binary, not hex)
+		// True when WE supplied this key from a Lua script (a LuaTools
+		// depot we manage); false when it was merely observed from a
+		// legitimate Steam response (an owned game / Proton runtime).
+		// Only managed keys put a depot into manifest scope.
+		bool managed = false;
 	};
 
 	// Disk paths.
@@ -51,7 +56,12 @@ namespace DepotKey
 
 	// Catalog management.
 	SavedKey getCachedKey(uint32_t depotId);
-	bool saveKeyToCache(uint32_t appId, uint32_t depotId, const std::string& key);
+	bool saveKeyToCache(uint32_t appId, uint32_t depotId, const std::string& key, bool managed);
+
+	// True iff we hold a Lua-injected (managed) key for this depot — the
+	// signal that SLSsteam's manifest machinery should engage for it.  A
+	// merely-observed key (owned game / runtime) returns false.
+	bool isManagedDepot(uint32_t depotId);
 
 	// Importer for community-format Lua scripts.  Called at startup;
 	// scans `config/stplug-in/*.lua` (under Steam) and ingests every
