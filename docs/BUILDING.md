@@ -77,7 +77,7 @@ scripts/release.sh --version 2.1      # explicit version
 
 Equivalent to `scripts/build.sh --portable` followed by
 `scripts/package.sh`. The output is `dist/slsteam-moon-linux-<ver>.zip`,
-matching the layout consumers (and `slsteammoon-ltsteamplugin/install.sh`)
+matching the layout consumers (and `luatools-moon/install.sh`)
 expect:
 
 ```

@@ -4,7 +4,7 @@
 # Produces:
 #   dist/slsteam-moon-linux-<version>.zip
 #
-# Layout inside the zip (matches what consumers and slsteammoon-ltsteamplugin
+# Layout inside the zip (matches what consumers and luatools-moon
 # expect: a single top-level slsteam-moon-<version>/ directory containing
 # setup.sh and bin/, and the assets setup.sh references):
 #
