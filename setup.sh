@@ -260,12 +260,21 @@ SLSDIR="$HOME/.local/share/SLSsteam"
 # Resolve the real Steam binary, skipping our own wrapper.
 SELF="$(readlink -f "$0" 2>/dev/null || echo "$0")"
 STEAM_BIN=""
-for c in /usr/games/steam /usr/bin/steam /usr/local/bin/steam; do
-	if [ -x "$c" ] && [ "$(readlink -f "$c" 2>/dev/null || echo "$c")" != "$SELF" ]; then
-		STEAM_BIN="$c"
-		break
-	fi
-done
+# Override hook: an explicit, executable path wins. Lets power users pin a
+# specific Steam binary and lets the wrapper guard's unit test inject a fake
+# Steam; a no-op when unset.
+if [ -n "${SLSM_STEAM_BIN:-}" ] && [ -x "${SLSM_STEAM_BIN:-}" ] && \
+   [ "$(readlink -f "$SLSM_STEAM_BIN" 2>/dev/null || echo "$SLSM_STEAM_BIN")" != "$SELF" ]; then
+	STEAM_BIN="$SLSM_STEAM_BIN"
+fi
+if [ -z "$STEAM_BIN" ]; then
+	for c in /usr/games/steam /usr/bin/steam /usr/local/bin/steam; do
+		if [ -x "$c" ] && [ "$(readlink -f "$c" 2>/dev/null || echo "$c")" != "$SELF" ]; then
+			STEAM_BIN="$c"
+			break
+		fi
+	done
+fi
 if [ -z "$STEAM_BIN" ]; then
 	# Fall back to PATH lookup, but skip ourselves.
 	IFS=:
@@ -282,6 +291,136 @@ if [ -z "$STEAM_BIN" ]; then
 	echo "slsteam-moon: could not find the real Steam binary" >&2
 	exit 127
 fi
+
+# ---------------------------------------------------------------------------
+# Crash-loop fail-safe (Game Mode boot protection).
+#
+# In a gamescope "Game Mode" session the supervisor relaunches Steam every time
+# it exits. If our injected stack (SLSsteam via LD_AUDIT / CloudRedirect via
+# LD_PRELOAD / the Lumen sidecar) goes incompatible with a freshly-updated Steam
+# client and stalls the engine, the device loops on the splash forever and the
+# user can never reach Desktop Mode to update. This guard watches for repeated
+# short-lived boots and, past a threshold, LATCHES into a safe mode that starts
+# Steam completely vanilla (no LD_AUDIT, no LD_PRELOAD, no sidecar) so the
+# session comes up. Session/distro-agnostic on purpose: ChimeraOS/Bazzite
+# (sessions.d STEAMCMD), SteamOS (steam-launcher PATH drop-in) and Desktop Mode
+# all funnel through this one wrapper. Every step is best-effort and can never
+# itself block the launch.
+GUARD_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/slsteam-moon"
+mkdir -p "$GUARD_DIR" 2>/dev/null || true
+GUARD_LAST="$GUARD_DIR/last_launch"          # mtime = start of the most recent boot
+GUARD_COUNT="$GUARD_DIR/boot_fail_count"
+GUARD_SAFE="$GUARD_DIR/safe_mode"            # present => stay vanilla
+GUARD_FP="$GUARD_DIR/safe_mode_fingerprint"  # payload id captured when latched
+GUARD_LOG="$GUARD_DIR/guard.log"
+
+# Tunables (overridable for testing).
+[ -n "${SLSM_GUARD_MAX_FAILS:-}" ] || SLSM_GUARD_MAX_FAILS=3
+[ -n "${SLSM_GUARD_HEALTHY_SECS:-}" ] || SLSM_GUARD_HEALTHY_SECS=150
+[ -n "${SLSM_GUARD_DUMPS_DIR:-}" ] || SLSM_GUARD_DUMPS_DIR="/tmp/dumps"
+
+guard_log() {
+	printf '%s %s\n' "$(date '+%F %T' 2>/dev/null)" "$1" >> "$GUARD_LOG" 2>/dev/null || true
+}
+guard_notify() {
+	if command -v notify-send >/dev/null 2>&1; then
+		notify-send -u critical "Steam recovery mode" "$1" >/dev/null 2>&1 || true
+	fi
+}
+guard_read_int() {
+	_v="$(cat "$1" 2>/dev/null)"
+	case "$_v" in ''|*[!0-9]*) printf 0 ;; *) printf '%s' "$_v" ;; esac
+}
+# Fingerprint the injected payload (size:mtime of each piece). Updating ANY of
+# it - which the plugin does on reinstall/update - changes this, so a stuck
+# safe-mode latch auto-clears once the user has updated.
+guard_fingerprint() {
+	for _f in "$SLSDIR/SLSsteam.so" \
+	          "$HOME/.local/share/CloudRedirect/cloud_redirect.so" \
+	          "$HOME/.local/share/Lumen/lumen"; do
+		if [ -e "$_f" ]; then
+			stat -c '%s:%Y' "$_f" 2>/dev/null || stat -f '%z:%m' "$_f" 2>/dev/null || printf '?'
+		else
+			printf -- '-'
+		fi
+		printf '|'
+	done
+}
+GUARD_CUR_FP="$(guard_fingerprint)"
+
+# True when Steam wrote a crash/assert minidump during the boot that started at
+# epoch $2 (marker file $1), within that boot's first HEALTHY_SECS. This is the
+# definitive "Steam crashed before it became usable" signal and, unlike the
+# inter-boot timing gap, it does not care how long the failed session took to
+# tear down (the gamescope runtime bootstrap + engine stall + teardown can run
+# well past HEALTHY_SECS, which would otherwise read as a healthy boot).
+guard_startup_crash() {
+	[ -d "$SLSM_GUARD_DUMPS_DIR" ] || return 1
+	case "$2" in ''|*[!0-9]*) return 1 ;; esac
+	[ "$2" -gt 0 ] || return 1
+	_ref="$GUARD_DIR/.crash_win_ref"
+	touch -d "@$(( $2 + SLSM_GUARD_HEALTHY_SECS ))" "$_ref" 2>/dev/null || { rm -f "$_ref" 2>/dev/null; return 1; }
+	_hit="$(find "$SLSM_GUARD_DUMPS_DIR" -maxdepth 1 -name '*.dmp' -newer "$1" ! -newer "$_ref" 2>/dev/null | head -n1)"
+	rm -f "$_ref" 2>/dev/null
+	[ -n "$_hit" ]
+}
+
+# Already latched? Stay vanilla until the payload changes (user updated).
+if [ -f "$GUARD_SAFE" ]; then
+	if [ "$(cat "$GUARD_FP" 2>/dev/null)" = "$GUARD_CUR_FP" ]; then
+		guard_log "safe mode active -> launching Steam without injection"
+		guard_notify "slsteam-moon is paused because Steam failed to start repeatedly. Steam is running normally - open Desktop Mode and update the plugin to re-enable it."
+		exec "$STEAM_BIN" "$@"
+	fi
+	guard_log "payload changed since latch -> clearing safe mode, retrying injection"
+	rm -f "$GUARD_SAFE" "$GUARD_FP" "$GUARD_COUNT" "$GUARD_LAST" 2>/dev/null || true
+fi
+
+# Assess the PREVIOUS boot. It failed if it was short-lived (the supervisor
+# already relaunched us) OR Steam wrote a startup crash dump during it. Either
+# signal alone is enough; together they catch both fast crash-restarts and
+# slow-teardown stalls. (date/stat/find failing degrade to "healthy", so the
+# guard never latches by accident.)
+GUARD_FAILS="$(guard_read_int "$GUARD_COUNT")"
+if [ -f "$GUARD_LAST" ]; then
+	_now="$(date +%s 2>/dev/null || echo 0)"
+	_then="$(stat -c %Y "$GUARD_LAST" 2>/dev/null || stat -f %m "$GUARD_LAST" 2>/dev/null || echo 0)"
+	_gap=$(( _now - _then ))
+	_failed=0; _why=""
+	if [ "$_now" -gt 0 ] && [ "$_then" -gt 0 ] && [ "$_gap" -ge 0 ] && [ "$_gap" -lt "$SLSM_GUARD_HEALTHY_SECS" ]; then
+		_failed=1; _why="short boot (${_gap}s)"
+	fi
+	if guard_startup_crash "$GUARD_LAST" "$_then"; then
+		_failed=1; _why="${_why:+$_why + }startup crash dump"
+	fi
+	if [ "$_failed" -eq 1 ]; then
+		GUARD_FAILS=$(( GUARD_FAILS + 1 ))
+		guard_log "previous boot failed [${_why}] -> fail ${GUARD_FAILS}/${SLSM_GUARD_MAX_FAILS}"
+	else
+		[ "$GUARD_FAILS" -ne 0 ] && guard_log "previous boot healthy (gap ${_gap}s, no startup crash) -> reset fail count"
+		GUARD_FAILS=0
+	fi
+fi
+printf '%s' "$GUARD_FAILS" > "$GUARD_COUNT" 2>/dev/null || true
+
+if [ "$GUARD_FAILS" -ge "$SLSM_GUARD_MAX_FAILS" ]; then
+	guard_log "fail count reached ${GUARD_FAILS} -> latching safe mode, launching vanilla Steam"
+	printf '%s' "$GUARD_CUR_FP" > "$GUARD_FP" 2>/dev/null || true
+	: > "$GUARD_SAFE" 2>/dev/null || true
+	# Drop the half-injected appinfo.vdf so vanilla Steam rebuilds a clean one;
+	# the abandoned splice (written at preinit before the hook abort) is what
+	# stalls the engine. Steam regenerates appinfo.vdf on next launch.
+	for _r in "$HOME/.steam/steam" "$HOME/.steam/debian-installation" "$HOME/.local/share/Steam"; do
+		if [ -f "$_r/appcache/appinfo.vdf" ]; then
+			rm -f "$_r/appcache/appinfo.vdf" 2>/dev/null && guard_log "removed $_r/appcache/appinfo.vdf"
+		fi
+	done
+	guard_notify "Steam failed to start ${GUARD_FAILS} times. slsteam-moon has been paused so Steam can start. Open Desktop Mode and update the plugin."
+	exec "$STEAM_BIN" "$@"
+fi
+
+# Mark the start of THIS boot for the next invocation's health check.
+: > "$GUARD_LAST" 2>/dev/null || true
 
 # CloudRedirect (optional): inject its 32-bit cloud-save hook via LD_PRELOAD.
 # Our bundled build is CloudRedirect 2.1.5 (correct save restore via
