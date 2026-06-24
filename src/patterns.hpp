@@ -12,7 +12,11 @@ struct Pattern_t
 {
 public:
 	const std::string name;
-	const std::string pattern;
+	// Not const: the structural RunIPCFrame resolver (autoResolveIpcFrameRoots
+	// in patterns.cpp) rewrites the trailing root byte of the IClient*
+	// dispatch patterns in place before find() runs, to absorb Steam-update
+	// id drift.  Every other pattern is left untouched.
+	std::string pattern;
 	const MemHlp::SigFollowMode followMode;
 	std::vector<uint8_t> prologue;
 

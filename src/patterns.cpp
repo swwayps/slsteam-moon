@@ -2,6 +2,7 @@
 
 #include "globals.hpp"
 #include "memhlp.hpp"
+#include "feats/ipcframe.hpp"
 
 #include "libmem/libmem.h"
 
@@ -32,9 +33,89 @@ bool Pattern_t::find()
 	return address != LM_ADDRESS_BAD;
 }
 
+// Re-derive the volatile dispatch-tree root of every IClient*::RunIPCFrame in
+// one pass over the steamclient module's executable segments, then point each
+// pattern's seed at the nearest live root.  Pure decision logic lives in
+// feats/ipcframe.hpp (host-unit-tested); this only walks live memory.
+static void autoResolveIpcFrameRoots()
+{
+	struct Ctx
+	{
+		std::vector<IpcFrame::Cand> cands;
+	} ctx;
+
+	// Collect candidates from executable segments belonging to steamclient.
+	// IpcFrame::scan bounds every read by the segment size, so this never
+	// touches a guard page (same safety contract as MemHlp::patternScan).
+	const auto enumSegments = [](lm_segment_t* seg, lm_void_t* arg) -> lm_bool_t
+	{
+		auto* c = reinterpret_cast<Ctx*>(arg);
+		if ((seg->prot & LM_PROT_XR) != LM_PROT_XR)
+			return LM_TRUE;
+		// Restrict to the steamclient module's address range.
+		if (seg->base + seg->size <= g_modSteamClient.base)
+			return LM_TRUE;
+		if (seg->base >= g_modSteamClient.base + g_modSteamClient.size)
+			return LM_TRUE;
+
+		const auto local = IpcFrame::scan(reinterpret_cast<const uint8_t*>(seg->base), seg->size);
+		for (const auto& cand : local)
+			c->cands.push_back({ static_cast<size_t>(seg->base) + cand.offset, cand.root });
+		return LM_TRUE;
+	};
+	LM_EnumSegments(enumSegments, &ctx);
+
+	if (ctx.cands.empty())
+	{
+		g_pLog->debug("IpcFrame: no RunIPCFrame candidates found; keeping embedded roots\n");
+		return;
+	}
+
+	Pattern_t* targets[] =
+	{
+		&Patterns::IClientApps::RunIPCFrame,
+		&Patterns::IClientRemoteStorage::RunIPCFrame,
+		&Patterns::IClientUGC::RunIPCFrame,
+		&Patterns::IClientUserStats::RunIPCFrame,
+		&Patterns::IClientUser::RunIPCFrame,
+	};
+
+	for (Pattern_t* p : targets)
+	{
+		const uint32_t seed = IpcFrame::parseTrailingRoot(p->pattern);
+		const size_t idx = IpcFrame::resolveConfident(ctx.cands, seed, IpcFrame::kMaxRootDrift);
+		if (idx == SIZE_MAX)
+		{
+			// No confident match: drift too large, or an ambiguous neighbour.
+			// Keep the embedded root; find() then either still matches it or
+			// fails loudly as a required pattern (no silent mis-hook).
+			continue;
+		}
+
+		const uint32_t found = ctx.cands[idx].root;
+		if (found != seed)
+		{
+			g_pLog->warn
+			(
+				"IpcFrame: %s root drifted 0x%08X -> 0x%08X; auto-resolved\n",
+				p->name.c_str(), seed, found
+			);
+			IpcFrame::setTrailingRoot(p->pattern, found);
+		}
+	}
+}
+
 bool Patterns::init()
 {
 	bool found = true;
+
+	// Self-heal the IClient*::RunIPCFrame signatures before scanning.  Their
+	// only volatile byte is the dispatch-tree root message id, which drifts
+	// when Steam adds/removes interface methods (the 2026-06-23 update broke
+	// all four this way).  Re-derive each root structurally so a constant-only
+	// drift no longer needs a code change; on any failure the embedded root is
+	// kept verbatim (no regression).
+	autoResolveIpcFrameRoots();
 
 	// Mark patterns whose absence must NOT abort the load.  Their
 	// dependent features null-guard on the resolved address and become
@@ -208,18 +289,22 @@ namespace Patterns
 		//
 		// Direct prologue match (push ebp / mov ebp,esp / push edi,esi,ebx
 		// / get_pc_thunk + add ebx / sub esp,0x1bc / mov edi,[ebp+0x8] /
-		// mov edi,[eax+0x1b14] / mov [ebp-0x1ac],ebx / test edi,edi).  The
+		// mov edi,[eax+<off>] / mov [ebp-0x1ac],ebx / test edi,edi).  The
 		// get_pc_thunk call rel, the PIC add immediate, the frame size, and
 		// the [ebp-0x1ac] spill offset are masked so local-frame reshuffles
-		// across builds stay compatible.  The [eax+0x1b14] member offset
-		// drifted from 0x1b18 on the 2026-06-23 client (a 4-byte CUser
-		// layout shift; IClientUser::RequiresLegacyCDKey moved the same way).
-		//
-		// Verified: 1 match, resolves to 0x0186af10 (build sha 1cbb4f…).
+		// across builds stay compatible.  The member offset (`8B B8 ?? ?? 00
+		// 00` = mov edi,[eax+0x1bXX]) is ALSO masked: it is a CUser layout
+		// field whose value drifted 0x1b18 -> 0x1b14 on the 2026-06-23 client
+		// (a 4-byte shift; RequiresLegacyCDKey moved the same way).  SLSsteam
+		// only needs to LOCATE this function (it invokes it by pointer with
+		// g_pLocalUser as `this`); the offset value itself is internal to the
+		// function, so wildcarding it makes the signature self-heal across that
+		// class of layout drift while staying unique.  Verified: exactly 1
+		// match in both the pre- and post-2026-06-23 steamclient.so.
 		Pattern_t NotifyLicensesUpdated
 		{
 			"CUser::NotifyLicensesUpdated",
-			"55 89 E5 57 56 53 E8 ? ? ? ? 81 C3 ? ? ? ? 81 EC ? ? ? ? 8B 45 08 8B B8 14 1B 00 00 89 9D ? ? FF FF 85 FF",
+			"55 89 E5 57 56 53 E8 ? ? ? ? 81 C3 ? ? ? ? 81 EC ? ? ? ? 8B 45 08 8B B8 ? ? 00 00 89 9D ? ? FF FF 85 FF",
 			SigFollowMode::None
 		};
 	}
@@ -306,10 +391,18 @@ namespace Patterns
 			"E8 ? ? ? ? 89 C3 83 C4 20 8B ? ? ? ? ? 8B",
 			SigFollowMode::Relative
 		};
+		// The tail thunk adjusts the interface `this` to the implementation
+		// pointer with `sub eax,<off>` (`2D ?? ?? 00 00`).  That offset is a
+		// layout constant that drifted 0x18d8 -> 0x18d4 on the 2026-06-23
+		// client; it is only part of the LOCATION signature (SLSsteam hooks the
+		// function, it does not use the offset value), so it is masked here to
+		// self-heal across that drift.  The long surrounding tail keeps the
+		// match unique — verified exactly 1 hit in both the pre- and
+		// post-2026-06-23 steamclient.so.
 		Pattern_t RequiresLegacyCDKey
 		{
 			"IClientUser::RequiresLegacyCDKey",
-			"75 ? 83 C4 1C 31 C0 5B 5E 5F 5D C3 ? ? ? ? ? 8B 44 24 ? 83 C4 1C 89 F9 89 F2 5B 5E 5F 5D 2D D4 18 00 00",
+			"75 ? 83 C4 1C 31 C0 5B 5E 5F 5D C3 ? ? ? ? ? 8B 44 24 ? 83 C4 1C 89 F9 89 F2 5B 5E 5F 5D 2D ? ? 00 00",
 			SigFollowMode::PrologueUpwards,
 			std::vector<uint8_t> { 0x53, 0x56, 0x57, 0x55 }
 		};
