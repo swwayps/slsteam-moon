@@ -326,11 +326,6 @@ GUARD_LOG="$GUARD_DIR/guard.log"
 guard_log() {
 	printf '%s %s\n' "$(date '+%F %T' 2>/dev/null)" "$1" >> "$GUARD_LOG" 2>/dev/null || true
 }
-guard_notify() {
-	if command -v notify-send >/dev/null 2>&1; then
-		notify-send -u critical "Steam recovery mode" "$1" >/dev/null 2>&1 || true
-	fi
-}
 guard_read_int() {
 	_v="$(cat "$1" 2>/dev/null)"
 	case "$_v" in ''|*[!0-9]*) printf 0 ;; *) printf '%s' "$_v" ;; esac
@@ -373,7 +368,6 @@ guard_startup_crash() {
 if [ -f "$GUARD_SAFE" ]; then
 	if [ "$(cat "$GUARD_FP" 2>/dev/null)" = "$GUARD_CUR_FP" ]; then
 		guard_log "safe mode active -> launching Steam without injection"
-		guard_notify "slsteam-moon is paused because Steam failed to start repeatedly. Steam is running normally - open Desktop Mode and update the plugin to re-enable it."
 		exec "$STEAM_BIN" "$@"
 	fi
 	guard_log "payload changed since latch -> clearing safe mode, retrying injection"
@@ -409,7 +403,7 @@ if [ "$GUARD_FAILS" -ge "$SLSM_GUARD_MAX_FAILS" ]; then
 			rm -f "$_r/appcache/appinfo.vdf" 2>/dev/null && guard_log "removed $_r/appcache/appinfo.vdf"
 		fi
 	done
-	guard_notify "Steam failed to start ${GUARD_FAILS} times. slsteam-moon has been paused so Steam can start. Open Desktop Mode and update the plugin."
+	guard_log "recovery mode latched; Steam will launch unhooked until the payload is updated"
 	exec "$STEAM_BIN" "$@"
 fi
 
