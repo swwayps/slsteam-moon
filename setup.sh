@@ -299,10 +299,14 @@ fi
 # it exits. If our injected stack (SLSsteam via LD_AUDIT / CloudRedirect via
 # LD_PRELOAD / the Lumen sidecar) goes incompatible with a freshly-updated Steam
 # client and stalls the engine, the device loops on the splash forever and the
-# user can never reach Desktop Mode to update. This guard watches for repeated
-# short-lived boots and, past a threshold, LATCHES into a safe mode that starts
+# user can never reach Desktop Mode to update. This guard counts boots that
+# CRASHED AT STARTUP (Steam wrote an assert/crash minidump within the boot's
+# first few minutes) and, past a threshold, LATCHES into a safe mode that starts
 # Steam completely vanilla (no LD_AUDIT, no LD_PRELOAD, no sidecar) so the
-# session comes up. Session/distro-agnostic on purpose: ChimeraOS/Bazzite
+# session comes up. We deliberately key off the crash dump and NOT merely a
+# short-lived session: switching Game Mode <-> Desktop, a client self-update
+# restart, or a quick manual quit all end Steam fast but are NOT failures, and a
+# clean kill never writes a dump. Session/distro-agnostic: ChimeraOS/Bazzite
 # (sessions.d STEAMCMD), SteamOS (steam-launcher PATH drop-in) and Desktop Mode
 # all funnel through this one wrapper. Every step is best-effort and can never
 # itself block the launch.
@@ -316,7 +320,7 @@ GUARD_LOG="$GUARD_DIR/guard.log"
 
 # Tunables (overridable for testing).
 [ -n "${SLSM_GUARD_MAX_FAILS:-}" ] || SLSM_GUARD_MAX_FAILS=3
-[ -n "${SLSM_GUARD_HEALTHY_SECS:-}" ] || SLSM_GUARD_HEALTHY_SECS=150
+[ -n "${SLSM_GUARD_STARTUP_SECS:-}" ] || SLSM_GUARD_STARTUP_SECS=180
 [ -n "${SLSM_GUARD_DUMPS_DIR:-}" ] || SLSM_GUARD_DUMPS_DIR="/tmp/dumps"
 
 guard_log() {
@@ -349,17 +353,17 @@ guard_fingerprint() {
 GUARD_CUR_FP="$(guard_fingerprint)"
 
 # True when Steam wrote a crash/assert minidump during the boot that started at
-# epoch $2 (marker file $1), within that boot's first HEALTHY_SECS. This is the
-# definitive "Steam crashed before it became usable" signal and, unlike the
-# inter-boot timing gap, it does not care how long the failed session took to
-# tear down (the gamescope runtime bootstrap + engine stall + teardown can run
-# well past HEALTHY_SECS, which would otherwise read as a healthy boot).
+# epoch $2 (marker file $1), within that boot's first STARTUP_SECS. This is the
+# definitive "Steam crashed before it became usable" signal. A clean kill (Game
+# Mode <-> Desktop switch, shutdown) or a quick manual quit does NOT write a
+# dump, so those never count as failures - which is why we use this instead of a
+# bare "the session was short" heuristic.
 guard_startup_crash() {
 	[ -d "$SLSM_GUARD_DUMPS_DIR" ] || return 1
 	case "$2" in ''|*[!0-9]*) return 1 ;; esac
 	[ "$2" -gt 0 ] || return 1
 	_ref="$GUARD_DIR/.crash_win_ref"
-	touch -d "@$(( $2 + SLSM_GUARD_HEALTHY_SECS ))" "$_ref" 2>/dev/null || { rm -f "$_ref" 2>/dev/null; return 1; }
+	touch -d "@$(( $2 + SLSM_GUARD_STARTUP_SECS ))" "$_ref" 2>/dev/null || { rm -f "$_ref" 2>/dev/null; return 1; }
 	_hit="$(find "$SLSM_GUARD_DUMPS_DIR" -maxdepth 1 -name '*.dmp' -newer "$1" ! -newer "$_ref" 2>/dev/null | head -n1)"
 	rm -f "$_ref" 2>/dev/null
 	[ -n "$_hit" ]
@@ -376,28 +380,18 @@ if [ -f "$GUARD_SAFE" ]; then
 	rm -f "$GUARD_SAFE" "$GUARD_FP" "$GUARD_COUNT" "$GUARD_LAST" 2>/dev/null || true
 fi
 
-# Assess the PREVIOUS boot. It failed if it was short-lived (the supervisor
-# already relaunched us) OR Steam wrote a startup crash dump during it. Either
-# signal alone is enough; together they catch both fast crash-restarts and
-# slow-teardown stalls. (date/stat/find failing degrade to "healthy", so the
-# guard never latches by accident.)
+# Assess the PREVIOUS boot: it failed only if Steam crashed at startup (wrote a
+# minidump in its first STARTUP_SECS). A short but clean session is NOT a
+# failure. (find/touch/stat failing degrade to "ok", so the guard never latches
+# by accident.)
 GUARD_FAILS="$(guard_read_int "$GUARD_COUNT")"
 if [ -f "$GUARD_LAST" ]; then
-	_now="$(date +%s 2>/dev/null || echo 0)"
 	_then="$(stat -c %Y "$GUARD_LAST" 2>/dev/null || stat -f %m "$GUARD_LAST" 2>/dev/null || echo 0)"
-	_gap=$(( _now - _then ))
-	_failed=0; _why=""
-	if [ "$_now" -gt 0 ] && [ "$_then" -gt 0 ] && [ "$_gap" -ge 0 ] && [ "$_gap" -lt "$SLSM_GUARD_HEALTHY_SECS" ]; then
-		_failed=1; _why="short boot (${_gap}s)"
-	fi
 	if guard_startup_crash "$GUARD_LAST" "$_then"; then
-		_failed=1; _why="${_why:+$_why + }startup crash dump"
-	fi
-	if [ "$_failed" -eq 1 ]; then
 		GUARD_FAILS=$(( GUARD_FAILS + 1 ))
-		guard_log "previous boot failed [${_why}] -> fail ${GUARD_FAILS}/${SLSM_GUARD_MAX_FAILS}"
+		guard_log "previous boot crashed at startup -> fail ${GUARD_FAILS}/${SLSM_GUARD_MAX_FAILS}"
 	else
-		[ "$GUARD_FAILS" -ne 0 ] && guard_log "previous boot healthy (gap ${_gap}s, no startup crash) -> reset fail count"
+		[ "$GUARD_FAILS" -ne 0 ] && guard_log "previous boot ok (no startup crash) -> reset fail count"
 		GUARD_FAILS=0
 	fi
 fi
