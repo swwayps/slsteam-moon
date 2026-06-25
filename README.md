@@ -6,7 +6,7 @@ protocol handlers, SteamStub support, and a Lua manifest importer.
 See the [wiki][wiki] for build, install, and configuration.
 For just the build flow, see [`docs/BUILDING.md`](docs/BUILDING.md).
 
-[wiki]: https://codeberg.org/unplausible/slsteam-moon/wiki
+[wiki]: https://github.com/luatools-linux/slsteam-moon/wiki
 
 ## Credits
 
@@ -28,4 +28,4 @@ Reference material:
 
 ## Support
 
-Open an issue: https://codeberg.org/unplausible/slsteam-moon/issues
+Open an issue: https://github.com/luatools-linux/slsteam-moon/issues
