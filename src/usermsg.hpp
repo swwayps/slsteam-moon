@@ -161,10 +161,11 @@ inline UiMessage messageFor(UserMsg m, Lang lang)
 			         Severity::Warning };
 
 		case UserMsg::InitializationFailed:
-			return { pt ? "Não foi possível iniciar o slsteam-moon nesta versão do "
-			              "Steam. (Padrões de código não encontrados.)"
-			            : "Couldn't start slsteam-moon on this Steam version. (Code "
-			              "patterns not found.)",
+			return { pt ? "O slsteam-moon foi desativado por segurança. A Steam segue "
+			              "inicializando sem modificações. (Padrões de código não "
+			              "encontrados.)"
+			            : "slsteam-moon was disabled for safety. Steam keeps starting "
+			              "without modifications. (Code patterns not found.)",
 			         Severity::Error };
 
 		case UserMsg::ContentServersUnavailable:
