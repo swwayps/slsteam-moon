@@ -132,7 +132,16 @@ bool CConfig::loadSettings()
 	useWhiteList = getSetting<bool>(node, "UseWhitelist", false);
 	automaticFilter = getSetting<bool>(node, "AutoFilterList", true);
 	playNotOwnedGames = getSetting<bool>(node, "PlayNotOwnedGames", false);
-	safeMode = getSetting<bool>(node, "SafeMode", false);
+	// SafeMode (abort the load on an unknown steamclient.so hash) is force-
+	// disabled. Its hash whitelist cannot be kept current: it goes stale on
+	// every Steam client update and would disable an otherwise-working client,
+	// and it is sourced from an upstream mirror we do not control. The Steam
+	// wrapper's crash-loop fail-safe (setup.sh) now covers the Game Mode brick
+	// scenario SafeMode guarded, recovering on the first crash after a client
+	// change. The key is still read so an existing "SafeMode: yes" neither
+	// errors nor gates the load; the feature code is kept intact, just inert.
+	(void)getSetting<bool>(node, "SafeMode", false);
+	safeMode = false;
 	notifications = getSetting<bool>(node, "Notifications", true);
 	warnHashMissmatch = getSetting<bool>(node, "WarnHashMissmatch", false);
 	notifyInit = getSetting<bool>(node, "NotifyInit", true);

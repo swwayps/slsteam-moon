@@ -71,6 +71,9 @@ DenuvoGames:
 
 #Automatically disable SLSsteam when steamclient.so does not match a predefined file hash that is known to work
 #You should enable this if you're planing to use SLSsteam with Steam Deck's gamemode
+#DEPRECATED / no-op: this option is force-disabled in code. The Steam wrapper's
+#crash-loop fail-safe now covers the Game Mode boot protection this guarded, so
+#an unknown client hash no longer disables SLSsteam. Setting it has no effect.
 SafeMode: no
 
 #Toggles notifications via notify-send
