@@ -140,6 +140,43 @@ touch -d "@$(( bs + 15 ))" "$DUMPS/assert_slow.dmp"      # crashed 15s in
 run_wrapper
 [ "$(count)" = "1" ] && ok "startup crash counts even with a long teardown gap" || bad "slow-teardown crash missed: $(count)"
 
+# --- FAST RECOVERY: a startup crash right after steamclient.so changed latches
+# on the FIRST crash, not after MAX_FAILS. This is the post-update brick we
+# actually care about: making the user sit through 3 crash loops to get Steam
+# back makes no sense when the cause (a fresh client) is known. ---------------
+CLIENT="$HOME_DIR/.steam/steam/ubuntu12_32/steamclient.so"
+mkdir -p "$(dirname "$CLIENT")"
+
+reset_state
+printf 'client-v1' > "$CLIENT"
+run_wrapper                                              # boot 1: no history -> injects, records the client it ran
+touch -d "@$(( $(date +%s) - 300 ))" "$GUARD_DIR/last_launch"   # boot 1 ran clean
+run_wrapper                                              # boot 2: boot 1 healthy -> remembers client-v1 as known-good
+[ "$(nth 2)" = "injected" ] && ok "fast-recovery baseline: healthy boots inject" || bad "boot 2: $(nth 2)"
+
+sleep 1; printf 'client-v2-newer-bigger' > "$CLIENT"     # Steam self-updated the client
+touch -d "@$(( $(date +%s) - 300 ))" "$GUARD_DIR/last_launch"   # boot 2 ran clean
+run_wrapper                                              # boot 3: injects the NEW client
+[ "$(nth 3)" = "injected" ] && ok "fast-recovery: first boot on the updated client still injects" || bad "boot 3: $(nth 3)"
+bs=$(( $(date +%s) - 30 )); touch -d "@$bs" "$GUARD_DIR/last_launch"; touch -d "@$(( bs + 12 ))" "$DUMPS/assert_upd.dmp"
+run_wrapper                                              # boot 4: crash + client changed since good -> latch NOW
+[ "$(nth 4)" = "vanilla" ] && ok "fast-recovery: latches on the FIRST crash after a client update" || bad "boot 4 not vanilla: $(nth 4)"
+[ -f "$GUARD_DIR/safe_mode" ] && ok "fast-recovery: latched after one post-update crash" || bad "did not latch after one post-update crash"
+[ "$(count)" = "1" ] && ok "fast-recovery: latched at fail count 1 (not MAX_FAILS)" || bad "unexpected fail count at fast latch: $(count)"
+
+# --- a single crash with an UNCHANGED client must NOT fast-latch (random/one-off
+# crash not caused by an update keeps the conservative MAX_FAILS threshold) ----
+reset_state
+printf 'client-stable' > "$CLIENT"
+run_wrapper                                              # boot 1
+touch -d "@$(( $(date +%s) - 300 ))" "$GUARD_DIR/last_launch"
+run_wrapper                                              # boot 2 healthy -> good = client-stable
+bs=$(( $(date +%s) - 30 )); touch -d "@$bs" "$GUARD_DIR/last_launch"; touch -d "@$(( bs + 12 ))" "$DUMPS/assert_rand.dmp"
+run_wrapper                                              # boot 3: one crash, client unchanged -> count=1, NO latch
+[ "$(nth 3)" = "injected" ] && ok "unchanged client: single crash still injects (no fast latch)" || bad "boot 3 wrongly fell back: $(nth 3)"
+[ ! -f "$GUARD_DIR/safe_mode" ] && ok "unchanged client: no latch on a single crash" || bad "wrongly latched on one crash with unchanged client"
+[ "$(count)" = "1" ] && ok "unchanged client: fail count incremented to 1" || bad "unexpected count: $(count)"
+
 rm -rf "$HOME_DIR"
 
 echo "== total: $PASS passed, $FAIL failed =="

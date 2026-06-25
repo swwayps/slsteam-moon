@@ -306,7 +306,11 @@ fi
 # session comes up. We deliberately key off the crash dump and NOT merely a
 # short-lived session: switching Game Mode <-> Desktop, a client self-update
 # restart, or a quick manual quit all end Steam fast but are NOT failures, and a
-# clean kill never writes a dump. Session/distro-agnostic: ChimeraOS/Bazzite
+# clean kill never writes a dump. As a fast path, a startup crash whose
+# steamclient.so differs from the last cleanly-booted one latches on the FIRST
+# crash (a fresh client is the near-certain cause), so the user is not made to
+# loop MAX_FAILS times for a known-cause break; a crash on an UNCHANGED client
+# keeps the conservative MAX_FAILS threshold. Session/distro-agnostic: ChimeraOS/Bazzite
 # (sessions.d STEAMCMD), SteamOS (steam-launcher PATH drop-in) and Desktop Mode
 # all funnel through this one wrapper. Every step is best-effort and can never
 # itself block the launch.
@@ -316,6 +320,8 @@ GUARD_LAST="$GUARD_DIR/last_launch"          # mtime = start of the most recent 
 GUARD_COUNT="$GUARD_DIR/boot_fail_count"
 GUARD_SAFE="$GUARD_DIR/safe_mode"            # present => stay vanilla
 GUARD_FP="$GUARD_DIR/safe_mode_fingerprint"  # payload id captured when latched
+GUARD_CLIENT_LAST="$GUARD_DIR/last_client"   # steamclient.so id the most recent boot ran
+GUARD_CLIENT_GOOD="$GUARD_DIR/good_client"   # steamclient.so id of the last boot that started cleanly
 GUARD_LOG="$GUARD_DIR/guard.log"
 
 # Tunables (overridable for testing).
@@ -326,9 +332,32 @@ GUARD_LOG="$GUARD_DIR/guard.log"
 guard_log() {
 	printf '%s %s\n' "$(date '+%F %T' 2>/dev/null)" "$1" >> "$GUARD_LOG" 2>/dev/null || true
 }
+# Non-blocking, auto-dismissing notice (10s, normal urgency). NOT critical:
+# the freedesktop spec lets the shell pin critical notifications on screen with
+# no timeout (KDE does), which is why an earlier critical recovery notice never
+# went away. Best-effort; never blocks the launch.
+guard_notify() {
+	if command -v notify-send >/dev/null 2>&1; then
+		notify-send -u normal -t 10000 "Steam recovery mode" "$1" >/dev/null 2>&1 || true
+	fi
+}
 guard_read_int() {
 	_v="$(cat "$1" 2>/dev/null)"
 	case "$_v" in ''|*[!0-9]*) printf 0 ;; *) printf '%s' "$_v" ;; esac
+}
+# Identify the Steam client library (size:mtime of the 32-bit steamclient.so we
+# hook). A client self-update rewrites it, changing this id - the signal that a
+# startup crash is a compatibility break rather than a one-off. Empty when no
+# client is found yet (fresh install): callers then stay conservative.
+guard_client_fp() {
+	for _r in "$HOME/.steam/steam" "$HOME/.steam/debian-installation" "$HOME/.local/share/Steam"; do
+		_c="$_r/ubuntu12_32/steamclient.so"
+		if [ -e "$_c" ]; then
+			stat -c '%s:%Y' "$_c" 2>/dev/null || stat -f '%z:%m' "$_c" 2>/dev/null || printf '?'
+			return 0
+		fi
+	done
+	printf ''
 }
 # Fingerprint the injected payload (size:mtime of each piece). Updating ANY of
 # it - which the plugin does on reinstall/update - changes this, so a stuck
@@ -379,20 +408,36 @@ fi
 # failure. (find/touch/stat failing degrade to "ok", so the guard never latches
 # by accident.)
 GUARD_FAILS="$(guard_read_int "$GUARD_COUNT")"
+GUARD_CLIENT_CUR="$(guard_client_fp)"
+guard_client_changed=0
 if [ -f "$GUARD_LAST" ]; then
 	_then="$(stat -c %Y "$GUARD_LAST" 2>/dev/null || stat -f %m "$GUARD_LAST" 2>/dev/null || echo 0)"
 	if guard_startup_crash "$GUARD_LAST" "$_then"; then
 		GUARD_FAILS=$(( GUARD_FAILS + 1 ))
+		# If the client that just crashed differs from the last client we saw
+		# boot cleanly, a fresh client update is almost certainly the cause -
+		# recover on the FIRST crash instead of making the user sit through
+		# MAX_FAILS loops. A one-off crash on an UNCHANGED client keeps the
+		# conservative threshold (it is far more likely transient/unrelated).
+		_prev_client="$(cat "$GUARD_CLIENT_LAST" 2>/dev/null || true)"
+		_good_client="$(cat "$GUARD_CLIENT_GOOD" 2>/dev/null || true)"
+		if [ -n "$_good_client" ] && [ "$_prev_client" != "$_good_client" ]; then
+			guard_client_changed=1
+			guard_log "steamclient.so changed since last clean boot -> first startup crash treated as a compatibility break"
+		fi
 		guard_log "previous boot crashed at startup -> fail ${GUARD_FAILS}/${SLSM_GUARD_MAX_FAILS}"
 	else
 		[ "$GUARD_FAILS" -ne 0 ] && guard_log "previous boot ok (no startup crash) -> reset fail count"
 		GUARD_FAILS=0
+		# Remember the client that just booted cleanly as the known-good baseline.
+		_prev_client="$(cat "$GUARD_CLIENT_LAST" 2>/dev/null || true)"
+		[ -n "$_prev_client" ] && printf '%s' "$_prev_client" > "$GUARD_CLIENT_GOOD" 2>/dev/null || true
 	fi
 fi
 printf '%s' "$GUARD_FAILS" > "$GUARD_COUNT" 2>/dev/null || true
 
-if [ "$GUARD_FAILS" -ge "$SLSM_GUARD_MAX_FAILS" ]; then
-	guard_log "fail count reached ${GUARD_FAILS} -> latching safe mode, launching vanilla Steam"
+if [ "$GUARD_FAILS" -ge "$SLSM_GUARD_MAX_FAILS" ] || { [ "$guard_client_changed" = 1 ] && [ "$GUARD_FAILS" -ge 1 ]; }; then
+	guard_log "fail count ${GUARD_FAILS} (client_changed=${guard_client_changed}) -> latching safe mode, launching vanilla Steam"
 	printf '%s' "$GUARD_CUR_FP" > "$GUARD_FP" 2>/dev/null || true
 	: > "$GUARD_SAFE" 2>/dev/null || true
 	# Drop the half-injected appinfo.vdf so vanilla Steam rebuilds a clean one;
@@ -403,12 +448,16 @@ if [ "$GUARD_FAILS" -ge "$SLSM_GUARD_MAX_FAILS" ]; then
 			rm -f "$_r/appcache/appinfo.vdf" 2>/dev/null && guard_log "removed $_r/appcache/appinfo.vdf"
 		fi
 	done
+	guard_notify "slsteam-moon is paused because Steam failed to start after a recent update. Steam is running normally - open Desktop Mode and update the plugin to re-enable it."
 	guard_log "recovery mode latched; Steam will launch unhooked until the payload is updated"
 	exec "$STEAM_BIN" "$@"
 fi
 
-# Mark the start of THIS boot for the next invocation's health check.
+# Mark the start of THIS boot for the next invocation's health check, and record
+# the client this boot is about to run so the next assessment can tell whether
+# the client changed across a crash.
 : > "$GUARD_LAST" 2>/dev/null || true
+printf '%s' "$GUARD_CLIENT_CUR" > "$GUARD_CLIENT_LAST" 2>/dev/null || true
 
 # CloudRedirect (optional): inject its 32-bit cloud-save hook via LD_PRELOAD.
 # Our bundled build is CloudRedirect 2.1.5 (correct save restore via
