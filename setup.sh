@@ -376,19 +376,27 @@ guard_fingerprint() {
 }
 GUARD_CUR_FP="$(guard_fingerprint)"
 
-# True when Steam wrote a crash/assert minidump during the boot that started at
+# True when Steam wrote a FATAL crash minidump during the boot that started at
 # epoch $2 (marker file $1), within that boot's first STARTUP_SECS. This is the
 # definitive "Steam crashed before it became usable" signal. A clean kill (Game
 # Mode <-> Desktop switch, shutdown) or a quick manual quit does NOT write a
 # dump, so those never count as failures - which is why we use this instead of a
 # bare "the session was short" heuristic.
+#
+# Match ONLY crash_*.dmp (fatal: segfault/abort that takes the client down).
+# Steam also writes assert_*.dmp for NON-FATAL assertions (e.g. CloudRedirect's
+# cloud-save path-resolution asserts in remotestoragefilesynccontext.cpp) while
+# it keeps running perfectly fine, and those land in the same /tmp/dumps within
+# the startup window. A bare '*.dmp' glob counted those as startup crashes and,
+# coinciding with a Steam client self-update (client-changed -> latch on first
+# crash), wrongly paused the hook on a healthy desktop boot.
 guard_startup_crash() {
 	[ -d "$SLSM_GUARD_DUMPS_DIR" ] || return 1
 	case "$2" in ''|*[!0-9]*) return 1 ;; esac
 	[ "$2" -gt 0 ] || return 1
 	_ref="$GUARD_DIR/.crash_win_ref"
 	touch -d "@$(( $2 + SLSM_GUARD_STARTUP_SECS ))" "$_ref" 2>/dev/null || { rm -f "$_ref" 2>/dev/null; return 1; }
-	_hit="$(find "$SLSM_GUARD_DUMPS_DIR" -maxdepth 1 -name '*.dmp' -newer "$1" ! -newer "$_ref" 2>/dev/null | head -n1)"
+	_hit="$(find "$SLSM_GUARD_DUMPS_DIR" -maxdepth 1 -name 'crash_*.dmp' -newer "$1" ! -newer "$_ref" 2>/dev/null | head -n1)"
 	rm -f "$_ref" 2>/dev/null
 	[ -n "$_hit" ]
 }
@@ -448,7 +456,7 @@ if [ "$GUARD_FAILS" -ge "$SLSM_GUARD_MAX_FAILS" ] || { [ "$guard_client_changed"
 			rm -f "$_r/appcache/appinfo.vdf" 2>/dev/null && guard_log "removed $_r/appcache/appinfo.vdf"
 		fi
 	done
-	guard_notify "slsteam-moon is paused because Steam failed to start after a recent update. Steam is running normally - open Desktop Mode and update the plugin to re-enable it."
+	guard_notify "slsteam-moon is paused because Steam failed to start after a recent update. Steam is running normally - update the plugin to re-enable it."
 	guard_log "recovery mode latched; Steam will launch unhooked until the payload is updated"
 	exec "$STEAM_BIN" "$@"
 fi

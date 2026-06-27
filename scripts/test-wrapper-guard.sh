@@ -102,7 +102,7 @@ for i in 1 2 3 4; do
 	if [ -f "$GUARD_DIR/last_launch" ]; then
 		bs=$(( $(date +%s) - 30 ))
 		touch -d "@$bs" "$GUARD_DIR/last_launch"
-		touch -d "@$(( bs + 12 ))" "$DUMPS/assert_$i.dmp"
+		touch -d "@$(( bs + 12 ))" "$DUMPS/crash_$i.dmp"
 	fi
 	run_wrapper
 done
@@ -127,7 +127,7 @@ reset_state
 echo 0 > "$GUARD_DIR/boot_fail_count"
 bs=$(( $(date +%s) - 8000 ))
 touch -d "@$bs" "$GUARD_DIR/last_launch"
-touch -d "@$(( bs + 7000 ))" "$DUMPS/assert_late.dmp"   # ~2h into the session
+touch -d "@$(( bs + 7000 ))" "$DUMPS/crash_late.dmp"   # ~2h into the session
 run_wrapper
 [ "$(count)" = "0" ] && ok "late in-game crash dump does not count as a boot failure" || bad "late dump wrongly counted: $(count)"
 
@@ -136,9 +136,23 @@ reset_state
 echo 0 > "$GUARD_DIR/boot_fail_count"
 bs=$(( $(date +%s) - 600 ))                              # boot started 10 min ago
 touch -d "@$bs" "$GUARD_DIR/last_launch"
-touch -d "@$(( bs + 15 ))" "$DUMPS/assert_slow.dmp"      # crashed 15s in
+touch -d "@$(( bs + 15 ))" "$DUMPS/crash_slow.dmp"      # crashed 15s in
 run_wrapper
 [ "$(count)" = "1" ] && ok "startup crash counts even with a long teardown gap" || bad "slow-teardown crash missed: $(count)"
+
+# --- a NON-FATAL assert_*.dmp in the startup window must NOT count ------------
+# Steam writes assert_*.dmp for non-fatal assertions (e.g. CloudRedirect's
+# cloud-save path-resolution asserts) while it keeps running fine. These land in
+# /tmp/dumps within the startup window but are NOT crashes - the guard must
+# ignore them (only crash_*.dmp = a fatal segfault/abort counts).
+reset_state
+echo 0 > "$GUARD_DIR/boot_fail_count"
+bs=$(( $(date +%s) - 30 ))
+touch -d "@$bs" "$GUARD_DIR/last_launch"
+touch -d "@$(( bs + 12 ))" "$DUMPS/assert_20260627232123_37.dmp"   # non-fatal assert, 12s in
+run_wrapper
+[ "$(count)" = "0" ] && ok "non-fatal assert dump does not count as a startup crash" || bad "assert dump wrongly counted: $(count)"
+[ ! -f "$GUARD_DIR/safe_mode" ] && ok "no latch from a non-fatal assert dump" || bad "wrongly latched on a non-fatal assert dump"
 
 # --- FAST RECOVERY: a startup crash right after steamclient.so changed latches
 # on the FIRST crash, not after MAX_FAILS. This is the post-update brick we
@@ -158,7 +172,7 @@ sleep 1; printf 'client-v2-newer-bigger' > "$CLIENT"     # Steam self-updated th
 touch -d "@$(( $(date +%s) - 300 ))" "$GUARD_DIR/last_launch"   # boot 2 ran clean
 run_wrapper                                              # boot 3: injects the NEW client
 [ "$(nth 3)" = "injected" ] && ok "fast-recovery: first boot on the updated client still injects" || bad "boot 3: $(nth 3)"
-bs=$(( $(date +%s) - 30 )); touch -d "@$bs" "$GUARD_DIR/last_launch"; touch -d "@$(( bs + 12 ))" "$DUMPS/assert_upd.dmp"
+bs=$(( $(date +%s) - 30 )); touch -d "@$bs" "$GUARD_DIR/last_launch"; touch -d "@$(( bs + 12 ))" "$DUMPS/crash_upd.dmp"
 run_wrapper                                              # boot 4: crash + client changed since good -> latch NOW
 [ "$(nth 4)" = "vanilla" ] && ok "fast-recovery: latches on the FIRST crash after a client update" || bad "boot 4 not vanilla: $(nth 4)"
 [ -f "$GUARD_DIR/safe_mode" ] && ok "fast-recovery: latched after one post-update crash" || bad "did not latch after one post-update crash"
@@ -171,7 +185,7 @@ printf 'client-stable' > "$CLIENT"
 run_wrapper                                              # boot 1
 touch -d "@$(( $(date +%s) - 300 ))" "$GUARD_DIR/last_launch"
 run_wrapper                                              # boot 2 healthy -> good = client-stable
-bs=$(( $(date +%s) - 30 )); touch -d "@$bs" "$GUARD_DIR/last_launch"; touch -d "@$(( bs + 12 ))" "$DUMPS/assert_rand.dmp"
+bs=$(( $(date +%s) - 30 )); touch -d "@$bs" "$GUARD_DIR/last_launch"; touch -d "@$(( bs + 12 ))" "$DUMPS/crash_rand.dmp"
 run_wrapper                                              # boot 3: one crash, client unchanged -> count=1, NO latch
 [ "$(nth 3)" = "injected" ] && ok "unchanged client: single crash still injects (no fast latch)" || bad "boot 3 wrongly fell back: $(nth 3)"
 [ ! -f "$GUARD_DIR/safe_mode" ] && ok "unchanged client: no latch on a single crash" || bad "wrongly latched on one crash with unchanged client"
