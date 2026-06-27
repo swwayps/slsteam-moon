@@ -505,8 +505,25 @@ EOF
 	return 0
 }
 
-# Patch every Exec= line in $1 (in-place) so it runs through our wrapper. Drops
-# our marker line and writes a backup to $1.slssteam-backup if one isn't there.
+# Patch every Exec= line in $1 (in-place) so it runs through our wrapper, then
+# stamp our marker. Writes a backup to $1.slssteam-backup if one isn't there.
+#
+# Each Exec= line is rewritten by swapping its LAUNCHER TOKEN for our wrapper
+# while preserving an optional `env VAR=val …` prefix and all trailing
+# arguments / field codes (e.g. "-silent %U", "steam://store"). The launcher
+# token is the first word that is neither `env` nor a `VAR=val` assignment, so
+# this is launcher-path-agnostic: it handles /usr/bin/steam, /opt/steam/steam,
+# /usr/lib/steam/steam, a bare `steam`, bazzite-steam, steam-jupiter, etc. —
+# not just a few hard-coded paths. Desktop Action lines (steam:// handlers) are
+# rewritten the same way (wrapper + the steam:// arg), which the wrapper
+# forwards to Steam.
+#
+# The marker is stamped ONLY when at least one Exec= was actually pointed at
+# the wrapper. Stamping a file we failed to rewrite would make every later run
+# treat it as already-patched (is_patched_desktop) and skip it forever, leaving
+# the launcher pointing at vanilla Steam — the root cause of "the .desktop
+# isn't patched / it redirects to default Steam, but `steam` from the console
+# works". Returns 0 when the file ends up pointing at the wrapper, 1 otherwise.
 patch_desktop_file() {
 	local f="$1"
 	local backup="$f.slssteam-backup"
@@ -518,31 +535,45 @@ patch_desktop_file() {
 		$sudo_cmd cp -- "$f" "$backup"
 	fi
 
-	# sed escapes for $HOME paths.
-	local esc_wrapper
-	esc_wrapper=$(printf '%s' "$wrapper" | sed -e 's/[\/&]/\\&/g')
+	# Rewrite the launcher token of every Exec= line and drop any stale marker.
+	# awk handles the tokenisation so we avoid sed path-escaping pitfalls and
+	# the previous "Exec=steam steam://" mangling.
+	local tmp
+	tmp="$(mktemp)"
+	WRAPPER="$wrapper" TAG="$SLSM_TAG" awk '
+		$0 == ENVIRON["TAG"] { next }                 # drop stale marker line
+		/^Exec=/ {
+			rest = substr($0, 6)                       # text after "Exec="
+			n = split(rest, t, " ")
+			swapped = 0
+			out = "Exec="
+			for (i = 1; i <= n; i++) {
+				if (!swapped && t[i] != "env" && index(t[i], "=") == 0) {
+					t[i] = ENVIRON["WRAPPER"]; swapped = 1
+				}
+				out = out t[i] (i < n ? " " : "")
+			}
+			print out
+			next
+		}
+		{ print }
+	' "$f" > "$tmp"
 
-	# Rewrite every Exec= line:
-	#   Exec=/usr/games/steam %U     -> Exec=<wrapper> %U
-	#   Exec=/usr/bin/steam steam:// -> Exec=<wrapper> steam://
-	#   Exec=sh -c '... steam %U'    -> Exec=sh -c '... <wrapper> %U'
-	#   Exec=steam %U                -> Exec=<wrapper> %U
-	# We swap the literal Steam invocations, then drop any prior marker so we
-	# don't accumulate duplicates, and append the marker once.
-	$sudo_cmd sed -i \
-		-e "s|^\(Exec=.*\)/usr/games/steam|\1$esc_wrapper|g" \
-		-e "s|^\(Exec=.*\)/usr/bin/steam|\1$esc_wrapper|g" \
-		-e "s|^\(Exec=.*\)/usr/local/bin/steam|\1$esc_wrapper|g" \
-		-e "s|^\(Exec=[^/]*\)\bsteam\b|\1$esc_wrapper|g" \
-		-e "/^$SLSM_TAG\$/d" \
-		"$f"
-
-	# Append marker after the [Desktop Entry] header (or end of file as fallback).
-	if grep -q '^\[Desktop Entry\]' "$f" 2>/dev/null; then
-		$sudo_cmd sed -i "0,/^\[Desktop Entry\]/ s|^\[Desktop Entry\]\$|[Desktop Entry]\n$SLSM_TAG|" "$f"
-	else
-		echo "$SLSM_TAG" | $sudo_cmd tee -a "$f" >/dev/null
+	# Only stamp + commit if an Exec= now runs our wrapper.
+	if grep -qF "Exec=$wrapper" "$tmp" 2>/dev/null || grep -qF " $wrapper" "$tmp" 2>/dev/null; then
+		if grep -q '^\[Desktop Entry\]' "$tmp" 2>/dev/null; then
+			sed -i "0,/^\[Desktop Entry\]/ s|^\[Desktop Entry\]\$|[Desktop Entry]\n$SLSM_TAG|" "$tmp"
+		else
+			printf '%s\n' "$SLSM_TAG" >> "$tmp"
+		fi
+		$sudo_cmd cp -- "$tmp" "$f"
+		rm -f "$tmp"
+		return 0
 	fi
+
+	# Nothing rewritten — leave the file (and its untouched marker state) alone.
+	rm -f "$tmp"
+	return 1
 }
 
 # Looser variant of is_real_steam_desktop for autostart entries: the SteamOS/
