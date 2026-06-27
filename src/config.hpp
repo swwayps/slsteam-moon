@@ -95,16 +95,16 @@ public:
 			return defVal;
 		}
 
-		try
-		{
-			 return node[name].as<T>();
-		}
-		catch (YAML::BadConversion& er)
-		{
-			//g_pLog->notify("Failed to parse value of %s! Using default\n", name);
-			setError(ELoadError::ParsingException);
-			return defVal;
-		}
+		// Use yaml-cpp's NON-THROWING conversion (the as<T>(fallback) overload):
+		// it returns defVal on a bad/out-of-range scalar instead of throwing
+		// YAML::TypedBadConversion<T>.  We can NOT rely on catching that throw:
+		// under the release build (-O3 -flto -freorder-blocks-and-partition)
+		// the throw lives in the function's ".cold" partition and the call-site
+		// table fails to route it to the catch landing pad, so even catch (...)
+		// is bypassed -> the exception escapes loadSettings and aborts the
+		// client at startup (a huge FakeWalletBalance bricked Steam on every
+		// launch).  Not throwing at all sidesteps the partitioned-EH defect.
+		return node[name].as<T>(defVal);
 	};
 
 	template<typename T>
