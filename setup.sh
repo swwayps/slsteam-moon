@@ -684,17 +684,17 @@ setup_path_and_desktop()
 			donor="$(find_donor_desktop)"
 		fi
 
-		if [ -n "$donor" ]; then
-			if [ "$donor" != "$USER_DESKTOP" ]; then
-				log_info "Seeding $USER_DESKTOP from $donor"
-				cp -- "$donor" "$USER_DESKTOP"
-			fi
-			patch_desktop_file "$USER_DESKTOP"
+		if [ -n "$donor" ] && { [ "$donor" = "$USER_DESKTOP" ] || cp -- "$donor" "$USER_DESKTOP"; } \
+		   && patch_desktop_file "$USER_DESKTOP"; then
+			[ "$donor" != "$USER_DESKTOP" ] && log_info "Seeded $USER_DESKTOP from $donor"
 			log_success "Patched user .desktop: $USER_DESKTOP"
 		else
-			# No donor available — generate a minimal launcher so the menu
-			# entry at least works.
-			log_info "No existing steam.desktop found; writing a minimal launcher"
+			# No usable donor, or patching it failed — generate a minimal
+			# launcher so the menu entry at least works. rm first so a stale
+			# symlink is replaced by a regular file (Steam leaves regular files
+			# alone; see the system-patch note below).
+			log_info "Writing a minimal Steam launcher"
+			rm -f "$USER_DESKTOP"
 			cat > "$USER_DESKTOP" << EOF
 [Desktop Entry]
 $SLSM_TAG
@@ -724,10 +724,13 @@ EOF
 	if [ -f "$SYS_DESKTOP" ] && is_real_steam_desktop "$SYS_DESKTOP" && ! is_patched_desktop "$SYS_DESKTOP"; then
 		if command -v sudo >/dev/null 2>&1; then
 			log_info "Patching system .desktop (requires sudo): $SYS_DESKTOP"
-			patch_desktop_file "$SYS_DESKTOP" sudo
-			log_success "Patched system .desktop"
-			if command -v update-desktop-database >/dev/null 2>&1; then
-				sudo update-desktop-database "/usr/share/applications" >/dev/null 2>&1 || true
+			if patch_desktop_file "$SYS_DESKTOP" sudo; then
+				log_success "Patched system .desktop"
+				if command -v update-desktop-database >/dev/null 2>&1; then
+					sudo update-desktop-database "/usr/share/applications" >/dev/null 2>&1 || true
+				fi
+			else
+				log_warn "Could not patch the system .desktop (sudo not granted or write failed); the user-level entry covers normal launches"
 			fi
 		else
 			log_warn "sudo not available; skipping system-wide .desktop patch"
