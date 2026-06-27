@@ -84,39 +84,61 @@ if [ "$PREWARM" -eq 0 ]; then
     #     table is the canonical detection (Steamless does the same).
     # Quick exit if neither marker is present, to avoid the 5-30 s
     # Wine startup cost on plain non-stub'd binaries.
-    sig=$(dd if="$EXE_PATH" bs=1 skip=64 count=4 2>/dev/null | xxd -p)
-    if [ "$sig" = "564c5600" ]; then
-        log "SteamStub v2 (VLV) signature detected — proceeding"
-    elif python3 - "$EXE_PATH" <<'PY'
+    #
+    # Detection is done entirely in python3 (already a hard dependency of
+    # this script) so it depends on nothing beyond a base install. An
+    # earlier version read the v2 magic via `dd | xxd`; `xxd` ships in
+    # vim-common and is absent from minimal installs (e.g. Fedora), so
+    # under `set -euo pipefail` the missing tool aborted the whole helper
+    # with rc=127 before any signature was examined — silently disabling
+    # DRM removal for every SteamStub title on those distros.
+    stub_kind="$(python3 - "$EXE_PATH" <<'PY'
 import struct, sys
-try:
-    with open(sys.argv[1], 'rb') as f:
+
+def detect(path):
+    with open(path, 'rb') as f:
         head = f.read(4096)
+    # v2 (x86): 'VLV\0' magic at file offset 0x40.
+    if head[0x40:0x44] == b'VLV\x00':
+        return 'v2'
+    # v3 (x86/x64): no fixed-offset magic; the unpacker header lives in
+    # a PE section named '.bind'. Walking the section table is the
+    # canonical detection (Steamless does the same).
     if head[:2] != b'MZ':
-        sys.exit(1)
+        return 'none'
     e_lfanew = struct.unpack_from('<I', head, 0x3c)[0]
     if e_lfanew + 0x18 > len(head) or head[e_lfanew:e_lfanew+4] != b'PE\x00\x00':
-        sys.exit(1)
+        return 'none'
     nsec    = struct.unpack_from('<H', head, e_lfanew + 6)[0]
     optsize = struct.unpack_from('<H', head, e_lfanew + 0x14)[0]
     sec_off = e_lfanew + 0x18 + optsize
     if sec_off + nsec * 40 > len(head):
-        with open(sys.argv[1], 'rb') as f:
+        with open(path, 'rb') as f:
             head = f.read(sec_off + nsec * 40 + 16)
     for i in range(nsec):
         name = head[sec_off + i*40 : sec_off + i*40 + 8].rstrip(b'\x00')
         if name == b'.bind':
-            sys.exit(0)
-    sys.exit(1)
+            return 'v3'
+    return 'none'
+
+try:
+    print(detect(sys.argv[1]))
 except Exception:
-    sys.exit(1)
+    print('none')
 PY
-    then
-        log "SteamStub v3 (.bind section) detected — proceeding"
-    else
-        log "exe is not SteamStub-wrapped (v2 sig=$sig, no .bind section); skipping"
-        exit 2
-    fi
+)"
+    case "$stub_kind" in
+        v2)
+            log "SteamStub v2 (VLV) signature detected — proceeding"
+            ;;
+        v3)
+            log "SteamStub v3 (.bind section) detected — proceeding"
+            ;;
+        *)
+            log "exe is not SteamStub-wrapped (no VLV magic, no .bind section); skipping"
+            exit 2
+            ;;
+    esac
 fi
 
 # ── 3. resolve Steamless home (skipped in --prewarm) ───────────────────
