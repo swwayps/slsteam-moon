@@ -513,36 +513,63 @@ patch_desktop_file() {
 	local wrapper="$SLSDIR/path/steam"
 	local sudo_cmd="${2:-}"
 
-	# Backup once.
+	# Backup once (follows a symlink: stores the resolved content).
 	if [ ! -f "$backup" ]; then
 		$sudo_cmd cp -- "$f" "$backup"
 	fi
 
-	# sed escapes for $HOME paths.
-	local esc_wrapper
-	esc_wrapper=$(printf '%s' "$wrapper" | sed -e 's/[\/&]/\\&/g')
+	# Rewrite the launcher token of every Exec= line and drop any stale marker.
+	# The launcher token is the first word that is neither `env` nor a `VAR=val`
+	# assignment, so this is launcher-path-agnostic: /usr/bin/steam,
+	# /usr/games/steam, /opt/steam/steam, a bare `steam`, bazzite-steam, … all
+	# work, plus `env VAR=v <launcher>` prefixes. Desktop Action lines (steam://
+	# handlers) are rewritten the same way. awk avoids sed path-escaping pitfalls.
+	local tmp
+	tmp="$(mktemp)"
+	WRAPPER="$wrapper" TAG="$SLSM_TAG" awk '
+		$0 == ENVIRON["TAG"] { next }                 # drop stale marker line
+		/^Exec=/ {
+			rest = substr($0, 6)                       # text after "Exec="
+			n = split(rest, t, " ")
+			swapped = 0
+			out = "Exec="
+			for (i = 1; i <= n; i++) {
+				if (!swapped && t[i] != "env" && index(t[i], "=") == 0) {
+					t[i] = ENVIRON["WRAPPER"]; swapped = 1
+				}
+				out = out t[i] (i < n ? " " : "")
+			}
+			print out
+			next
+		}
+		{ print }
+	' "$f" > "$tmp"
 
-	# Rewrite every Exec= line:
-	#   Exec=/usr/games/steam %U     -> Exec=<wrapper> %U
-	#   Exec=/usr/bin/steam steam:// -> Exec=<wrapper> steam://
-	#   Exec=sh -c '... steam %U'    -> Exec=sh -c '... <wrapper> %U'
-	#   Exec=steam %U                -> Exec=<wrapper> %U
-	# We swap the literal Steam invocations, then drop any prior marker so we
-	# don't accumulate duplicates, and append the marker once.
-	$sudo_cmd sed -i \
-		-e "s|^\(Exec=.*\)/usr/games/steam|\1$esc_wrapper|g" \
-		-e "s|^\(Exec=.*\)/usr/bin/steam|\1$esc_wrapper|g" \
-		-e "s|^\(Exec=.*\)/usr/local/bin/steam|\1$esc_wrapper|g" \
-		-e "s|^\(Exec=[^/]*\)\bsteam\b|\1$esc_wrapper|g" \
-		-e "/^$SLSM_TAG\$/d" \
-		"$f"
-
-	# Append marker after the [Desktop Entry] header (or end of file as fallback).
-	if grep -q '^\[Desktop Entry\]' "$f" 2>/dev/null; then
-		$sudo_cmd sed -i "0,/^\[Desktop Entry\]/ s|^\[Desktop Entry\]\$|[Desktop Entry]\n$SLSM_TAG|" "$f"
-	else
-		echo "$SLSM_TAG" | $sudo_cmd tee -a "$f" >/dev/null
+	# Only stamp + commit if an Exec= now runs our wrapper, so we never mark a
+	# file we failed to rewrite (a stamped-but-unpatched file is skipped by
+	# is_patched_desktop on every later run, locking out the fix forever).
+	if ! grep -qF "Exec=$wrapper" "$tmp" 2>/dev/null \
+	   && ! grep -qF " $wrapper" "$tmp" 2>/dev/null; then
+		rm -f "$tmp"
+		return 1
 	fi
+
+	if grep -q '^\[Desktop Entry\]' "$tmp" 2>/dev/null; then
+		sed -i "0,/^\[Desktop Entry\]/ s|^\[Desktop Entry\]\$|[Desktop Entry]\n$SLSM_TAG|" "$tmp"
+	else
+		printf '%s\n' "$SLSM_TAG" >> "$tmp"
+	fi
+
+	# Write back with --remove-destination so a SYMLINK entry is replaced by a
+	# regular file (and we never write THROUGH it into Steam's own copy). This
+	# is the crux: the Debian/Mint /usr/games/steam launcher regenerates the
+	# user entry and re-points it at the vanilla launcher whenever it is a
+	# symlink or missing, but leaves a regular file untouched — so a regular
+	# file is what makes the patch survive Steam restarts/self-updates.
+	$sudo_cmd cp --remove-destination -- "$tmp" "$f"
+	$sudo_cmd chmod +x "$f" 2>/dev/null || true
+	rm -f "$tmp"
+	return 0
 }
 
 # Looser variant of is_real_steam_desktop for autostart entries: the SteamOS/
