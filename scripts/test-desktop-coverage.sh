@@ -73,5 +73,15 @@ EOF
 dc_rewrite_exec "$TMP/env.desktop"
 check "env-prefixed Exec -> wrapper after env" "Exec=env VAR=1 $WRAPPER %U" "$(grep -m1 '^Exec=' "$TMP/env.desktop")"
 
+# patch_one: backup made, tag added, mode 0644, Exec -> wrapper, shebang stripped
+printf '#!/usr/bin/env xdg-open\n[Desktop Entry]\nName=Steam\nExec=/usr/games/steam %%U\n' > "$TMP/menu.desktop"
+chmod 0711 "$TMP/menu.desktop"
+dc_patch_one "$TMP/menu.desktop"
+check "patch_one classify after -> patched" "patched" "$(dc_classify "$TMP/menu.desktop")"
+check "patch_one mode 0644" "644" "$(stat -c '%a' "$TMP/menu.desktop")"
+check "patch_one backup exists" "yes" "$([ -f "$TMP/menu.desktop.slssteam-backup" ] && echo yes || echo no)"
+check "patch_one first line clean" "[Desktop Entry]" "$(head -1 "$TMP/menu.desktop")"
+check "patch_one Exec wrapped" "Exec=$WRAPPER %U" "$(grep -m1 '^Exec=' "$TMP/menu.desktop")"
+
 [ "$fail" = 0 ] && echo "ALL PASS" || echo "FAILURES"
 exit "$fail"

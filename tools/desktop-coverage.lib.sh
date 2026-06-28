@@ -12,7 +12,7 @@
 # patched   = already carries our tag
 # unrelated = not a steam launcher we recognise
 dc_classify() {
-	f="$1"
+	local f="$1"
 	[ -f "$f" ] || { echo unrelated; return; }
 	if grep -q "$DC_TAG" "$f" 2>/dev/null; then echo patched; return; fi
 	if grep -q "^Name=Install Steam" "$f" 2>/dev/null; then echo stub; return; fi
@@ -29,7 +29,7 @@ dc_classify() {
 # (e.g. Valve's `#!/usr/bin/env xdg-open`) so the entry is spec-valid and wins
 # XDG precedence. No-op if it already starts with [Desktop Entry].
 dc_strip_preheader() {
-	f="$1"
+	local f="$1" tmp
 	grep -q '^\[Desktop Entry\]' "$f" 2>/dev/null || return 0
 	[ "$(head -1 "$f" 2>/dev/null)" = "[Desktop Entry]" ] && return 0
 	tmp="$(mktemp)" || return 1
@@ -43,7 +43,7 @@ dc_strip_preheader() {
 # Launcher-path-agnostic (/usr/games/steam, /usr/bin/steam, bare steam, env
 # prefixes). awk avoids sed path-escaping pitfalls. Modifies in place.
 dc_rewrite_exec() {
-	f="$1"
+	local f="$1" tmp
 	tmp="$(mktemp)" || return 1
 	WRAPPER="$WRAPPER" awk '
 		/^Exec=/ {
@@ -60,4 +60,30 @@ dc_rewrite_exec() {
 		{ print }
 	' "$f" > "$tmp" 2>/dev/null && cat "$tmp" > "$f"
 	rm -f "$tmp"
+}
+
+# dc_patch_one <file> [sudo] — back up once, strip pre-header, rewrite Exec to
+# the wrapper, drop a stale tag, insert the tag after [Desktop Entry], write back
+# as a regular 0644 file (replacing a symlink). Only commits if an Exec now runs
+# the wrapper, so we never tag a file we failed to rewrite. $2="sudo" for system
+# files. Returns 0 on patch, 1 on no-op/failure.
+dc_patch_one() {
+	local f="$1" S="${2:-}" bak tmp
+	bak="$f.slssteam-backup"
+	[ -f "$f" ] || return 1
+	[ -f "$bak" ] || $S cp -- "$f" "$bak" 2>/dev/null
+	tmp="$(mktemp)" || return 1
+	cat "$f" > "$tmp" 2>/dev/null
+	dc_strip_preheader "$tmp"
+	dc_rewrite_exec "$tmp"
+	if ! grep -qF "Exec=$WRAPPER" "$tmp" 2>/dev/null; then rm -f "$tmp"; return 1; fi
+	# drop stale tag, then insert one line after the first [Desktop Entry]
+	grep -vxF "$DC_TAG" "$tmp" > "$tmp.2" 2>/dev/null && mv "$tmp.2" "$tmp"
+	awk -v tag="$DC_TAG" '
+		!done && /^\[Desktop Entry\]/ { print; print tag; done=1; next } { print }
+	' "$tmp" > "$tmp.2" 2>/dev/null && mv "$tmp.2" "$tmp"
+	$S cp --remove-destination -- "$tmp" "$f" 2>/dev/null
+	$S chmod 0644 "$f" 2>/dev/null || true
+	rm -f "$tmp"
+	return 0
 }
