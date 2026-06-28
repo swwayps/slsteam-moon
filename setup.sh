@@ -127,19 +127,25 @@ print_uninstall_complete() {
 # (it would prompt for sudo then fail silently). User-level entries override the
 # system ones via XDG precedence, so --user fully covers the normal launchers.
 is_immutable_distro() {
-	local id="" like=""
+	local id="" like="" variant=""
 	if [ -r /etc/os-release ]; then
 		# shellcheck disable=SC1091
 		. /etc/os-release 2>/dev/null || true
-		id="${ID:-}"; like="${ID_LIKE:-}"
+		id="${ID:-}"; like="${ID_LIKE:-}"; variant="${VARIANT_ID:-}"
 	fi
 	case " $id $like " in
 		*" bazzite "*|*" steamos "*|*" steamdeck "*|*" holoiso "*|\
 		*" silverblue "*|*" kinoite "*|*" sericea "*|*" onyx "*|\
 		*" bluefin "*|*" aurora "*|*" ucore "*) return 0 ;;
 	esac
+	# Fedora Atomic variants advertise via VARIANT_ID even when ID=fedora.
+	case "$variant" in silverblue|kinoite|sericea|onyx|*atomic*) return 0 ;; esac
 	command -v rpm-ostree >/dev/null 2>&1 && return 0
 	command -v steamos-readonly >/dev/null 2>&1 && return 0
+	# Last resort: a read-only root mount (ostree deployments mount / ro).
+	if command -v findmnt >/dev/null 2>&1; then
+		case ",$(findmnt -no OPTIONS / 2>/dev/null)," in *,ro,*) return 0 ;; esac
+	fi
 	return 1
 }
 
