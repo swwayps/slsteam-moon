@@ -91,5 +91,18 @@ dc_symlink_shortcut "$TMP/desk/steam.desktop" "$TMP/apps/steam.desktop"
 check "shortcut is now a symlink" "yes" "$([ -L "$TMP/desk/steam.desktop" ] && echo yes || echo no)"
 check "shortcut points at patched menu entry" "$TMP/apps/steam.desktop" "$(readlink "$TMP/desk/steam.desktop")"
 
+# dc_run --user patches menu + autostart but NOT the stub; --system also stub
+H="$TMP/home"; mkdir -p "$H/.local/share/applications" "$H/.config/autostart"
+SYS="$TMP/sys"; mkdir -p "$SYS"
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/games/steam %%U\n' > "$H/.local/share/applications/steam.desktop"
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/games/steam -silent %%U\n' > "$H/.config/autostart/steam.desktop"
+printf '[Desktop Entry]\nName=Install Steam\nExec=/usr/games/steam %%U\n' > "$SYS/steam.desktop"
+DC_HOME="$H" DC_SYS_APPS="$SYS" DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" DC_STEAM_INSTALLED=1 dc_run --user
+check "user run patches menu" "patched" "$(dc_classify "$H/.local/share/applications/steam.desktop")"
+check "user run patches autostart" "patched" "$(dc_classify "$H/.config/autostart/steam.desktop")"
+check "user run leaves stub alone" "stub" "$(dc_classify "$SYS/steam.desktop")"
+DC_HOME="$H" DC_SYS_APPS="$SYS" DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" DC_STEAM_INSTALLED=1 dc_run --system
+check "system run patches stub (steam installed)" "patched" "$(dc_classify "$SYS/steam.desktop")"
+
 [ "$fail" = 0 ] && echo "ALL PASS" || echo "FAILURES"
 exit "$fail"

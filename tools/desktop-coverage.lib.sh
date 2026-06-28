@@ -100,3 +100,53 @@ dc_symlink_shortcut() {
 	mkdir -p "$(dirname "$sc")" 2>/dev/null
 	ln -sfn "$target" "$sc" 2>/dev/null
 }
+
+# Overridable roots (tests inject fakes; real callers leave them at defaults).
+: "${DC_HOME:=$HOME}"
+: "${DC_SYS_APPS:=/usr/share/applications}"
+: "${DC_SYS_AUTOSTART:=/etc/xdg/autostart}"
+# Command used to write system-owned files. Default "sudo"; tests set it empty.
+: "${DC_SUDO:=sudo}"
+
+# dc_desktop_dir — honour XDG_DESKTOP_DIR from user-dirs.dirs, else ~/Desktop.
+dc_desktop_dir() {
+	local d="$DC_HOME/Desktop"
+	if [ -f "$DC_HOME/.config/user-dirs.dirs" ]; then
+		# shellcheck disable=SC1090
+		. "$DC_HOME/.config/user-dirs.dirs" 2>/dev/null || true
+		[ -n "${XDG_DESKTOP_DIR:-}" ] && d="$XDG_DESKTOP_DIR"
+	fi
+	echo "$d"
+}
+
+# dc_patch_glob <sudo> <dir> — patch every *steam*.desktop in <dir>: launchers
+# always; the Install-Steam stub only when DC_STEAM_INSTALLED=1.
+dc_patch_glob() {
+	local S="$1" dir="$2" f
+	[ -d "$dir" ] || return 0
+	for f in "$dir"/*steam*.desktop; do
+		[ -e "$f" ] || continue
+		case "$(dc_classify "$f")" in
+			launcher) dc_patch_one "$f" "$S" ;;
+			stub) [ "${DC_STEAM_INSTALLED:-0}" = 1 ] && dc_patch_one "$f" "$S" ;;
+			*) : ;;
+		esac
+	done
+}
+
+# dc_run [--user|--system] — patch all known *steam*.desktop locations. --user
+# (default) does user-owned dirs only (no sudo). --system additionally patches
+# the system menu dir + stub (caller must provide sudo rights). Always blinds the
+# desktop shortcut via symlink to the user menu entry.
+dc_run() {
+	local mode="${1:---user}" menu
+	menu="$DC_HOME/.local/share/applications/steam.desktop"
+	dc_patch_glob "" "$DC_HOME/.local/share/applications"
+	dc_patch_glob "" "$DC_HOME/.config/autostart"
+	if [ "$mode" = "--system" ]; then
+		dc_patch_glob "$DC_SUDO" "$DC_SYS_APPS"
+		dc_patch_glob "$DC_SUDO" "$DC_SYS_AUTOSTART"
+	fi
+	[ -f "$menu" ] && dc_symlink_shortcut "$(dc_desktop_dir)/steam.desktop" "$menu"
+	return 0
+}
