@@ -17,6 +17,17 @@ SYS_AUTOSTART="/etc/xdg/autostart/steam.desktop"
 # Tag we drop into patched .desktop files so we can detect/undo them later.
 SLSM_TAG="X-SLSteamMoon-Patched=true"
 
+# Desktop-coverage logic (scan + patch every *steam*.desktop, blindagens,
+# restore) lives in one sourceable lib shared with the wrapper and Lumen. Source
+# the in-repo copy at install time so dc_run / dc_restore_all are available here.
+WRAPPER="$SLSDIR/path/steam"
+DC_TAG="$SLSM_TAG"
+SETUP_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$SETUP_DIR/tools/desktop-coverage.lib.sh" ]; then
+	# shellcheck source=/dev/null
+	. "$SETUP_DIR/tools/desktop-coverage.lib.sh"
+fi
+
 # ============================================================================
 # Pretty output (colors + box-drawing). Falls back to plain text when stdout
 # is not a TTY or the terminal does not advertise colour support.
@@ -684,32 +695,35 @@ setup_path_and_desktop()
 	fi
 	log_success "Found Steam binary at $steam_bin"
 
-	# --- User-local override (XDG: always wins over system-wide) ----------
+	# --- Patch every *steam*.desktop via the shared helper ----------------
 	mkdir -p "$USER_APPS"
 
-	if is_patched_desktop "$USER_DESKTOP"; then
-		log_success "User .desktop already patched ($USER_DESKTOP)"
-	else
-		local donor=""
-		if is_real_steam_desktop "$USER_DESKTOP"; then
-			# User already had their own; back it up and patch in place.
-			donor="$USER_DESKTOP"
-		else
-			donor="$(find_donor_desktop)"
-		fi
+	# Seed the user menu entry from a real donor if the user has none yet, so the
+	# patched entry keeps Steam's full localized content + Desktop Actions.
+	if [ ! -e "$USER_DESKTOP" ]; then
+		local donor
+		donor="$(find_donor_desktop)"
+		[ -n "$donor" ] && cp -- "$donor" "$USER_DESKTOP" 2>/dev/null
+	fi
 
-		if [ -n "$donor" ] && { [ "$donor" = "$USER_DESKTOP" ] || cp -- "$donor" "$USER_DESKTOP"; } \
-		   && patch_desktop_file "$USER_DESKTOP"; then
-			[ "$donor" != "$USER_DESKTOP" ] && log_info "Seeded $USER_DESKTOP from $donor"
-			log_success "Patched user .desktop: $USER_DESKTOP"
-		else
-			# No usable donor, or patching it failed — generate a minimal
-			# launcher so the menu entry at least works. rm first so a stale
-			# symlink is replaced by a regular file (Steam leaves regular files
-			# alone; see the system-patch note below).
-			log_info "Writing a minimal Steam launcher"
-			rm -f "$USER_DESKTOP"
-			cat > "$USER_DESKTOP" << EOF
+	# Patch all entry points: user menu, system menu / "Install Steam" stub
+	# (sudo; eligible because Steam is installed — detected above), the ~/Desktop
+	# shortcut (blinded as a symlink so Steam won't restore it), and autostart
+	# user+system. All logic lives in tools/desktop-coverage.lib.sh.
+	export DC_STEAM_INSTALLED=1
+	if command -v sudo >/dev/null 2>&1; then
+		dc_run --system
+		log_success "Patched Steam desktop entries (menu, shortcut, autostart, stub)"
+	else
+		dc_run --user
+		log_warn "sudo not available; system .desktop/stub left unpatched (user + menu entries still covered)"
+	fi
+
+	# Fallback: if the user still has no menu entry (no donor anywhere), write a
+	# minimal patched launcher so the menu always works, then blind the shortcut.
+	if [ ! -e "$USER_DESKTOP" ]; then
+		log_info "Writing a minimal Steam launcher"
+		cat > "$USER_DESKTOP" << EOF
 [Desktop Entry]
 $SLSM_TAG
 Name=Steam
@@ -722,41 +736,17 @@ Categories=Network;FileTransfer;Game;
 MimeType=x-scheme-handler/steam;x-scheme-handler/steamlink;
 PrefersNonDefaultGPU=true
 EOF
-			log_success "Created $USER_DESKTOP"
-		fi
+		chmod 0644 "$USER_DESKTOP"
+		dc_symlink_shortcut "$(dc_desktop_dir)/steam.desktop" "$USER_DESKTOP"
+		log_success "Created $USER_DESKTOP"
 	fi
 
-	# Refresh XDG cache so launchers/menus pick up the change without a logout.
+	# Refresh XDG caches so menus pick up the change without a logout.
 	if command -v update-desktop-database >/dev/null 2>&1; then
 		update-desktop-database "$USER_APPS" >/dev/null 2>&1 || true
+		command -v sudo >/dev/null 2>&1 && \
+			sudo update-desktop-database "/usr/share/applications" >/dev/null 2>&1 || true
 	fi
-
-	# --- System-wide patch (best-effort) ----------------------------------
-	# Belt-and-braces: also patch /usr/share/applications when it's the real
-	# launcher. We don't strictly need it (XDG picks the user-local copy
-	# first), but it covers oddball launchers that read system entries only.
-	if [ -f "$SYS_DESKTOP" ] && is_real_steam_desktop "$SYS_DESKTOP" && ! is_patched_desktop "$SYS_DESKTOP"; then
-		if command -v sudo >/dev/null 2>&1; then
-			log_info "Patching system .desktop (requires sudo): $SYS_DESKTOP"
-			if patch_desktop_file "$SYS_DESKTOP" sudo; then
-				log_success "Patched system .desktop"
-				if command -v update-desktop-database >/dev/null 2>&1; then
-					sudo update-desktop-database "/usr/share/applications" >/dev/null 2>&1 || true
-				fi
-			else
-				log_warn "Could not patch the system .desktop (sudo not granted or write failed); the user-level entry covers normal launches"
-			fi
-		else
-			log_warn "sudo not available; skipping system-wide .desktop patch"
-		fi
-	elif is_patched_desktop "$SYS_DESKTOP"; then
-		log_success "System .desktop already patched"
-	fi
-
-	# --- Autostart override (SteamOS/Bazzite desktop auto-launch) ---------
-	# Ensures injection even when the desktop session auto-starts Steam
-	# (otherwise the user has to manually restart Steam to get injected).
-	setup_autostart_override
 
 	echo ""
 	return 0
