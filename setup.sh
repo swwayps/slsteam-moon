@@ -235,6 +235,12 @@ install_slssteam()
 	log_info "Installing SLSsteam libraries"
 	mkdir -p "$SLSDIR" || exit 1
 	cp -v ./bin/* "$SLSDIR/" | sed "s|^|   ${MUTED}${NC}|"
+	# Desktop-coverage helper (scan + patch all *steam*.desktop). Shipped in the
+	# release; copied next to the wrapper so the wrapper and Lumen can invoke it.
+	install -m 0644 ./tools/desktop-coverage.lib.sh "$SLSDIR/desktop-coverage.lib.sh" 2>/dev/null || \
+		cp ./tools/desktop-coverage.lib.sh "$SLSDIR/desktop-coverage.lib.sh"
+	install -m 0755 ./ensure-desktop-coverage.sh    "$SLSDIR/ensure-desktop-coverage.sh" 2>/dev/null || \
+		{ cp ./ensure-desktop-coverage.sh "$SLSDIR/ensure-desktop-coverage.sh"; chmod +x "$SLSDIR/ensure-desktop-coverage.sh"; }
 	log_success "Libraries installed at $SLSDIR"
 	echo ""
 }
