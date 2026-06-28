@@ -122,6 +122,27 @@ print_uninstall_complete() {
 # Detection helpers
 # ============================================================================
 
+# True on immutable / atomic systems (Bazzite, SteamOS, Fedora Atomic/ublue, …)
+# where /usr is read-only: we must NOT attempt the system-wide .desktop patch
+# (it would prompt for sudo then fail silently). User-level entries override the
+# system ones via XDG precedence, so --user fully covers the normal launchers.
+is_immutable_distro() {
+	local id="" like=""
+	if [ -r /etc/os-release ]; then
+		# shellcheck disable=SC1091
+		. /etc/os-release 2>/dev/null || true
+		id="${ID:-}"; like="${ID_LIKE:-}"
+	fi
+	case " $id $like " in
+		*" bazzite "*|*" steamos "*|*" steamdeck "*|*" holoiso "*|\
+		*" silverblue "*|*" kinoite "*|*" sericea "*|*" onyx "*|\
+		*" bluefin "*|*" aurora "*|*" ucore "*) return 0 ;;
+	esac
+	command -v rpm-ostree >/dev/null 2>&1 && return 0
+	command -v steamos-readonly >/dev/null 2>&1 && return 0
+	return 1
+}
+
 # Find the real Steam binary. Distros vary:
 #   /usr/games/steam        Debian, Ubuntu, Mint (steam-installer)
 #   /usr/bin/steam          Arch, Fedora, openSUSE, Manjaro, Pop!_OS
@@ -718,7 +739,10 @@ setup_path_and_desktop()
 	# shortcut (blinded as a symlink so Steam won't restore it), and autostart
 	# user+system. All logic lives in tools/desktop-coverage.lib.sh.
 	export DC_STEAM_INSTALLED=1
-	if command -v sudo >/dev/null 2>&1; then
+	if is_immutable_distro; then
+		dc_run --user
+		log_info "Immutable distro (read-only /usr): patched user-level entries only — they override the system ones via XDG precedence."
+	elif command -v sudo >/dev/null 2>&1; then
 		dc_run --system
 		log_success "Patched Steam desktop entries (menu, shortcut, autostart, stub)"
 	else
@@ -879,7 +903,11 @@ uninstall()
 	# stub, ~/Desktop shortcut, autostart user+system) from their backups via the
 	# shared lib. System paths use sudo when available.
 	if command -v dc_restore_all >/dev/null 2>&1; then
-		[ -n "$(command -v sudo)" ] && DC_SUDO="sudo" || DC_SUDO=""
+		if is_immutable_distro || ! command -v sudo >/dev/null 2>&1; then
+			DC_SUDO=""
+		else
+			DC_SUDO="sudo"
+		fi
 		export DC_SUDO
 		dc_restore_all
 		log_success "Restored Steam desktop entries"
