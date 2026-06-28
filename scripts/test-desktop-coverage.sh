@@ -120,6 +120,15 @@ check "migrate: still patched" "patched" "$(dc_classify "$H5/.local/share/applic
 check "migrate: 0711 -> 0644" "644" "$(stat -c '%a' "$H5/.local/share/applications/steam.desktop")"
 check "migrate: shebang stripped" "[Desktop Entry]" "$(head -1 "$H5/.local/share/applications/steam.desktop")"
 
+# MIGRATION 2: a legacy entry left mode 000/unreadable (root-owned 0711 in the
+# field) must be made readable + patched, not skipped as "unrelated".
+H6="$TMP/home6"; mkdir -p "$H6/.local/share/applications"
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/games/steam %%U\n' > "$H6/.local/share/applications/steam.desktop"
+chmod 000 "$H6/.local/share/applications/steam.desktop"
+DC_HOME="$H6" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" dc_run --user
+check "migrate unreadable: patched" "patched" "$(dc_classify "$H6/.local/share/applications/steam.desktop")"
+check "migrate unreadable: 0644" "644" "$(stat -c '%a' "$H6/.local/share/applications/steam.desktop")"
+
 DC_HOME="$H" DC_SYS_APPS="$SYS" DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" DC_STEAM_INSTALLED=1 dc_run --system
 check "system run patches stub (steam installed)" "patched" "$(dc_classify "$SYS/steam.desktop")"
 

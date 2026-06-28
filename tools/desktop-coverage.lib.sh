@@ -135,6 +135,11 @@ dc_patch_glob() {
 	[ -d "$dir" ] || return 0
 	for f in "$dir"/*steam*.desktop; do
 		[ -e "$f" ] || continue
+		# A legacy root-owned 0711 entry (the old `chmod +x` bug) is unreadable by
+		# us, so dc_classify would misread it as "unrelated" and skip the
+		# migration. Make it readable first (we set 0644 anyway). With $S=sudo this
+		# fixes a system entry; without sudo it only succeeds on our own files.
+		[ -r "$f" ] || $S chmod 0644 "$f" 2>/dev/null
 		case "$(dc_classify "$f")" in
 			launcher) dc_patch_one "$f" "$S" ;;
 			# Already tagged: re-run anyway so a legacy install is MIGRATED —
