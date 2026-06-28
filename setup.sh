@@ -257,7 +257,16 @@ create_steam_wrapper()
 # (see its block below).
 SLSDIR="$HOME/.local/share/SLSsteam"
 
-# Resolve the real Steam binary, skipping our own wrapper.
+# Claim the injection slot up-front. Exported, so it is inherited by the whole
+# launch chain (/usr/bin/steam -> bin_steam -> steam.sh): the steam.sh shim only
+# fires when SLSM_INJECTED is unset, so a launch that already came through this
+# wrapper is NEVER re-wrapped -> no double injection. This is the contract that
+# keeps existing (pre-shim) installs that re-run the installer safe.
+export SLSM_INJECTED=1
+
+# Resolve the real Steam binary, skipping our own wrapper. The steam.sh shim
+# invokes us with SLSM_STEAM_BIN set to steam.sh itself, so we re-enter steam.sh
+# (now injected) instead of searching for the launcher.
 SELF="$(readlink -f "$0" 2>/dev/null || echo "$0")"
 STEAM_BIN=""
 # Override hook: an explicit, executable path wins. Lets power users pin a
@@ -467,6 +476,16 @@ fi
 : > "$GUARD_LAST" 2>/dev/null || true
 printf '%s' "$GUARD_CLIENT_CUR" > "$GUARD_CLIENT_LAST" 2>/dev/null || true
 
+# Keep the steam.sh shim healed so EVERY launch entry point (desktop icon,
+# pinned launcher, terminal, steam:// handler, autostart) routes back through
+# this wrapper, and start a tiny watcher that re-applies the shim the instant a
+# Steam client self-update rewrites steam.sh. Both are best-effort and can never
+# block the launch. SLSM_NO_SIDECAR (tests) skips the background watcher.
+[ -x "$SLSDIR/heal-steam-sh.sh" ] && "$SLSDIR/heal-steam-sh.sh" >/dev/null 2>&1 || true
+if [ -z "${SLSM_NO_SIDECAR:-}" ] && [ -x "$SLSDIR/watcher.sh" ]; then
+	setsid "$SLSDIR/watcher.sh" >/dev/null 2>&1 < /dev/null &
+fi
+
 # CloudRedirect (optional): inject its 32-bit cloud-save hook via LD_PRELOAD.
 # Our bundled build is CloudRedirect 2.1.5 (correct save restore via
 # StripCasShaLeaf) with the steamclient.so wait extended 10s -> 120s so it
@@ -509,8 +528,140 @@ EOF
 	chmod +x "$SLSDIR/path/steam"
 
 	log_success "Steam wrapper created at $SLSDIR/path/steam"
+
+	write_injection_helpers
+
 	echo ""
 	return 0
+}
+
+# Write the steam.sh shim helpers: heal-steam-sh.sh (applies/repairs/removes the
+# shim, atomic + sanity-checked) and watcher.sh (re-applies the shim the moment
+# Steam rewrites steam.sh during a client self-update). Both reference the
+# wrapper above and are fall-through safe.
+write_injection_helpers()
+{
+	cat > "$SLSDIR/heal-steam-sh.sh" << 'EOF'
+#!/bin/sh
+# slsteam-moon — apply/repair/remove the steam.sh injection shim. Idempotent,
+# atomic, sanity-checked: inserts a tiny guarded block right after steam.sh's
+# shebang that re-routes EVERY launch (desktop icon, pinned launcher, terminal,
+# steam:// handler, autostart) back through our wrapper. It NEVER corrupts
+# steam.sh: it writes a temp copy, verifies it, then atomically renames; on any
+# doubt it leaves steam.sh untouched. The shim is fall-through safe: it only
+# fires when the wrapper is executable AND SLSM_INJECTED/SLSM_SHIM_TRIED are
+# unset, so a removed/half-installed payload just launches Steam vanilla.
+SLSDIR="$HOME/.local/share/SLSsteam"
+BEGIN='# >>> slsteam-moon >>>'
+END='# <<< slsteam-moon <<<'
+
+find_steam_sh() {
+	if [ -n "${SLSM_STEAMSH:-}" ] && [ -f "${SLSM_STEAMSH:-}" ]; then
+		echo "$SLSM_STEAMSH"; return 0
+	fi
+	for _r in "$HOME/.steam/steam" "$HOME/.local/share/Steam" \
+	          "$HOME/.steam/debian-installation" "$HOME/Steam"; do
+		_t="$(readlink -f "$_r" 2>/dev/null || echo "$_r")"
+		if [ -f "$_t/steam.sh" ]; then
+			echo "$_t/steam.sh"; return 0
+		fi
+	done
+	return 1
+}
+
+heal_one() {
+	f="$1"
+	[ -f "$f" ] || return 0
+	[ -x "$SLSDIR/path/steam" ] || return 0
+	grep -qF "$BEGIN" "$f" 2>/dev/null && return 0
+	grep -q '^#!' "$f" 2>/dev/null || return 0
+	dir="$(dirname "$f")"
+	tmp="$(mktemp "$dir/.steam.sh.XXXXXX" 2>/dev/null)" || return 0
+	awk -v b="$BEGIN" -v e="$END" '
+		NR==1 {
+			print
+			print b
+			print "if [ -z \"${SLSM_INJECTED:-}\" ] && [ -z \"${SLSM_SHIM_TRIED:-}\" ] && [ -x \"$HOME/.local/share/SLSsteam/path/steam\" ]; then export SLSM_SHIM_TRIED=1; export SLSM_STEAM_BIN=\"$0\"; exec /bin/sh \"$HOME/.local/share/SLSsteam/path/steam\" \"$@\"; fi"
+			print e
+			next
+		}
+		{ print }
+	' "$f" > "$tmp" 2>/dev/null || { rm -f "$tmp"; return 0; }
+	orig_lines="$(wc -l < "$f" 2>/dev/null || echo 0)"
+	new_lines="$(wc -l < "$tmp" 2>/dev/null || echo 0)"
+	if [ ! -s "$tmp" ] || ! grep -qF "$BEGIN" "$tmp" 2>/dev/null \
+	   || [ "$new_lines" -lt "$orig_lines" ]; then
+		rm -f "$tmp"; return 0
+	fi
+	chmod --reference="$f" "$tmp" 2>/dev/null || chmod 0755 "$tmp" 2>/dev/null || true
+	mv -f "$tmp" "$f" 2>/dev/null || rm -f "$tmp" 2>/dev/null
+	return 0
+}
+
+unheal_one() {
+	f="$1"
+	[ -f "$f" ] || return 0
+	grep -qF "$BEGIN" "$f" 2>/dev/null || return 0
+	dir="$(dirname "$f")"
+	tmp="$(mktemp "$dir/.steam.sh.XXXXXX" 2>/dev/null)" || return 0
+	awk -v b="$BEGIN" -v e="$END" '
+		$0==b {skip=1; next}
+		$0==e {skip=0; next}
+		skip!=1 {print}
+	' "$f" > "$tmp" 2>/dev/null || { rm -f "$tmp"; return 0; }
+	if [ -s "$tmp" ] && grep -q '^#!' "$tmp" 2>/dev/null \
+	   && ! grep -qF "$BEGIN" "$tmp" 2>/dev/null; then
+		chmod --reference="$f" "$tmp" 2>/dev/null || chmod 0755 "$tmp" 2>/dev/null || true
+		mv -f "$tmp" "$f" 2>/dev/null || rm -f "$tmp" 2>/dev/null
+	else
+		rm -f "$tmp" 2>/dev/null
+	fi
+	return 0
+}
+
+sh_path="$(find_steam_sh)" || exit 0
+case "${1:-}" in
+	--remove|--uninstall) unheal_one "$sh_path" ;;
+	*)                    heal_one "$sh_path" ;;
+esac
+exit 0
+EOF
+	chmod +x "$SLSDIR/heal-steam-sh.sh"
+
+	cat > "$SLSDIR/watcher.sh" << 'EOF'
+#!/bin/sh
+# slsteam-moon — steam.sh shim watcher. Started detached by the wrapper on every
+# injected launch (single-instance). When Steam rewrites steam.sh during a
+# client self-update (dropping our shim), it re-applies the shim so the NEXT
+# launch — even from a non-wrapper entry point in the SAME login session — is
+# injected. It only ever ADDS the shim back (atomic, sanity-checked); it can
+# never break steam.sh. Self-terminates a short while after Steam exits.
+SLSDIR="$HOME/.local/share/SLSsteam"
+LOCK="$SLSDIR/.watcher.pid"
+if [ -f "$LOCK" ]; then
+	_old="$(cat "$LOCK" 2>/dev/null)"
+	if [ -n "$_old" ] && kill -0 "$_old" 2>/dev/null; then
+		exit 0
+	fi
+fi
+echo "$$" > "$LOCK" 2>/dev/null || exit 0
+trap 'rm -f "$LOCK" 2>/dev/null' EXIT INT TERM
+steam_running() {
+	pgrep -x steam >/dev/null 2>&1 && return 0
+	pgrep -f 'steamwebhelper' >/dev/null 2>&1 && return 0
+	return 1
+}
+idle=0
+max_idle=15
+while [ "$idle" -lt "$max_idle" ]; do
+	sleep 2
+	[ -x "$SLSDIR/heal-steam-sh.sh" ] && "$SLSDIR/heal-steam-sh.sh" >/dev/null 2>&1 || true
+	if steam_running; then idle=0; else idle=$(( idle + 1 )); fi
+done
+exit 0
+EOF
+	chmod +x "$SLSDIR/watcher.sh"
+	log_success "Injection helpers installed (steam.sh shim + watcher)"
 }
 
 # Patch every Exec= line in $1 (in-place) so it runs through our wrapper. Drops
@@ -575,7 +726,12 @@ patch_desktop_file() {
 	# symlink or missing, but leaves a regular file untouched — so a regular
 	# file is what makes the patch survive Steam restarts/self-updates.
 	$sudo_cmd cp --remove-destination -- "$tmp" "$f"
-	$sudo_cmd chmod +x "$f" 2>/dev/null || true
+	# .desktop entries must be world-readable (0644). The old code used
+	# `chmod +x`, which — applied to a 0600 mktemp-derived file — yields 0711,
+	# stripping the read bit. A root-owned 0711 /usr/share entry is then
+	# unreadable by the user's menu/gnome-menus reload, which can drop Steam
+	# from the launcher. 0644 is correct for menu entries.
+	$sudo_cmd chmod 0644 "$f" 2>/dev/null || true
 	rm -f "$tmp"
 	return 0
 }
@@ -642,6 +798,34 @@ setup_autostart_override() {
 	log_success "Patched Steam autostart override: $USER_AUTOSTART"
 }
 
+# Patch the desktop shortcut (~/Desktop/steam.desktop, XDG_DESKTOP_DIR aware) so
+# it launches through the wrapper. Steam's bin_steam.sh drops an UNPATCHED copy
+# here on first run — the classic "I clicked the desktop icon and Steam opened
+# without injection". With the steam.sh shim it would inject regardless, but
+# patch it too so it points straight at the wrapper.
+patch_desktop_shortcut() {
+	local ddir desk
+	ddir="$HOME/Desktop"
+	if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/user-dirs.dirs" ]; then
+		# shellcheck disable=SC1090
+		. "${XDG_CONFIG_HOME:-$HOME/.config}/user-dirs.dirs" 2>/dev/null || true
+		[ -n "${XDG_DESKTOP_DIR:-}" ] && ddir="$XDG_DESKTOP_DIR"
+	fi
+	desk="$ddir/steam.desktop"
+	[ -f "$desk" ] || return 0
+	if is_patched_desktop "$desk"; then
+		chmod 0755 "$desk" 2>/dev/null || true
+		log_success "Desktop shortcut already patched ($desk)"
+		return 0
+	fi
+	if is_real_steam_desktop "$desk" && patch_desktop_file "$desk"; then
+		# Desktop icons on some DEs need the exec bit + trusted metadata.
+		chmod 0755 "$desk" 2>/dev/null || true
+		command -v gio >/dev/null 2>&1 && gio set "$desk" metadata::trusted true >/dev/null 2>&1 || true
+		log_success "Patched desktop shortcut: $desk"
+	fi
+}
+
 setup_path_and_desktop()
 {
 	log_info "Setting up PATH and desktop integration"
@@ -683,6 +867,9 @@ setup_path_and_desktop()
 
 	if is_patched_desktop "$USER_DESKTOP"; then
 		log_success "User .desktop already patched ($USER_DESKTOP)"
+		# Migration: older installs left this 0711 (unreadable system-wide and
+		# a known cause of the entry vanishing from some menus). Re-assert 0644.
+		chmod 0644 "$USER_DESKTOP" 2>/dev/null || true
 	else
 		local donor=""
 		if is_real_steam_desktop "$USER_DESKTOP"; then
@@ -743,8 +930,32 @@ EOF
 		else
 			log_warn "sudo not available; skipping system-wide .desktop patch"
 		fi
-	elif is_patched_desktop "$SYS_DESKTOP"; then
+	elif is_patched_desktop "$SYS_DESKTOP" || [ -f "$SYS_DESKTOP.slssteam-backup" ]; then
 		log_success "System .desktop already patched"
+		# Migration: re-assert 0644 in case an older install left it 0711
+		# (root-owned + unreadable by the user's menu reload). Detected via the
+		# backup too, since a 0711 entry is unreadable by is_patched_desktop.
+		if command -v sudo >/dev/null 2>&1; then
+			sudo chmod 0644 "$SYS_DESKTOP" 2>/dev/null || true
+		fi
+	fi
+
+	# Desktop shortcut (~/Desktop/steam.desktop). Steam's own bin_steam.sh drops
+	# an UNPATCHED copy here on first run; with the steam.sh shim it would inject
+	# anyway, but patch it too so it points straight at the wrapper (visible fix
+	# + injection independent of steam.sh state).
+	patch_desktop_shortcut
+
+	# steam.sh shim: the universal chokepoint. Every launch method funnels
+	# through ~/.steam/steam/steam.sh, so a guarded re-exec there guarantees
+	# injection no matter how Steam is started. Idempotent + atomic + safe.
+	if [ -x "$SLSDIR/heal-steam-sh.sh" ]; then
+		log_info "Installing steam.sh injection shim"
+		if "$SLSDIR/heal-steam-sh.sh"; then
+			log_success "steam.sh shim ensured"
+		else
+			log_warn "Could not patch steam.sh (Steam may not be bootstrapped yet); the wrapper + .desktop still cover menu launches"
+		fi
 	fi
 
 	# --- Autostart override (SteamOS/Bazzite desktop auto-launch) ---------
@@ -835,23 +1046,30 @@ restore_or_remove_desktop() {
 	local backup="$f.slssteam-backup"
 	local sudo_cmd="${2:-}"
 
+	# The backup is the AUTHORITATIVE signal that we patched this file: it is
+	# world-readable (0644) even when the patched entry was left root-owned 0711
+	# by the old installer (which defeats grep-based is_patched_desktop). Restore
+	# from it unconditionally so a legacy 0711 entry is never orphaned pointing
+	# at a deleted wrapper.
+	if [ -f "$backup" ]; then
+		log_info "Restoring $f from backup"
+		$sudo_cmd cp --remove-destination -- "$backup" "$f"
+		$sudo_cmd chmod 0644 "$f" 2>/dev/null || true
+		$sudo_cmd rm -f -- "$backup"
+		log_success "Restored $f"
+		return 0
+	fi
+
 	if [ ! -f "$f" ]; then
 		return 0
 	fi
 	if ! is_patched_desktop "$f"; then
 		return 0
 	fi
-
-	if [ -f "$backup" ]; then
-		log_info "Restoring $f from backup"
-		$sudo_cmd cp -- "$backup" "$f"
-		$sudo_cmd rm -- "$backup"
-		log_success "Restored $f"
-	else
-		log_info "Removing $f (no backup found)"
-		$sudo_cmd rm -- "$f"
-		log_success "Removed $f"
-	fi
+	# Patched but no backup — remove our entry (nothing to restore to).
+	log_info "Removing $f (no backup found)"
+	$sudo_cmd rm -- "$f"
+	log_success "Removed $f"
 }
 
 uninstall()
@@ -878,8 +1096,10 @@ uninstall()
 		update-desktop-database "$USER_APPS" >/dev/null 2>&1 || true
 	fi
 
-	# System-wide .desktop (only if we actually patched it).
-	if [ -f "$SYS_DESKTOP" ] && (is_patched_desktop "$SYS_DESKTOP" || grep -q "SLSsteam" "$SYS_DESKTOP" 2>/dev/null); then
+	# System-wide .desktop (only if we actually patched it). The backup file is
+	# the reliable signal even when the patched entry is an unreadable 0711
+	# (legacy installer) that grep can't inspect.
+	if [ -f "$SYS_DESKTOP.slssteam-backup" ] || { [ -f "$SYS_DESKTOP" ] && (is_patched_desktop "$SYS_DESKTOP" || grep -q "SLSsteam" "$SYS_DESKTOP" 2>/dev/null); }; then
 		if command -v sudo >/dev/null 2>&1; then
 			log_info "Restoring system .desktop (requires sudo)"
 			restore_or_remove_desktop "$SYS_DESKTOP" sudo
@@ -902,6 +1122,24 @@ uninstall()
 		else
 			log_warn "Legacy modification found but no backup exists"
 		fi
+	fi
+
+	# Desktop shortcut (~/Desktop/steam.desktop, XDG_DESKTOP_DIR aware).
+	local ddir="$HOME/Desktop"
+	if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/user-dirs.dirs" ]; then
+		# shellcheck disable=SC1090
+		. "${XDG_CONFIG_HOME:-$HOME/.config}/user-dirs.dirs" 2>/dev/null || true
+		[ -n "${XDG_DESKTOP_DIR:-}" ] && ddir="$XDG_DESKTOP_DIR"
+	fi
+	restore_or_remove_desktop "$ddir/steam.desktop"
+
+	# Remove the steam.sh shim BEFORE deleting $SLSDIR (heal-steam-sh.sh lives
+	# there). The shim is fall-through safe even if this is skipped, but clean up
+	# properly. Also stop any running watcher.
+	pkill -f "$SLSDIR/watcher.sh" 2>/dev/null || true
+	if [ -x "$SLSDIR/heal-steam-sh.sh" ]; then
+		log_info "Removing steam.sh injection shim"
+		"$SLSDIR/heal-steam-sh.sh" --remove && log_success "steam.sh shim removed"
 	fi
 
 	if [ -d "$SLSDIR" ]; then
