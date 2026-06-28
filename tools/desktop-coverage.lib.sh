@@ -37,3 +37,27 @@ dc_strip_preheader() {
 		&& cat "$tmp" > "$f"
 	rm -f "$tmp"
 }
+
+# dc_rewrite_exec <file> — rewrite EVERY Exec= line so the launcher token (first
+# word that isn't `env` or a VAR=val assignment) becomes $WRAPPER, keeping args.
+# Launcher-path-agnostic (/usr/games/steam, /usr/bin/steam, bare steam, env
+# prefixes). awk avoids sed path-escaping pitfalls. Modifies in place.
+dc_rewrite_exec() {
+	f="$1"
+	tmp="$(mktemp)" || return 1
+	WRAPPER="$WRAPPER" awk '
+		/^Exec=/ {
+			rest = substr($0, 6); n = split(rest, t, " ")
+			swapped = 0; out = "Exec="
+			for (i = 1; i <= n; i++) {
+				if (!swapped && t[i] != "env" && index(t[i], "=") == 0) {
+					t[i] = ENVIRON["WRAPPER"]; swapped = 1
+				}
+				out = out t[i] (i < n ? " " : "")
+			}
+			print out; next
+		}
+		{ print }
+	' "$f" > "$tmp" 2>/dev/null && cat "$tmp" > "$f"
+	rm -f "$tmp"
+}

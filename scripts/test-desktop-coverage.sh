@@ -53,5 +53,25 @@ printf '#!/usr/bin/env xdg-open\n[Desktop Entry]\nName=Steam\n' > "$TMP/sh.deskt
 dc_strip_preheader "$TMP/sh.desktop"
 check "strip shebang -> first line is [Desktop Entry]" "[Desktop Entry]" "$(head -1 "$TMP/sh.desktop")"
 
+# rewrite Exec: primary + Desktop Action lines, launcher-token-agnostic
+cat > "$TMP/rw.desktop" <<EOF
+[Desktop Entry]
+Name=Steam
+Exec=/usr/games/steam %U
+[Desktop Action Store]
+Exec=steam steam://store
+EOF
+dc_rewrite_exec "$TMP/rw.desktop"
+check "primary Exec -> wrapper" "Exec=$WRAPPER %U" "$(grep -m1 '^Exec=' "$TMP/rw.desktop")"
+check "action Exec -> wrapper keeps args" "Exec=$WRAPPER steam://store" "$(grep '^Exec=' "$TMP/rw.desktop" | sed -n 2p)"
+
+# env-prefixed launcher token is handled
+cat > "$TMP/env.desktop" <<EOF
+[Desktop Entry]
+Exec=env VAR=1 /usr/bin/steam %U
+EOF
+dc_rewrite_exec "$TMP/env.desktop"
+check "env-prefixed Exec -> wrapper after env" "Exec=env VAR=1 $WRAPPER %U" "$(grep -m1 '^Exec=' "$TMP/env.desktop")"
+
 [ "$fail" = 0 ] && echo "ALL PASS" || echo "FAILURES"
 exit "$fail"
