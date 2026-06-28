@@ -150,3 +150,40 @@ dc_run() {
 	[ -f "$menu" ] && dc_symlink_shortcut "$(dc_desktop_dir)/steam.desktop" "$menu"
 	return 0
 }
+
+# dc_restore_one <file> [sudo] — restore from <file>.slssteam-backup if present
+# (authoritative even for a legacy unreadable 0711 entry), 0644; else if it
+# carries our tag, remove it. A symlink we made is removed and, if a backup
+# exists, that backup is restored as the original regular file.
+dc_restore_one() {
+	local f="$1" S="${2:-}" bak
+	bak="$f.slssteam-backup"
+	if [ -L "$f" ]; then
+		$S rm -f -- "$f" 2>/dev/null
+		if [ -f "$bak" ]; then $S cp -- "$bak" "$f" 2>/dev/null; $S rm -f -- "$bak" 2>/dev/null; fi
+		return 0
+	fi
+	if [ -f "$bak" ]; then
+		$S cp --remove-destination -- "$bak" "$f" 2>/dev/null
+		$S chmod 0644 "$f" 2>/dev/null || true
+		$S rm -f -- "$bak" 2>/dev/null
+		return 0
+	fi
+	[ -f "$f" ] && grep -q "$DC_TAG" "$f" 2>/dev/null && $S rm -f -- "$f" 2>/dev/null
+	return 0
+}
+
+# dc_restore_all — reverse dc_run across the same locations (user dirs without
+# sudo, system dirs with $DC_SUDO).
+dc_restore_all() {
+	local d f
+	for d in "$DC_HOME/.local/share/applications" "$DC_HOME/.config/autostart"; do
+		[ -d "$d" ] || continue
+		for f in "$d"/*steam*.desktop; do [ -e "$f" ] || [ -L "$f" ] || continue; dc_restore_one "$f"; done
+	done
+	dc_restore_one "$(dc_desktop_dir)/steam.desktop"
+	for d in "$DC_SYS_APPS" "$DC_SYS_AUTOSTART"; do
+		[ -d "$d" ] || continue
+		for f in "$d"/*steam*.desktop; do [ -e "$f" ] || [ -L "$f" ] || continue; dc_restore_one "$f" "$DC_SUDO"; done
+	done
+}

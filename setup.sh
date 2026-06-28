@@ -875,23 +875,24 @@ uninstall()
 		fi
 	done
 
-	# User-local .desktop.
-	restore_or_remove_desktop "$USER_DESKTOP"
+	# Restore every patched/symlinked *steam*.desktop (menu user+system incl. the
+	# stub, ~/Desktop shortcut, autostart user+system) from their backups via the
+	# shared lib. System paths use sudo when available.
+	if command -v dc_restore_all >/dev/null 2>&1; then
+		[ -n "$(command -v sudo)" ] && DC_SUDO="sudo" || DC_SUDO=""
+		export DC_SUDO
+		dc_restore_all
+		log_success "Restored Steam desktop entries"
+	else
+		# Lib unavailable (older layout): fall back to the legacy per-file restore.
+		restore_or_remove_desktop "$USER_DESKTOP"
+		[ -f "$SYS_DESKTOP" ] && command -v sudo >/dev/null 2>&1 && \
+			restore_or_remove_desktop "$SYS_DESKTOP" sudo
+	fi
 	if command -v update-desktop-database >/dev/null 2>&1; then
 		update-desktop-database "$USER_APPS" >/dev/null 2>&1 || true
-	fi
-
-	# System-wide .desktop (only if we actually patched it).
-	if [ -f "$SYS_DESKTOP" ] && (is_patched_desktop "$SYS_DESKTOP" || grep -q "SLSsteam" "$SYS_DESKTOP" 2>/dev/null); then
-		if command -v sudo >/dev/null 2>&1; then
-			log_info "Restoring system .desktop (requires sudo)"
-			restore_or_remove_desktop "$SYS_DESKTOP" sudo
-			if command -v update-desktop-database >/dev/null 2>&1; then
-				sudo update-desktop-database "/usr/share/applications" >/dev/null 2>&1 || true
-			fi
-		else
-			log_warn "sudo not available; cannot restore $SYS_DESKTOP automatically"
-		fi
+		command -v sudo >/dev/null 2>&1 && \
+			sudo update-desktop-database "/usr/share/applications" >/dev/null 2>&1 || true
 	fi
 
 	# Legacy: /usr/games/steam patch from older versions.

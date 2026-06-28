@@ -111,5 +111,19 @@ HOME="$H2" DC_HOME="$H2" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" WR
   bash "$HERE/ensure-desktop-coverage.sh" --user >/dev/null 2>&1
 check "CLI --user patches menu entry" "patched" "$(dc_classify "$H2/.local/share/applications/steam.desktop")"
 
+# restore: dc_run then dc_restore_all -> entries back to vanilla, backups consumed
+H4="$TMP/home4"; mkdir -p "$H4/.local/share/applications" "$H4/.config/autostart" "$H4/Desktop"
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/games/steam %%U\n' > "$H4/.local/share/applications/steam.desktop"
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/games/steam -silent %%U\n' > "$H4/.config/autostart/steam.desktop"
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/games/steam %%U\n' > "$H4/Desktop/steam.desktop"
+DC_HOME="$H4" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" dc_run --user
+check "before restore: menu patched" "patched" "$(dc_classify "$H4/.local/share/applications/steam.desktop")"
+check "before restore: shortcut is symlink" "yes" "$([ -L "$H4/Desktop/steam.desktop" ] && echo yes || echo no)"
+DC_HOME="$H4" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" dc_restore_all
+check "restore: menu entry not patched" "0" "$(grep -c "$DC_TAG" "$H4/.local/share/applications/steam.desktop" 2>/dev/null | head -1)"
+check "restore: menu backup consumed" "no" "$([ -f "$H4/.local/share/applications/steam.desktop.slssteam-backup" ] && echo yes || echo no)"
+check "restore: autostart not patched" "0" "$(grep -c "$DC_TAG" "$H4/.config/autostart/steam.desktop" 2>/dev/null | head -1)"
+check "restore: shortcut restored to regular file" "yes" "$([ -f "$H4/Desktop/steam.desktop" ] && [ ! -L "$H4/Desktop/steam.desktop" ] && echo yes || echo no)"
+
 [ "$fail" = 0 ] && echo "ALL PASS" || echo "FAILURES"
 exit "$fail"
