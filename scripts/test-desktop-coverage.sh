@@ -104,5 +104,12 @@ check "user run leaves stub alone" "stub" "$(dc_classify "$SYS/steam.desktop")"
 DC_HOME="$H" DC_SYS_APPS="$SYS" DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" DC_STEAM_INSTALLED=1 dc_run --system
 check "system run patches stub (steam installed)" "patched" "$(dc_classify "$SYS/steam.desktop")"
 
+# CLI: --user runs without error against a fake HOME and patches the menu entry
+H2="$TMP/home2"; mkdir -p "$H2/.local/share/applications"
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/games/steam %%U\n' > "$H2/.local/share/applications/steam.desktop"
+HOME="$H2" DC_HOME="$H2" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" WRAPPER="$WRAPPER" \
+  bash "$HERE/ensure-desktop-coverage.sh" --user >/dev/null 2>&1
+check "CLI --user patches menu entry" "patched" "$(dc_classify "$H2/.local/share/applications/steam.desktop")"
+
 [ "$fail" = 0 ] && echo "ALL PASS" || echo "FAILURES"
 exit "$fail"
