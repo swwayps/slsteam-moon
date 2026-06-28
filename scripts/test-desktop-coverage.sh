@@ -83,13 +83,20 @@ check "patch_one backup exists" "yes" "$([ -f "$TMP/menu.desktop.slssteam-backup
 check "patch_one first line clean" "[Desktop Entry]" "$(head -1 "$TMP/menu.desktop")"
 check "patch_one Exec wrapped" "Exec=$WRAPPER %U" "$(grep -m1 '^Exec=' "$TMP/menu.desktop")"
 
-# desktop shortcut becomes a symlink to the patched menu entry (Steam skips symlinks)
+# desktop shortcut: patch an EXISTING one as a regular trusted file (NOT a
+# symlink — GNOME renders a symlinked .desktop as "steam.desktop" + untrusted),
+# and NEVER create one the user did not have.
 mkdir -p "$TMP/apps" "$TMP/desk"
 printf '[Desktop Entry]\n%s\nName=Steam\nExec=%s %%U\n' "$DC_TAG" "$WRAPPER" > "$TMP/apps/steam.desktop"
+# (a) absent shortcut -> not created
+dc_patch_shortcut "$TMP/desk/steam.desktop"
+check "shortcut not created when absent" "no" "$([ -e "$TMP/desk/steam.desktop" ] && echo yes || echo no)"
+# (b) existing vanilla shortcut -> patched regular file (not a symlink), exec bit
 printf '[Desktop Entry]\nName=Steam\nExec=/usr/games/steam %%U\n' > "$TMP/desk/steam.desktop"
-dc_symlink_shortcut "$TMP/desk/steam.desktop" "$TMP/apps/steam.desktop"
-check "shortcut is now a symlink" "yes" "$([ -L "$TMP/desk/steam.desktop" ] && echo yes || echo no)"
-check "shortcut points at patched menu entry" "$TMP/apps/steam.desktop" "$(readlink "$TMP/desk/steam.desktop")"
+dc_patch_shortcut "$TMP/desk/steam.desktop"
+check "existing shortcut patched" "patched" "$(dc_classify "$TMP/desk/steam.desktop")"
+check "shortcut is a regular file (not symlink)" "yes" "$([ -f "$TMP/desk/steam.desktop" ] && [ ! -L "$TMP/desk/steam.desktop" ] && echo yes || echo no)"
+check "shortcut exec bit set" "yes" "$([ -x "$TMP/desk/steam.desktop" ] && echo yes || echo no)"
 
 # dc_run --user patches menu + autostart but NOT the stub; --system also stub
 H="$TMP/home"; mkdir -p "$H/.local/share/applications" "$H/.config/autostart"
@@ -101,6 +108,18 @@ DC_HOME="$H" DC_SYS_APPS="$SYS" DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" DC_STEAM
 check "user run patches menu" "patched" "$(dc_classify "$H/.local/share/applications/steam.desktop")"
 check "user run patches autostart" "patched" "$(dc_classify "$H/.config/autostart/steam.desktop")"
 check "user run leaves stub alone" "stub" "$(dc_classify "$SYS/steam.desktop")"
+
+# MIGRATION: a legacy already-tagged entry left 0711 with a Valve shebang must be
+# normalized to 0644 + clean first line on a re-run (the Cinnamon-bug fix path).
+H5="$TMP/home5"; mkdir -p "$H5/.local/share/applications"
+printf '#!/usr/bin/env xdg-open\n[Desktop Entry]\n%s\nName=Steam\nExec=%s %%U\n' "$DC_TAG" "$WRAPPER" \
+  > "$H5/.local/share/applications/steam.desktop"
+chmod 0711 "$H5/.local/share/applications/steam.desktop"
+DC_HOME="$H5" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" dc_run --user
+check "migrate: still patched" "patched" "$(dc_classify "$H5/.local/share/applications/steam.desktop")"
+check "migrate: 0711 -> 0644" "644" "$(stat -c '%a' "$H5/.local/share/applications/steam.desktop")"
+check "migrate: shebang stripped" "[Desktop Entry]" "$(head -1 "$H5/.local/share/applications/steam.desktop")"
+
 DC_HOME="$H" DC_SYS_APPS="$SYS" DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" DC_STEAM_INSTALLED=1 dc_run --system
 check "system run patches stub (steam installed)" "patched" "$(dc_classify "$SYS/steam.desktop")"
 
@@ -118,12 +137,12 @@ printf '[Desktop Entry]\nName=Steam\nExec=/usr/games/steam -silent %%U\n' > "$H4
 printf '[Desktop Entry]\nName=Steam\nExec=/usr/games/steam %%U\n' > "$H4/Desktop/steam.desktop"
 DC_HOME="$H4" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" dc_run --user
 check "before restore: menu patched" "patched" "$(dc_classify "$H4/.local/share/applications/steam.desktop")"
-check "before restore: shortcut is symlink" "yes" "$([ -L "$H4/Desktop/steam.desktop" ] && echo yes || echo no)"
+check "before restore: shortcut patched (regular file)" "patched" "$(dc_classify "$H4/Desktop/steam.desktop")"
 DC_HOME="$H4" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" dc_restore_all
 check "restore: menu entry not patched" "0" "$(grep -c "$DC_TAG" "$H4/.local/share/applications/steam.desktop" 2>/dev/null | head -1)"
 check "restore: menu backup consumed" "no" "$([ -f "$H4/.local/share/applications/steam.desktop.slssteam-backup" ] && echo yes || echo no)"
 check "restore: autostart not patched" "0" "$(grep -c "$DC_TAG" "$H4/.config/autostart/steam.desktop" 2>/dev/null | head -1)"
-check "restore: shortcut restored to regular file" "yes" "$([ -f "$H4/Desktop/steam.desktop" ] && [ ! -L "$H4/Desktop/steam.desktop" ] && echo yes || echo no)"
+check "restore: shortcut restored to vanilla regular file" "0" "$(grep -c "$DC_TAG" "$H4/Desktop/steam.desktop" 2>/dev/null | head -1)"
 
 [ "$fail" = 0 ] && echo "ALL PASS" || echo "FAILURES"
 exit "$fail"

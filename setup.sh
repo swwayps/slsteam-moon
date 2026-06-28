@@ -774,7 +774,6 @@ MimeType=x-scheme-handler/steam;x-scheme-handler/steamlink;
 PrefersNonDefaultGPU=true
 EOF
 		chmod 0644 "$USER_DESKTOP"
-		dc_symlink_shortcut "$(dc_desktop_dir)/steam.desktop" "$USER_DESKTOP"
 		log_success "Created $USER_DESKTOP"
 	fi
 

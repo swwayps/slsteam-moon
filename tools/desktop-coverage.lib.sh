@@ -88,17 +88,26 @@ dc_patch_one() {
 	return 0
 }
 
-# dc_symlink_shortcut <shortcut> <menu_entry> — back up a real shortcut once,
-# then replace it with a symlink to the patched menu entry. bin_steam.sh skips
-# symlinks ([ ! -L ]), so Steam never restores the vanilla copy. No-op if it is
-# already the symlink we want.
-dc_symlink_shortcut() {
-	local sc="$1" target="$2"
-	[ -e "$target" ] || return 1
-	if [ -L "$sc" ] && [ "$(readlink "$sc")" = "$target" ]; then return 0; fi
-	[ -e "$sc" ] && [ ! -L "$sc" ] && [ ! -f "$sc.slssteam-backup" ] && cp -- "$sc" "$sc.slssteam-backup" 2>/dev/null
-	mkdir -p "$(dirname "$sc")" 2>/dev/null
-	ln -sfn "$target" "$sc" 2>/dev/null
+# dc_patch_shortcut <shortcut> — patch an EXISTING desktop shortcut in place as a
+# regular, trusted, executable file so the DE renders it as "Steam". We do NOT
+# create one where the user had none, and we do NOT use a symlink (GNOME shows a
+# symlinked .desktop as the raw filename + an untrusted link emblem). Steam may
+# restore a vanilla copy on a re-bootstrap; the per-launch/Lumen re-assert
+# re-patches it then.
+dc_patch_shortcut() {
+	local sc="$1"
+	[ -e "$sc" ] || return 0          # never create a shortcut the user lacked
+	if [ -L "$sc" ]; then              # migrate a legacy symlink we may have made
+		[ -f "$sc.slssteam-backup" ] && { rm -f "$sc"; cp -- "$sc.slssteam-backup" "$sc" 2>/dev/null; } || rm -f "$sc"
+		[ -e "$sc" ] || return 0
+	fi
+	case "$(dc_classify "$sc")" in
+		launcher|patched|stub)
+			dc_patch_one "$sc"
+			chmod 0755 "$sc" 2>/dev/null || true
+			command -v gio >/dev/null 2>&1 && gio set "$sc" metadata::trusted true >/dev/null 2>&1 || true
+			;;
+	esac
 }
 
 # Overridable roots (tests inject fakes; real callers leave them at defaults).
@@ -128,6 +137,11 @@ dc_patch_glob() {
 		[ -e "$f" ] || continue
 		case "$(dc_classify "$f")" in
 			launcher) dc_patch_one "$f" "$S" ;;
+			# Already tagged: re-run anyway so a legacy install is MIGRATED —
+			# dc_patch_one is idempotent and (re)asserts 0644 + strips the Valve
+			# shebang + keeps the wrapper Exec. This is what fixes the old 0711
+			# entry (the Cinnamon "Steam vanished" bug) on an update.
+			patched)  dc_patch_one "$f" "$S" ;;
 			stub) [ "${DC_STEAM_INSTALLED:-0}" = 1 ] && dc_patch_one "$f" "$S" ;;
 			*) : ;;
 		esac
@@ -147,7 +161,7 @@ dc_run() {
 		dc_patch_glob "$DC_SUDO" "$DC_SYS_APPS"
 		dc_patch_glob "$DC_SUDO" "$DC_SYS_AUTOSTART"
 	fi
-	[ -f "$menu" ] && dc_symlink_shortcut "$(dc_desktop_dir)/steam.desktop" "$menu"
+	[ -f "$menu" ] && dc_patch_shortcut "$(dc_desktop_dir)/steam.desktop"
 	return 0
 }
 
