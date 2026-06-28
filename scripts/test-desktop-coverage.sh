@@ -83,5 +83,13 @@ check "patch_one backup exists" "yes" "$([ -f "$TMP/menu.desktop.slssteam-backup
 check "patch_one first line clean" "[Desktop Entry]" "$(head -1 "$TMP/menu.desktop")"
 check "patch_one Exec wrapped" "Exec=$WRAPPER %U" "$(grep -m1 '^Exec=' "$TMP/menu.desktop")"
 
+# desktop shortcut becomes a symlink to the patched menu entry (Steam skips symlinks)
+mkdir -p "$TMP/apps" "$TMP/desk"
+printf '[Desktop Entry]\n%s\nName=Steam\nExec=%s %%U\n' "$DC_TAG" "$WRAPPER" > "$TMP/apps/steam.desktop"
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/games/steam %%U\n' > "$TMP/desk/steam.desktop"
+dc_symlink_shortcut "$TMP/desk/steam.desktop" "$TMP/apps/steam.desktop"
+check "shortcut is now a symlink" "yes" "$([ -L "$TMP/desk/steam.desktop" ] && echo yes || echo no)"
+check "shortcut points at patched menu entry" "$TMP/apps/steam.desktop" "$(readlink "$TMP/desk/steam.desktop")"
+
 [ "$fail" = 0 ] && echo "ALL PASS" || echo "FAILURES"
 exit "$fail"

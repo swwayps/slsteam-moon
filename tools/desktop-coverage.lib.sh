@@ -87,3 +87,16 @@ dc_patch_one() {
 	rm -f "$tmp"
 	return 0
 }
+
+# dc_symlink_shortcut <shortcut> <menu_entry> — back up a real shortcut once,
+# then replace it with a symlink to the patched menu entry. bin_steam.sh skips
+# symlinks ([ ! -L ]), so Steam never restores the vanilla copy. No-op if it is
+# already the symlink we want.
+dc_symlink_shortcut() {
+	local sc="$1" target="$2"
+	[ -e "$target" ] || return 1
+	if [ -L "$sc" ] && [ "$(readlink "$sc")" = "$target" ]; then return 0; fi
+	[ -e "$sc" ] && [ ! -L "$sc" ] && [ ! -f "$sc.slssteam-backup" ] && cp -- "$sc" "$sc.slssteam-backup" 2>/dev/null
+	mkdir -p "$(dirname "$sc")" 2>/dev/null
+	ln -sfn "$target" "$sc" 2>/dev/null
+}
