@@ -13,6 +13,8 @@ ck "setup.sh calls dc_run --system" \
    "$(grep -qE 'dc_run[[:space:]]+(--system|"--system")' "$HERE/setup.sh" && echo yes || echo no)"
 ck "lib applies 0644 (Cinnamon perms fix, not chmod +x)" \
    "$(grep -q 'chmod 0644' "$HERE/tools/desktop-coverage.lib.sh" && echo yes || echo no)"
+ck "wrapper body re-asserts coverage each launch (--user)" \
+   "$(grep -q 'ensure-desktop-coverage.sh" --user' "$HERE/setup.sh" && echo yes || echo no)"
 
 [ "$fail" = 0 ] && echo "ALL PASS" || echo "FAILURES"
 exit "$fail"

@@ -520,6 +520,13 @@ fi
 
 AUDIT="$SLSDIR/library-inject.so:$SLSDIR/SLSsteam.so"
 
+# Re-assert our desktop-entry coverage for user-owned entries (menu, autostart,
+# desktop shortcut) so anything Steam/the DE reverted is healed for the next
+# launch. Best-effort, backgrounded, can never block or fail the launch.
+if [ -x "$SLSDIR/ensure-desktop-coverage.sh" ]; then
+	WRAPPER="$SLSDIR/path/steam" "$SLSDIR/ensure-desktop-coverage.sh" --user >/dev/null 2>&1 &
+fi
+
 LD_AUDIT="$AUDIT${LD_AUDIT:+:$LD_AUDIT}" exec "$STEAM_BIN" "$@"
 EOF
 
