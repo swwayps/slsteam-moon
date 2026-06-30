@@ -69,4 +69,12 @@ bool provisionApp(uint32_t appId, const std::string& appinfoVdfPath);
 // already provisioned or none needed).
 int provisionAllAddedApps(const std::string& appinfoVdfPath);
 
+// True iff `appId`'s appinfo depots were SYNTHESIZED from local manifests
+// because its product-info is token-locked (access token denied -> empty
+// PICS buffer).  Persisted across the setup() re-exec storm.  The outgoing
+// PICS hook (apps.cpp) strips these from Steam's product-info request so a
+// later empty refresh can't clobber the appinfo we spliced at startup
+// (otherwise: install dialog -> 0 B / "Invalid install path").
+bool isSynthesizedApp(uint32_t appId);
+
 } // namespace AppInfoProvision

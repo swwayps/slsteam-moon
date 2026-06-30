@@ -8,8 +8,11 @@
 #include "depotkey.hpp"
 #include "dlcids.hpp"
 #include "manifestid.hpp"
+#include "manifeststore.hpp"
+#include "manifestsynth.hpp"
 #include "provision_cache.hpp"
 #include "retry.hpp"
+#include "synthmark.hpp"
 
 #include "../config.hpp"
 #include "../globals.hpp"
@@ -34,6 +37,7 @@
 #include <filesystem>
 #include <fstream>
 #include <ios>
+#include <iterator>
 #include <set>
 #include <sstream>
 #include <string>
@@ -417,6 +421,103 @@ void pruneUnsupportedDepots(YAML::Node& body, uint32_t appId)
 	(void)0;
 }
 
+// Forward declaration: defined with the on-disk cache helpers below.
+std::string getCacheDir();
+
+// Rebuild a missing `depots` block for a token-locked app from data we
+// already hold on disk.  Some titles (e.g. Risk of Rain 2, app 632360)
+// have their PICS product-info gated behind an app access token Valve
+// DENIES to anonymous sessions, so the anonymous-CM buffer (and the
+// steamcmd fallback) come back with NO depots and provisioning would bail
+// — leaving Steam at 0 B.  But the LuaTools zip already gave us the depot
+// key (DepotKey cache) and the depot manifest (ManifestStore), so we can
+// reconstruct the depots block ourselves: managed depots for this app,
+// each pointing at its best archived manifest gid, with config.oslist
+// inferred from the manifest so a Windows-only depot still gets the Proton
+// CompatTool mapping downstream.  No-op when the body already has real
+// depots (see ManifestSynth::injectSynthesizedDepots).  Mutates `body`;
+// returns the number of depots synthesized.
+int synthesizeDepotsFromStore(YAML::Node& body, uint32_t appId)
+{
+	std::vector<ManifestSynth::SynthDepot> depots;
+	// Accumulate file lists per OS across all of the app's depots so we can
+	// synthesize one launch entry per platform (native + forced-Proton).
+	std::vector<std::string> winFiles, linFiles, macFiles;
+	for (uint32_t depotId : DepotKey::managedDepotsForApp(appId))
+	{
+		const uint64_t gid = ManifestStore::bestArchivedGid(depotId, /*excludeGid=*/0);
+		if (gid == 0) continue; // no archived manifest -> can't plan it
+
+		// Read the archived manifest, derive the depot's OS from its parsed
+		// file list (config.oslist, so pruneUnsupportedDepots mounts it on
+		// the right platform / forces Proton only for genuinely windows-only
+		// titles), and its total sizes (so the install dialog shows a real
+		// size instead of "0 B").
+		std::string oslist;
+		uint64_t size = 0, download = 0;
+		{
+			const std::string man =
+				ManifestStore::dir() + "/" + std::to_string(depotId) + "_" +
+				std::to_string(gid) + ".manifest";
+			std::ifstream ifs(man, std::ios::binary);
+			if (ifs)
+			{
+				std::string bytes((std::istreambuf_iterator<char>(ifs)),
+				                  std::istreambuf_iterator<char>());
+				const auto files = ManifestSynth::extractManifestFilenames(bytes);
+				oslist = ManifestSynth::detectOsFromFiles(files);
+				if (oslist == "windows")     { for (auto& f : files) winFiles.push_back(f); }
+				else if (oslist == "linux")  { for (auto& f : files) linFiles.push_back(f); }
+				else if (oslist == "macos")  { for (auto& f : files) macFiles.push_back(f); }
+				ManifestSynth::parseManifestSizes(bytes, size, download);
+			}
+		}
+		depots.push_back({depotId, gid, oslist, size, download});
+	}
+	const int n = ManifestSynth::injectSynthesizedDepots(body, depots);
+	if (n > 0)
+	{
+		// A token-locked app's product-info has no config block either, so
+		// give Steam an installdir (derived from common.name) or it fails the
+		// install with "Invalid install path".
+		ManifestSynth::ensureInstallDir(body);
+
+		// ...and no config.launch, so Steam refuses to start it ("Invalid
+		// game configuration").  Synthesize one launch option per OS we hold
+		// a depot for: the native one lets it run directly, the windows one
+		// covers a forced Proton/compat tool.
+		std::string installdir;
+		if (YAML::Node d = body["config"]["installdir"]; d && d.IsScalar())
+			installdir = d.as<std::string>();
+		std::vector<std::pair<std::string, std::string>> launchers;
+		if (!linFiles.empty())
+			launchers.push_back({ManifestSynth::pickLauncher(linFiles, installdir, "linux"), "linux"});
+		if (!winFiles.empty())
+			launchers.push_back({ManifestSynth::pickLauncher(winFiles, installdir, "windows"), "windows"});
+		if (!macFiles.empty())
+			launchers.push_back({ManifestSynth::pickLauncher(macFiles, installdir, "macos"), "macos"});
+		const int le = ManifestSynth::ensureLaunchEntries(body, launchers);
+		if (le > 0)
+		{
+			std::string summary;
+			for (const auto& [exe, os] : launchers)
+				if (!exe.empty()) summary += " " + os + ":'" + exe + "'";
+			g_pLog->info("AppInfoProvision: app=%u synthesized %d launch entry(ies):%s\n",
+			             appId, le, summary.c_str());
+		}
+
+		// Mark the app synthetic so the outgoing-PICS hook strips it from
+		// Steam's product-info requests.  Without this, Steam's runtime
+		// RequestAppInfoUpdate returns an EMPTY buffer (token denied) and
+		// clobbers these synthesized depots in memory -> install dialog drops
+		// to 0 B / "Invalid install path".  Persisted: the surviving setup()
+		// pass may hit the provisioning cache and skip synthesis, but the
+		// marker from the cold pass remains.
+		SynthMark::mark(getCacheDir(), appId);
+	}
+	return n;
+}
+
 // Render the SteamCMD-style JSON object for one app into the wire-text
 // VDF format that AppInfoVdf::translateWireToIndexed accepts.  Returns
 // true on success.
@@ -435,6 +536,18 @@ bool renderAppinfoBuffer(const YAML::Node& appNode, uint32_t appId, std::string&
 		body[key] = it->second;
 	}
 	if (!body.IsMap() || body.size() == 0) return false;
+
+	// Token-locked apps (product-info access token denied to anonymous
+	// sessions) arrive with NO depots.  Rebuild the block from the depot
+	// key + archived manifest we already hold, so the prune/Proton/splice
+	// tail below runs unchanged.  No-op when real depots are present.
+	if (YAML::Node d = body["depots"]; !d || !d.IsMap() || d.size() == 0)
+	{
+		const int n = synthesizeDepotsFromStore(body, appId);
+		if (n > 0)
+			g_pLog->info("AppInfoProvision: app=%u synthesized %d depot(s) from "
+			             "stored manifests (product-info had none)\n", appId, n);
+	}
 
 	// Strip depots we can't decrypt; narrow common.oslist accordingly.
 	// Done here (post-envelope-strip, pre-emit) so the output Steam
@@ -1240,6 +1353,12 @@ std::vector<uint32_t> collectDlcAppIdsForAddedApps()
 		             out.size(), added.size());
 	}
 	return out;
+}
+
+bool isSynthesizedApp(uint32_t appId)
+{
+	if (appId == 0) return false;
+	return SynthMark::isMarked(getCacheDir(), appId);
 }
 
 } // namespace AppInfoProvision

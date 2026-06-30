@@ -33,6 +33,7 @@
 #include <map>
 #include <mutex>
 #include <string>
+#include <vector>
 
 class CProtoBufMsgBase;
 
@@ -62,6 +63,13 @@ namespace DepotKey
 	// signal that SLSsteam's manifest machinery should engage for it.  A
 	// merely-observed key (owned game / runtime) returns false.
 	bool isManagedDepot(uint32_t depotId);
+
+	// Every MANAGED (Lua-injected) depot whose catalog entry records the
+	// given appId.  Walks the on-disk depotkey cache.  Used to rebuild a
+	// token-locked app's appinfo depots from data we already hold when its
+	// product-info comes back without a `depots` block (manifestsynth).
+	// Returns deduped depot ids; empty on any error / no $HOME.
+	std::vector<uint32_t> managedDepotsForApp(uint32_t appId);
 
 	// Importer for community-format Lua scripts.  Called at startup;
 	// scans `config/stplug-in/*.lua` (under Steam) and ingests every

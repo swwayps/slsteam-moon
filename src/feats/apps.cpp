@@ -11,9 +11,12 @@
 #include "../config.hpp"
 #include "../globals.hpp"
 
+#include "appinfo_provision.hpp"
 #include "fakeappid.hpp"
+#include "synthmark.hpp"
 
 #include <sstream>
+#include <vector>
 
 bool Apps::applistRequested;
 std::map<uint32_t, int> Apps::appIdOwnerOverride;
@@ -280,6 +283,32 @@ void Apps::sendGamesPlayed(CMsgClientGamesPlayed* msg)
 void Apps::sendPICSInfoRequest(CMsgClientPICSProductInfoRequest* msg)
 {
 	const auto tokens = g_config.appTokens.get();
+
+	// Strip token-locked synthetic AddedApps from Steam's outgoing
+	// product-info request.  These apps' access token is DENIED, so Steam's
+	// refresh response is an EMPTY buffer; letting it through clobbers the
+	// depots + installdir we synthesized into appinfo at startup, dropping
+	// the install dialog to 0 B with "Invalid install path".  By removing
+	// them from the request, Steam never re-fetches them and keeps the
+	// startup splice.  (Removing — unlike ADDING, HANDOFF dead-end — does not
+	// make Steam chase buffers it never asked for.)
+	{
+		std::vector<uint32_t> requested;
+		requested.reserve(static_cast<size_t>(msg->apps_size()));
+		for (int i = 0; i < msg->apps_size(); ++i)
+			requested.push_back(msg->apps(i).appid());
+
+		const auto strip = SynthMark::stripIndices(
+		    requested,
+		    [](uint32_t a) { return AppInfoProvision::isSynthesizedApp(a); });
+
+		for (int idx : strip) // descending, safe for in-place delete
+		{
+			g_pLog->debug("PICS-request: stripping token-locked synthetic app %u\n",
+			              msg->apps(idx).appid());
+			msg->mutable_apps()->DeleteSubrange(idx, 1);
+		}
+	}
 
 	// We intentionally do NOT add AdditionalApps to Steam's outgoing PICS
 	// product-info requests.  This mirrors the upstream LumaCore design:

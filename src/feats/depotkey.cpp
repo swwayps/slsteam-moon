@@ -22,6 +22,7 @@
 #include <map>
 #include <mutex>
 #include <regex>
+#include <set>
 #include <sstream>
 #include <vector>
 
@@ -215,6 +216,42 @@ bool isManagedDepot(uint32_t depotId)
 {
 	const auto k = getCachedKey(depotId);
 	return k.managed && k.key.size() == 32;
+}
+
+std::vector<uint32_t> managedDepotsForApp(uint32_t appId)
+{
+	std::vector<uint32_t> out;
+	if (appId == 0) return out;
+
+	const auto dir = getKeyDir();
+	std::error_code ec;
+	if (!std::filesystem::exists(dir, ec)) return out;
+
+	std::set<uint32_t> seen;
+	for (const auto& entry : std::filesystem::directory_iterator(dir, ec))
+	{
+		if (ec) break;
+		const auto& p = entry.path();
+		const auto name = p.filename().string();
+		if (name.rfind("depotkey_", 0) != 0 || p.extension() != ".yaml")
+			continue;
+
+		try
+		{
+			auto node = YAML::LoadFile(p.string());
+			if (!node["appId"] || !node["depotId"]) continue;
+			if (node["appId"].as<uint32_t>() != appId) continue;
+			// Only MANAGED (Lua-injected) depots: an observed owned-game /
+			// runtime key must never be synthesized into an app's appinfo.
+			const bool managed = node["managed"] && node["managed"].as<bool>();
+			if (!managed) continue;
+			const uint32_t depotId = node["depotId"].as<uint32_t>();
+			if (depotId && seen.insert(depotId).second)
+				out.push_back(depotId);
+		}
+		catch (...) { continue; }
+	}
+	return out;
 }
 
 
