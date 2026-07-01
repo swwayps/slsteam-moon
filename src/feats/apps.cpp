@@ -15,7 +15,9 @@
 #include "fakeappid.hpp"
 #include "synthmark.hpp"
 
+#include <mutex>
 #include <sstream>
+#include <unordered_set>
 #include <vector>
 
 bool Apps::applistRequested;
@@ -142,6 +144,29 @@ void Apps::getSubscribedApps(uint32_t* appList, size_t size, uint32_t& count)
 	applistRequested = true;
 }
 
+namespace
+{
+	// DLC appids belonging to AdditionalApps, registered once from setup()
+	// (main.cpp) after collectDlcAppIdsForAddedApps().  Read from Steam
+	// worker threads via shouldDisableCDKey, so guard with a mutex.  Set
+	// once before any app launch; the lock is uncontended in practice.
+	std::mutex g_addedAppDlcMutex;
+	std::unordered_set<uint32_t> g_addedAppDlcIds;
+}
+
+void Apps::setAddedAppDlcIds(const std::vector<uint32_t>& dlcIds)
+{
+	std::lock_guard<std::mutex> lk(g_addedAppDlcMutex);
+	g_addedAppDlcIds.clear();
+	g_addedAppDlcIds.insert(dlcIds.begin(), dlcIds.end());
+}
+
+bool Apps::isAddedAppDlcId(uint32_t appId)
+{
+	std::lock_guard<std::mutex> lk(g_addedAppDlcMutex);
+	return g_addedAppDlcIds.count(appId) != 0;
+}
+
 bool Apps::shouldDisableCloud(uint32_t appId)
 {
 	if (!g_config.disableCloud.get())
@@ -172,6 +197,27 @@ bool Apps::shouldDisableCloud(uint32_t appId)
 
 bool Apps::shouldDisableCDKey(uint32_t appId)
 {
+	// AdditionalApps are injected as owned, so a launch-time legacy-key
+	// request (GettingLegacyKey) hits Valve's backend, which validates
+	// ownership server-side and answers AccessDenied (EResult 15) — the
+	// launch then fails before Proton is ever spawned (visible as
+	// "LaunchApp failed with GettingLegacyKey with 15" in console_log).
+	// Suppress the legacy-key requirement for AddedApps so Steam skips
+	// that doomed step and proceeds to launch, mirroring how the mask is
+	// dropped for cloud.  The game's own activation DRM (EA/Uplay) is a
+	// separate layer handled outside this hook.
+	//
+	// Crucially this must also cover the base app's DLC appids: Steam
+	// queries RequiresLegacyCDKey across the whole app+DLC set at launch,
+	// and a single owned DLC whose appinfo still carries hadthirdpartycdkey
+	// (e.g. Far Cry 4's season-pass DLC 332220-332232/343700/348080/353870)
+	// re-arms GettingLegacyKey and fails the base app's launch even after
+	// the base app itself is suppressed.
+	if (g_config.isAddedAppId(appId) || Apps::isAddedAppDlcId(appId))
+	{
+		return true;
+	}
+
 	CUser* user = getLocalUser();
 	if (user == nullptr)
 	{

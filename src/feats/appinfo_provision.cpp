@@ -518,6 +518,42 @@ int synthesizeDepotsFromStore(YAML::Node& body, uint32_t appId)
 	return n;
 }
 
+// Neutralize the legacy third-party CD-key requirement.
+//
+// appinfo's `extended/hadthirdpartycdkey "1"` makes Steam's launch
+// pipeline run a GettingLegacyKey step: it issues ClientGetLegacyGameKey
+// to the CM, which validates ownership server-side and answers
+// AccessDenied (EResult 15) for an app the account doesn't actually own.
+// The launch then fails BEFORE the compat tool / game process is ever
+// spawned — the "updating product key" flash that drops straight back to
+// Play (console_log: "LaunchApp failed with GettingLegacyKey with 15",
+// and no ~/steam-<appid>.log because Proton never starts).
+//
+// The IClientUser::RequiresLegacyCDKey detour only suppresses the CD-key
+// *prompt* (ShowCDKey) path; it does NOT gate this launch-time fetch,
+// which reads straight off appinfo.  Zeroing the field here — in the same
+// offline appinfo rewrite that prunes depots and pins gids, NOT on the
+// live product-info buffer (which Steam sha-validates) — makes the launch
+// skip GettingLegacyKey entirely.  The game's own activation DRM (EA
+// serial, Uplay, ...) is a separate layer untouched by this.
+void neutralizeLegacyCdKey(YAML::Node& body, uint32_t appId)
+{
+	if (!body.IsMap()) return;
+	YAML::Node ext = body["extended"];
+	if (!ext || !ext.IsMap()) return;
+	YAML::Node had = ext["hadthirdpartycdkey"];
+	if (!had || !had.IsScalar()) return;
+
+	std::string cur;
+	try { cur = had.as<std::string>(); } catch (...) { return; }
+	if (cur == "0") return;
+
+	ext["hadthirdpartycdkey"] = "0";
+	g_pLog->info("AppInfoProvision: app=%u cleared extended.hadthirdpartycdkey "
+	             "(was %s) so launch skips GettingLegacyKey\n",
+	             appId, cur.c_str());
+}
+
 // Render the SteamCMD-style JSON object for one app into the wire-text
 // VDF format that AppInfoVdf::translateWireToIndexed accepts.  Returns
 // true on success.
@@ -554,6 +590,11 @@ bool renderAppinfoBuffer(const YAML::Node& appNode, uint32_t appId, std::string&
 	// reads is consistent and the change is invisible to Steam beyond
 	// "the user only owns the windows depot".
 	pruneUnsupportedDepots(body, appId);
+
+	// Clear the launch-time legacy CD-key gate (see helper above): without
+	// this the GettingLegacyKey step fails AccessDenied for an unowned app
+	// and the launch aborts before the game/Proton ever starts.
+	neutralizeLegacyCdKey(body, appId);
 
 	// Steam's appinfo wire format wraps the document in "appinfo" { ... }.
 	wireOut.clear();

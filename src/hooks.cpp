@@ -800,6 +800,14 @@ static bool hkClientUser_RequiresLegacyCDKey(void* pClientUser, uint32_t appId, 
 	if (Apps::shouldDisableCDKey(appId))
 	{
 		g_pLog->infoOnce("Disable CD Key for %u\n", appId);
+		// Zero the out-param before short-circuiting so the caller reads a
+		// defined "no key" value (matches LumaCore's RequiresLegacyCDKey
+		// suppression); leaving it untouched can let a stale value drive
+		// the install-script %CDKEY% substitution.
+		if (a2 != nullptr)
+		{
+			*a2 = 0;
+		}
 		return false;
 	}
 

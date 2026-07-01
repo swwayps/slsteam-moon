@@ -10,6 +10,7 @@
 
 #include "feats/appinfo_provision.hpp"
 #include "feats/appinfo_vdf.hpp"
+#include "feats/apps.hpp"
 #include "feats/depotkey.hpp"
 #include "feats/manifestid.hpp"
 #include "feats/packagepatch.hpp"
@@ -409,6 +410,10 @@ static void load()
 		// manual inject for the case Steam already loaded package 0.
 		const auto dlcIds = AppInfoProvision::collectDlcAppIdsForAddedApps();
 		PackagePatch::setExtraAppIds(dlcIds);
+		// Also register them for legacy-CD-key suppression: an owned DLC that
+		// still requires a legacy key would otherwise fail the base app's
+		// launch at GettingLegacyKey (see Apps::shouldDisableCDKey).
+		Apps::setAddedAppDlcIds(dlcIds);
 		ids.insert(ids.end(), dlcIds.begin(), dlcIds.end());
 
 		if (!ids.empty())
