@@ -357,8 +357,16 @@ void recvProductInfoResponse(CMsgClientPICSProductInfoResponse* resp)
 	// Pass 1: kick off every fetch (async, deduped at the fetch layer).
 	for (const auto& t : plan)
 	{
-		g_pLog->info("PICS: staging manifest for app=%u depot=%u gid=%llu (concurrent)\n",
-		             t.appId, t.depotId, static_cast<unsigned long long>(t.gid));
+		if (ManifestStore::restoreToDepotcache(t.depotId, t.gid))
+		{
+			g_pLog->info("PICS: manifest for app=%u depot=%u gid=%llu restored from ManifestStore\n",
+			             t.appId, t.depotId, static_cast<unsigned long long>(t.gid));
+		}
+		else
+		{
+			g_pLog->info("PICS: staging manifest for app=%u depot=%u gid=%llu (concurrent)\n",
+			             t.appId, t.depotId, static_cast<unsigned long long>(t.gid));
+		}
 		ManifestFetch::submitManifestBlob(t.gid, t.appId, t.depotId);
 	}
 
