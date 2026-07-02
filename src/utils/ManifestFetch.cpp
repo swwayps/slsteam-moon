@@ -279,7 +279,7 @@ std::optional<uint64_t> runOnce(uint64_t gid, uint32_t appId, uint32_t depotId)
 					if (tmpl.empty()) continue;
 					const auto testUrl = expandTemplate(tmpl, 0, 0, 0); 
 					const auto resp = httpGet(testUrl);
-					if (!resp.networkError && resp.status > 0 && resp.status < 500)
+					if (!resp.networkError && resp.status > 0 && resp.status < 500 && resp.status != 403 && resp.status != 429)
 					{
 						online = true;
 						break;
@@ -323,7 +323,6 @@ std::optional<uint64_t> runOnce(uint64_t gid, uint32_t appId, uint32_t depotId)
 		return std::nullopt;
 	}
 
-	bool allFailedWithNetworkOrServerErrors = true;
 	for (std::size_t i = 0; i < chain.size(); ++i)
 	{
 		const auto& tmpl = chain[i];
@@ -346,13 +345,8 @@ std::optional<uint64_t> runOnce(uint64_t gid, uint32_t appId, uint32_t depotId)
 			g_pLog->info("ManifestFetch: gid=%llu provider %zu HTTP=%ld body_bytes=%zu, trying next\n",
 			             static_cast<unsigned long long>(gid),
 			             i + 1, resp.status, resp.body.size());
-			if (resp.status < 500)
-			{
-				allFailedWithNetworkOrServerErrors = false;
-			}
 			continue;
 		}
-		allFailedWithNetworkOrServerErrors = false;
 		uint64_t code = 0;
 		if (parseDigitsOnly(resp.body, &code) || parseJsonDigitField(resp.body, &code))
 		{
@@ -374,14 +368,15 @@ std::optional<uint64_t> runOnce(uint64_t gid, uint32_t appId, uint32_t depotId)
 	g_pLog->info("ManifestFetch: gid=%llu all %zu providers exhausted\n",
 	             static_cast<unsigned long long>(gid), chain.size());
 
-	if (allFailedWithNetworkOrServerErrors)
+	int currentErrors = g_consecutiveNetworkErrors.fetch_add(1) + 1;
+	if (currentErrors >= 2)
 	{
-		int currentErrors = g_consecutiveNetworkErrors.fetch_add(1) + 1;
-		if (currentErrors >= 2)
 		{
-			g_providersOffline.store(true);
-			g_pLog->info("ManifestFetch: circuit breaker triggered, manifest providers marked offline\n");
+			std::lock_guard<std::mutex> lk(g_checkerLock);
+			g_lastCheckTime = std::chrono::steady_clock::now();
 		}
+		g_providersOffline.store(true);
+		g_pLog->info("ManifestFetch: circuit breaker triggered, manifest providers marked offline\n");
 	}
 
 	// No user notification here: when the request-code providers are down the
