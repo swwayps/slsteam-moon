@@ -1,5 +1,6 @@
 #include "config.hpp"
 
+#include "confload.hpp"
 #include "config_default.hpp"
 #include "filewatcher.hpp"
 #include "log.hpp"
@@ -10,7 +11,47 @@
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
+#include <sstream>
 #include <string>
+
+namespace
+{
+	// Read a whole file into `out`. Returns false if the file can't be opened.
+	// Uses streams (no yaml-cpp), so it never throws a parser exception.
+	bool readFileText(const std::string& path, std::string& out)
+	{
+		std::ifstream f(path, std::ios::binary);
+		if (!f.is_open()) return false;
+		std::ostringstream ss;
+		ss << f.rdbuf();
+		out = ss.str();
+		return true;
+	}
+
+	// Persist `text` to `path` atomically (write a sibling temp file, then
+	// rename over the target) so a crash mid-write can never leave a truncated
+	// config. Returns false on any IO error.
+	bool writeFileTextAtomic(const std::string& path, const std::string& text)
+	{
+		const std::string tmp = path + ".slsheal.tmp";
+		{
+			std::ofstream f(tmp, std::ios::binary | std::ios::trunc);
+			if (!f.is_open()) return false;
+			f << text;
+			f.flush();
+			if (!f.good()) return false;
+		}
+		std::error_code ec;
+		std::filesystem::rename(tmp, path, ec);
+		if (ec)
+		{
+			std::filesystem::remove(tmp, ec);
+			return false;
+		}
+		return true;
+	}
+}
 
 
 std::string CConfig::getDir()
@@ -108,22 +149,49 @@ void CConfig::setError(ELoadError err)
 
 bool CConfig::loadSettings()
 {
+	// Load config.yaml WITHOUT ever letting a parser exception abort the client.
+	//
+	// A malformed config (most commonly an AdditionalApps list left with
+	// inconsistent item indentation by an editor) used to make YAML::LoadFile
+	// throw YAML::ParserException; under the release build that throw can escape
+	// the catch (the .cold-partition EH defect documented in config.hpp) and
+	// abort Steam at startup -> boot loop. We now:
+	//   1. read the file as plain text (no throw),
+	//   2. hand it to ConfLoad::parseWithRepair, which normalises inconsistent
+	//      block-sequence indentation and parses the fixed text FIRST (so the
+	//      throwing path isn't even reached for the common breakage), never
+	//      throwing itself,
+	//   3. self-heal the file on disk when a repair was applied, so the user's
+	//      game list survives and the file is clean for the FileWatcher,
+	//   4. fall back to built-in defaults (and boot) if nothing parses.
 	YAML::Node node;
-	try
+	std::string raw;
+	if (!readFileText(getPath(), raw))
 	{
-		node = YAML::LoadFile(getPath());
-	}
-	catch (YAML::BadFile& bf)
-	{
-		g_pLog->notifyLong("Can not read config.yaml! %s\nUsing defaults", bf.msg.c_str());
+		g_pLog->notifyLong("Can not read config.yaml!\nUsing defaults");
 		g_pLog->notifyUser(UserMsg::ConfigUnreadable);
 		node = YAML::Node(); //Create empty node and let defaults kick in
 	}
-	catch (YAML::ParserException& pe)
+	else
 	{
-		g_pLog->notifyLong("Error parsing config.yaml! %s\nUsing defaults", pe.msg.c_str());
-		g_pLog->notifyUser(UserMsg::ConfigParseFailed);
-		node = YAML::Node(); //Create empty node and let defaults kick in
+		std::string repaired;
+		const ConfLoad::Outcome outcome =
+		    ConfLoad::parseWithRepair(raw, node, repaired);
+
+		if (outcome == ConfLoad::Outcome::Failed)
+		{
+			g_pLog->notifyLong("Error parsing config.yaml!\nUsing defaults");
+			g_pLog->notifyUser(UserMsg::ConfigParseFailed);
+			node = YAML::Node(); //Create empty node and let defaults kick in
+		}
+		else if (outcome == ConfLoad::Outcome::Repaired)
+		{
+			if (writeFileTextAtomic(getPath(), repaired))
+				g_pLog->notify("Config had inconsistent list indentation; auto-repaired on disk\n");
+			else
+				g_pLog->notify("Config had inconsistent list indentation; repaired in memory (disk write failed)\n");
+			g_pLog->notifyUser(UserMsg::ConfigRepaired);
+		}
 	}
 
 	__loadErrors = ELoadError::None;

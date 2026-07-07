@@ -48,6 +48,7 @@ enum class UserMsg
 	// --- configuration ---
 	ConfigUnreadable,          // config.yaml unreadable; using defaults
 	ConfigParseFailed,         // config.yaml malformed; using defaults
+	ConfigRepaired,            // config.yaml had a formatting slip; auto-fixed
 	ConfigWriteFailed,         // could not create/save config
 };
 
@@ -225,6 +226,13 @@ inline UiMessage messageFor(UserMsg m, Lang lang)
 			              "os padrões por enquanto."
 			            : "The configuration file has a formatting error; using "
 			              "defaults for now.",
+			         Severity::Warning };
+
+		case UserMsg::ConfigRepaired:
+			return { pt ? "O arquivo de configuração tinha um problema de formatação; "
+			              "corrigimos automaticamente e mantivemos seus jogos."
+			            : "The configuration file had a formatting problem; we fixed it "
+			              "automatically and kept your games.",
 			         Severity::Warning };
 
 		case UserMsg::ConfigWriteFailed:

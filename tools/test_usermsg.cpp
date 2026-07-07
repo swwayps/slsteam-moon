@@ -43,6 +43,7 @@ static const UserMsg kAll[] = {
 	UserMsg::LocalStorageError,
 	UserMsg::ConfigUnreadable,
 	UserMsg::ConfigParseFailed,
+	UserMsg::ConfigRepaired,
 	UserMsg::ConfigWriteFailed,
 };
 
