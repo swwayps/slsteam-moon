@@ -695,6 +695,14 @@ setup_path_and_desktop()
 		dc_run --user
 		log_info "Immutable distro (read-only /usr): patched user-level entries only — they override the system ones via XDG precedence."
 	elif command -v sudo >/dev/null 2>&1; then
+		# System entries (menu + stub + system autostart) need root. Acquire the
+		# credential up front and ABORT if the password isn't provided, so we never
+		# leave the system half-patched — a clear "cancelled" beats a silent partial
+		# install. (User+menu coverage still requires this step to complete.)
+		if ! sudo -v; then
+			log_error "Administrator password not provided; installation cancelled."
+			exit 1
+		fi
 		dc_run --system
 		log_success "Patched Steam desktop entries (menu, shortcut, autostart, stub)"
 	else
