@@ -153,5 +153,37 @@ check "restore: menu backup consumed" "no" "$([ -f "$H4/.local/share/application
 check "restore: autostart not patched" "0" "$(grep -c "$DC_TAG" "$H4/.config/autostart/steam.desktop" 2>/dev/null | head -1)"
 check "restore: shortcut restored to vanilla regular file" "0" "$(grep -c "$DC_TAG" "$H4/Desktop/steam.desktop" 2>/dev/null | head -1)"
 
+# SEED autostart override (SteamOS/Bazzite): a SYSTEM autostart exists but the
+# user has no ~/.config/autostart/steam.desktop -> dc_run seeds a patched user
+# override that shadows the read-only system entry.
+H7="$TMP/home7"; mkdir -p "$H7/.local/share/applications" "$H7/.config/autostart"
+SYSAS7="$TMP/sysas7"; mkdir -p "$SYSAS7"
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/bin/steam -silent %%U\n' > "$SYSAS7/steam.desktop"
+DC_HOME="$H7" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$SYSAS7" DC_SUDO="" dc_run --user
+check "seed: user autostart created" "yes" "$([ -f "$H7/.config/autostart/steam.desktop" ] && echo yes || echo no)"
+check "seed: user autostart patched" "patched" "$(dc_classify "$H7/.config/autostart/steam.desktop")"
+check "seed: wrapper Exec + silent arg kept" "Exec=$WRAPPER -silent %U" "$(grep -m1 '^Exec=' "$H7/.config/autostart/steam.desktop")"
+check "seed: no backup left (seeded, not pre-existing)" "no" "$([ -f "$H7/.config/autostart/steam.desktop.slssteam-backup" ] && echo yes || echo no)"
+# restore of a SEEDED override deletes it (user never had this file)
+DC_HOME="$H7" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$SYSAS7" DC_SUDO="" dc_restore_all
+check "seed restore: override removed" "no" "$([ -e "$H7/.config/autostart/steam.desktop" ] && echo yes || echo no)"
+
+# NO-SEED on a normal desktop: no system autostart, no user autostart -> we must
+# NOT create an autostart entry where the user had none.
+H8="$TMP/home8"; mkdir -p "$H8/.local/share/applications" "$H8/.config/autostart"
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/games/steam %%U\n' > "$H8/.local/share/applications/steam.desktop"
+DC_HOME="$H8" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" dc_run --user
+check "no-seed: autostart NOT created on normal desktop" "no" "$([ -e "$H8/.config/autostart/steam.desktop" ] && echo yes || echo no)"
+
+# SEED is a no-op when the user ALREADY has an autostart entry (the normal glob
+# patches it in place; a real backup is kept so restore returns it to vanilla).
+H9="$TMP/home9"; mkdir -p "$H9/.local/share/applications" "$H9/.config/autostart"
+SYSAS9="$TMP/sysas9"; mkdir -p "$SYSAS9"
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/bin/steam -silent %%U\n' > "$SYSAS9/steam.desktop"
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/games/steam -silent %%U\n' > "$H9/.config/autostart/steam.desktop"
+DC_HOME="$H9" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$SYSAS9" DC_SUDO="" dc_run --user
+check "seed no-op: existing user autostart patched in place" "patched" "$(dc_classify "$H9/.config/autostart/steam.desktop")"
+check "seed no-op: backup kept for pre-existing entry" "yes" "$([ -f "$H9/.config/autostart/steam.desktop.slssteam-backup" ] && echo yes || echo no)"
+
 [ "$fail" = 0 ] && echo "ALL PASS" || echo "FAILURES"
 exit "$fail"

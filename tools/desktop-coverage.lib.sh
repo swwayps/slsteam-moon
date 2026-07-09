@@ -4,6 +4,10 @@
 # function defs + defaults, so it is safe to source from setup.sh, the wrapper,
 # and tests. Callers set DC_TAG and WRAPPER (or accept the defaults below).
 : "${DC_TAG:=X-SLSteamMoon-Patched=true}"
+# Marks an entry we CREATED (a seeded autostart override) rather than patched in
+# place. Such files get no backup and are DELETED (not restored) on uninstall,
+# because the user never had them.
+: "${DC_SEED_TAG:=X-SLSteamMoon-Seeded=true}"
 : "${WRAPPER:=$HOME/.local/share/SLSsteam/path/steam}"
 
 # dc_classify <file> -> echoes one of: launcher | stub | patched | unrelated
@@ -71,7 +75,12 @@ dc_patch_one() {
 	local f="$1" S="${2:-}" bak tmp
 	bak="$f.slssteam-backup"
 	[ -f "$f" ] || return 1
-	[ -f "$bak" ] || $S cp -- "$f" "$bak" 2>/dev/null
+	# A seeded override (we created it; the user had no such file) must never get
+	# a backup, so a re-patch on a later run doesn't turn it into a "restore to
+	# vanilla" on uninstall. dc_restore_one deletes seeded files outright.
+	if ! grep -qxF "$DC_SEED_TAG" "$f" 2>/dev/null; then
+		[ -f "$bak" ] || $S cp -- "$f" "$bak" 2>/dev/null
+	fi
 	tmp="$(mktemp)" || return 1
 	cat "$f" > "$tmp" 2>/dev/null
 	dc_strip_preheader "$tmp"
@@ -153,6 +162,40 @@ dc_patch_glob() {
 	done
 }
 
+# dc_seed_autostart_override — when the desktop session auto-launches Steam via a
+# SYSTEM autostart entry (SteamOS/Bazzite: /etc/xdg/autostart/steam.desktop, often
+# read-only) and the user has NO ~/.config/autostart/steam.desktop, seed a
+# user-level override with the same basename. By XDG precedence it shadows the
+# system entry, so the auto-launch runs through our wrapper. Pure HOME (no sudo),
+# so it works on immutable distros. We ONLY seed from an existing system entry —
+# never create autostart where the user (and system) had none, so normal desktops
+# are unaffected. The seeded file gets NO backup, so dc_restore_one deletes it on
+# uninstall (the user never had it) instead of leaving a vanilla copy behind.
+dc_seed_autostart_override() {
+	local user_as="$DC_HOME/.config/autostart/steam.desktop"
+	local sys_as="$DC_SYS_AUTOSTART/steam.desktop"
+	# A user entry already exists -> the normal autostart glob patches it in place.
+	[ -e "$user_as" ] && return 0
+	# Only seed from an existing SYSTEM autostart entry that launches Steam. The
+	# match is loose (any Exec mentioning steam) so distro launchers like
+	# bazzite-steam / steam-jupiter qualify; skip the "Install Steam" stub.
+	[ -f "$sys_as" ] || return 0
+	grep -q "^Name=Install Steam" "$sys_as" 2>/dev/null && return 0
+	grep -qiE '^Exec=.*steam' "$sys_as" 2>/dev/null || return 0
+	mkdir -p "$(dirname "$user_as")" 2>/dev/null || return 0
+	cp -- "$sys_as" "$user_as" 2>/dev/null || return 0
+	dc_patch_one "$user_as"
+	rm -f "$user_as.slssteam-backup"   # seeded, not pre-existing -> restore deletes
+	# Mark it seeded so re-patches never create a backup and uninstall deletes it.
+	if ! grep -qxF "$DC_SEED_TAG" "$user_as" 2>/dev/null; then
+		local tmp; tmp="$(mktemp)" || return 0
+		awk -v s="$DC_SEED_TAG" '
+			!d && /^\[Desktop Entry\]/ { print; print s; d=1; next } { print }
+		' "$user_as" > "$tmp" 2>/dev/null && cat "$tmp" > "$user_as"
+		rm -f "$tmp"
+	fi
+}
+
 # dc_run [--user|--system] — patch all known *steam*.desktop locations. --user
 # (default) does user-owned dirs only (no sudo). --system additionally patches
 # the system menu dir + stub (caller must provide sudo rights). Always blinds the
@@ -161,6 +204,9 @@ dc_run() {
 	local mode="${1:---user}" menu
 	menu="$DC_HOME/.local/share/applications/steam.desktop"
 	dc_patch_glob "" "$DC_HOME/.local/share/applications"
+	# Seed a user autostart override from the system entry (SteamOS/Bazzite) BEFORE
+	# the autostart glob, so a freshly seeded file is (idempotently) re-patched too.
+	dc_seed_autostart_override
 	dc_patch_glob "" "$DC_HOME/.config/autostart"
 	if [ "$mode" = "--system" ]; then
 		dc_patch_glob "$DC_SUDO" "$DC_SYS_APPS"
@@ -177,6 +223,12 @@ dc_run() {
 dc_restore_one() {
 	local f="$1" S="${2:-}" bak
 	bak="$f.slssteam-backup"
+	# A seeded override was created by us — the user never had it — so remove it
+	# (and any stray backup) rather than restoring a vanilla copy.
+	if [ -f "$f" ] && grep -qxF "$DC_SEED_TAG" "$f" 2>/dev/null; then
+		$S rm -f -- "$f" "$bak" 2>/dev/null
+		return 0
+	fi
 	if [ -L "$f" ]; then
 		$S rm -f -- "$f" 2>/dev/null
 		if [ -f "$bak" ]; then $S cp -- "$bak" "$f" 2>/dev/null; $S rm -f -- "$bak" 2>/dev/null; fi
