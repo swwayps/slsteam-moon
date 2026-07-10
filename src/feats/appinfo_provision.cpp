@@ -5,6 +5,7 @@
 #include "appinfo_provision.hpp"
 
 #include "cmclient.hpp"
+#include "emptydepot.hpp"
 #include "depotkey.hpp"
 #include "dlcids.hpp"
 #include "manifestid.hpp"
@@ -349,6 +350,21 @@ void pruneUnsupportedDepots(YAML::Node& body, uint32_t appId)
 		catch (...) { newDepots[key] = YAML::Clone(it->second); continue; }
 
 		const YAML::Node depotNode = it->second;
+
+		// Drop empty (size-0) content depots.  Their manifest is a
+		// degenerate stub — a single file mapping with an EMPTY name — and
+		// Steam SEGV-crashes loading it during reconfigure
+		// (Assert(!m_strName.IsEmpty()):contentmanifest.cpp:1630, seen live
+		// on app=1868140 depot=4394810).  A size-0 depot has nothing to
+		// install, so dropping it loses no content and keeps Steam from ever
+		// planning the crash-inducing manifest.
+		if (depotPublicManifestIsEmpty(depotNode))
+		{
+			++dropped;
+			g_pLog->info("AppInfoProvision: app=%u dropping empty depot %u "
+			             "(public manifest size 0)\n", appId, depotId);
+			continue;
+		}
 
 		// DLC entries have no `manifests` block; they're virtual and
 		// don't need a decryption key — keep them.

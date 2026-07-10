@@ -323,6 +323,7 @@ std::optional<uint64_t> runOnce(uint64_t gid, uint32_t appId, uint32_t depotId)
 		return std::nullopt;
 	}
 
+	bool hasNetworkOrServerError = false;
 	for (std::size_t i = 0; i < chain.size(); ++i)
 	{
 		const auto& tmpl = chain[i];
@@ -338,6 +339,7 @@ std::optional<uint64_t> runOnce(uint64_t gid, uint32_t appId, uint32_t depotId)
 			g_pLog->info("ManifestFetch: gid=%llu provider %zu net err '%s', trying next\n",
 			             static_cast<unsigned long long>(gid),
 			             i + 1, resp.diagnostic.c_str());
+			hasNetworkOrServerError = true;
 			continue;
 		}
 		if (resp.status != 200)
@@ -345,6 +347,10 @@ std::optional<uint64_t> runOnce(uint64_t gid, uint32_t appId, uint32_t depotId)
 			g_pLog->info("ManifestFetch: gid=%llu provider %zu HTTP=%ld body_bytes=%zu, trying next\n",
 			             static_cast<unsigned long long>(gid),
 			             i + 1, resp.status, resp.body.size());
+			if (resp.status >= 500)
+			{
+				hasNetworkOrServerError = true;
+			}
 			continue;
 		}
 		uint64_t code = 0;
@@ -368,15 +374,18 @@ std::optional<uint64_t> runOnce(uint64_t gid, uint32_t appId, uint32_t depotId)
 	g_pLog->info("ManifestFetch: gid=%llu all %zu providers exhausted\n",
 	             static_cast<unsigned long long>(gid), chain.size());
 
-	int currentErrors = g_consecutiveNetworkErrors.fetch_add(1) + 1;
-	if (currentErrors >= 2)
+	if (hasNetworkOrServerError)
 	{
+		int currentErrors = g_consecutiveNetworkErrors.fetch_add(1) + 1;
+		if (currentErrors >= 2)
 		{
-			std::lock_guard<std::mutex> lk(g_checkerLock);
-			g_lastCheckTime = std::chrono::steady_clock::now();
+			{
+				std::lock_guard<std::mutex> lk(g_checkerLock);
+				g_lastCheckTime = std::chrono::steady_clock::now();
+			}
+			g_providersOffline.store(true);
+			g_pLog->info("ManifestFetch: circuit breaker triggered, manifest providers marked offline\n");
 		}
-		g_providersOffline.store(true);
-		g_pLog->info("ManifestFetch: circuit breaker triggered, manifest providers marked offline\n");
 	}
 
 	// No user notification here: when the request-code providers are down the
