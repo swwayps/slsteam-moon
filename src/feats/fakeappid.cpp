@@ -225,8 +225,7 @@ void FakeAppIds::sendGamesPlayed(CNetPacket* packet)
 		const auto game = message.mutable_games_played(i);
 		const uint64_t gameId = game->game_id();
 
-		// Preserve native non-Steam shortcut IDs instead of applying a fake AppID.
-		if ((gameId & 0xffffffffULL) == 0x02000000ULL)
+		if (gameId & 0x2000000ULL)
 		{
 			continue;
 		}
