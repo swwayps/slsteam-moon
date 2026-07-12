@@ -3,7 +3,7 @@
 template<typename T>
 struct CUtlMemory
 {
-	T* memory;
+	T* base;
 	int alloc;
 	int growSize;
 };
