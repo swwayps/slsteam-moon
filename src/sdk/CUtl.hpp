@@ -1,18 +1,31 @@
 #pragma once
 
+#include <cstdint>
+
+
 template<typename T>
 struct CUtlMemory
 {
 	T* base;
-	int alloc;
-	int growSize;
+	uint32_t alloc;
+	uint32_t growSize;
 };
 
 template<typename T>
 struct CUtlVector
 {
 	CUtlMemory<T> memory;
-	int size;
+	uint32_t size;
+
+	constexpr T* at(uint32_t index)
+	{
+		if (index >= size)
+		{
+			return nullptr;
+		}
+
+		return &memory.base[index];
+	}
 };
 
 class CUtlBuffer
