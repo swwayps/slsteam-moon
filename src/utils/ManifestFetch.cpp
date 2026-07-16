@@ -13,7 +13,6 @@
 #include <charconv>
 #include <chrono>
 #include <atomic>
-#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -501,17 +500,22 @@ bool fetchManifestBlob(uint64_t gid, uint32_t depotId, const std::string& depotc
 {
 	std::string targetPath = depotcacheDir + "/" + std::to_string(depotId)
 	                          + "_" + std::to_string(gid) + ".manifest";
+	if (ManifestStore::isInDepotcache(depotId, gid))
 	{
-		struct stat st{};
-		if (stat(targetPath.c_str(), &st) == 0 && st.st_size > 0)
-		{
-			g_pLog->debug("ManifestFetch: blob depot=%u gid=%llu already at %s\n",
-			              depotId,
-			              static_cast<unsigned long long>(gid),
-			              targetPath.c_str());
-			return true;
-		}
+		// Legacy/current-session files may predate write-through. Archive
+		// this exact gid without scanning depotcache so a later Steam
+		// purge cannot remove the only copy.
+		ManifestStore::archiveManifest(depotId, gid);
+		g_pLog->debug("ManifestFetch: blob depot=%u gid=%llu already at %s\n",
+		              depotId,
+		              static_cast<unsigned long long>(gid),
+		              targetPath.c_str());
+		return true;
 	}
+
+	// A non-empty but invalid file must not suppress a fresh provider fetch.
+	// Steam may leave a truncated/corrupt depotcache entry after interruption.
+	unlink(targetPath.c_str());
 
 	auto codeOpt = runOnce(gid, /*appId=*/0, depotId);
 	if (!codeOpt)
@@ -638,16 +642,18 @@ retry_cdn:
 		return false;
 	}
 
-	if (rename(tmpOutPath.c_str(), targetPath.c_str()) != 0)
+	if (!ManifestStore::publishDownloadedManifest(depotId, gid, tmpOutPath))
 	{
 		unlink(tmpOutPath.c_str());
-		g_pLog->warn("ManifestFetch: blob depot=%u gid=%llu rename failed errno=%d\n",
-		             depotId, static_cast<unsigned long long>(gid), errno);
+		g_pLog->warn(
+		    "ManifestFetch: blob depot=%u gid=%llu persistent publish failed\n",
+		    depotId, static_cast<unsigned long long>(gid));
 		g_pLog->notifyUser(UserMsg::LocalStorageError);
 		return false;
 	}
+	unlink(tmpOutPath.c_str());
 
-	g_pLog->info("ManifestFetch: blob depot=%u gid=%llu wrote %s\n",
+	g_pLog->info("ManifestFetch: blob depot=%u gid=%llu staged at %s\n",
 	             depotId, static_cast<unsigned long long>(gid),
 	             targetPath.c_str());
 	return true;
@@ -717,9 +723,8 @@ std::shared_future<bool> launchOrJoinBlob(uint64_t gid, uint32_t depotId,
 		{
 			const std::string targetPath = depotcacheDir + "/" +
 			    std::to_string(depotId) + "_" + std::to_string(gid) + ".manifest";
-			struct stat st{};
 			const bool onDisk =
-			    (stat(targetPath.c_str(), &st) == 0 && st.st_size > 0);
+			    ManifestStore::isInDepotcache(depotId, gid);
 			if (it->second.get() && onDisk)
 			{
 				return it->second;
@@ -794,17 +799,26 @@ void submitManifestBlob(uint64_t manifestGid, uint32_t /*appId*/, uint32_t depot
 
 bool awaitManifestBlob(uint64_t manifestGid, uint32_t depotId, int timeoutSec)
 {
+	if (timeoutSec <= 0) timeoutSec = getTimeoutSec();
+	return awaitManifestBlobFor(
+	    manifestGid, depotId, timeoutSec * 1000, /*notifyOnTimeout=*/true);
+}
+
+bool awaitManifestBlobFor(uint64_t manifestGid, uint32_t depotId,
+                          int timeoutMs, bool notifyOnTimeout)
+{
 	const auto steamRoot = findSteamRootForBlob();
 	if (steamRoot.empty()) return false;
 	const std::string depotcacheDir = steamRoot + "/depotcache";
 	auto fut = launchOrJoinBlob(manifestGid, depotId, depotcacheDir);
-	if (timeoutSec <= 0) timeoutSec = getTimeoutSec();
-	if (fut.wait_for(std::chrono::seconds(timeoutSec)) !=
+	if (timeoutMs < 0) timeoutMs = 0;
+	if (fut.wait_for(std::chrono::milliseconds(timeoutMs)) !=
 	    std::future_status::ready)
 	{
-		g_pLog->info("ManifestFetch: blob depot=%u gid=%llu await timed out after %ds\n",
-		             depotId, static_cast<unsigned long long>(manifestGid), timeoutSec);
-		g_pLog->notifyUser(UserMsg::DownloadTimedOut);
+		g_pLog->info(
+		    "ManifestFetch: blob depot=%u gid=%llu await timed out after %dms\n",
+		    depotId, static_cast<unsigned long long>(manifestGid), timeoutMs);
+		if (notifyOnTimeout) g_pLog->notifyUser(UserMsg::DownloadTimedOut);
 		return false;
 	}
 	return fut.get();

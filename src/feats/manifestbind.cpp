@@ -6,6 +6,7 @@
 
 #include "depotkey.hpp"
 #include "depotkey_scope.hpp"
+#include "manifestselection.hpp"
 #include "manifeststore.hpp"
 
 #include "../config.hpp"
@@ -18,12 +19,16 @@
 #include "libmem/libmem.h"
 
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <mutex>
+#include <optional>
 #include <string>
 #include <sys/stat.h>
+#include <unordered_map>
 
 
 namespace
@@ -83,6 +88,7 @@ namespace
 	constexpr size_t kDepotEntryGidOff = 0x08;
 	constexpr size_t kDepotEntrySizeOff = 0x10;
 	constexpr size_t kVecBaseOff = 0x00;
+	constexpr size_t kVecCapacityOff = 0x04;
 	constexpr size_t kVecCountOff = 0x0c;
 
 	struct Detour
@@ -114,6 +120,129 @@ namespace
 	// target so update-check/plan/commit/reconcile agree on the pinned gid and
 	// it no longer loops.  SLSSTEAM_PIN_PLANNER=0 is an explicit opt-out for testing.
 	bool g_pinPlanner = true;
+
+	// Event-driven manifest staging state. BuildDepotDependency sees the exact
+	// depots Steam selected for this plan, starts their bounded background
+	// jobs, and gives every depot ONE shared 12-second deadline. The leaf
+	// freezes the chosen gid and the later planner consumes that decision, so
+	// an exact fetch completing between the two hooks cannot create a
+	// gid-keyed table mismatch.
+	using PlanClock = std::chrono::steady_clock;
+	constexpr int kPlanBudgetMs = 12000;
+	constexpr auto kPlanStateTtl = std::chrono::minutes(2);
+
+	struct PlanKey
+	{
+		uint32_t depotId;
+		uint64_t gid;
+
+		bool operator==(const PlanKey& other) const noexcept
+		{
+			return depotId == other.depotId && gid == other.gid;
+		}
+	};
+
+	struct PlanKeyHash
+	{
+		std::size_t operator()(const PlanKey& key) const noexcept
+		{
+			return std::hash<uint32_t>{}(key.depotId)
+			    ^ (std::hash<uint64_t>{}(key.gid) << 1);
+		}
+	};
+
+	struct PlanState
+	{
+		PlanClock::time_point deadline{};
+		PlanClock::time_point touched{};
+		std::optional<uint64_t> frozenGid;
+	};
+
+	std::mutex g_planStateLock;
+	std::unordered_map<PlanKey, PlanState, PlanKeyHash> g_planStates;
+
+	void prunePlanStatesLocked(PlanClock::time_point now)
+	{
+		for (auto it = g_planStates.begin(); it != g_planStates.end();)
+		{
+			if (now - it->second.touched > kPlanStateTtl)
+			{
+				it = g_planStates.erase(it);
+			}
+			else
+			{
+				++it;
+			}
+		}
+	}
+
+	void registerPlanTarget(uint32_t depotId, uint64_t gid,
+	                        PlanClock::time_point deadline)
+	{
+		if (!depotId || !gid) return;
+		const auto now = PlanClock::now();
+		std::lock_guard<std::mutex> lk(g_planStateLock);
+		prunePlanStatesLocked(now);
+		auto& state = g_planStates[{depotId, gid}];
+		if (!state.frozenGid)
+		{
+			if (state.deadline == PlanClock::time_point{}
+			    || now >= state.deadline)
+			{
+				state.deadline = deadline;
+			}
+			else if (deadline < state.deadline)
+			{
+				// Concurrent plans for the same depot/gid share the earliest
+				// deadline; a later plan must not extend an earlier wait.
+				state.deadline = deadline;
+			}
+		}
+		state.touched = now;
+	}
+
+	int remainingPlanBudgetMs(uint32_t depotId, uint64_t gid)
+	{
+		const auto now = PlanClock::now();
+		std::lock_guard<std::mutex> lk(g_planStateLock);
+		prunePlanStatesLocked(now);
+		auto [it, inserted] = g_planStates.try_emplace(
+		    PlanKey{depotId, gid},
+		    PlanState{now + std::chrono::milliseconds(kPlanBudgetMs), now,
+		              std::nullopt});
+		if (!inserted) it->second.touched = now;
+		if (now >= it->second.deadline) return 0;
+		return static_cast<int>(
+		    std::chrono::duration_cast<std::chrono::milliseconds>(
+		        it->second.deadline - now)
+		        .count());
+	}
+
+	std::optional<uint64_t> frozenPlanGid(uint32_t depotId, uint64_t gid,
+	                                     bool consume)
+	{
+		std::lock_guard<std::mutex> lk(g_planStateLock);
+		auto it = g_planStates.find({depotId, gid});
+		if (it == g_planStates.end() || !it->second.frozenGid)
+		{
+			return std::nullopt;
+		}
+		const uint64_t frozen = *it->second.frozenGid;
+		if (consume) g_planStates.erase(it);
+		return frozen;
+	}
+
+	uint64_t freezePlanGid(uint32_t depotId, uint64_t plannedGid,
+	                       uint64_t chosenGid, bool consume)
+	{
+		const auto now = PlanClock::now();
+		std::lock_guard<std::mutex> lk(g_planStateLock);
+		auto& state = g_planStates[{depotId, plannedGid}];
+		state.touched = now;
+		state.frozenGid = chosenGid;
+		if (consume) g_planStates.erase({depotId, plannedGid});
+		return chosenGid;
+	}
 
 	// --- DIAGNOSTIC: install-planner runtime trace (env SLSSTEAM_PLAN_TRACE) -
 	//
@@ -282,7 +411,7 @@ namespace
 	// (depotcache or the persistent ManifestStore), return that local gid;
 	// otherwise return the planned gid unchanged.
 	uint64_t redirectGid(const char* site, uint32_t appId, uint32_t depotId,
-	                     uint64_t manifestId)
+	                     uint64_t manifestId, bool consumeFrozen)
 	{
 		// Explicit pin: the pin is TARGET-ONLY.  Ensure the
 		// pinned manifest is STAGED on disk (so the patched plan and
@@ -318,7 +447,6 @@ namespace
 				    && !ManifestStore::restoreToDepotcache(depotId, pin))
 				{
 					ManifestFetch::fetchManifestBlobSync(pin, depotId);
-					ManifestStore::archiveDepot(depotId);
 				}
 			}
 			g_pLog->debug("ManifestBind[%s]: depot=%u pin gid=%llu staged "
@@ -339,15 +467,27 @@ namespace
 
 		const std::string dc = steamRoot + "/depotcache";
 
-		// Capture whatever manifests are currently staged for this depot
-		// into the purge-proof store BEFORE Steam can purge them.
-		// Idempotent. (Bulk capture of all of an app's depots happens at
-		// PICS install-plan time in pics.cpp; this is belt-and-suspenders.)
-		ManifestStore::archiveDepot(depotId);
+		if (auto frozen =
+		        frozenPlanGid(depotId, manifestId, consumeFrozen))
+		{
+			g_pLog->debug(
+			    "ManifestBind[%s]: depot=%u gid=%llu reusing frozen choice=%llu\n",
+			    site, depotId, static_cast<unsigned long long>(manifestId),
+			    static_cast<unsigned long long>(*frozen));
+			return *frozen;
+		}
 
-		// Gate: if the planned (public) gid IS already in depotcache, the
-		// providers worked (or it's still staged) -> install it as-is.
-		if (manifestOnDisk(dc, depotId, manifestId)) return manifestId;
+		// Gate: if the exact public gid is already in depotcache, persist this
+		// one file without scanning the whole directory and install it as-is.
+		if (ManifestStore::isInDepotcache(depotId, manifestId))
+		{
+			if (ManifestStore::archiveManifest(depotId, manifestId))
+			{
+				ManifestStore::markPreferredGid(depotId, manifestId);
+			}
+			return freezePlanGid(
+			    depotId, manifestId, manifestId, consumeFrozen);
+		}
 
 		// The planned gid is NOT in depotcache.  Case 1 (the common one,
 		// e.g. a Proton-switch after Steam purged the windows depot's
@@ -356,52 +496,101 @@ namespace
 		// fetch.  No redirect needed; Steam installs the gid it planned.
 		if (ManifestStore::restoreToDepotcache(depotId, manifestId))
 		{
+			ManifestStore::markPreferredGid(depotId, manifestId);
 			g_pLog->info("ManifestBind[%s]: depot=%u restored planned gid=%llu "
 			             "from store (no internet needed)\n",
 			             site, depotId,
 			             static_cast<unsigned long long>(manifestId));
-			return manifestId;
+			return freezePlanGid(
+			    depotId, manifestId, manifestId, consumeFrozen);
 		}
 
-		// Case 2: the planned gid is unavailable anywhere (the live public
-		// build is newer than anything we hold).
-		// ONLY fall back to a different local/archived GID if the manifest
-		// providers are offline (circuit breaker active) OR if this specific GID
-		// was not found on the server (404).  If providers are online and GID is not
-		// known to be missing, let Steam request the request-code and download the
-		// real manifest.
-		if (!ManifestFetch::areProvidersOffline() && !ManifestFetch::isGidNotFound(manifestId))
+		// BuildDepotDependency normally started this exact fetch already.
+		// submitManifestBlob is deduplicated, so this also covers paths that
+		// reached the leaf without the builder hook. Wait only for the time
+		// remaining in the plan-wide budget.
+		ManifestFetch::submitManifestBlob(manifestId, appId, depotId);
+		const int waitMs = remainingPlanBudgetMs(depotId, manifestId);
+		const bool fetched = ManifestFetch::awaitManifestBlobFor(
+		    manifestId, depotId, waitMs, /*notifyOnTimeout=*/false);
+		if (fetched && ManifestStore::isInDepotcache(depotId, manifestId))
 		{
-			return manifestId;
+			ManifestStore::markPreferredGid(depotId, manifestId);
+			g_pLog->info(
+			    "ManifestBind[%s]: depot=%u exact gid=%llu ready from provider\n",
+			    site, depotId, static_cast<unsigned long long>(manifestId));
+			return freezePlanGid(
+			    depotId, manifestId, manifestId, consumeFrozen);
 		}
 
-		// Fall back to a DIFFERENT
-		// gid for the depot -- newest in depotcache, else newest archived
-		// in the store (restored into depotcache).
-		uint64_t alt = findLocalAltGid(dc, depotId, manifestId);
-		if (!alt)
+		// Exact gid failed, timed out, or was confirmed absent. Prefer the
+		// last successfully observed public gid. Existing stores from before
+		// this metadata retain the mtime-based compatibility fallback.
+		const uint64_t preferred =
+		    ManifestStore::preferredArchivedGid(depotId, manifestId);
+		uint64_t legacy = 0;
+		if (!preferred)
 		{
-			alt = ManifestStore::bestArchivedGid(depotId, manifestId);
-			if (alt) ManifestStore::restoreToDepotcache(depotId, alt);
+			legacy = ManifestStore::bestArchivedGid(depotId, manifestId);
+			if (!legacy)
+			{
+				// Last-resort migration for an old install whose LuaTools ZIP
+				// manifest exists only in depotcache. This scan runs solely
+				// after an exact failure, never once per PICS depot.
+				legacy = findLocalAltGid(dc, depotId, manifestId);
+				if (legacy
+				    && !ManifestStore::archiveManifest(depotId, legacy))
+				{
+					legacy = 0;
+				}
+			}
 		}
-		if (!alt) return manifestId;
+
+		const auto decision = ManifestSelection::choose(
+		    manifestId, ManifestSelection::ExactState::Unavailable,
+		    preferred, legacy);
+		if (decision.gid == manifestId)
+		{
+			g_pLog->info(
+			    "ManifestBind[%s]: depot=%u exact gid=%llu unavailable and "
+			    "no local fallback exists\n",
+			    site, depotId, static_cast<unsigned long long>(manifestId));
+			return freezePlanGid(
+			    depotId, manifestId, manifestId, consumeFrozen);
+		}
+
+		if (!ManifestStore::isInDepotcache(depotId, decision.gid)
+		    && !ManifestStore::restoreToDepotcache(depotId, decision.gid))
+		{
+			g_pLog->info(
+			    "ManifestBind[%s]: depot=%u fallback gid=%llu could not be staged\n",
+			    site, depotId,
+			    static_cast<unsigned long long>(decision.gid));
+			return freezePlanGid(
+			    depotId, manifestId, manifestId, consumeFrozen);
+		}
 
 		setGameOfflineStatus(appId, true);
 
 		g_pLog->info(
 		    "ManifestBind[%s]: depot=%u public gid=%llu not staged; "
-		    "installing local manifest gid=%llu instead (resilience fallback)\n",
+		    "installing local manifest gid=%llu instead (%s fallback)\n",
 		    site, depotId,
 		    static_cast<unsigned long long>(manifestId),
-		    static_cast<unsigned long long>(alt));
-		return alt;
+		    static_cast<unsigned long long>(decision.gid),
+		    decision.source == ManifestSelection::ChoiceSource::PreferredLocal
+		        ? "last-observed"
+		        : "legacy");
+		return freezePlanGid(
+		    depotId, manifestId, decision.gid, consumeFrozen);
 	}
 
 	void* hkProcessDepot(void* ctx, uint32_t a0C, uint32_t appId,
 	                     uint32_t depotId, uint64_t manifestId, uint32_t a20)
 	{
 		logPlanStack("leaf", g_traceLeftLeaf, appId, depotId, manifestId);
-		const uint64_t useGid = redirectGid("leaf", appId, depotId, manifestId);
+		const uint64_t useGid =
+		    redirectGid("leaf", appId, depotId, manifestId, false);
 		return g_leaf.orig(ctx, a0C, appId, depotId, useGid, a20);
 	}
 
@@ -409,7 +598,8 @@ namespace
 	                     uint32_t depotId, uint64_t manifestId, uint32_t a20)
 	{
 		logPlanStack("plan", g_traceLeftPlanner, appId, depotId, manifestId);
-		const uint64_t useGid = redirectGid("plan", appId, depotId, manifestId);
+		const uint64_t useGid =
+		    redirectGid("plan", appId, depotId, manifestId, true);
 		return g_planner.orig(ctx, a0C, appId, depotId, useGid, a20);
 	}
 
@@ -429,12 +619,21 @@ namespace
 	{
 		if (depots)
 		{
+			const auto planDeadline =
+			    PlanClock::now() + std::chrono::milliseconds(kPlanBudgetMs);
+			const auto planSteamRoot = findSteamRoot();
+			const std::string planDepotcache =
+			    planSteamRoot.empty() ? std::string{}
+			                          : planSteamRoot + "/depotcache";
 			const auto p = reinterpret_cast<char*>(depots);
 			char* const base = *reinterpret_cast<char* const*>(p + kVecBaseOff);
+			const int32_t capacity =
+			    *reinterpret_cast<const int32_t*>(p + kVecCapacityOff);
 			auto* const countPtr = reinterpret_cast<int32_t*>(p + kVecCountOff);
 			const int32_t count = *countPtr;
 
-			if (base && count > 0 && count <= 4096)
+			if (base && ManifestSelection::validVectorBounds(
+			                count, capacity, kDepotEntryStride))
 			{
 				int32_t writeIdx = 0;
 				for (int32_t i = 0; i < count; ++i)
@@ -444,6 +643,8 @@ namespace
 					    *reinterpret_cast<const uint32_t*>(e);
 					const uint64_t size =
 					    *reinterpret_cast<const uint64_t*>(e + kDepotEntrySizeOff);
+					auto* const gidp =
+					    reinterpret_cast<uint64_t*>(e + kDepotEntryGidOff);
 
 					if (size == 0 && DepotKey::isManagedDepot(depotId))
 					{
@@ -456,8 +657,6 @@ namespace
 					const uint64_t pin = g_config.getManifestPin(depotId);
 					if (pin)
 					{
-						auto* gidp =
-						    reinterpret_cast<uint64_t*>(e + kDepotEntryGidOff);
 						if (g_pinPlanner && *gidp != pin)
 						{
 							g_pLog->info(
@@ -467,6 +666,24 @@ namespace
 							    static_cast<unsigned long long>(*gidp),
 							    static_cast<unsigned long long>(pin));
 							*gidp = pin;
+						}
+					}
+
+					// This is the exact set Steam selected for the real plan,
+					// after pin rewriting and size-0 pruning. Kick off only
+					// these manifests on the bounded SLSsteam executor. No
+					// network or decompression runs on this Steam worker.
+					const uint64_t targetGid = *gidp;
+					if (targetGid
+					    && (DepotKey::isManagedDepot(depotId) || pin))
+					{
+						registerPlanTarget(depotId, targetGid, planDeadline);
+						if (planDepotcache.empty()
+						    || !manifestOnDisk(
+						        planDepotcache, depotId, targetGid))
+						{
+							ManifestFetch::submitManifestBlob(
+							    targetGid, /*appId=*/0, depotId);
 						}
 					}
 
@@ -483,8 +700,8 @@ namespace
 			{
 				g_pLog->debugOnce(
 				    "ManifestBind[build]: implausible depot vector "
-				    "(base=%p count=%d); passing through\n",
-				    static_cast<void*>(base), count);
+				    "(base=%p count=%d capacity=%d); passing through\n",
+				    static_cast<void*>(base), count, capacity);
 			}
 		}
 		return g_builder.orig(ctx, flag, depots, a3);

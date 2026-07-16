@@ -3,6 +3,7 @@
 
 #include "depotkey.hpp"
 #include "manifestid.hpp"
+#include "manifeststore.hpp"
 #include "achievements.hpp"
 #include "playerstats.hpp"
 
@@ -563,6 +564,11 @@ bool hkCDepotDownloadMgr_BYldRequestDepotManifest(void* pthis, uint32_t appId, u
 			                                                ManifestFetch::getTimeoutSec());
 			if (ok)
 			{
+				ManifestStore::archiveManifest(depotId, manifestId);
+				if (g_config.getManifestPin(depotId) != manifestId)
+				{
+					ManifestStore::markPreferredGid(depotId, manifestId);
+				}
 				g_pLog->info("BYldRequestDepotManifest: blob staged on disk for depot=%u gid=%llu; "
 				             "passing through to drive the request-code handshake\n",
 				             depotId, static_cast<unsigned long long>(manifestId));

@@ -48,6 +48,18 @@ static bool hasTarget(const std::vector<PICS::StageTarget>& v,
 
 int main()
 {
+	// 0) The old PICS-wide synchronous staging/prewarm path is rollback-only.
+	// Event-driven plan staging is the default and the legacy path requires an
+	// explicit exact "1".
+	CHECK(!PICS::legacyManifestStagingEnabled(nullptr),
+	      "legacy staging: disabled when env is absent");
+	CHECK(!PICS::legacyManifestStagingEnabled("0"),
+	      "legacy staging: disabled by zero");
+	CHECK(!PICS::legacyManifestStagingEnabled("true"),
+	      "legacy staging: rejects ambiguous values");
+	CHECK(PICS::legacyManifestStagingEnabled("1"),
+	      "legacy staging: exact one enables rollback path");
+
 	// 1) Keeps only depots we hold a key for; the appId is carried through.
 	{
 		std::vector<PICS::AppDepots> apps{

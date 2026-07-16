@@ -198,12 +198,17 @@ void recvProductInfoResponse(CMsgClientPICSProductInfoResponse* resp)
 		resp->meta_data_only() ? 1 : 0
 	);
 
+	const bool legacyStaging = legacyManifestStagingEnabled(
+	    std::getenv("SLSSTEAM_LEGACY_MANIFEST_STAGING"));
+	g_pLog->infoOnce(
+	    "PICS: manifest staging mode=%s\n",
+	    legacyStaging ? "legacy synchronous + prewarm"
+	                  : "event-driven Steam install plan");
 
-	// AdditionalApps whose live product-info buffer is empty: we must
-	// stage their depot manifests ourselves, SYNCHRONOUSLY before this
-	// handler returns (so they're on disk before Steam plans the install).
-	// We collect them here, filter manifests already on disk, then queue only
-	// misses to the bounded executor — see the staging pass below.
+	// Rollback-only collection for the old architecture. In normal operation
+	// PICS still persists and supplies product info, but performs no manifest
+	// directory scans, network fetches, or waits. BuildDepotDependency stages
+	// only the depots Steam selected for the real install plan.
 	std::vector<AppDepots> toStage;
 
 	const auto added = g_config.addedAppIds.get();
@@ -258,6 +263,11 @@ void recvProductInfoResponse(CMsgClientPICSProductInfoResponse* resp)
 			                 app->sha(), app->buffer());
 
 			cleanShaderHitCache(app->appid());
+		}
+
+		if (!legacyStaging)
+		{
+			continue;
 		}
 
 		// Decide which buffer to mine for depots/gids.  For an
@@ -319,79 +329,98 @@ void recvProductInfoResponse(CMsgClientPICSProductInfoResponse* resp)
 		toStage.push_back({app->appid(), std::move(depots)});
 	}
 
-	// Ensure every AdditionalApp depot manifest is staged before this handler
-	// returns.  Ready targets do no work; misses use bounded concurrency.
-	//
-	// Why staging must finish before we return (confirmed in testing):
-	// clicking Install triggers a fresh PICS product-info request, and
-	// Steam cannot begin update *planning* until this response is
-	// processed (it's what tells Steam which depots/manifests exist), so
-	// this recv handler strictly precedes planning.  During planning Steam
-	// decides whether to call CDepotDownloadMgr::BYldRequestDepotManifest:
-	//   - manifest NOT on disk at planning -> Steam calls BYld -> the
-	//     ORIGINAL BYld returns 'Access Denied' -> the attempt is canceled
-	//     with "No connection" (only the ~30s auto-retry, which left the
-	//     blob on disk, ever recovered);
-	//   - manifest ALREADY on disk at planning -> Steam SKIPS BYld and goes
-	//     straight to Downloading -> success.
-	// So the blobs must be on disk before we return.  This runs on a
-	// genuine Steam worker thread (the InitFromPacket detour).
-	//
-	// We used to create one std::async thread for EVERY target, including
-	// manifests restoreToDepotcache had already made ready.  Large depot
-	// graphs (311210 exposes 800+) exhausted the 32-bit Steam process during
-	// this callback.  The corrected flow:
-	//   1. performs only a cheap exact on-disk check here;
-	//   2. gives already-staged targets no task and no await at all;
-	//   3. sends only missing targets to ManifestFetch's fixed worker pool,
-	//      where restore-from-store and network I/O happen off this thread.
-	// There is no manifest-count cap.  We still await genuinely-missing
-	// targets because returning before they reach disk makes Steam plan BYld
-	// and fail the first install attempt.
-	const auto plan = buildSyncStagePlan(
-	    toStage,
-	    [](uint32_t depotId)
-	    {
-	        return !DepotKey::getCachedKey(depotId).key.empty();
-	    });
-
-	std::size_t alreadyStaged = 0;
-	const auto pending = buildPendingStagePlan(
-	    plan,
-	    [&](const StageTarget& target)
-	    {
-	        if (!ManifestStore::isInDepotcache(target.depotId, target.gid))
-	        {
-	            return false;
-	        }
-	        ++alreadyStaged;
-	        return true;
-	    });
-
-	if (!plan.empty())
+	if (legacyStaging)
 	{
-		g_pLog->info(
-		    "PICS: manifest plan targets=%zu already_on_disk=%zu pending=%zu\n",
-		    plan.size(), alreadyStaged, pending.size());
-	}
+		// Legacy rollback: ensure every AdditionalApp depot manifest is staged
+		// before this handler returns. Ready targets do no work; misses use
+		// bounded concurrency.
+		//
+		// Why staging must finish before we return (confirmed in testing):
+		// clicking Install triggers a fresh PICS product-info request, and
+		// Steam cannot begin update *planning* until this response is
+		// processed (it's what tells Steam which depots/manifests exist), so
+		// this recv handler strictly precedes planning. During planning Steam
+		// decides whether to call CDepotDownloadMgr::BYldRequestDepotManifest:
+		//   - manifest NOT on disk at planning -> Steam calls BYld -> the
+		//     ORIGINAL BYld returns 'Access Denied' -> the attempt is canceled
+		//     with "No connection" (only the ~30s auto-retry, which left the
+		//     blob on disk, ever recovered);
+		//   - manifest ALREADY on disk at planning -> Steam SKIPS BYld and goes
+		//     straight to Downloading -> success.
+		// So the blobs must be on disk before we return. This runs on a genuine
+		// Steam worker thread (the InitFromPacket detour).
+		//
+		// We used to create one std::async thread for EVERY target, including
+		// manifests restoreToDepotcache had already made ready. Large depot
+		// graphs (311210 exposes 800+) exhausted the 32-bit Steam process during
+		// this callback. The corrected flow:
+		//   1. performs only a cheap exact on-disk check here;
+		//   2. gives already-staged targets no task and no await at all;
+		//   3. sends only missing targets to ManifestFetch's fixed worker pool,
+		//      where restore-from-store and network I/O happen off this thread.
+		// There is no manifest-count cap. We still await genuinely-missing
+		// targets because returning before they reach disk makes Steam plan BYld
+		// and fail the first install attempt.
+		const auto plan = buildSyncStagePlan(
+		    toStage,
+		    [](uint32_t depotId)
+		    {
+		        return !DepotKey::getCachedKey(depotId).key.empty();
+		    });
 
-	// Pass 1: queue only manifests not already present.  The fixed executor
-	// restores from ManifestStore first and reaches the CDN only on a miss.
-	for (const auto& t : pending)
-	{
-		g_pLog->info("PICS: staging manifest for app=%u depot=%u gid=%llu (bounded worker)\n",
-		             t.appId, t.depotId, static_cast<unsigned long long>(t.gid));
-		ManifestFetch::submitManifestBlob(t.gid, t.appId, t.depotId);
-	}
+		std::size_t alreadyStaged = 0;
+		const auto pending = buildPendingStagePlan(
+		    plan,
+		    [&](const StageTarget& target)
+		    {
+		        if (!ManifestStore::isInDepotcache(target.depotId, target.gid))
+		        {
+		            return false;
+		        }
+		        ++alreadyStaged;
+		        return true;
+		    });
 
-	// Pass 2: block only for the missing subset (joins the queued work).
-	for (const auto& t : pending)
-	{
-		const bool staged = ManifestFetch::awaitManifestBlob(
-		    t.gid, t.depotId, ManifestFetch::getTimeoutSec());
-		g_pLog->info("PICS: manifest staging for app=%u depot=%u gid=%llu -> %s\n",
-		             t.appId, t.depotId, static_cast<unsigned long long>(t.gid),
-		             staged ? "on disk" : "FAILED (will fall back to BYld retry)");
+		if (!plan.empty())
+		{
+			g_pLog->info(
+			    "PICS: manifest plan targets=%zu already_on_disk=%zu pending=%zu\n",
+			    plan.size(), alreadyStaged, pending.size());
+		}
+
+		// Pass 1: queue only manifests not already present. The fixed executor
+		// restores from ManifestStore first and reaches the CDN only on a miss.
+		for (const auto& t : pending)
+		{
+			g_pLog->info(
+			    "PICS: staging manifest for app=%u depot=%u gid=%llu "
+			    "(bounded worker)\n",
+			    t.appId, t.depotId, static_cast<unsigned long long>(t.gid));
+			ManifestFetch::submitManifestBlob(t.gid, t.appId, t.depotId);
+		}
+
+		// Pass 2: block only for the missing subset (joins the queued work).
+		for (const auto& t : pending)
+		{
+			const bool staged = ManifestFetch::awaitManifestBlob(
+			    t.gid, t.depotId, ManifestFetch::getTimeoutSec());
+			if (staged)
+			{
+				ManifestStore::archiveManifest(t.depotId, t.gid);
+				ManifestStore::markPreferredGid(t.depotId, t.gid);
+			}
+			g_pLog->info(
+			    "PICS: manifest staging for app=%u depot=%u gid=%llu -> %s\n",
+			    t.appId, t.depotId, static_cast<unsigned long long>(t.gid),
+			    staged ? "on disk"
+			           : "FAILED (will fall back to BYld retry)");
+		}
+
+		// Start the background manifest pre-warm worker now that we're on a
+		// real Steam worker thread (post-login PICS recv). ensureStarted() is
+		// idempotent, so calling it on every recv is cheap. This is rollback
+		// behavior only; event-driven staging never starts the worker.
+		Prewarm::ensureStarted();
 	}
 
 	if (resp->unknown_appids_size() > 0)
@@ -404,17 +433,6 @@ void recvProductInfoResponse(CMsgClientPICSProductInfoResponse* resp)
 		}
 		g_pLog->debug("PICS: unknown_appids=[%s]\n", ss.str().c_str());
 	}
-
-	// Start the background manifest pre-warm worker now that we're on a
-	// real Steam worker thread (post-login PICS recv).  ensureStarted() is
-	// idempotent, so calling it on every recv is cheap.  It keeps every
-	// AddedApp's depot manifests (all OSes we hold a key for, incl. DLC)
-	// staged on disk, healing the post-commit purge so a later planning
-	// pass — e.g. the user forcing a Proton compat tool, which re-plans to
-	// the windows depots without a fresh PICS request — finds the manifests
-	// already present and skips BYldRequestDepotManifest (no ~30s retry).
-	// MUST NOT be started from load()/setup() to avoid client crashes.
-	Prewarm::ensureStarted();
 
 	// Refresh the safe-mode-hash cache (updates.yaml) off the boot path.
 	// init() served it from disk synchronously so Steam's launch never

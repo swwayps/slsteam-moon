@@ -51,6 +51,12 @@ namespace ManifestFetch
 	bool awaitManifestBlob(uint64_t manifestGid, uint32_t depotId,
 	                       int timeoutSec);
 
+	// Join the exact blob job for at most timeoutMs. Used by the real Steam
+	// install plan so every depot shares one total deadline instead of each
+	// blocking a Steam worker for a fresh 12 seconds.
+	bool awaitManifestBlobFor(uint64_t manifestGid, uint32_t depotId,
+	                          int timeoutMs, bool notifyOnTimeout);
+
 	bool fetchManifestBlobSync(uint64_t manifestGid, uint32_t depotId);
 
 	std::optional<uint64_t> resolve(uint64_t jobId);

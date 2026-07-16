@@ -36,6 +36,14 @@ namespace PICS
 	void recvMsg(CProtoBufMsgBase* msg);
 	void recvProductInfoResponse(CMsgClientPICSProductInfoResponse* resp);
 
+	// Rollback gate for the old architecture that staged every depot from the
+	// product-info buffer and started the periodic prewarm worker. The
+	// event-driven real-plan path is default; only exact "1" re-enables it.
+	inline bool legacyManifestStagingEnabled(const char* envValue)
+	{
+		return envValue && envValue[0] == '1' && envValue[1] == '\0';
+	}
+
 	// --- Pure install-staging planning (unit-tested in tools/test_pics.cpp) --
 
 	// (depotId, public manifest gid) of one depot.

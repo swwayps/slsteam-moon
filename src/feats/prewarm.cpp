@@ -3,6 +3,7 @@
 #include "prewarm.hpp"
 
 #include "depotkey.hpp"
+#include "manifeststore.hpp"
 
 #include "../config.hpp"
 #include "../globals.hpp"
@@ -202,8 +203,13 @@ void runLoop()
 				// on-disk re-check: present -> returns instantly, purged ->
 				// re-fetched so the next planning pass finds it and skips
 				// BYldRequestDepotManifest entirely.
-				ManifestFetch::awaitManifestBlob(
+				const bool ready = ManifestFetch::awaitManifestBlob(
 				    gid, depotId, ManifestFetch::getTimeoutSec());
+				if (ready)
+				{
+					ManifestStore::archiveManifest(depotId, gid);
+					ManifestStore::markPreferredGid(depotId, gid);
+				}
 
 				// Did the manifest actually land on disk?  awaitManifestBlob
 				// returns its own status, but re-checking the file is the
