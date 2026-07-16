@@ -546,22 +546,60 @@ if [ "${XDG_SESSION_TYPE:-}" = "wayland" ]; then
 	done
 fi
 
-# Lumen (millennium-less LuaTools bridge): ensure Steam's CEF remote-debugging
-# endpoint is enabled, then launch the Lumen sidecar DETACHED and WITHOUT the
-# loader env (it must use its own static libs, not Steam's 32-bit runtime).
-# Lumen injects the LuaTools frontend via CDP and hosts the backend in-process.
-# Single-instance guarded so a second wrapper invocation doesn't stack sidecars.
+# Lumen (millennium-less LuaTools bridge): restore Steam's verified index and
+# stage an active theme OUTSIDE Steam's tree, then enable CEF debugging and
+# launch the sidecar detached. SLSsteam publishes that staged bootstrap at the
+# steamwebhelper exec boundary, after verification and before first paint. The
+# synchronous preflight opens no socket; disabled/default users get no -dev,
+# no native publish, and no theme runtime. Single-instance guarded.
 LUMEN_DIR="$HOME/.local/share/Lumen"
-if [ -x "$LUMEN_DIR/lumen" ] && ! pgrep -f "$LUMEN_DIR/lumen" >/dev/null 2>&1; then
+LUMEN_THEME_DEV=0
+unset LUMEN_THEME_PRELOAD_ACTIVE LUMEN_THEME_STAGING_DIR LUMEN_STEAMUI_DIR
+if [ -x "$LUMEN_DIR/lumen" ]; then
+	_lumen_preflight_rc=0
+	env -u LD_AUDIT -u LD_PRELOAD -u LD_LIBRARY_PATH \
+	    LUMEN_THEME_PRELOAD_ONLY=1 \
+	    LUMEN_LUA_DIR="$LUMEN_DIR/lua" \
+	    "$LUMEN_DIR/lumen" >/dev/null 2>&1 </dev/null || _lumen_preflight_rc=$?
+	[ "$_lumen_preflight_rc" -eq 10 ] && LUMEN_THEME_DEV=1
+	if [ "$LUMEN_THEME_DEV" -eq 1 ]; then
+		export LUMEN_THEME_PRELOAD_ACTIVE=1
+		export LUMEN_THEME_STAGING_DIR="$LUMEN_DIR/theme-preload"
+		for _lumen_root in "$HOME/.steam/steam" \
+		                   "$HOME/.steam/debian-installation" \
+		                   "$HOME/.local/share/Steam"; do
+			if [ -f "$_lumen_root/steamui/index.html" ]; then
+				export LUMEN_STEAMUI_DIR="$_lumen_root/steamui"
+				break
+			fi
+		done
+		# Unknown/non-native Steam layout: retain the CDP fallback instead of
+		# claiming the native gate is armed when it has nowhere safe to publish.
+		if [ -z "${LUMEN_STEAMUI_DIR:-}" ]; then
+			LUMEN_THEME_DEV=0
+			unset LUMEN_THEME_PRELOAD_ACTIVE LUMEN_THEME_STAGING_DIR
+		fi
+	fi
 	touch "$HOME/.steam/steam/.cef-enable-remote-debugging" 2>/dev/null || true
 	touch "$HOME/.steam/debian-installation/.cef-enable-remote-debugging" 2>/dev/null || true
-	env -u LD_AUDIT -u LD_PRELOAD -u LD_LIBRARY_PATH \
-	    LUMEN_BACKEND_DIR="$LUMEN_DIR/luatools/backend" \
-	    LUMEN_LUA_DIR="$LUMEN_DIR/lua" \
-	    setsid "$LUMEN_DIR/lumen" >/dev/null 2>&1 < /dev/null &
+	if ! pgrep -f "$LUMEN_DIR/lumen" >/dev/null 2>&1; then
+		env -u LD_AUDIT -u LD_PRELOAD -u LD_LIBRARY_PATH \
+		    LUMEN_THEME_PRELOAD_ACTIVE="$LUMEN_THEME_DEV" \
+		    LUMEN_BACKEND_DIR="$LUMEN_DIR/luatools/backend" \
+		    LUMEN_LUA_DIR="$LUMEN_DIR/lua" \
+		    setsid "$LUMEN_DIR/lumen" >/dev/null 2>&1 < /dev/null &
+	fi
 fi
 
 AUDIT="$SLSDIR/library-inject.so:$SLSDIR/SLSsteam.so"
+
+# Steam normally serves SteamUI from its packed web archive and ignores loose
+# index.html overrides.  -dev is the client's own opt-in for loose SteamUI
+# files. Add it only when the preflight confirmed a custom theme; disabled and
+# default-theme users keep the exact normal launch arguments and packed path.
+if [ "$LUMEN_THEME_DEV" -eq 1 ]; then
+	case " $* " in *" -dev "*) ;; *) set -- -dev "$@" ;; esac
+fi
 
 # Re-assert our desktop-entry coverage for user-owned entries (menu, autostart,
 # desktop shortcut) so anything Steam/the DE reverted is healed for the next

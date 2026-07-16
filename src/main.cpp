@@ -16,6 +16,7 @@
 #include "feats/manifestid.hpp"
 #include "feats/packagepatch.hpp"
 #include "feats/steamstub.hpp"
+#include "feats/themepreload.hpp"
 
 #include "libmem/libmem.h"
 
@@ -582,15 +583,6 @@ namespace
 			return nullptr;
 		}
 
-		// Decky coexistence: leave Steam on its hard-coded 8080 — no rewrite, no
-		// contract. Gating here (not just via g_cefSessionPort) is essential: the
-		// lazy fallback below would otherwise pick a fresh ephemeral port and
-		// rewrite anyway.
-		if (g_cefKeepDefaultPort)
-		{
-			return nullptr;
-		}
-
 		int n = 0;
 		bool any = false;
 		for (; argv[n]; ++n)
@@ -602,6 +594,32 @@ namespace
 			}
 		}
 		if (!any)
+		{
+			return nullptr;
+		}
+
+		// This exec is the exact boundary between Steam's updater/verifier and
+		// steamwebhelper. Publish the staged theme now: never early enough to
+		// trigger client repair, never late enough for a default frame to paint.
+		const char* themeActive = std::getenv("LUMEN_THEME_PRELOAD_ACTIVE");
+		const char* staging = std::getenv("LUMEN_THEME_STAGING_DIR");
+		const char* steamui = std::getenv("LUMEN_STEAMUI_DIR");
+		if (themeActive && std::strcmp(themeActive, "1") == 0 && staging && steamui)
+		{
+			std::string themeError;
+			if (ThemePreload::publish(staging, steamui, themeError))
+			{
+				if (g_pLog) g_pLog->info("Theme: published bootstrap before steamwebhelper exec\n");
+			}
+			else if (g_pLog)
+			{
+				g_pLog->warn("Theme: pre-webhelper publish failed: %s\n", themeError.c_str());
+			}
+		}
+
+		// Decky coexistence: leave Steam on its hard-coded 8080 — no rewrite, no
+		// contract. Theme publishing above is independent of the debug port.
+		if (g_cefKeepDefaultPort)
 		{
 			return nullptr;
 		}
