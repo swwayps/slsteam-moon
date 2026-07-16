@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 static int g_failures = 0;
@@ -126,6 +127,53 @@ int main()
 		auto dlc = AppInfoProvision::extractDlcAppIds(wire, 250900);
 		CHECK(dlc.size() == 2 && has(dlc, 401920) && has(dlc, 570660),
 		      "skips empty/zero fields in listofdlc");
+	}
+
+	// 8) A content DLC whose depot was rejected (for example because the
+	// Lua did not provide its decryption key) must also be removed from
+	// extended.listofdlc.  Otherwise PackagePatch advertises ownership and
+	// Steam independently plans the rejected depot, ending in
+	// "Content still encrypted".
+	{
+		const std::unordered_set<uint32_t> unsupported = {4229450};
+		std::size_t removed = 0;
+		const std::string filtered =
+			AppInfoProvision::filterUnsupportedDlcAppIds(
+				"4173830,4229450,4556380", unsupported, &removed);
+
+		CHECK(filtered == "4173830,4556380",
+		      "filter: removes unsupported content DLC only");
+		CHECK(removed == 1, "filter: reports one removed DLC");
+
+		// 4556380 represents a virtual DLC entry (no manifests), which does
+		// not need a depot key and must remain advertised.
+		const std::string wire =
+			"\"appinfo\"\n{\n"
+			"\t\"extended\"\n\t{\n"
+			"\t\t\"listofdlc\"\t\t\"" + filtered + "\"\n"
+			"\t}\n"
+			"\t\"depots\"\n\t{\n"
+			"\t\t\"4173830\"\n\t\t{\n\t\t\t\"dlcappid\"\t\t\"4173830\"\n\t\t}\n"
+			"\t\t\"4556380\"\n\t\t{\n\t\t\t\"dlcappid\"\t\t\"4556380\"\n\t\t}\n"
+			"\t}\n"
+			"}\n";
+		auto dlc = AppInfoProvision::extractDlcAppIds(wire, 2968420);
+		CHECK(!has(dlc, 4229450),
+		      "filter: rejected content DLC is no longer injected as owned");
+		CHECK(has(dlc, 4173830) && has(dlc, 4556380),
+		      "filter: keyed and virtual DLCs remain injected");
+	}
+
+	// 9) If every advertised DLC is unsupported, produce an empty list
+	// rather than leaving separators or a stale appid behind.
+	{
+		const std::unordered_set<uint32_t> unsupported = {4229450};
+		std::size_t removed = 0;
+		const std::string filtered =
+			AppInfoProvision::filterUnsupportedDlcAppIds(
+				"4229450", unsupported, &removed);
+		CHECK(filtered.empty(), "filter: all unsupported -> empty list");
+		CHECK(removed == 1, "filter: all unsupported count is correct");
 	}
 
 	if (g_failures == 0) { std::printf("\nALL PASS\n"); return 0; }

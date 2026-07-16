@@ -114,4 +114,69 @@ inline std::vector<uint32_t> extractDlcAppIds(const std::string& wire,
 	return out;
 }
 
+// Remove appids in `unsupported` from an extended.listofdlc value while
+// preserving the original order and every unrelated token.  This keeps the
+// ownership metadata consistent with pruneUnsupportedDepots(): advertising a
+// DLC after all of its content depots were rejected makes Steam fetch the
+// DLC's own appinfo and schedule those rejected depots anyway.
+//
+// `removedOut` counts removed occurrences (normally one per appid).
+inline std::string filterUnsupportedDlcAppIds(
+	const std::string& value,
+	const std::unordered_set<uint32_t>& unsupported,
+	std::size_t* removedOut = nullptr)
+{
+	std::string out;
+	std::size_t removed = 0;
+	bool firstKept = true;
+	std::size_t i = 0;
+
+	while (i <= value.size())
+	{
+		std::size_t j = value.find(',', i);
+		if (j == std::string::npos) j = value.size();
+		const std::string token = value.substr(i, j - i);
+
+		bool remove = false;
+		if (!token.empty())
+		{
+			bool numeric = true;
+			for (char c : token)
+			{
+				if (c < '0' || c > '9') { numeric = false; break; }
+			}
+			if (numeric)
+			{
+				try
+				{
+					const unsigned long parsed = std::stoul(token);
+					if (parsed <= UINT32_MAX &&
+					    unsupported.count(static_cast<uint32_t>(parsed)) != 0)
+					{
+						remove = true;
+					}
+				}
+				catch (...) {}
+			}
+		}
+
+		if (remove)
+		{
+			++removed;
+		}
+		else
+		{
+			if (!firstKept) out.push_back(',');
+			out += token;
+			firstKept = false;
+		}
+
+		if (j == value.size()) break;
+		i = j + 1;
+	}
+
+	if (removedOut) *removedOut = removed;
+	return out;
+}
+
 } // namespace AppInfoProvision

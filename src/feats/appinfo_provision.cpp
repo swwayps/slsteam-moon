@@ -314,6 +314,9 @@ void emitNode(std::string& out, const YAML::Node& node, int depth)
 //   - Drops every "<depot_id>" child of "depots" that lacks a cached
 //     DepotKey, unless it's a DLC entry (`dlcappid` only) which carries
 //     no payload to decrypt.
+//   - Removes a DLC from extended.listofdlc when all of that DLC's content
+//     depots were dropped.  Otherwise PackagePatch advertises the DLC as
+//     owned and Steam independently plans the rejected encrypted content.
 //   - If the surviving set has at least one playable depot but the
 //     original "common.oslist" included an OS we just dropped, narrow
 //     "oslist" to the OSes we still have so Steam picks Proton (for
@@ -337,6 +340,8 @@ void pruneUnsupportedDepots(YAML::Node& body, uint32_t appId)
 	int kept = 0;
 	int dropped = 0;
 	int totalNumeric = 0;
+	std::unordered_set<uint32_t> contentDlcAppIds;
+	std::unordered_set<uint32_t> usableDlcAppIds;
 
 	for (auto it = depots.begin(); it != depots.end(); ++it)
 	{
@@ -358,6 +363,24 @@ void pruneUnsupportedDepots(YAML::Node& body, uint32_t appId)
 		catch (...) { newDepots[key] = YAML::Clone(it->second); continue; }
 
 		const YAML::Node depotNode = it->second;
+		const bool hasDlcMarker = depotNode.IsMap() && depotNode["dlcappid"];
+		const bool hasManifests = depotNode.IsMap() && depotNode["manifests"];
+		const bool isVirtualDlc = hasDlcMarker && !hasManifests;
+		uint32_t dlcAppId = 0;
+		if (hasDlcMarker)
+		{
+			try { dlcAppId = depotNode["dlcappid"].as<uint32_t>(); }
+			catch (...) {}
+		}
+
+		// A DLC can own multiple depots.  Record every content-bearing
+		// candidate now, before any drop path, and mark it usable only when at
+		// least one of its entries survives.  This prevents one missing-key
+		// sibling from hiding a valid keyed sibling.
+		if (dlcAppId != 0 && hasManifests)
+		{
+			contentDlcAppIds.insert(dlcAppId);
+		}
 
 		// Drop empty (size-0) content depots.  Their manifest is a
 		// degenerate stub — a single file mapping with an EMPTY name — and
@@ -376,18 +399,20 @@ void pruneUnsupportedDepots(YAML::Node& body, uint32_t appId)
 
 		// DLC entries have no `manifests` block; they're virtual and
 		// don't need a decryption key — keep them.
-		const bool isDlc = depotNode.IsMap() && depotNode["dlcappid"] &&
-		                   !depotNode["manifests"];
 		const auto savedKey = DepotKey::getCachedKey(depotId);
 		const bool hasKey = !savedKey.key.empty();
 
-		if (!hasKey && !isDlc)
+		if (!hasKey && !isVirtualDlc)
 		{
 			++dropped;
 			continue;  // omit from newDepots
 		}
 		++kept;
 		newDepots[key] = YAML::Clone(depotNode);
+		if (dlcAppId != 0)
+		{
+			usableDlcAppIds.insert(dlcAppId);
+		}
 
 		// Track which OS this surviving depot supports so we can
 		// narrow common.oslist later.
@@ -406,6 +431,45 @@ void pruneUnsupportedDepots(YAML::Node& body, uint32_t appId)
 				if (!piece.empty()) survivingOs.insert(piece);
 				i = j + 1;
 			}
+		}
+	}
+
+	// Keep PackagePatch's synthetic ownership list aligned with the depots
+	// above.  A DLC is unsupported only when it had content entries and none
+	// survived; list-only/virtual DLCs and DLCs with at least one keyed depot
+	// remain untouched.
+	std::unordered_set<uint32_t> unsupportedDlcAppIds;
+	for (uint32_t dlcAppId : contentDlcAppIds)
+	{
+		if (usableDlcAppIds.count(dlcAppId) == 0)
+		{
+			unsupportedDlcAppIds.insert(dlcAppId);
+		}
+	}
+	if (!unsupportedDlcAppIds.empty())
+	{
+		YAML::Node extended = body["extended"];
+		YAML::Node listNode = extended && extended.IsMap()
+			? extended["listofdlc"]
+			: YAML::Node();
+		if (listNode && listNode.IsScalar())
+		{
+			try
+			{
+				const std::string oldList = listNode.as<std::string>();
+				std::size_t removed = 0;
+				const std::string newList =
+					filterUnsupportedDlcAppIds(oldList, unsupportedDlcAppIds,
+					                           &removed);
+				if (removed != 0)
+				{
+					body["extended"]["listofdlc"] = newList;
+					g_pLog->info("AppInfoProvision: app=%u removed %zu unsupported "
+					             "content DLC appid(s) from extended.listofdlc\n",
+					             appId, removed);
+				}
+			}
+			catch (...) {}
 		}
 	}
 
