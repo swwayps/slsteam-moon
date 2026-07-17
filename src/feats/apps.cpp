@@ -14,6 +14,7 @@
 #include "appinfo_provision.hpp"
 #include "fakeappid.hpp"
 #include "synthmark.hpp"
+#include "../utils/ManifestFetch.hpp"
 
 #include <cstdlib>
 #include <filesystem>
@@ -425,6 +426,10 @@ bool Apps::shouldDisableUpdates(uint32_t appId)
 	// run; once installed==pinned -> suppress so it freezes without looping.
 	if (!g_config.isAppLocked(appId))
 	{
+		if (ManifestFetch::areProvidersOffline())
+		{
+			return true;  // providers offline: suppress updates
+		}
 		return false;  // unlocked AddedApp: updates enabled (grab latest)
 	}
 
