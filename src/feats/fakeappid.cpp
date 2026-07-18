@@ -170,8 +170,10 @@ void FakeAppIds::runIPCFrame(const bool post, const EIPCInterface interface)
 	{
 		return;
 	}
-	g_pLog->debug("Setting AppId to %u in pipe %u\n", appId, utils->getCurrentSteamPipe());
-
+	if (g_config.extendedLogging.get())
+	{
+		g_pLog->debug("Setting AppId to %u in pipe %u\n", appId, utils->getCurrentSteamPipe());
+	}
 	g_pSteamEngine->setAppIdForCurrentPipe(appId);
 }
 
