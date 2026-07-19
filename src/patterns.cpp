@@ -842,19 +842,6 @@ using SigFollowMode = MemHlp::SigFollowMode;
 
 namespace Patterns
 {
-	Pattern_t FamilyGroupRunningApp
-	{
-		"FamilyGroupRunningApp",
-		"E8 ? ? ? ? 83 C4 10 83 EC 08 C7 46 ? 01 00 00 00 C6 46 ? 01 56 57 E8 ? ? ? ? 83 C4 1C B8 01 00 00 00 5B 5E 5F 5D C3 ? ? ? ? ? ? ? 83 EC 04",
-		SigFollowMode::Relative
-	};
-	Pattern_t StopPlayingBorrowedApp
-	{
-		"StopPlayingBorrowedApp",
-		"8B 40 ? 83 EC 0C 89 F3 8B 95",
-		SigFollowMode::PrologueUpwards,
-		std::vector<uint8_t> { 0x56, 0x57, 0xe5, 0x89, 0x55 }
-	};
 	Pattern_t ParentalSignatureCheck
 	{
 		"ParentalSignatureCheck",

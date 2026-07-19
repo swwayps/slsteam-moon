@@ -1,5 +1,7 @@
 #pragma once
 
+#include "steam.hpp"
+
 #include "protobufs/steammessages_base.pb.h"
 #include "protobufs/encrypted_app_ticket.pb.h"
 #include "protobufs/steammessages_clientserver.pb.h"
@@ -10,8 +12,10 @@
 
 #include <cstdint>
 
-enum EMsgType : uint16_t
+enum EMsgType : EMsg
 {
+	EMSG_SERVICE_METHOD = 146,
+	EMSG_SERVICE_METHOD_RESPONSE = 147,
 	EMSG_GAMESPLAYED_NO_DATABLOB = 715,
 	EMSG_GAMESPLAYED = 742,
 	EMSG_REQUEST_USERSTATS = 818,
@@ -29,6 +33,7 @@ enum EMsgType : uint16_t
 	EMSG_PICS_PRODUCTINFO_RESPONSE = 8904,
 	EMSG_PICS_ACCESSTOKEN_RESPONSE = 8906,
 	EMSG_PICS_CHANGES_RESPONSE = 8902,
+	EMSG_SHARED_LIBRARY_STOP_PLAYING = 9406,
 };
 
 enum EGameFlags

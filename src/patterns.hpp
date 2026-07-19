@@ -49,8 +49,6 @@ public:
 
 namespace Patterns
 {
-	extern Pattern_t FamilyGroupRunningApp;
-	extern Pattern_t StopPlayingBorrowedApp;
 	extern Pattern_t ParentalSignatureCheck;
 	extern Pattern_t ParentalSettingsReceived;
 

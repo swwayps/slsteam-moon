@@ -1386,13 +1386,6 @@ void Hooks::place()
 	// the safe direction: closing the queue when hooks may be live is correct,
 	// leaving it open when none are is correct too.
 	OwnerWork::notePlacement();
-
-	if (g_config.disableFamilyLock.get())
-	{
-		patchRetn(Patterns::FamilyGroupRunningApp.address);
-		patchRetn(Patterns::StopPlayingBorrowedApp.address);
-	}
-
 	TraceIPC.place();
 
 	CAPIJob_GetPlayerStats.place();
