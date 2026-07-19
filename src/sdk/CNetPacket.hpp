@@ -1,5 +1,7 @@
 #pragma once
 
+#include "steam.hpp"
+
 #include "protobufs/steammessages_base.pb.h"
 
 #include "../log.hpp"
@@ -13,7 +15,7 @@ class CNetPacketBody
 {
 public:
 
-	uint32_t type;
+	EMsg type;
 	uint32_t headerSize;
 	//Header[headerSize]
 	//Body[CNetPacket->size - headerSize - sizeof(CNetPacketBody)]
@@ -30,6 +32,7 @@ class CNetPacket
 public:
 
 	constexpr static unsigned int PROTOBUF_TYPE_MASK = 0x80000000;
+	constexpr static unsigned int INVALID_MESSAGE_TYPE = 0xFFFFFFFF;
 
 	uint8_t __pad0x0[0x4];			//0x0
 	CNetPacketBody* body;			//0x4
@@ -39,10 +42,10 @@ public:
 
 	constexpr bool isValid() const
 	{
-		return body && size >= 8 && body->type != 0xFFFFFFFF;
+		return body && size >= 8 && body->type != INVALID_MESSAGE_TYPE;
 	}
 
-	constexpr uint32_t getType() const
+	constexpr EMsg getType() const
 	{
 		if (!body)
 		{
@@ -57,7 +60,7 @@ public:
 		return getType() & PROTOBUF_TYPE_MASK;
 	}
 
-	constexpr uint32_t getProtoBufType() const
+	constexpr EMsg getProtoBufType() const
 	{
 		return getType() & ~PROTOBUF_TYPE_MASK;
 	}
