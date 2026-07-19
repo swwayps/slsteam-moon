@@ -77,7 +77,6 @@ public:
 			g_pLog->warn("Failed to allocate packet body with size %zu\n", newSize);
 			return;
 		}
-
 		auto* newBody = reinterpret_cast<CNetPacketBody*>(memory);
 		newBody->type = body->type;
 		newBody->headerSize = headerSize;
@@ -109,7 +108,7 @@ public:
 	}
 
 	template<typename T>
-	void serializeBody(const T& message)
+	void serialize(const T& message)
 	{
 		serialize(message, nullptr);
 	}

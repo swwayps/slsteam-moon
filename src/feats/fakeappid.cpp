@@ -188,7 +188,7 @@ void FakeAppIds::sendGamesPlayed(CNetPacket* packet)
 		game->set_game_id(fakeAppId);
 	}
 
-	packet->serializeBody(message);
+	packet->serialize(message);
 }
 
 void FakeAppIds::sendRichPresenceUpload(CNetPacket* packet)

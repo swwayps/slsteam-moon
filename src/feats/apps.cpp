@@ -528,7 +528,7 @@ void Apps::sendGamesPlayed(CNetPacket* pkt)
 		}
 	}
 
-	pkt->serializeBody(msg);
+	pkt->serialize(msg);
 }
 
 void Apps::sendPICSInfoRequest(CNetPacket* pkt)
@@ -586,7 +586,7 @@ void Apps::sendPICSInfoRequest(CNetPacket* pkt)
 	}
 	g_pLog->debug("PICS-request: apps=%d packages=%d ids=[%s]\n",
 	              msg.apps_size(), msg.packages_size(), sentIds.str().c_str());
-	pkt->serializeBody(msg);
+	pkt->serialize(msg);
 }
 
 void Apps::sendMsg(CNetPacket *pkt)
