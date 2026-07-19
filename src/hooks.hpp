@@ -85,6 +85,7 @@ namespace Hooks
 	typedef uint32_t(*CAPIJob_GetPlayerStats_t)(void*);
 
 	typedef void(*CProtoBufMsgBase_InitFromPacket_t)(CProtoBufMsgBase*, void*);
+	typedef void(*CCMInterface_RecvPkt_t)(void*, CNetPacket*);
 	typedef uint32_t(*CProtoBufMsgBase_Send_t)(CProtoBufMsgBase*);
 
 	typedef void(*CSteamEngine_Init_t)(void*);
@@ -119,6 +120,7 @@ namespace Hooks
 	extern DetourHook<CAPIJob_GetPlayerStats_t> CAPIJob_GetPlayerStats;
 
 	extern DetourHook<CProtoBufMsgBase_InitFromPacket_t> CProtoBufMsgBase_InitFromPacket;
+	extern DetourHook<CCMInterface_RecvPkt_t> CCMInterface_RecvPkt;
 	extern DetourHook<CProtoBufMsgBase_Send_t> CProtoBufMsgBase_Send;
 
 	extern DetourHook<CWebSocketConnection_BBuildAndAsyncSendFrame_t> CWebSocketConnection_BBuildAndAsyncSendFrame;

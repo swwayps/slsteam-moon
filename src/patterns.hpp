@@ -74,6 +74,11 @@ namespace Patterns
 		extern Pattern_t Send;
 	};
 
+	namespace CCMInterface
+	{
+		extern Pattern_t RecvPkt;
+	}
+
 	namespace CSteamEngine
 	{
 		extern Pattern_t Init;

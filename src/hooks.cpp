@@ -8,6 +8,7 @@
 #include "vftableinfo.hpp"
 
 #include "sdk/CAppOwnershipInfo.hpp"
+#include "sdk/CNetPacket.hpp"
 #include "sdk/CProtoBufMsgBase.hpp"
 #include "sdk/CSteamEngine.hpp"
 #include "sdk/CSteamMatchmakingServers.hpp"
@@ -294,6 +295,19 @@ static void hkProtoBufMsgBase_InitFromPacket(CProtoBufMsgBase* pMsg, void* pSrc)
 	Misc::recvMsg(pMsg);
 	PICS::recvMsg(pMsg);
 	Ticket::recvMsg(pMsg);
+}
+
+static void hkCMInterface_RecvPkt(void* pCMInterface, CNetPacket* pNetPacket)
+{
+	g_pLog->debug("RecvPkt %p\n", pNetPacket->getType());
+
+	if (pNetPacket->isValid() && pNetPacket->isProtoBuf())
+	{
+		const auto header = pNetPacket->deserializeHeader();
+		(void)header;
+	}
+
+	Hooks::CCMInterface_RecvPkt.tramp.fn(pCMInterface, pNetPacket);
 }
 
 static uint32_t hkProtoBufMsgBase_Send(CProtoBufMsgBase* pMsg)
@@ -1251,6 +1265,7 @@ namespace Hooks
 	DetourHook<CAPIJob_GetPlayerStats_t> CAPIJob_GetPlayerStats;
 
 	DetourHook<CProtoBufMsgBase_InitFromPacket_t> CProtoBufMsgBase_InitFromPacket;
+	DetourHook<CCMInterface_RecvPkt_t> CCMInterface_RecvPkt;
 	DetourHook<CProtoBufMsgBase_Send_t> CProtoBufMsgBase_Send;
 
 	DetourHook<CWebSocketConnection_BBuildAndAsyncSendFrame_t> CWebSocketConnection_BBuildAndAsyncSendFrame;
@@ -1311,6 +1326,7 @@ bool Hooks::setup()
 		&& CAPIJob_GetPlayerStats.setup(Patterns::CAPIJob::GetPlayerStats, &hkCAPIJob_GetPlayerStats)
 
 		&& CProtoBufMsgBase_InitFromPacket.setup(Patterns::CProtoBufMsgBase::InitFromPacket, &hkProtoBufMsgBase_InitFromPacket)
+		&& CCMInterface_RecvPkt.setup(Patterns::CCMInterface::RecvPkt, &hkCMInterface_RecvPkt)
 		&& CProtoBufMsgBase_Send.setup(Patterns::CProtoBufMsgBase::Send, &hkProtoBufMsgBase_Send)
 
 		&& CWebSocketConnection_BBuildAndAsyncSendFrame.setup(Patterns::CWebSocketConnection::BBuildAndAsyncSendFrame, &ManifestCode::hkBBuildAndAsyncSendFrame)
@@ -1391,6 +1407,7 @@ void Hooks::place()
 	CAPIJob_GetPlayerStats.place();
 
 	CProtoBufMsgBase_InitFromPacket.place();
+	CCMInterface_RecvPkt.place();
 	CProtoBufMsgBase_Send.place();
 
 	CWebSocketConnection_BBuildAndAsyncSendFrame.place();
@@ -1463,6 +1480,7 @@ void Hooks::remove()
 	CAPIJob_GetPlayerStats.remove();
 
 	CProtoBufMsgBase_InitFromPacket.remove();
+	CCMInterface_RecvPkt.remove();
 	CProtoBufMsgBase_Send.remove();
 
 	CWebSocketConnection_BBuildAndAsyncSendFrame.remove();
