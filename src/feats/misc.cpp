@@ -41,7 +41,6 @@ void Misc::recvMsg(CProtoBufMsgBase *msg)
 			body->set_has_wallet(true);
 			body->set_balance(amount);
 			body->set_balance64(amount);
-
 			break;
 		}
 
@@ -56,7 +55,6 @@ void Misc::recvMsg(CProtoBufMsgBase *msg)
 			const auto body = msg->getBody<CMsgClientEmailAddrInfo>();
 			body->set_email_address(email);
 			body->set_email_is_validated(true);
-
 			break;
 		}
 	}

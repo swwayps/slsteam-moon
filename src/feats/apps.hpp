@@ -6,9 +6,7 @@
 #include <vector>
 
 class CAppOwnershipInfo;
-class CProtoBufMsgBase;
-class CMsgClientGamesPlayed;
-class CMsgClientPICSProductInfoRequest;
+class CNetPacket;
 
 namespace Apps
 {
@@ -56,7 +54,7 @@ namespace Apps
 	bool shouldDisableCDKey(uint32_t appId);
 	bool shouldDisableUpdates(uint32_t appId);
 
-	void sendGamesPlayed(CMsgClientGamesPlayed* msg);
-	void sendPICSInfoRequest(CMsgClientPICSProductInfoRequest* msg);
-	void sendMsg(CProtoBufMsgBase* msg);
+	void sendGamesPlayed(CNetPacket* packet);
+	void sendPICSInfoRequest(CNetPacket* packet);
+	void sendMsg(CNetPacket* packet);
 };

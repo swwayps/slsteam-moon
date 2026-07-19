@@ -53,22 +53,8 @@ public:
 	void* __pBody;				//0x20
 	char __pad_0x24[0x8];		//0x24
 	
-	uint32_t send();
 	template<typename T> constexpr T* getBody() const
 	{
 		return reinterpret_cast<T*>(__pBody);
 	}
 }; //0x2C
-
-
-//Replaced by actual dumped & protoc generated classes
-//TODO: Replace ticket.cpp implementation with proper class too
-class CMsgAppOwnershipTicketResponse
-{
-public:
-	char __pad_0x0[0x10];	//0x0
-	//Ticket gets accessed like this: pTicket = *(int *)(*(uint *)(local_48.pBody_likely + 0x10) & 0xfffffffe);
-	void** ppTicket;			//0x10
-	uint32_t appId;			//0x14
-	uint32_t result;		//0x18
-}; //0x1C ?

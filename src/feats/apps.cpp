@@ -1,6 +1,7 @@
 #include "apps.hpp"
 
 #include "../sdk/CAppOwnershipInfo.hpp"
+#include "../sdk/CNetPacket.hpp"
 #include "../sdk/CProtoBufMsgBase.hpp"
 #include "../sdk/CSteamEngine.hpp"
 #include "../sdk/CUser.hpp"
@@ -446,21 +447,22 @@ bool Apps::shouldDisableUpdates(uint32_t appId)
 	return atPinned;
 }
 
-void Apps::sendGamesPlayed(CMsgClientGamesPlayed* msg)
+void Apps::sendGamesPlayed(CNetPacket* pkt)
 {
+	auto msg = pkt->deserializeBody<CMsgClientGamesPlayed>();
+
 	auto titles = g_config.gameTitles.get();
 	bool owned = false;
 
-	for(int i = 0; i < msg->games_played_size(); i++)
+	for (int i = 0; i < msg.games_played_size(); i++)
 	{
-		auto game = CMsgClientGamesPlayed_GamePlayed(msg->games_played(i));
-
-		if (!game.game_id())
+		auto game = msg.mutable_games_played(i);
+		if (!game->game_id())
 		{
 			continue;
 		}
 
-		const uint64_t gameId = game.game_id();
+		const uint64_t gameId = game->game_id();
 
 		// Native non-Steam shortcut IDs use 0x02000000 in their low 32 bits.
 		// Keep Steam's shortcut title and full 64-bit ID untouched.
@@ -481,52 +483,58 @@ void Apps::sendGamesPlayed(CMsgClientGamesPlayed* msg)
 
 		if (g_config.disableFamilyLock.get())
 		{
-			game.set_owner_id(1);
+			game->set_owner_id(1);
 		}
 
 		if (titles.contains(gameId))
 		{
-			game.set_game_extra_info(titles[gameId]);
+			game->set_game_extra_info(titles[gameId]);
 		}
 		else if (!owned || FakeAppIds::getFakeAppId(gameId))
 		{
 			char name[256] {}; //No clue how long titles can get
 			if (g_pClientApps)
 			{
-				g_pClientApps->getAppData(gameId, "common/name", name, sizeof(name));
-				g_pLog->debug("AppName %s\n", name);
-				game.set_game_extra_info(name);
+				const int len = g_pClientApps->getAppData(
+					gameId, "common/name", name, sizeof(name));
+				if (len > 0)
+				{
+					g_pLog->debug("AppName %s (%i)\n", name, len);
+					game->set_game_extra_info(name);
+				}
 			}
 		}
 
-		msg->mutable_games_played(i)->ParseFromString(game.SerializeAsString());
+		//msg->mutable_games_played(i)->ParseFromString(game.SerializeAsString());
 
-		g_pLog->debug("Playing game %llu with flags %u & pid %u\n", gameId, game.game_flags(), game.process_id());
+		g_pLog->debug("Playing game %llu with flags %u & pid %u\n", gameId, game->game_flags(), game->process_id());
 	}
 
-	if (owned || msg->games_played_size() > 0)
+	if (msg.games_played_size() < 1)
 	{
-		return;
-	}
-
-	const auto statusApp = g_config.idleStatus.get();
-	if (statusApp.appId)
-	{
-		auto game = msg->add_games_played();
-		game->set_game_id(statusApp.appId);
-		game->set_game_extra_info(statusApp.title);
-		game->set_game_flags(0);
-
-		if (g_config.disableFamilyLock.get())
+		const auto statusApp = g_config.idleStatus.get();
+		if (statusApp.appId)
 		{
-			game->set_owner_id(1);
+			auto game = msg.add_games_played();
+			game->set_game_id(statusApp.appId);
+			game->set_game_extra_info(statusApp.title);
+			game->set_game_flags(0);
+
+			if (g_config.disableFamilyLock.get())
+			{
+				game->set_owner_id(1);
+			}
+			//game->set_game_flags(EGAMEFLAG_MULTIPLAYER);
 		}
 	}
+
+	pkt->serializeBody(msg);
 }
 
-void Apps::sendPICSInfoRequest(CMsgClientPICSProductInfoRequest* msg)
+void Apps::sendPICSInfoRequest(CNetPacket* pkt)
 {
 	const auto tokens = g_config.appTokens.get();
+	auto msg = pkt->deserializeBody<CMsgClientPICSProductInfoRequest>();
 
 	// Strip locally authoritative AddedApps from Steam's outgoing product-info
 	// request. Their account access token may be denied even when our anonymous
@@ -535,9 +543,9 @@ void Apps::sendPICSInfoRequest(CMsgClientPICSProductInfoRequest* msg)
 	// deliberately has no time/count limit.
 	{
 		std::vector<uint32_t> requested;
-		requested.reserve(static_cast<size_t>(msg->apps_size()));
-		for (int i = 0; i < msg->apps_size(); ++i)
-			requested.push_back(msg->apps(i).appid());
+		requested.reserve(static_cast<size_t>(msg.apps_size()));
+		for (int i = 0; i < msg.apps_size(); ++i)
+			requested.push_back(msg.apps(i).appid());
 
 		const auto strip = SynthMark::stripIndices(
 		    requested, [](uint32_t appId) { return permitSynthStrip(appId); });
@@ -545,8 +553,8 @@ void Apps::sendPICSInfoRequest(CMsgClientPICSProductInfoRequest* msg)
 		for (int idx : strip) // descending, safe for in-place delete
 		{
 			g_pLog->debug("PICS-request: stripping locally authoritative app %u\n",
-			              msg->apps(idx).appid());
-			msg->mutable_apps()->DeleteSubrange(idx, 1);
+			              msg.apps(idx).appid());
+			msg.mutable_apps()->DeleteSubrange(idx, 1);
 		}
 	}
 
@@ -560,9 +568,9 @@ void Apps::sendPICSInfoRequest(CMsgClientPICSProductInfoRequest* msg)
 	// hangs the client at "Loading user data".  We only attach an access
 	// token to apps Steam is ALREADY asking about, so the CM returns a real
 	// product-info buffer for them.
-	for (int i = 0; i < msg->apps_size(); i++)
+	for (int i = 0; i < msg.apps_size(); i++)
 	{
-		auto app = msg->mutable_apps(i);
+		auto app = msg.mutable_apps(i);
 		if (tokens.contains(app->appid()))
 		{
 			app->set_access_token(tokens.at(app->appid()));
@@ -571,27 +579,28 @@ void Apps::sendPICSInfoRequest(CMsgClientPICSProductInfoRequest* msg)
 	}
 
 	std::stringstream sentIds;
-	for (int i = 0; i < msg->apps_size(); ++i)
+	for (int i = 0; i < msg.apps_size(); ++i)
 	{
 		if (i) sentIds << ',';
-		sentIds << msg->apps(i).appid();
+		sentIds << msg.apps(i).appid();
 	}
 	g_pLog->debug("PICS-request: apps=%d packages=%d ids=[%s]\n",
-	              msg->apps_size(), msg->packages_size(), sentIds.str().c_str());
+	              msg.apps_size(), msg.packages_size(), sentIds.str().c_str());
+	pkt->serializeBody(msg);
 }
 
-void Apps::sendMsg(CProtoBufMsgBase *msg)
+void Apps::sendMsg(CNetPacket *pkt)
 {
-	switch(msg->type)
+	switch(pkt->getProtoBufType())
 	{
 		case EMSG_PICS_PRODUCTINFO_REQUEST:
-			sendPICSInfoRequest(msg->getBody<CMsgClientPICSProductInfoRequest>());
+			sendPICSInfoRequest(pkt);
 			break;
 
 		case EMSG_GAMESPLAYED:
 		case EMSG_GAMESPLAYED_NO_DATABLOB:
 		case EMSG_GAMESPLAYED_WITH_DATABLOB:
-			sendGamesPlayed(msg->getBody<CMsgClientGamesPlayed>());
+			sendGamesPlayed(pkt);
 			break;
 	}
 }

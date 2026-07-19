@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <unordered_map>
 
-class CProtoBufMsgBase;
+class CNetPacket;
 
 struct gameserverdetails_t;
 struct servernetadr_t;
@@ -29,7 +29,7 @@ namespace FakeAppIds
 	uint32_t requestInternetServerList(uint32_t appId);
 	void pingResponse(gameserverdetails_t* details);
 
-	void sendGamesPlayed(CProtoBufMsgBase* msg);
-	void sendRichPresenceUpload(CProtoBufMsgBase* msg);
-	void sendMsg(CProtoBufMsgBase* msg);
+	void sendGamesPlayed(CNetPacket* packet);
+	void sendRichPresenceUpload(CNetPacket* packet);
+	void sendMsg(CNetPacket* packet);
 }

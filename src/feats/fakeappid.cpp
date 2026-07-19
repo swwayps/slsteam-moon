@@ -2,6 +2,7 @@
 
 #include "../config.hpp"
 
+#include "../sdk/CNetPacket.hpp"
 #include "../sdk/CProtoBufMsgBase.hpp"
 #include "../sdk/CSteamEngine.hpp"
 #include "../sdk/CSteamMatchmakingServers.hpp"
@@ -163,12 +164,12 @@ void FakeAppIds::pingResponse(gameserverdetails_t *details)
 	details->appId = fakeAppIdMapPings[ip];
 }
 
-void FakeAppIds::sendGamesPlayed(CProtoBufMsgBase* msg)
+void FakeAppIds::sendGamesPlayed(CNetPacket* packet)
 {
-	const auto body = msg->getBody<CMsgClientGamesPlayed>();
-	for(int i = 0; i < body->games_played_size(); i++)
+	auto message = packet->deserializeBody<CMsgClientGamesPlayed>();
+	for (int i = 0; i < message.games_played_size(); i++)
 	{
-		const auto game = body->mutable_games_played(i);
+		const auto game = message.mutable_games_played(i);
 		const uint64_t gameId = game->game_id();
 
 		// Preserve native non-Steam shortcut IDs instead of applying a fake AppID.
@@ -186,13 +187,20 @@ void FakeAppIds::sendGamesPlayed(CProtoBufMsgBase* msg)
 		g_pLog->debug("Setting %llu to %u\n", gameId, fakeAppId);
 		game->set_game_id(fakeAppId);
 	}
+
+	packet->serializeBody(message);
 }
 
-void FakeAppIds::sendRichPresenceUpload(CProtoBufMsgBase* msg)
+void FakeAppIds::sendRichPresenceUpload(CNetPacket* packet)
 {
-	g_pLog->debug("Routing appId %u\n", msg->header->routing_appid());
+	CMsgProtoBufHeader header;
+	if (!packet->deserializeHeader(header))
+	{
+		return;
+	}
+	g_pLog->debug("Routing appId %u\n", header.routing_appid());
 
-	const auto appId = getFakeAppId(msg->header->routing_appid());
+	const auto appId = getFakeAppId(header.routing_appid());
 
 	if (!appId)
 	{
@@ -200,21 +208,23 @@ void FakeAppIds::sendRichPresenceUpload(CProtoBufMsgBase* msg)
 	}
 
 	//This won't fix localized rich presences, but it's better than nothing
-	msg->header->set_routing_appid(appId);
+	header.set_routing_appid(appId);
+	const auto message = packet->deserializeBody<CMsgClientRichPresenceUpload>();
+	packet->serialize(message, &header);
 }
 
-void FakeAppIds::sendMsg(CProtoBufMsgBase* msg)
+void FakeAppIds::sendMsg(CNetPacket* packet)
 {
-	switch(msg->type)
+	switch(packet->getProtoBufType())
 	{
 		case EMSG_GAMESPLAYED:
 		case EMSG_GAMESPLAYED_NO_DATABLOB:
 		case EMSG_GAMESPLAYED_WITH_DATABLOB:
-			sendGamesPlayed(msg);
+			sendGamesPlayed(packet);
 			break;
 
 		case EMSG_RICH_PRESENCE_UPLOAD:
-			sendRichPresenceUpload(msg);
+			sendRichPresenceUpload(packet);
 			break;
 
 		default:

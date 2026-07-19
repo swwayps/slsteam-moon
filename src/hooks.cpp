@@ -332,16 +332,13 @@ static void hkCMInterface_RecvPkt(void* pCMInterface, CNetPacket* pNetPacket)
 
 static uint32_t hkProtoBufMsgBase_Send(CProtoBufMsgBase* pMsg)
 {
-	Apps::sendMsg(pMsg);
 	DepotKey::sendMsg(pMsg);
-	FakeAppIds::sendMsg(pMsg);
 
 	const uint32_t ret = Hooks::CProtoBufMsgBase_Send.tramp.fn(pMsg);
 	g_pLog->debug("Sending ProtoBufMsg of type %u with type %s\n", pMsg->type, MemHlp::getTypeName(pMsg));
 
 	return ret;
 }
-
 static void hkSteamEngine_Init(void* pSteamEngine)
 {
 	Hooks::CSteamEngine_Init.tramp.fn(pSteamEngine);
@@ -1376,7 +1373,6 @@ bool Hooks::setup()
 		&& IClientUtils_RunIPCFrame.setup(Patterns::IClientUtils::RunIPCFrame, hkClientUtils_RunIPCFrame)
 		&& IClientUser_RunIPCFrame.setup(Patterns::IClientUser::RunIPCFrame, hkClientUser_RunIPCFrame)
 		&& IClientUserStats_RunIPCFrame.setup(Patterns::IClientUserStats::RunIPCFrame, hkClientUserStats_RunIPCFrame)
-
 		&& IClientUser_BLoggedOn.setup(Patterns::IClientUser::BLoggedOn, &hkClientUser_BLoggedOn)
 		&& IClientUser_BUpdateAppOwnershipTicket.setup(Patterns::IClientUser::BUpdateAppOwnershipTicket, hkClientUser_BUpdateOwnershipTicket)
 		&& IClientUser_GetAppOwnershipTicketExtendedData.setup(Patterns::IClientUser::GetAppOwnershipTicketExtendedData, hkClientUser_GetAppOwnershipTicketExtendedData)
@@ -1446,7 +1442,6 @@ void Hooks::place()
 	CRemoteClientManager_RecvPkt.place();
 	CJobMgr_BRouteMsgToJob.place();
 	CDepotDownloadMgr_BYldRequestDepotManifest.place();
-
 	CSteamEngine_Init.place();
 	CSteamEngine_SetAppIdForCurrentPipe.place();
 
@@ -1458,6 +1453,8 @@ void Hooks::place()
 	CUser_PostCallbackToAppId.place();
 
 	IClientFriends_GetFriendGamePlayed.place();
+
+	CWebSocketConnection_BBuildAndAsyncSendFrame.place();
 
 	IClientAppManager_BCanRemotePlayTogether.place();
 
@@ -1523,7 +1520,6 @@ void Hooks::remove()
 	CRemoteClientManager_RecvPkt.remove();
 	CJobMgr_BRouteMsgToJob.remove();
 	CDepotDownloadMgr_BYldRequestDepotManifest.remove();
-
 	CSteamEngine_Init.remove();
 	CSteamEngine_SetAppIdForCurrentPipe.remove();
 
@@ -1535,6 +1531,8 @@ void Hooks::remove()
 	CUser_PostCallbackToAppId.remove();
 
 	IClientFriends_GetFriendGamePlayed.remove();
+
+	CWebSocketConnection_BBuildAndAsyncSendFrame.remove();
 
 	IClientAppManager_BCanRemotePlayTogether.remove();
 

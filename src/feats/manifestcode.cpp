@@ -5,6 +5,8 @@
 #include "manifestid.hpp"
 #include "manifeststore.hpp"
 #include "achievements.hpp"
+#include "apps.hpp"
+#include "fakeappid.hpp"
 #include "playerstats.hpp"
 
 #include "../config.hpp"
@@ -12,6 +14,7 @@
 #include "../log.hpp"
 
 #include "../sdk/EResult.hpp"
+#include "../sdk/CNetPacket.hpp"
 #include "../sdk/CProtoBufMsgBase.hpp"
 #include "../sdk/protobufs/steammessages_base.pb.h"
 #include "../sdk/protobufs/steammessages_contentserverdirectory.pb.h"
@@ -354,6 +357,18 @@ bool hkBBuildAndAsyncSendFrame(void* pConnection,
 {
 	if (eOpCode == k_eWebSocketOpCode_Binary)
 	{
+		CNetPacket packet{};
+		packet.body = reinterpret_cast<CNetPacketBody*>(pubData);
+		packet.originalBody = packet.body;
+		packet.size = cubData;
+		if (packet.isValid() && packet.isProtoBuf())
+		{
+			Apps::sendMsg(&packet);
+			FakeAppIds::sendMsg(&packet);
+			pubData = reinterpret_cast<uint8_t*>(packet.body);
+			cubData = packet.size;
+		}
+
 		uint32_t eMsg = 0;
 		const uint8_t* pHdr  = nullptr;
 		const uint8_t* pBody = nullptr;
