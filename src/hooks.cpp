@@ -310,16 +310,14 @@ static void hkCMInterface_RecvPkt(void* pCMInterface, CNetPacket* pNetPacket)
 
 		if (disableFamilyShareLock && type == EMSG_SHARED_LIBRARY_STOP_PLAYING)
 		{
-			free(pNetPacket->body);
+			pNetPacket->clearBody();
 			g_pLog->debug("Chocked EMSG_SHARED_LIBRARY_STOP_PLAYING\n");
-			return;
 		}
 
 		if (disableFamilyShareLock && type == EMSG_SERVICE_METHOD && header.target_job_name() == "FamilyGroupsClient.NotifyRunningApps#1")
 		{
-			free(pNetPacket->body);
+			pNetPacket->clearBody();
 			g_pLog->debug("Chocked FamilyGroupsClient.NotifyRunningApps#1\n");
-			return;
 		}
 	}
 
