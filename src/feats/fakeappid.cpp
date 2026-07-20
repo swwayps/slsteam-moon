@@ -163,20 +163,8 @@ void FakeAppIds::pingResponse(gameserverdetails_t *details)
 	details->appId = fakeAppIdMapPings[ip];
 }
 
-
-void FakeAppIds::sendMsg(CProtoBufMsgBase* msg)
+void FakeAppIds::sendGamesPlayed(CProtoBufMsgBase* msg)
 {
-	switch(msg->type)
-	{
-		case EMSG_GAMESPLAYED:
-		case EMSG_GAMESPLAYED_NO_DATABLOB:
-		case EMSG_GAMESPLAYED_WITH_DATABLOB:
-			break;
-
-		default:
-			return;
-	}
-
 	const auto body = msg->getBody<CMsgClientGamesPlayed>();
 	for(int i = 0; i < body->games_played_size(); i++)
 	{
@@ -197,5 +185,39 @@ void FakeAppIds::sendMsg(CProtoBufMsgBase* msg)
 
 		g_pLog->debug("Setting %llu to %u\n", gameId, fakeAppId);
 		game->set_game_id(fakeAppId);
+	}
+}
+
+void FakeAppIds::sendRichPresenceUpload(CProtoBufMsgBase* msg)
+{
+	g_pLog->debug("Routing appId %u\n", msg->header->routing_appid());
+
+	const auto appId = getFakeAppId(msg->header->routing_appid());
+
+	if (!appId)
+	{
+		return;
+	}
+
+	//This won't fix localized rich presences, but it's better than nothing
+	msg->header->set_routing_appid(appId);
+}
+
+void FakeAppIds::sendMsg(CProtoBufMsgBase* msg)
+{
+	switch(msg->type)
+	{
+		case EMSG_GAMESPLAYED:
+		case EMSG_GAMESPLAYED_NO_DATABLOB:
+		case EMSG_GAMESPLAYED_WITH_DATABLOB:
+			sendGamesPlayed(msg);
+			break;
+
+		case EMSG_RICH_PRESENCE_UPLOAD:
+			sendRichPresenceUpload(msg);
+			break;
+
+		default:
+			break;
 	}
 }
