@@ -10,6 +10,7 @@
 
 #include "yaml-cpp/yaml.h"
 
+#include <cstdint>
 #include <string>
 
 namespace AppInfoProvision
@@ -42,7 +43,19 @@ inline bool hasUsableContentDepot(const YAML::Node& body)
 		const YAML::Node depot = it->second;
 		if (!depot || !depot.IsMap()) continue;
 		const YAML::Node manifests = depot["manifests"];
-		if (manifests && manifests.IsMap()) return true;
+		if (!manifests || !manifests.IsMap()) continue;
+
+		for (auto manifest = manifests.begin(); manifest != manifests.end();
+		     ++manifest)
+		{
+			const YAML::Node branch = manifest->second;
+			if (!branch || !branch.IsMap() || !branch["gid"]) continue;
+			try
+			{
+				if (branch["gid"].as<uint64_t>() != 0) return true;
+			}
+			catch (...) {}
+		}
 	}
 
 	return false;

@@ -39,6 +39,17 @@ int main()
 		      "virtual DLC only -> not provisionable");
 	}
 
+	// A manifests container is only structural until it names an actual gid.
+	{
+		YAML::Node body;
+		body["depots"]["1229491"]["manifests"] = YAML::Node(YAML::NodeType::Map);
+		CHECK(!hasUsableContentDepot(body),
+		      "empty manifests -> not provisionable");
+		body["depots"]["1229491"]["manifests"]["public"]["size"] = "123";
+		CHECK(!hasUsableContentDepot(body),
+		      "manifest without gid -> not provisionable");
+	}
+
 	// A normal keyed content depot survives pruning and makes the app usable.
 	{
 		YAML::Node body;
