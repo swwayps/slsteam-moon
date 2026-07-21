@@ -194,10 +194,10 @@ inline UiMessage messageFor(UserMsg m, Lang lang)
 			         Severity::Error };
 
 		case UserMsg::GamePreparationFailed:
-			return { pt ? "Não foi possível preparar os dados de um jogo. Reinicie o "
-			              "Steam e tente instalar novamente."
-			            : "Couldn't prepare a game's data. Please restart Steam and try "
-			              "installing again.",
+			return { pt ? "O AppID {detail} tem dados de instalação incompletos. "
+			              "Adicione o jogo novamente pelo LuaTools antes de instalar."
+			            : "AppID {detail} has incomplete install data. Re-add the game "
+			              "through LuaTools before installing.",
 			         Severity::Error };
 
 		case UserMsg::DrmRemovalFailed:

@@ -114,6 +114,20 @@ int main()
 		      "ContentServersUnavailable body has a {detail} slot for the HTTP code");
 	}
 
+	// A preparation failure caused by incomplete install data is not repaired
+	// by restarting Steam. Point to the corrective action and identify the app.
+	{
+		const UiMessage en = messageFor(UserMsg::GamePreparationFailed, Lang::English);
+		const UiMessage pt = messageFor(UserMsg::GamePreparationFailed, Lang::Portuguese);
+		CHECK(contains(en.body, "{detail}") && contains(pt.body, "{detail}"),
+		      "GamePreparationFailed identifies the AppID");
+		CHECK(contains(en.body, "LuaTools") && contains(pt.body, "LuaTools"),
+		      "GamePreparationFailed points to re-adding through LuaTools");
+		CHECK(!contains(en.body, "restart") && !contains(pt.body, "Reinicie") &&
+		      !contains(pt.body, "reinicie"),
+		      "GamePreparationFailed does not recommend restarting Steam");
+	}
+
 	// 6) Severity is exposed so the popup layer can pick a timeout/urgency:
 	//    a success is Info, a hard failure is Error.
 	{

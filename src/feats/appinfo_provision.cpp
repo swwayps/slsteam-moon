@@ -1450,7 +1450,8 @@ int provisionAllAddedApps(const std::string& appinfoVdfPath)
 			// emit point here (not per-provider) avoids a false popup when
 			// the CM path fails but steamcmd then succeeds. Throttled, so a
 			// fleet-wide outage at startup collapses to a single popup.
-			g_pLog->notifyUser(UserMsg::GamePreparationFailed);
+			g_pLog->notifyUser(UserMsg::GamePreparationFailed,
+			                   std::to_string(appId));
 		}
 	}
 	if (provisioned > 0)
