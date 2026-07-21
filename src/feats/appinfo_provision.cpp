@@ -15,6 +15,7 @@
 #include "provision_cache.hpp"
 #include "retry.hpp"
 #include "synthmark.hpp"
+#include "usabledepot.hpp"
 
 #include "../config.hpp"
 #include "../globals.hpp"
@@ -678,6 +679,12 @@ bool renderAppinfoBuffer(const YAML::Node& appNode, uint32_t appId, std::string&
 	// reads is consistent and the change is invisible to Steam beyond
 	// "the user only owns the windows depot".
 	pruneUnsupportedDepots(body, appId);
+	if (!hasUsableContentDepot(body))
+	{
+		g_pLog->info("AppInfoProvision: app=%u has no usable content depots "
+		             "after pruning, skipping\n", appId);
+		return false;
+	}
 
 	// Clear the launch-time legacy CD-key gate (see helper above): without
 	// this the GettingLegacyKey step fails AccessDenied for an unowned app
@@ -1156,7 +1163,8 @@ bool renderAndPersist(uint32_t appId, const YAML::Node& appNode,
 	std::string wire;
 	if (!renderAppinfoBuffer(appNode, appId, wire))
 	{
-		g_pLog->warn("AppInfoProvision: app=%u render failed (likely empty body)\n", appId);
+		g_pLog->warn("AppInfoProvision: app=%u render failed "
+		             "(empty body or no usable depots)\n", appId);
 		return false;
 	}
 	if (wire.find("\"depots\"") == std::string::npos)
@@ -1310,7 +1318,8 @@ bool provisionApp(uint32_t appId, const std::string& appinfoVdfPath)
 	std::string wire;
 	if (!renderAppinfoBuffer(appNode, appId, wire))
 	{
-		g_pLog->warn("AppInfoProvision: app=%u render failed (likely empty body)\n", appId);
+		g_pLog->warn("AppInfoProvision: app=%u render failed "
+		             "(empty body or no usable depots)\n", appId);
 		return false;
 	}
 
