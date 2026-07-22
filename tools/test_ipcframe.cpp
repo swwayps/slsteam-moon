@@ -38,6 +38,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
+#include <iterator>
 #include <string>
 #include <vector>
 
@@ -94,15 +95,30 @@ static TextSection loadText(const std::string& path)
 
 // ---------------------------------------------------------------------------
 
-struct IfaceCase { const char* name; uint32_t oldRoot; uint32_t newRoot; };
+struct IfaceCase
+{
+	const char* name;
+	uint32_t seedRoot;
+	uint32_t liveRoot;
+	bool fingerprintFallback;
+};
 
-// Roots before and after the 2026-06-23 client update (from
-// .kiro/research/slsteam-pattern-refresh-2026-06-23.md).
+// Stale seeds and roots in the 2026-07-21 client update. RemoteStorage's
+// dispatch-tree root rotated by ~1.9M, outside the deliberately narrow
+// numeric band, so it must take the structural-fingerprint fallback.
 static const IfaceCase kCases[] = {
-	{ "IClientApps",          0xA6889C39, 0xA6889C37 },
-	{ "IClientRemoteStorage", 0x872FE86E, 0x872FE86C },
-	{ "IClientUGC",           0x71D20C67, 0x71D20C62 },
-	{ "IClientUserStats",     0x876D6589, 0x876D658F },
+	{ "IClientApps",          0xA6889C37, 0xA6889C36, false },
+	{ "IClientAppManager",    0x7A0A85B2, 0x7A0A85B7, false },
+	{ "IClientRemoteStorage", 0x872FE86C, 0x8712DD4B, true  },
+	{ "IClientUGC",           0x71D20C62, 0x71D20C0C, false },
+	{ "IClientUserStats",     0x876D658F, 0x876D658E, false },
+};
+
+// Three non-root comparisons that identify IClientRemoteStorage's generated
+// dispatch tree across the old and new clients. Each id drifted by <= 3 while
+// the median/root changed completely.
+static constexpr uint32_t kRemoteStorageFingerprint[] = {
+	0x5DB4729A, 0x7F3F5645, 0x84692E78,
 };
 
 static void test_resolveConfident_pure()
@@ -161,6 +177,30 @@ static void test_scan_synthetic()
 
 	std::vector<uint8_t> empty(8, 0x90);
 	CHECK(IpcFrame::scan(empty.data(), empty.size()).empty(), "no candidate in noise");
+}
+
+static void test_fingerprint_synthetic()
+{
+	std::printf("[2a] dispatch fingerprint (synthetic buffer)\n");
+	std::vector<uint8_t> buf(0x80, 0x90);
+	size_t at = 0x20;
+	for (uint32_t root : kRemoteStorageFingerprint)
+	{
+		buf[at++] = 0x3D;
+		std::memcpy(buf.data() + at, &root, sizeof(root));
+		at += sizeof(root) + 3;
+	}
+	CHECK(IpcFrame::matchesCmpFingerprint(
+		buf.data(), buf.size(), kRemoteStorageFingerprint,
+		std::size(kRemoteStorageFingerprint), 4),
+		"all fingerprint roots -> match");
+
+	// Losing any independent pivot must reject the candidate.
+	buf[0x20] = 0x90;
+	CHECK(!IpcFrame::matchesCmpFingerprint(
+		buf.data(), buf.size(), kRemoteStorageFingerprint,
+		std::size(kRemoteStorageFingerprint), 4),
+		"missing fingerprint root -> reject");
 }
 
 // Reference scan: the obvious byte-by-byte algorithm with NO memchr seek.
@@ -243,28 +283,45 @@ static void test_binary_robustness(const std::string& path)
 	std::vector<size_t> chosen;
 	for (const auto& tc : kCases)
 	{
-		// Seed with the OLD (pre-update) root; the binary carries the NEW one.
-		// The confidence guard must still resolve it (unique candidate in band).
-		size_t idx = IpcFrame::resolveConfident(cands, tc.oldRoot, IpcFrame::kMaxRootDrift);
+		// Prefer the narrow numeric band. Only RemoteStorage is allowed to use
+		// the three-pivot structural fallback, and that fallback must identify
+		// exactly one generated dispatcher.
+		size_t idx = IpcFrame::resolveConfident(cands, tc.seedRoot, IpcFrame::kMaxRootDrift);
+		if (idx == SIZE_MAX && tc.fingerprintFallback)
+		{
+			size_t hits = 0;
+			for (size_t i = 0; i < cands.size(); ++i)
+			{
+				const auto& cand = cands[i];
+				if (IpcFrame::matchesCmpFingerprint(
+					ts.bytes.data() + cand.offset, cand.available,
+					kRemoteStorageFingerprint, std::size(kRemoteStorageFingerprint), 4))
+				{
+					idx = i;
+					++hits;
+				}
+			}
+			if (hits != 1) idx = SIZE_MAX;
+		}
 		bool resolved = idx != SIZE_MAX;
 		CHECK(resolved, tc.name);
 		if (!resolved) continue;
 
 		uint32_t got = cands[idx].root;
-		bool right = got == tc.newRoot;
+		bool right = got == tc.liveRoot;
 		if (!right)
 			std::printf("      %s: seeded 0x%08X -> got root 0x%08X, expected 0x%08X\n",
-			            tc.name, tc.oldRoot, got, tc.newRoot);
+			            tc.name, tc.seedRoot, got, tc.liveRoot);
 		CHECK(right, (std::string(tc.name) + ": stale seed resolves to the new function").c_str());
 		chosen.push_back(cands[idx].offset);
 	}
 
-	// All four interfaces must map to DISTINCT functions.
+	// All interfaces must map to DISTINCT functions.
 	bool distinct = true;
 	for (size_t i = 0; i < chosen.size(); ++i)
 		for (size_t j = i + 1; j < chosen.size(); ++j)
 			if (chosen[i] == chosen[j]) distinct = false;
-	CHECK(distinct, "the four interfaces resolve to distinct offsets");
+	CHECK(distinct, "the interfaces resolve to distinct offsets");
 }
 
 // ----- general masked-pattern matcher (mirrors MemHlp::patternScan logic) ---
@@ -336,11 +393,43 @@ static void test_offset_patterns(const std::string& newPath, const std::string& 
 	CHECK(countMatches(nw.bytes.data(), nw.bytes.size(), kNluOldExact) == 0, "NLU old-exact: misses new (drift)");
 }
 
+// Required patterns refreshed for the 2026-07-21 client. These mirror
+// src/patterns.cpp. RequestInternetServerList masks the allocation size that
+// changed 0x350 -> 0x354; AppManager uses its near-entry dispatch tail instead
+// of a marker more than 64 KiB into the function.
+static const char* kRequestInternetServerList =
+	"C7 04 24 ? ? 00 00 E8 ? ? ? ? 5A 89 45 ? 59 FF B6 ? ? ? ? FF B6 ? ? ? ? FF B6 ? ? ? ? FF B6 ? ? ? ? FF B6 ? ? ? ? 6A 01";
+static const char* kAppManagerDispatch =
+	"E8 ? ? ? ? 8B 85 ? ? ? ? 83 C4 10 3D B7 85 0A 7A";
+
+static void test_required_patterns(const std::string& newPath, const std::string& oldPath)
+{
+	std::printf("[5] refreshed required patterns\n");
+	TextSection nw = loadText(newPath);
+	TextSection od = loadText(oldPath);
+	if (!nw.ok)
+	{
+		std::printf("      SKIP: current steamclient.so unavailable\n");
+		return;
+	}
+
+	CHECK(countMatches(nw.bytes.data(), nw.bytes.size(), kRequestInternetServerList) == 1,
+	      "RequestInternetServerList: 1 hit on current client");
+	CHECK(countMatches(nw.bytes.data(), nw.bytes.size(), kAppManagerDispatch) == 1,
+	      "AppManager dispatch tail: 1 hit on current client");
+	if (od.ok)
+	{
+		CHECK(countMatches(od.bytes.data(), od.bytes.size(), kRequestInternetServerList) == 1,
+		      "RequestInternetServerList: allocation-size wildcard matches old client");
+	}
+}
+
 int main(int argc, char** argv)
 {
 	test_resolveConfident_pure();
 	test_pattern_root_roundtrip();
 	test_scan_synthetic();
+	test_fingerprint_synthetic();
 	test_scan_equivalence();
 
 	std::string path;
@@ -354,6 +443,7 @@ int main(int argc, char** argv)
 	const char* oldEnv = std::getenv("SLSSTEAM_OLD_STEAMCLIENT");
 	std::string oldPath = (argc > 2) ? argv[2] : (oldEnv ? oldEnv : "");
 	test_offset_patterns(path, oldPath);
+	test_required_patterns(path, oldPath);
 
 	if (g_failures == 0) { std::printf("\ntest_ipcframe: ALL PASS (%d checks)\n", g_checks); return 0; }
 	std::printf("\ntest_ipcframe: %d/%d CHECK(S) FAILED\n", g_failures, g_checks);
