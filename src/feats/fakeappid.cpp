@@ -61,7 +61,67 @@ uint32_t FakeAppIds::getRealAppIdForCurrentPipe(bool fallback)
 	return 0;
 }
 
-void FakeAppIds::launchApp(uint32_t appId)
+bool FakeAppIds::shouldUseRealAppIdForInterface(const EInterfaceType type)
+{
+	switch(type)
+	{
+		//case k_EInterfaceTypeClientUser:
+		//case k_EInterfaceTypeClientGameServerInternal:
+		//case k_EInterfaceTypeClientFriends:
+		case k_EInterfaceTypeClientUtils:
+		case k_EInterfaceTypeClientBilling:
+		//case k_EInterfaceTypeClientMatchmaking:
+		case k_EInterfaceTypeClientApps:
+		case k_EInterfaceTypeClientUserStats:
+		//case k_EInterfaceTypeClientNetworking:
+		case k_EInterfaceTypeClientRemoteStorage:
+		case k_EInterfaceTypeClientDepotBuilder:
+		case k_EInterfaceTypeClientAppManager:
+		case k_EInterfaceTypeClientConfigStore:
+		//case k_EInterfaceTypeClientGameCoordinator:
+		//case k_EInterfaceTypeClientGameServerStats:
+		case k_EInterfaceTypeClientGameStats:
+		case k_EInterfaceTypeClientHTTP:
+		case k_EInterfaceTypeClientScreenshots:
+		case k_EInterfaceTypeClientAudio:
+		case k_EInterfaceTypeClientUnifiedMessages:
+		case k_EInterfaceTypeClientStreamLauncher:
+		case k_EInterfaceTypeClientParentalSettings:
+		case k_EInterfaceTypeClientNetworkDeviceManager:
+		case k_EInterfaceTypeClientMusic:
+		case k_EInterfaceTypeClientRemoteClientManager:
+		case k_EInterfaceTypeClientUGC:
+		case k_EInterfaceTypeClientStreamClient:
+		case k_EInterfaceTypeClientProductBuilder:
+		case k_EInterfaceTypeClientShortcuts:
+		case k_EInterfaceTypeClientGameNotifications:
+		case k_EInterfaceTypeClientVideo:
+		case k_EInterfaceTypeClientInventory:
+		case k_EInterfaceTypeClientVR:
+		case k_EInterfaceTypeClientControllerSerialized:
+		case k_EInterfaceTypeClientAppDisableUpdate:
+		case k_EInterfaceTypeClientSharedConnection:
+		case k_EInterfaceTypeClientShader:
+		//case k_EInterfaceTypeClientNetworkingSocketsSerialized:
+		case k_EInterfaceTypeClientCompat:
+		case k_EInterfaceTypeClientParties:
+		//case k_EInterfaceTypeClientNetworkingUtilsSerialized:
+		case k_EInterfaceTypeClientRemotePlay:
+		//case k_EInterfaceTypeClientGameServerPacketHandler:
+		case k_EInterfaceTypeClientSystemManager:
+		case k_EInterfaceTypeClientSystemPerfManager:
+		case k_EInterfaceTypeClientSystemDockManager:
+		case k_EInterfaceTypeClientSystemAudioManager:
+		case k_EInterfaceTypeClientSystemDisplayManager:
+		case k_EInterfaceTypeClientTimeline:
+			return true;
+
+		default:
+			return false;
+	}
+}
+
+void FakeAppIds::launchApp(const AppId_t appId)
 {
 	lastAppLaunched = appId;
 }

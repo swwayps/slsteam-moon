@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../sdk/steam.hpp"
+
 #include <cstdint>
 #include <unordered_map>
 
@@ -16,8 +18,9 @@ namespace FakeAppIds
 	extern std::unordered_map<uint32_t, uint32_t> fakeAppIdMapServer;
 	extern std::unordered_map<uint64_t, uint32_t> fakeAppIdMapPings;
 
-	uint32_t getFakeAppId(uint32_t appId);
-	uint32_t getRealAppIdForCurrentPipe(bool fallback = true);
+	AppId_t getFakeAppId(const AppId_t appId);
+	AppId_t getRealAppIdForCurrentPipe(const bool fallback = true);
+	bool shouldUseRealAppIdForInterface(const EInterfaceType type);
 
 	//General functionality
 	void launchApp(uint32_t appId);
