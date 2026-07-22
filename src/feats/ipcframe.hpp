@@ -35,6 +35,7 @@ namespace IpcFrame
 	{
 		size_t   offset;  // byte offset of the `E8` (dispatch tail start)
 		uint32_t root;    // the cmp-eax root id at offset+15
+		size_t   available = 0; // readable bytes from offset to segment end
 	};
 
 	// Byte offset of the u32 root immediate within a matched dispatch tail.
@@ -87,7 +88,7 @@ namespace IpcFrame
 					| static_cast<uint32_t>(code[i + 16]) << 8
 					| static_cast<uint32_t>(code[i + 17]) << 16
 					| static_cast<uint32_t>(code[i + 18]) << 24;
-				out.push_back({ i, root });
+				out.push_back({ i, root, size - i });
 			}
 			++i;
 		}
@@ -129,6 +130,52 @@ namespace IpcFrame
 			}
 		}
 		return (inBand == 1) ? hit : SIZE_MAX;
+	}
+
+	// Match a generated dispatch function by several non-root cmp-eax pivots.
+	// This is the guarded fallback for an interface whose binary-search median
+	// changes to a numerically distant message id: one root is not identity,
+	// but three independent pivots retained by the same dispatcher are.
+	inline bool matchesCmpFingerprint(
+		const uint8_t* code,
+		size_t size,
+		const uint32_t* pivots,
+		size_t pivotCount,
+		uint32_t maxDrift,
+		size_t scanSpan = 0x100)
+	{
+		if (code == nullptr || pivots == nullptr || pivotCount == 0)
+			return false;
+
+		const size_t end = (size < scanSpan) ? size : scanSpan;
+		if (end <= kMatchSpan)
+			return false;
+
+		for (size_t p = 0; p < pivotCount; ++p)
+		{
+			bool found = false;
+			for (size_t i = kMatchSpan; i + 5 <= end; ++i)
+			{
+				if (code[i] != 0x3D) // cmp eax, imm32
+					continue;
+				const uint32_t live =
+					  static_cast<uint32_t>(code[i + 1])
+					| static_cast<uint32_t>(code[i + 2]) << 8
+					| static_cast<uint32_t>(code[i + 3]) << 16
+					| static_cast<uint32_t>(code[i + 4]) << 24;
+				const uint64_t drift = (live > pivots[p])
+					? static_cast<uint64_t>(live) - pivots[p]
+					: static_cast<uint64_t>(pivots[p]) - live;
+				if (drift <= maxDrift)
+				{
+					found = true;
+					break;
+				}
+			}
+			if (!found)
+				return false;
+		}
+		return true;
 	}
 
 	// A RunIPCFrame pattern string ends with "3D b0 b1 b2 b3" — the cmp-eax

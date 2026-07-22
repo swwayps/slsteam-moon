@@ -7,6 +7,7 @@
 #include "libmem/libmem.h"
 
 #include <algorithm>
+#include <iterator>
 #include <memory>
 
 
@@ -60,7 +61,11 @@ static void autoResolveIpcFrameRoots()
 
 		const auto local = IpcFrame::scan(reinterpret_cast<const uint8_t*>(seg->base), seg->size);
 		for (const auto& cand : local)
-			c->cands.push_back({ static_cast<size_t>(seg->base) + cand.offset, cand.root });
+			c->cands.push_back({
+				static_cast<size_t>(seg->base) + cand.offset,
+				cand.root,
+				cand.available,
+			});
 		return LM_TRUE;
 	};
 	LM_EnumSegments(enumSegments, &ctx);
@@ -74,6 +79,7 @@ static void autoResolveIpcFrameRoots()
 	Pattern_t* targets[] =
 	{
 		&Patterns::IClientApps::RunIPCFrame,
+		&Patterns::IClientAppManager::RunIPCFrame,
 		&Patterns::IClientRemoteStorage::RunIPCFrame,
 		&Patterns::IClientUGC::RunIPCFrame,
 		&Patterns::IClientUserStats::RunIPCFrame,
@@ -83,7 +89,33 @@ static void autoResolveIpcFrameRoots()
 	for (Pattern_t* p : targets)
 	{
 		const uint32_t seed = IpcFrame::parseTrailingRoot(p->pattern);
-		const size_t idx = IpcFrame::resolveConfident(ctx.cands, seed, IpcFrame::kMaxRootDrift);
+		size_t idx = IpcFrame::resolveConfident(ctx.cands, seed, IpcFrame::kMaxRootDrift);
+
+		// The 2026-07-21 RemoteStorage tree kept its internal comparisons but
+		// selected a numerically distant median/root. Match three independent
+		// pivots and still require exactly one candidate; never widen the global
+		// numeric band and risk assigning an unrelated interface.
+		if (idx == SIZE_MAX && p == &Patterns::IClientRemoteStorage::RunIPCFrame)
+		{
+			static constexpr uint32_t fingerprint[] =
+			{
+				0x5DB4729A, 0x7F3F5645, 0x84692E78,
+			};
+			size_t matches = 0;
+			for (size_t i = 0; i < ctx.cands.size(); ++i)
+			{
+				const auto& cand = ctx.cands[i];
+				if (IpcFrame::matchesCmpFingerprint(
+					reinterpret_cast<const uint8_t*>(cand.offset), cand.available,
+					fingerprint, std::size(fingerprint), 4))
+				{
+					idx = i;
+					++matches;
+				}
+			}
+			if (matches != 1)
+				idx = SIZE_MAX;
+		}
 		if (idx == SIZE_MAX)
 		{
 			// No confident match: drift too large, or an ambiguous neighbour.
@@ -241,7 +273,7 @@ namespace Patterns
 		Pattern_t RequestInternetServerList
 		{
 			"CSteamMatchmakingServers::RequestInternetServerList",
-			"C7 04 24 50 03 00 00 E8 ? ? ? ? 5A 89 45 ? 59 FF B6 ? ? ? ? FF B6 ? ? ? ? FF B6 ? ? ? ? FF B6 ? ? ? ? FF B6 ? ? ? ? 6A 01",
+			"C7 04 24 ? ? 00 00 E8 ? ? ? ? 5A 89 45 ? 59 FF B6 ? ? ? ? FF B6 ? ? ? ? FF B6 ? ? ? ? FF B6 ? ? ? ? FF B6 ? ? ? ? 6A 01",
 			SigFollowMode::PrologueUpwards,
 			std::vector<uint8_t> { 0xe8, 0x57, 0xe5, 0x89, 0x55 }
 		};
@@ -316,7 +348,7 @@ namespace Patterns
 		Pattern_t RunIPCFrame
 		{
 			"IClientAppManager::RunIPCFrame",
-			"FF B5 ? ? ? ? 50 8D 86 ? ? ? ? 68 90 09 00 00",
+			"E8 ? ? ? ? 8B 85 ? ? ? ? 83 C4 10 3D B7 85 0A 7A",
 			SigFollowMode::PrologueUpwards,
 			std::vector<uint8_t> { 0x56, 0x57, 0xe5, 0x89, 0x55 }
 		};
