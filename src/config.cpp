@@ -7,6 +7,8 @@
 #include "yaml-cpp/yaml.h"
 
 #include "feats/depotkey.hpp"
+#include "feats/manifestid.hpp"
+#include "feats/packagepatch.hpp"
 
 #include <cerrno>
 #include <cmath>
@@ -230,7 +232,40 @@ bool CConfig::createFile()
 
 static void onFileChange()
 {
+	// Snapshot the AdditionalApps set BEFORE reloading so we can tell whether
+	// the change added any new games.
+	const auto before = g_config.addedAppIds.get();
+
 	g_config.loadSettings();
+
+	const auto after = g_config.addedAppIds.get();
+
+	// On a newly-seen appid, re-import its Lua keys/pins, inject it into
+	// package 0 and re-broadcast the license update so it can appear without
+	// a Steam restart.  (Runtime live library refresh is still incomplete.)
+	bool hasNewApp = false;
+	for (uint32_t appId : after)
+	{
+		if (!before.contains(appId))
+		{
+			hasNewApp = true;
+			break;
+		}
+	}
+
+	if (hasNewApp)
+	{
+		DepotKey::importLuaScripts();
+		ManifestId::importLuaScripts();
+		{
+			const auto ids = std::vector<uint32_t>(after.begin(), after.end());
+			PackagePatch::injectIntoPackage0(ids);
+		}
+		PackagePatch::forceReconcileLicenses();
+
+		g_pLog->info("Config watcher: hot-add detected, injected into package 0 "
+		             "and broadcast license update\n");
+	}
 }
 
 bool CConfig::init()

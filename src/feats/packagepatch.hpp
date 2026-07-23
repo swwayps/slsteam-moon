@@ -57,4 +57,11 @@ namespace PackagePatch
 	// cache).  Cheap no-op once the broadcast has fired or before
 	// anything has been injected.
 	void tryReconcileLicenses();
+
+	// Hot-reload entry point.  When the config watcher sees new
+	// AdditionalApps added at runtime, this re-arms the one-shot reconcile
+	// gate and re-broadcasts LicensesUpdated_t so Steam re-reads ownership.
+	// Safe no-op if package 0 was never injected or the pattern didn't
+	// resolve.
+	void forceReconcileLicenses();
 }

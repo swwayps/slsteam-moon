@@ -453,4 +453,17 @@ namespace PackagePatch
 		// 0 has actually been injected.
 		reconcileLicensesOnce();
 	}
+
+	void forceReconcileLicenses()
+	{
+		// Hot-reload: re-arm the one-shot gate and broadcast again so the
+		// reconcile can fire after boot.  Still guarded on g_package0Injected
+		// and a valid local user, so it's a safe no-op early on.
+		if (!g_package0Injected.load(std::memory_order_acquire))
+		{
+			return;
+		}
+		g_licenseReconciled.store(false, std::memory_order_release);
+		reconcileLicensesOnce();
+	}
 }
