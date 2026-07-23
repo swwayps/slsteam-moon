@@ -37,7 +37,11 @@ AppIds:
 #Enables playing of not owned games. Respects black-/whitelist AppIds
 PlayNotOwnedGames: no
 
-#Additional AppIds to inject (Overrides your black-/whitelist & also overrides OwnerIds for apps you got shared!) Best to use this only on games NOT in your library.
+#DO NOT ADD APPIDS HERE. Recent slsteam-moon versions read the game list
+#directly from ~/.steam/steam/config/stplug-in. To add AppIDs manually
+#(without relying on stplug-in), use ~/.config/SLSsteam/luaappids.yaml.
+#This section is kept only for backward compatibility and will be removed
+#in future versions.
 AdditionalApps:
 
 #Extra Data for Dlcs belonging to a specific AppId. Only needed
