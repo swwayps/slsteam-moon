@@ -87,8 +87,16 @@ public:
 
 	std::string getDir();
 	std::string getPath();
+	std::string getLuaAppIdsPath();
 	bool createFile();
 	bool init();
+
+	// AdditionalApps sources (unioned in loadSettings / hot-reload):
+	//   1. stplug-in/*.lua numeric filename stems  (primary, new-version)
+	//   2. luaappids.yaml AdditionalApps           (manual / plugin overrides)
+	//   3. config.yaml AdditionalApps              (LEGACY upgrade compat)
+	std::unordered_set<uint32_t> discoverStPluginAppIds();
+	std::unordered_set<uint32_t> loadLuaAppIdsYaml();
 
 	void setError(ELoadError err);
 	bool loadSettings();

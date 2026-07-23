@@ -6,6 +6,8 @@
 #include "log.hpp"
 #include "yaml-cpp/yaml.h"
 
+#include "feats/depotkey.hpp"
+
 #include <cerrno>
 #include <cmath>
 #include <cstdint>
@@ -94,6 +96,104 @@ std::string CConfig::getPath()
 	return getDir().append("/config.yaml");
 }
 
+std::string CConfig::getLuaAppIdsPath()
+{
+	return getDir().append("/luaappids.yaml");
+}
+
+static std::string findSteamRootForConfig()
+{
+	const char* home = std::getenv("HOME");
+	if (!home) return "";
+	const std::vector<std::string> candidates = {
+		std::string(home) + "/.steam/steam",
+		std::string(home) + "/.steam/debian-installation",
+		std::string(home) + "/.local/share/Steam"
+	};
+	for (const auto& candidate : candidates)
+	{
+		if (std::filesystem::exists(candidate + "/steam.sh"))
+		{
+			return candidate;
+		}
+	}
+	return "";
+}
+
+// Discover installable MAIN apps from the SteamTools-format scripts under
+// <Steam>/config/stplug-in.  A file is named after the app it unlocks
+// (e.g. 250900.lua); everything INSIDE it describes that app's components
+// (keyed `addappid(depot,1,"hex")` = depot keys, bare `addappid(dlc)` = DLC
+// ownership grants, `setManifestid` = pins) and MUST NOT be treated as
+// separate main apps — doing so inflates the set with hundreds of
+// DLC/depot ids that can't be provisioned.  So the only reliable main-app
+// signal is the numeric filename stem.  Depot keys are ingested separately
+// by DepotKey::importLuaScripts; DLC appids are injected from the base
+// app's appinfo.  This is the PRIMARY source for the new version.
+std::unordered_set<uint32_t> CConfig::discoverStPluginAppIds()
+{
+	std::unordered_set<uint32_t> result;
+	const auto steamRoot = findSteamRootForConfig();
+	if (steamRoot.empty()) return result;
+
+	const auto stplug = steamRoot + "/config/stplug-in";
+	if (!std::filesystem::exists(stplug)) return result;
+
+	std::error_code ec;
+	for (const auto& entry : std::filesystem::directory_iterator(stplug, ec))
+	{
+		if (!entry.is_regular_file()) continue;
+		const auto& path = entry.path();
+		if (path.extension() != ".lua") continue;
+
+		try
+		{
+			uint32_t appIdStem = static_cast<uint32_t>(std::stoul(path.stem().string()));
+			if (appIdStem > 0 && !DepotKey::isManagedDepot(appIdStem))
+			{
+				result.insert(appIdStem);
+			}
+		}
+		catch (...) {}
+	}
+	return result;
+}
+
+// Read manual/plugin AdditionalApps overrides from luaappids.yaml.  This
+// file is authored by the user or the LuaTools plugin; we only READ it (we
+// never mirror the discovered set back into it, which is what previously
+// let a bad pass persist as permanent pollution).  Managed depot ids are
+// filtered out defensively.
+std::unordered_set<uint32_t> CConfig::loadLuaAppIdsYaml()
+{
+	std::unordered_set<uint32_t> result;
+	const auto path = getLuaAppIdsPath();
+	if (!std::filesystem::exists(path)) return result;
+
+	try
+	{
+		YAML::Node node = YAML::LoadFile(path);
+		if (node && node["AdditionalApps"])
+		{
+			for (auto subNode : node["AdditionalApps"])
+			{
+				try
+				{
+					uint32_t val = subNode.as<uint32_t>();
+					if (val > 0 && !DepotKey::isManagedDepot(val))
+					{
+						result.insert(val);
+					}
+				}
+				catch (...) {}
+			}
+		}
+	}
+	catch (...) {}
+
+	return result;
+}
+
 bool CConfig::createFile()
 {
 	std::string path = getPath();
@@ -139,6 +239,21 @@ bool CConfig::init()
 	{
 		watcher = new CFileWatcher(onFileChange);
 		watcher->addFile(getPath().c_str());
+
+		// Also watch the new-version AdditionalApps sources so adding a game
+		// (a .lua dropped into stplug-in, or an entry appended to
+		// luaappids.yaml) hot-reloads without a Steam restart.
+		watcher->addFile(getLuaAppIdsPath().c_str());
+		const auto steamRoot = findSteamRootForConfig();
+		if (!steamRoot.empty())
+		{
+			const auto stplug = steamRoot + "/config/stplug-in";
+			if (std::filesystem::exists(stplug))
+			{
+				watcher->addFile(stplug.c_str());
+			}
+		}
+
 		watcher->start();
 	}
 
@@ -258,7 +373,32 @@ bool CConfig::loadSettings()
 	g_pLog->info("LogLevel: %i\n", logLevel.get());
 
 	appIds = getList<uint32_t>(node, "AppIds");
-	addedAppIds = getList<uint32_t>(node, "AdditionalApps");
+
+	// AdditionalApps is the UNION of three sources:
+	//   1. stplug-in/*.lua stems      — primary source for the new version
+	//   2. luaappids.yaml              — manual / plugin overrides
+	//   3. config.yaml AdditionalApps  — LEGACY: everything an upgrading user
+	//                                    already had lives here, and may not
+	//                                    exist under stplug-in, so we must keep
+	//                                    honouring it.
+	{
+		auto stplugApps  = discoverStPluginAppIds();
+		auto luaYamlApps = loadLuaAppIdsYaml();
+		auto legacyApps  = getList<uint32_t>(node, "AdditionalApps");
+
+		std::unordered_set<uint32_t> combined;
+		combined.insert(stplugApps.begin(),  stplugApps.end());
+		combined.insert(luaYamlApps.begin(), luaYamlApps.end());
+		combined.insert(legacyApps.begin(),  legacyApps.end());
+
+		g_pLog->info("AdditionalApps sources: stplug-in=%zu luaappids.yaml=%zu "
+		             "config.yaml(legacy)=%zu -> total=%zu\n",
+		             stplugApps.size(), luaYamlApps.size(), legacyApps.size(),
+		             combined.size());
+
+		addedAppIds = combined;
+	}
+
 	fakeOffline = getList<uint32_t>(node, "FakeOffline");
 
 	fakeAppIds = getMap<uint32_t, uint32_t>(node, "FakeAppIds");
