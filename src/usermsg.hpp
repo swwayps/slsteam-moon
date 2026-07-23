@@ -162,11 +162,14 @@ inline UiMessage messageFor(UserMsg m, Lang lang)
 			         Severity::Warning };
 
 		case UserMsg::InitializationFailed:
-			return { pt ? "O slsteam-moon foi desativado por segurança. A Steam segue "
-			              "inicializando sem modificações. (Padrões de código não "
-			              "encontrados.)"
-			            : "slsteam-moon was disabled for safety. Steam keeps starting "
-			              "without modifications. (Code patterns not found.)",
+			return { pt ? "O slsteam-moon não encontrou os padrões de código da "
+			              "Steam, então ela está rodando sem modificações. Isso "
+			              "costuma acontecer quando a Steam se atualiza. Saia do canal "
+			              "beta da Steam e rode o comando de instalação novamente."
+			            : "slsteam-moon couldn't find Steam's code patterns, so Steam "
+			              "is running without any modifications. This usually happens "
+			              "after a Steam update. Leave the Steam beta channel and run "
+			              "the install command again.",
 			         Severity::Error };
 
 		case UserMsg::ContentServersUnavailable:
