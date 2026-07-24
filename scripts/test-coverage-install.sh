@@ -15,5 +15,10 @@ ck "setup.sh installs the CLI into SLSDIR" \
 ck "setup.sh installs the lib into SLSDIR" \
    "$(grep -q 'desktop-coverage.lib.sh' "$HERE/setup.sh" && echo yes || echo no)"
 
+ck "package.sh ships the guardian unit lib" \
+   "$(grep -q 'desktop-guardian-units.lib.sh' "$HERE/scripts/package.sh" && echo yes || echo no)"
+ck "setup.sh installs the guardian unit lib into SLSDIR" \
+   "$(grep -q 'desktop-guardian-units.lib.sh' "$HERE/setup.sh" && echo yes || echo no)"
+
 [ "$fail" = 0 ] && echo "ALL PASS" || echo "FAILURES"
 exit "$fail"

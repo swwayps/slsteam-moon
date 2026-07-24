@@ -28,6 +28,10 @@ if [ -f "$SETUP_DIR/tools/desktop-coverage.lib.sh" ]; then
 	# shellcheck source=/dev/null
 	. "$SETUP_DIR/tools/desktop-coverage.lib.sh"
 fi
+if [ -f "$SETUP_DIR/tools/desktop-guardian-units.lib.sh" ]; then
+	# shellcheck source=/dev/null
+	. "$SETUP_DIR/tools/desktop-guardian-units.lib.sh"
+fi
 
 # ============================================================================
 # Pretty output (colors + box-drawing). Falls back to plain text when stdout
@@ -278,6 +282,8 @@ install_slssteam()
 	# release; copied next to the wrapper so the wrapper and Lumen can invoke it.
 	install -m 0644 ./tools/desktop-coverage.lib.sh "$SLSDIR/desktop-coverage.lib.sh" 2>/dev/null || \
 		cp ./tools/desktop-coverage.lib.sh "$SLSDIR/desktop-coverage.lib.sh"
+	install -m 0644 ./tools/desktop-guardian-units.lib.sh "$SLSDIR/desktop-guardian-units.lib.sh" 2>/dev/null || \
+		cp ./tools/desktop-guardian-units.lib.sh "$SLSDIR/desktop-guardian-units.lib.sh"
 	install -m 0755 ./ensure-desktop-coverage.sh    "$SLSDIR/ensure-desktop-coverage.sh" 2>/dev/null || \
 		{ cp ./ensure-desktop-coverage.sh "$SLSDIR/ensure-desktop-coverage.sh"; chmod +x "$SLSDIR/ensure-desktop-coverage.sh"; }
 	log_success "Libraries installed at $SLSDIR"
@@ -601,10 +607,13 @@ if [ "$LUMEN_THEME_DEV" -eq 1 ]; then
 	case " $* " in *" -dev "*) ;; *) set -- -dev "$@" ;; esac
 fi
 
-# Re-assert our desktop-entry coverage for user-owned entries (menu, autostart,
-# desktop shortcut) so anything Steam/the DE reverted is healed for the next
-# launch. Best-effort, backgrounded, can never block or fail the launch.
-if [ -x "$SLSDIR/ensure-desktop-coverage.sh" ]; then
+# Re-assert desktop-entry coverage without putting reconciliation on the launch
+# critical path. Prefer the serialized guardian; retain the legacy CLI fallback
+# during upgrades or on desktops without a working user manager.
+if command -v systemctl >/dev/null 2>&1 && \
+   systemctl --user --quiet is-enabled slsteam-desktop-guardian.path >/dev/null 2>&1; then
+	systemctl --user start slsteam-desktop-guardian.service >/dev/null 2>&1 &
+elif [ -x "$SLSDIR/ensure-desktop-coverage.sh" ]; then
 	WRAPPER="$SLSDIR/path/steam" "$SLSDIR/ensure-desktop-coverage.sh" --user >/dev/null 2>&1 &
 fi
 
@@ -629,7 +638,7 @@ EOF
 setup_path_and_desktop()
 {
 	log_info "Setting up PATH and desktop integration"
-	local system_desktop_changed=0
+	local system_desktop_changed=0 user_desktop_changed=0
 
 	# --- Shell PATH integration -------------------------------------------
 	local rc found=0
@@ -663,47 +672,49 @@ setup_path_and_desktop()
 	fi
 	log_success "Found Steam binary at $steam_bin"
 
-	# --- Patch every *steam*.desktop via the shared helper ----------------
+	# --- Mandatory user coverage, then optional system fallback -------------
 	mkdir -p "$USER_APPS"
-
-	# Seed the user menu entry from a real donor if the user has none yet, so the
-	# patched entry keeps Steam's full localized content + Desktop Actions.
-	if [ ! -e "$USER_DESKTOP" ]; then
-		local donor
-		donor="$(find_donor_desktop)"
-		[ -n "$donor" ] && cp -- "$donor" "$USER_DESKTOP" 2>/dev/null
-	fi
-
-	# Patch all entry points: user menu, system menu / "Install Steam" stub
-	# (sudo; eligible because Steam is installed — detected above), an existing
-	# ~/Desktop shortcut (kept as a regular trusted file), and autostart
-	# user+system. All logic lives in tools/desktop-coverage.lib.sh.
 	export DC_STEAM_INSTALLED=1
 	mkdir -p "$DC_BACKUP_ROOT" 2>/dev/null || {
 		log_error "Could not create desktop backup directory: $DC_BACKUP_ROOT"
 		return 1
 	}
+
+	# Same-ID user shadows are the authoritative layer and must exist before any
+	# privilege prompt. A malformed mandatory user entry is a real install error.
+	if ! dc_guardian_run; then
+		log_error "Could not reconcile mandatory user desktop coverage"
+		return 1
+	fi
+	log_success "Reconciled user desktop entries"
+
+	# User-manager integration is an acceleration/repair layer. Desktop shadows
+	# remain functional if systemd --user is unavailable.
+	local guardian_status
+	dgu_install_units; guardian_status=$?
+	[ "$guardian_status" = 1 ] && dgu_enable_units
+	[ "$guardian_status" = 2 ] && log_warn "Could not install all desktop guardian units; user desktop coverage remains active"
+	dgu_install_autostart_dropins; guardian_status=$?
+	[ "$guardian_status" = 2 ] && log_warn "Could not install all generated-autostart drop-ins; XDG shadows remain active"
+
 	if is_immutable_distro; then
-		dc_migrate_legacy_backups --user
-		dc_run --user
-		log_info "Immutable distro (read-only /usr): patched user-level entries only — they override the system ones via XDG precedence."
+		log_info "Immutable distro (read-only /usr): using user-level coverage only; no administrator access requested."
 	elif command -v sudo >/dev/null 2>&1; then
-		# System entries (menu + stub + system autostart) need root. Acquire the
-		# credential up front and ABORT if the password isn't provided, so we never
-		# leave the system half-patched — a clear "cancelled" beats a silent partial
-		# install. (User+menu coverage still requires this step to complete.)
+		# Mutable systems retain the historical system layer as a fallback, but
+		# denying sudo no longer discards the already-working user coverage.
 		if ! sudo -v; then
-			log_error "Administrator password not provided; installation cancelled."
-			exit 1
+			log_warn "Administrator access was not granted; optional system desktop fallback was skipped"
+		else
+			dc_migrate_legacy_backups --system
+			if dc_run --system; then
+				system_desktop_changed=1
+				log_success "Patched optional system Steam desktop entries"
+			else
+				log_warn "Optional system desktop fallback could not be fully applied"
+			fi
 		fi
-		dc_migrate_legacy_backups --system
-		dc_run --system
-		system_desktop_changed=1
-		log_success "Patched Steam desktop entries (menu, shortcut, autostart, stub)"
 	else
-		dc_migrate_legacy_backups --user
-		dc_run --user
-		log_warn "sudo not available; system .desktop/stub left unpatched (user + menu entries still covered)"
+		log_warn "sudo not available; optional system desktop fallback was skipped"
 	fi
 
 	# Fallback: if the user still has no menu entry (no donor anywhere), write a
@@ -724,12 +735,15 @@ MimeType=x-scheme-handler/steam;x-scheme-handler/steamlink;
 PrefersNonDefaultGPU=true
 EOF
 		chmod 0644 "$USER_DESKTOP"
+		user_desktop_changed=1
 		log_success "Created $USER_DESKTOP"
 	fi
 
-	# Refresh XDG caches so menus pick up the change without a logout.
+	# Guardian reconciliation already converged user caches. Refresh here only
+	# for the direct minimal fallback or a successful mutable-system pass.
 	if command -v update-desktop-database >/dev/null 2>&1; then
-		update-desktop-database "$USER_APPS" >/dev/null 2>&1 || true
+		[ "$user_desktop_changed" = 1 ] && \
+			update-desktop-database "$USER_APPS" >/dev/null 2>&1 || true
 		[ "$system_desktop_changed" = 1 ] && command -v sudo >/dev/null 2>&1 && \
 			sudo update-desktop-database "/usr/share/applications" >/dev/null 2>&1 || true
 	fi
@@ -852,6 +866,7 @@ uninstall()
 {
 	print_banner
 	print_section "Uninstalling SLSsteam"
+	local desktop_restore_complete=1
 
 	kill_steam
 
@@ -866,6 +881,15 @@ uninstall()
 		fi
 	done
 
+	# Stop generated launch paths before restoring their desktop-file sources.
+	# Removal is sentinel-scoped and therefore preserves foreign unit drop-ins.
+	if command -v dgu_remove_autostart_dropins >/dev/null 2>&1; then
+		dgu_remove_autostart_dropins || true
+	fi
+	if command -v dgu_remove_units >/dev/null 2>&1; then
+		dgu_remove_units || true
+	fi
+
 	# Restore every patched/symlinked *steam*.desktop (menu user+system incl. the
 	# stub, ~/Desktop shortcut, autostart user+system) from their backups via the
 	# shared lib. System paths use sudo when available.
@@ -876,8 +900,12 @@ uninstall()
 			DC_SUDO="sudo"
 		fi
 		export DC_SUDO
-		dc_restore_all
-		log_success "Restored Steam desktop entries"
+		if dc_restore_all; then
+			log_success "Restored Steam desktop entries"
+		else
+			desktop_restore_complete=0
+			log_warn "System desktop restoration is unavailable; retaining user desktop coverage and helpers for a later retry"
+		fi
 	else
 		# Lib unavailable (older layout): fall back to the legacy per-file restore.
 		restore_or_remove_desktop "$USER_DESKTOP"
@@ -903,9 +931,11 @@ uninstall()
 		fi
 	fi
 
-	if [ -d "$SLSDIR" ]; then
+	if [ -d "$SLSDIR" ] && [ "$desktop_restore_complete" = 1 ]; then
 		log_info "Removing $SLSDIR"
 		rm -rf "$SLSDIR"
+	elif [ -d "$SLSDIR" ]; then
+		log_warn "Keeping $SLSDIR because desktop restoration is incomplete"
 	fi
 
 	print_uninstall_complete

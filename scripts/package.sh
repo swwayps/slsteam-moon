@@ -92,10 +92,11 @@ cp res/config.yaml       "$PKG_DIR/res/"
 cp -r docs/LICENSE       "$PKG_DIR/docs/"
 cp -r tools/steamstub-bypass "$PKG_DIR/tools/"
 
-# Desktop-coverage helper: the shared lib (under tools/) + the CLI (repo root).
-# setup.sh sources ./tools/desktop-coverage.lib.sh and installs both into $SLSDIR.
-cp tools/desktop-coverage.lib.sh "$PKG_DIR/tools/desktop-coverage.lib.sh"
-cp ensure-desktop-coverage.sh    "$PKG_DIR/ensure-desktop-coverage.sh"
+# Desktop-coverage helpers: reconciliation engine, user-unit/drop-in manager and
+# thin CLI. setup.sh installs all three under $SLSDIR.
+cp tools/desktop-coverage.lib.sh       "$PKG_DIR/tools/desktop-coverage.lib.sh"
+cp tools/desktop-guardian-units.lib.sh "$PKG_DIR/tools/desktop-guardian-units.lib.sh"
+cp ensure-desktop-coverage.sh          "$PKG_DIR/ensure-desktop-coverage.sh"
 
 # Strip any build/IDE artefacts that may live alongside steamstub-bypass.
 find "$PKG_DIR/tools/steamstub-bypass" -mindepth 1 \

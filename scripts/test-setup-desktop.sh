@@ -26,5 +26,24 @@ ck "desktop helper no longer assigns adjacent backups" \
 ck "immutable setup skips the system desktop database refresh" \
    "$(grep -q '\[ "\$system_desktop_changed" = 1 \].*command -v sudo' "$HERE/setup.sh" && echo yes || echo no)"
 
+ck "setup sources guardian unit helper" \
+   "$(grep -q 'desktop-guardian-units.lib.sh' "$HERE/setup.sh" && echo yes || echo no)"
+ck "setup performs mandatory guardian user reconciliation" \
+   "$(grep -q 'dc_guardian_run' "$HERE/setup.sh" && echo yes || echo no)"
+ck "setup installs guardian units and generated drop-ins" \
+   "$(grep -q 'dgu_install_units' "$HERE/setup.sh" && grep -q 'dgu_install_autostart_dropins' "$HERE/setup.sh" && echo yes || echo no)"
+ck "setup retries enabling byte-identical guardian units" \
+   "$(grep -q '\[ "$guardian_status" = 1 \].*dgu_enable_units' "$HERE/setup.sh" && echo yes || echo no)"
+ck "mandatory user reconciliation precedes sudo attempt" \
+   "$(awk '/dc_guardian_run/{g=NR} /sudo -v/{s=NR} END{print (g && s && g<s)?"yes":"no"}' "$HERE/setup.sh")"
+ck "sudo denial is warning-only rather than installation abort" \
+   "$(awk '/if ! sudo -v/{inblock=1} inblock && /exit 1/{bad=1} inblock && /^\tfi/{inblock=0} END{print bad?"no":"yes"}' "$HERE/setup.sh")"
+ck "wrapper prefers guardian service and retains CLI fallback" \
+   "$(grep -q 'is-enabled slsteam-desktop-guardian.path' "$HERE/setup.sh" && grep -q 'start slsteam-desktop-guardian.service' "$HERE/setup.sh" && grep -q 'ensure-desktop-coverage.sh" --user' "$HERE/setup.sh" && echo yes || echo no)"
+ck "uninstall removes guardian state before desktop restoration" \
+   "$(awk '/dgu_remove_autostart_dropins/{d=NR} /dc_restore_all/{r=NR} END{print (d && r && d<r)?"yes":"no"}' "$HERE/setup.sh")"
+ck "uninstall warns when system restore is deferred" \
+   "$(grep -q 'retaining user desktop coverage' "$HERE/setup.sh" && echo yes || echo no)"
+
 [ "$fail" = 0 ] && echo "ALL PASS" || echo "FAILURES"
 exit "$fail"

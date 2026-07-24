@@ -71,6 +71,15 @@ if scripts/package.sh --version "$TEST_VERSION" >/dev/null 2>&1; then
         echo "$listing" | grep -q "steamless-bin/Plugins/Steamless.API.dll" \
             && ok "zip bundles steamless-bin/Plugins/Steamless.API.dll" \
             || bad "zip is missing steamless-bin/Plugins/Steamless.API.dll"
+        echo "$listing" | grep -q "tools/desktop-coverage.lib.sh" \
+            && ok "zip bundles desktop coverage library" \
+            || bad "zip is missing desktop coverage library"
+        echo "$listing" | grep -q "tools/desktop-guardian-units.lib.sh" \
+            && ok "zip bundles desktop guardian unit library" \
+            || bad "zip is missing desktop guardian unit library"
+        echo "$listing" | grep -q "ensure-desktop-coverage.sh" \
+            && ok "zip bundles desktop coverage CLI" \
+            || bad "zip is missing desktop coverage CLI"
     else
         bad "package.sh did not produce $ZIP"
     fi
