@@ -7,6 +7,7 @@
 #include "yaml-cpp/yaml.h"
 
 #include "feats/depotkey.hpp"
+#include "config_discovery.hpp"
 #include "feats/manifestid.hpp"
 #include "feats/packagepatch.hpp"
 
@@ -148,15 +149,17 @@ std::unordered_set<uint32_t> CConfig::discoverStPluginAppIds()
 		const auto& path = entry.path();
 		if (path.extension() != ".lua") continue;
 
-		try
+		// The filename stem is the authoritative main-app id and MUST be
+		// kept even when that same id is also one of the app's own keyed
+		// depots (single-depot layout, e.g. No Man's Sky 275850); filtering
+		// on managed-depot status here hides the game from the library.
+		const uint32_t appIdStem =
+		    ConfigDiscovery::appIdFromScriptName(path.filename().string());
+		if (ConfigDiscovery::keepDiscoveredMainApp(
+		        appIdStem, DepotKey::isManagedDepot(appIdStem)))
 		{
-			uint32_t appIdStem = static_cast<uint32_t>(std::stoul(path.stem().string()));
-			if (appIdStem > 0 && !DepotKey::isManagedDepot(appIdStem))
-			{
-				result.insert(appIdStem);
-			}
+			result.insert(appIdStem);
 		}
-		catch (...) {}
 	}
 	return result;
 }
@@ -164,8 +167,9 @@ std::unordered_set<uint32_t> CConfig::discoverStPluginAppIds()
 // Read manual/plugin AdditionalApps overrides from luaappids.yaml.  This
 // file is authored by the user or the LuaTools plugin; we only READ it (we
 // never mirror the discovered set back into it, which is what previously
-// let a bad pass persist as permanent pollution).  Managed depot ids are
-// filtered out defensively.
+// let a bad pass persist as permanent pollution).  Entries are main-app
+// ids and are kept even when the id is also a managed depot (see
+// ConfigDiscovery::keepDiscoveredMainApp).
 std::unordered_set<uint32_t> CConfig::loadLuaAppIdsYaml()
 {
 	std::unordered_set<uint32_t> result;
@@ -181,8 +185,9 @@ std::unordered_set<uint32_t> CConfig::loadLuaAppIdsYaml()
 			{
 				try
 				{
-					uint32_t val = subNode.as<uint32_t>();
-					if (val > 0 && !DepotKey::isManagedDepot(val))
+					const uint32_t val = subNode.as<uint32_t>();
+					if (ConfigDiscovery::keepDiscoveredMainApp(
+					        val, DepotKey::isManagedDepot(val)))
 					{
 						result.insert(val);
 					}
