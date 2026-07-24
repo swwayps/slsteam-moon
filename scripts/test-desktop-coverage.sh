@@ -531,21 +531,31 @@ check "shadows stub: real donor still gets same-ID shadow" "patched" \
   "$(dc_classify "$U15/com.valvesoftware.Steam.desktop")"
 H16="$TMP/home16"; U16="$H16/data/applications"; S16="$TMP/sys16/applications"
 mkdir -p "$U16" "$S16"
-printf '[Desktop Entry]\nType=Application\nName=Install Steam\nComment=Package installer stub\nExec=/usr/bin/steam %%U\n' \
-  > "$S16/steam.desktop"
+cat > "$S16/steam.desktop" <<'EOF'
+[Desktop Entry]
+Type=Application
+Name=Install Steam
+Comment=Package installer stub
+Exec=sh -c 'STEAM_FRAME_FORCE_CLOSE=1 steam %U'
+EOF
 XDG_DATA_HOME="$H16/data" XDG_DATA_DIRS="${S16%/applications}" DC_HOME="$H16" \
   DC_BACKUP_ROOT="$H16/backup" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" \
   DC_SUDO="" DC_STEAM_INSTALLED=1 dc_run --user
-check "shadows stub-only: minimal same-ID entry created" "yes" \
+check "shadows Debian stub-only: minimal same-ID entry created" "yes" \
   "$([ -f "$U16/steam.desktop" ] && echo yes || echo no)"
-check "shadows stub-only: installer identity not copied" "Name=Steam" \
+check "shadows Debian stub-only: installer identity not copied" "Name=Steam" \
   "$(grep -m1 '^Name=' "$U16/steam.desktop" 2>/dev/null || true)"
-check "shadows stub-only: minimal entry has Type" "Type=Application" \
+check "shadows Debian stub-only: minimal entry has Type" "Type=Application" \
   "$(grep -m1 '^Type=' "$U16/steam.desktop" 2>/dev/null || true)"
-check "shadows stub-only: minimal entry routes through wrapper" "Exec=$WRAPPER %U" \
+check "shadows Debian stub-only: minimal entry routes through wrapper" "Exec=$WRAPPER %U" \
   "$(grep -m1 '^Exec=' "$U16/steam.desktop" 2>/dev/null || true)"
-check "shadows stub-only: minimal entry is seeded" "1" \
+check "shadows Debian stub-only: minimal entry is seeded" "1" \
   "$(grep -cFx "$DC_SEED_TAG" "$U16/steam.desktop" 2>/dev/null | head -1)"
+DC_HOME="$H16" DC_BACKUP_ROOT="$H16/backup" DC_SYS_APPS="$S16" \
+  DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" DC_STEAM_INSTALLED=1 dc_run --system
+check "system run patches installed Debian shell stub" \
+  "Exec=env STEAM_FRAME_FORCE_CLOSE=1 $WRAPPER %U" \
+  "$(grep -m1 '^Exec=' "$S16/steam.desktop" 2>/dev/null || true)"
 
 # Guardian command shims make serialization and cache ordering observable.
 GUARDIAN_EVENTS="$TMP/guardian-events"

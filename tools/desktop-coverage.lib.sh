@@ -366,16 +366,58 @@ dc_rewrite_exec() {
 	return "$valid"
 }
 
+# dc_rewrite_installed_stub_exec <file> — Debian/Ubuntu's steam-installer
+# desktop entry remains named "Install Steam" after Steam is bootstrapped and
+# launches through `sh -c 'STEAM_FRAME_FORCE_CLOSE=1 steam %U'`. Keep generic
+# shell wrappers unsupported, but convert this explicitly-classified stub into a
+# direct, parser-safe wrapper launch. Preserve the distro's force-close setting.
+dc_rewrite_installed_stub_exec() {
+	local f="$1" tmp line in_entry=0 replaced=0 template rewritten
+	tmp="$(mktemp)" || return 1
+	while IFS= read -r line || [ -n "$line" ]; do
+		case "$line" in
+			'[Desktop Entry]') in_entry=1 ;;
+			'['*']') [ "$in_entry" = 1 ] && in_entry=0 ;;
+			Exec=*)
+				if [ "$in_entry" = 1 ] && [ "$replaced" = 0 ]; then
+					case "${line#Exec=}" in
+						*STEAM_FRAME_FORCE_CLOSE=1*)
+							template='env STEAM_FRAME_FORCE_CLOSE=1 steam %U'
+							;;
+						*) template='steam %U' ;;
+					esac
+					if ! rewritten="$(dc_rewrite_exec_line "$template")" \
+					   || ! _dc_exec_scan wrapper "$rewritten" >/dev/null; then
+						rm -f "$tmp"
+						return 1
+					fi
+					printf 'Exec=%s\n' "$rewritten" >> "$tmp"
+					replaced=1
+					continue
+				fi
+				;;
+		esac
+		printf '%s\n' "$line" >> "$tmp"
+	done < "$f"
+	if [ "$replaced" = 1 ] && cat "$tmp" > "$f"; then
+		rm -f "$tmp"
+		return 0
+	fi
+	rm -f "$tmp"
+	return 1
+}
+
 # dc_patch_one <file> [sudo] — back up once, strip pre-header, rewrite Exec to
 # the wrapper, drop a stale tag, insert the tag after [Desktop Entry], write back
 # as a regular 0644 file (replacing a symlink). Only commits if an Exec now runs
 # the wrapper, so we never tag a file we failed to rewrite. $2="sudo" for system
 # files. Returns 0 on patch, 1 on no-op/failure.
 dc_patch_one() {
-	local f="$1" S="${2:-}" bak tmp
+	local f="$1" S="${2:-}" bak tmp kind
 	bak="$(dc_backup_path "$f")"
 	[ -f "$f" ] || return 1
 	_dc_file_exec_syntax_valid "$f" || return 1
+	kind="$(dc_classify "$f")"
 	# A seeded override (we created it; the user had no such file) must never get
 	# a backup, so a re-patch on a later run doesn't turn it into a "restore to
 	# vanilla" on uninstall. dc_restore_one deletes seeded files outright.
@@ -388,6 +430,10 @@ dc_patch_one() {
 	tmp="$(mktemp)" || return 1
 	cat "$f" > "$tmp" 2>/dev/null
 	dc_strip_preheader "$tmp"
+	if [ "$kind" = stub ] && ! dc_rewrite_installed_stub_exec "$tmp"; then
+		rm -f "$tmp"
+		return 1
+	fi
 	if ! dc_rewrite_exec "$tmp" || ! dc_file_has_wrapper_exec "$tmp"; then
 		rm -f "$tmp"
 		return 1
@@ -501,7 +547,7 @@ dc_patch_glob() {
 # _dc_application_donor_kind <file> — classify only parser-eligible desktop
 # application donors. Filename/name text alone is never sufficient.
 _dc_application_donor_kind() {
-	local f="$1" line in_entry=0 supported=0 entry_name=''
+	local f="$1" line in_entry=0 supported=0 has_primary_exec=0 entry_name=''
 	[ -f "$f" ] || { printf '%s\n' unrelated; return; }
 	_dc_file_exec_syntax_valid "$f" \
 		|| { printf '%s\n' unrelated; return; }
@@ -511,19 +557,24 @@ _dc_application_donor_kind() {
 			'['*']') [ "$in_entry" = 1 ] && break ;;
 			Name=*) [ "$in_entry" = 1 ] && entry_name="${line#Name=}" ;;
 			Exec=*)
-				if [ "$in_entry" = 1 ] \
-				   && dc_exec_supported_launcher "${line#Exec=}"; then
-					supported=1
+				if [ "$in_entry" = 1 ]; then
+					has_primary_exec=1
+					if dc_exec_supported_launcher "${line#Exec=}"; then
+						supported=1
+					fi
 				fi
 				;;
 		esac
 	done < "$f"
-	[ "$supported" = 1 ] || { printf '%s\n' unrelated; return; }
-	if [ "$entry_name" = 'Install Steam' ]; then
+	# The exact installer identity is authoritative for Debian/Ubuntu's shell
+	# stub. It is eligible only after Steam installation has been detected by the
+	# caller; seeding publishes a minimal direct launcher rather than copying it.
+	if [ "$entry_name" = 'Install Steam' ] && [ "$has_primary_exec" = 1 ]; then
 		printf '%s\n' stub
-	else
-		printf '%s\n' launcher
+		return
 	fi
+	[ "$supported" = 1 ] || { printf '%s\n' unrelated; return; }
+	printf '%s\n' launcher
 }
 
 # _dc_file_has_primary_wrapper_exec <file> — validate the effective launcher of
