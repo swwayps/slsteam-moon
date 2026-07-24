@@ -83,7 +83,7 @@ namespace Patterns
 	{
 		extern Pattern_t Init;
 		extern Pattern_t SetAppIdForCurrentPipe;
-
+		extern Pattern_t Offset_ClientUtils;
 		extern Pattern_t Offset_User;
 	}
 

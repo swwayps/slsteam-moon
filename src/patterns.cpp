@@ -990,6 +990,14 @@ namespace Patterns
 			"E8 ? ? ? ? E9 ? ? ? ? ? ? ? ? ? 8B 85 ? ? ? ? 83 EC 08 FF B5",
 			SigFollowMode::Relative
 		};
+		Pattern_t Offset_ClientUtils
+		{
+			"CSteamEngine::m_ClientUtils",
+			"89 86 ? ? ? ? 8D 86 ? ? ? ? 89 44 24 ? 50 E8 ? ? ? ? 83 C4",
+			SigFollowMode::None,
+			nullptr,
+			"Patterns::CSteamEngine::Offset_ClientUtils"
+		};
 		Pattern_t Offset_User
 		{
 			"CSteamEngine::m_pUser",

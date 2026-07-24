@@ -44,6 +44,16 @@ CUser* CSteamEngine::getUser(uint32_t index)
 	return *reinterpret_cast<CUser**>(ppUser + 4);
 }
 
+IClientUtils* CSteamEngine::getUtils()
+{
+	if (!getUser(0))
+	{
+		return nullptr;
+	}
+	const static lm_address_t offset = *reinterpret_cast<lm_address_t*>(Patterns::CSteamEngine::Offset_ClientUtils.address + 2);
+	return reinterpret_cast<IClientUtils*>(this + offset);
+}
+
 void CSteamEngine::setAppIdForCurrentPipe(uint32_t appId)
 {
 	//Last argument needs to be 0, otherwise steam crashes.

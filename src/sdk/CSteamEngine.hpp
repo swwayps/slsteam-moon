@@ -1,14 +1,17 @@
 #pragma once
 
+#include "steam.hpp"
 #include <cstdint>
 
 class CUser;
 class IClientCompat;
+class IClientUtils;
 
 class CSteamEngine
 {
 public:
 	CUser* getUser(uint32_t index);
+	IClientUtils* getUtils();
 	void setAppIdForCurrentPipe(uint32_t appId);
 };
 
