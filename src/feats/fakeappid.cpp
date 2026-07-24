@@ -55,7 +55,7 @@ AppId_t FakeAppIds::getRealAppIdForCurrentPipe(const bool fallback)
 		return 0;
 	}
 
-	const AppId_t appId = getRealAppIdFromEnv(*g_pClientUtils->getPipeIndex());
+	const AppId_t appId = getRealAppIdFromEnv(g_pClientUtils->getCurrentSteamPipe());
 	if (appId)
 	{
 		return appId;
@@ -169,7 +169,7 @@ void FakeAppIds::runIPCFrame(const bool post, const EIPCInterface interface)
 	{
 		return;
 	}
-	g_pLog->debug("Setting AppId to %u in pipe %p\n", appId, *g_pClientUtils->getPipeIndex());
+	g_pLog->debug("Setting AppId to %u in pipe %u\n", appId, g_pClientUtils->getCurrentSteamPipe());
 
 	if (!g_pSteamEngine)
 	{

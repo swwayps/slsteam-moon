@@ -1,19 +1,17 @@
 #include "IClientUtils.hpp"
 
 #include "../hooks.hpp"
-#include "../memhlp.hpp"
 #include "../patterns.hpp"
-#include "../vftableinfo.hpp"
 
 #include "libmem/libmem.h"
+#include "steam.hpp"
 
-#include <cstdint>
 
-uint32_t* IClientUtils::getPipeIndex()
+HSteamPipe IClientUtils::getCurrentSteamPipe()
 {
 	//Offset found in IClientUtils::GetAppId
 	const static auto offset = *reinterpret_cast<lm_address_t*>(Patterns::IClientUtils::Offset_GetPipeIndex.address + 0x2);
-	return reinterpret_cast<uint32_t*>(this + offset);
+	return *reinterpret_cast<HSteamPipe*>(this + offset);
 }
 
 
