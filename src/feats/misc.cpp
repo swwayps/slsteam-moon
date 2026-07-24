@@ -1,19 +1,12 @@
 #include "misc.hpp"
 
 #include "../sdk/CProtoBufMsgBase.hpp"
-#include "../sdk/IClientUtils.hpp"
-
 #include "../config.hpp"
 
 #include "fakeappid.hpp"
 
 bool Misc::shouldFakeOffline()
 {
-	if (!g_pClientUtils)
-	{
-		return false;
-	}
-	
 	const uint32_t appId = FakeAppIds::getRealAppIdForCurrentPipe();
 	if (!appId || !g_config.fakeOffline.get().contains(appId))
 	{
