@@ -680,13 +680,16 @@ setup_path_and_desktop()
 		return 1
 	}
 
-	# Same-ID user shadows are the authoritative layer and must exist before any
-	# privilege prompt. A malformed mandatory user entry is a real install error.
-	if ! dc_guardian_run; then
-		log_error "Could not reconcile mandatory user desktop coverage"
-		return 1
+	# Same-ID user shadows are the authoritative layer and are reconciled before
+	# any privilege prompt. A per-entry reconciliation failure is retryable (the
+	# guardian timer/path retries it), so it must NOT abort installation of the
+	# guardian itself — that would leave the machine with no ongoing self-healing,
+	# which is exactly the "injection lost after reboot" failure.
+	if dc_guardian_run; then
+		log_success "Reconciled user desktop entries"
+	else
+		log_warn "Some user desktop entries could not be fully reconciled yet; the guardian will retry them"
 	fi
-	log_success "Reconciled user desktop entries"
 
 	# User-manager integration is an acceleration/repair layer. Desktop shadows
 	# remain functional if systemd --user is unavailable.
@@ -697,13 +700,23 @@ setup_path_and_desktop()
 	dgu_install_autostart_dropins; guardian_status=$?
 	[ "$guardian_status" = 2 ] && log_warn "Could not install all generated-autostart drop-ins; XDG shadows remain active"
 
+	# Enabling the units is best-effort (systemctl --user may be unreachable when
+	# the installer is run via sudo/root or a non-graphical session). Verify it
+	# actually took: silently-inert units are the top cause of injection being
+	# lost on the next boot, so surface it clearly instead of reporting success.
+	if command -v systemctl >/dev/null 2>&1; then
+		if ! systemctl --user is-enabled slsteam-desktop-guardian.path >/dev/null 2>&1; then
+			log_warn "Desktop guardian installed but NOT active (systemd --user unreachable at install time). Cold-boot injection self-healing is OFF; re-run this installer from your normal desktop session (not via sudo/root)."
+		fi
+	fi
+
 	if is_immutable_distro; then
 		log_info "Immutable distro (read-only /usr): using user-level coverage only; no administrator access requested."
 	elif command -v sudo >/dev/null 2>&1; then
 		# Mutable systems retain the historical system layer as a fallback, but
 		# denying sudo no longer discards the already-working user coverage.
 		if ! sudo -v; then
-			log_warn "Administrator access was not granted; optional system desktop fallback was skipped"
+			log_warn "Administrator access not granted: the system-wide Steam entry stays unpatched. Menu and taskbar launches still use the injected per-user entry (it wins by desktop-file-id); only a launcher pinned by absolute path to the system file would skip the wrapper. Re-run with admin access to also cover the system entry."
 		else
 			dc_migrate_legacy_backups --system
 			if dc_run --system; then
@@ -714,7 +727,7 @@ setup_path_and_desktop()
 			fi
 		fi
 	else
-		log_warn "sudo not available; optional system desktop fallback was skipped"
+		log_warn "sudo not available: the system-wide Steam entry stays unpatched. Menu and taskbar launches still use the injected per-user entry (it wins by desktop-file-id); only a launcher pinned by absolute path to the system file would skip the wrapper."
 	fi
 
 	# Fallback: if the user still has no menu entry (no donor anywhere), write a

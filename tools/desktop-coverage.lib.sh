@@ -1013,7 +1013,11 @@ dc_guardian_run() {
 	dc_guardian_refresh_cache
 
 	[ "$DC_FAILED" -eq 0 ] || status=2
-	if ! dc_guardian_write_summary; then status=2; fi
+	# The summary log is diagnostic only. A failure to persist it (unwritable or
+	# odd XDG_STATE_HOME, full disk) must never be reported as a reconciliation
+	# failure, since callers (setup.sh, the guardian service) gate real work on
+	# this exit status.
+	dc_guardian_write_summary || true
 	# The summary is durable before another trigger may acquire the lock.
 	"$DC_FLOCK" -u 9 >/dev/null 2>&1 || true
 	exec 9>&-

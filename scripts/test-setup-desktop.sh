@@ -45,5 +45,12 @@ ck "uninstall removes guardian state before desktop restoration" \
 ck "uninstall warns when system restore is deferred" \
    "$(grep -q 'retaining user desktop coverage' "$HERE/setup.sh" && echo yes || echo no)"
 
+ck "guardian reconciliation failure does not abort unit installation" \
+   "$(awk '/dc_guardian_run/{seen=1} seen && /dgu_install_units/{done=1} seen && !done && /return 1/{bad=1} END{print bad?"no":"yes"}' "$HERE/setup.sh")"
+ck "setup verifies the guardian actually activated (is-enabled) and warns" \
+   "$(awk '/setup_path_and_desktop\(\)/{f=1} f && /is-enabled slsteam-desktop-guardian.path/{a=1} f && /Cold-boot/{w=1} /^}/{if(f)exit} END{print (a&&w)?"yes":"no"}' "$HERE/setup.sh")"
+ck "sudo-denied warning explains per-user coverage still applies" \
+   "$(grep -q 'system-wide Steam entry stays unpatched' "$HERE/setup.sh" && grep -q 'per-user entry' "$HERE/setup.sh" && echo yes || echo no)"
+
 [ "$fail" = 0 ] && echo "ALL PASS" || echo "FAILURES"
 exit "$fail"

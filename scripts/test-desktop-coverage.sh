@@ -720,6 +720,27 @@ check "guardian retry patches mandatory entry" "patched" \
 check "guardian retry summary clears failures" "yes" \
   "$(tail -n 1 "$state21" 2>/dev/null | grep -Eq ' failed=0$' && echo yes || echo no)"
 
+# A failure to persist the summary log is diagnostic only: it must NOT be
+# reported as a reconciliation failure. Point XDG_STATE_HOME at a regular file so
+# the summary mkdir/write fails while the mandatory entry still reconciles.
+H23="$TMP/home23"; mkdir -p "$H23/data/applications" "$H23/conf/autostart" \
+  "$TMP/empty23/applications" "$H23/runtime"
+: > "$H23/state_is_a_file"
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/bin/steam %%U\n' > "$H23/data/applications/steam.desktop"
+if XDG_DATA_HOME="$H23/data" XDG_DATA_DIRS="$TMP/empty23" XDG_CONFIG_HOME="$H23/conf" \
+  XDG_STATE_HOME="$H23/state_is_a_file" XDG_RUNTIME_DIR="$H23/runtime" DC_HOME="$H23" \
+  DC_BACKUP_ROOT="$H23/backup" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" \
+  DC_FLOCK="$FLOCK_SHIM" DC_UPDATE_DESKTOP_DATABASE="$UPDATE_SHIM" \
+  DC_KBUILDSYCOCA="$KBUILD_SHIM" DC_TEST_EVENTS="$GUARDIAN_EVENTS" \
+  DC_TEST_APP="$H23/data/applications/steam.desktop" dc_guardian_run; then
+  guardian23_status=0
+else
+  guardian23_status=$?
+fi
+check "guardian summary-write failure is not a reconciliation failure" "0" "$guardian23_status"
+check "guardian still patched the mandatory entry despite summary failure" "patched" \
+  "$(dc_classify "$H23/data/applications/steam.desktop")"
+
 # The CLI accepts exactly one documented mode. --user remains best-effort while
 # --guardian reports mandatory user failures.
 cli_status() {

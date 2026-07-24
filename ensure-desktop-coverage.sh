@@ -30,6 +30,14 @@ fi
 case "$1" in
 	--user)
 		dc_run --user || true
+		# Also converge the generated-autostart drop-in on the per-launch path.
+		# The wrapper/Lumen call this every injected launch, so even when the
+		# systemd user units are inert (installed while systemctl --user was
+		# unreachable), a single injected launch still creates the cold-boot
+		# closure. Best-effort: never fail a launch.
+		if command -v dgu_install_autostart_dropins >/dev/null 2>&1; then
+			dgu_install_autostart_dropins || true
+		fi
 		exit 0
 		;;
 	--system)

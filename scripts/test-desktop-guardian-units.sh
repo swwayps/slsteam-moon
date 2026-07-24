@@ -344,6 +344,34 @@ check "late autostart drop-in preserves ordinary flag" \
   "ExecStart=\"$CLI_WRAPPER\" -silent" \
   "$(sed -n '/^ExecStart=.* -silent$/p' "$CLI_DROPIN" 2>/dev/null)"
 
+# The per-launch --user path (invoked by the wrapper/Lumen every injected launch)
+# must also converge the generated-autostart drop-in. Otherwise, when the systemd
+# user units are inert (e.g. installed while systemctl --user was unreachable),
+# nothing ever creates the cold-boot closure and injection is lost after reboot.
+USR_HOME="$TMP/USER Home"
+USR_UNITS="$USR_HOME/config/systemd/user"
+USR_WRAPPER="$USR_HOME/.local/share/SLSsteam/path/steam"
+mkdir -p "$USR_HOME/data/applications" "$USR_HOME/config/autostart" "$USR_HOME/Desktop"
+cat > "$USR_HOME/config/autostart/steam.desktop" <<'EOF'
+[Desktop Entry]
+Name=Steam
+Exec=/usr/bin/steam -silent %U
+EOF
+: > "$DGU_CALLS"
+HOME="$USR_HOME" DC_HOME="$USR_HOME" XDG_DATA_HOME="$USR_HOME/data" \
+  XDG_DATA_DIRS="$TMP/usr-empty" XDG_CONFIG_HOME="$USR_HOME/config" \
+  XDG_CONFIG_DIRS="$TMP/usr-empty" DC_SYS_APPS="$TMP/usr-none" \
+  DC_SYS_AUTOSTART="$TMP/usr-none" \
+  WRAPPER="$USR_WRAPPER" DGU_UNIT_DIR="$USR_UNITS" \
+  DGU_SYSTEMCTL="$FAKE_BIN/fake systemctl" \
+  bash "$HERE/ensure-desktop-coverage.sh" --user >/dev/null 2>&1
+USR_DROPIN="$USR_UNITS/app-steam@autostart.service.d/slsteam-guardian.conf"
+check "CLI --user converges the autostart drop-in" "yes" \
+  "$([ -f "$USR_DROPIN" ] && echo yes || echo no)"
+check "CLI --user drop-in targets the wrapper with preserved flag" \
+  "ExecStart=\"$USR_WRAPPER\" -silent" \
+  "$(sed -n '/^ExecStart=.* -silent$/p' "$USR_DROPIN" 2>/dev/null)"
+
 if [ "$fail" -eq 0 ]; then
 	printf 'ALL PASS\n'
 else
