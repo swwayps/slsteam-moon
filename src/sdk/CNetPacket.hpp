@@ -37,7 +37,7 @@ public:
 	uint8_t __pad0x0[0x4];			//0x0
 	CNetPacketBody* body;			//0x4
 	uint32_t size;					//0x8
-	uint8_t __pad_0xC[0x4];			//0xC
+	int32_t refs;					//0xC
 	CNetPacketBody* originalBody;	//0x10
 
 	constexpr bool isValid() const
