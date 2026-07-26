@@ -44,6 +44,10 @@ public:
 	MTVariable<ELoadError> __loadErrors;
 
 	MTVariable<std::unordered_set<uint32_t>> appIds;
+	// Apps sourced from stplug-in/luaappids and eligible for appinfo fetching.
+	MTVariable<std::unordered_set<uint32_t>> managedAppIds;
+	// Managed apps plus installed compatibility entries used by ownership and
+	// package hooks. Compatibility entries never enter the provider chain.
 	MTVariable<std::unordered_set<uint32_t>> addedAppIds;
 	MTVariable<std::unordered_map<uint32_t, CDlcData>> dlcData;
 	MTVariable<std::unordered_map<uint32_t, uint64_t>> appTokens;
@@ -91,10 +95,10 @@ public:
 	bool createFile();
 	bool init();
 
-	// AdditionalApps sources (unioned in loadSettings / hot-reload):
-	//   1. stplug-in/*.lua numeric filename stems  (primary, new-version)
-	//   2. luaappids.yaml AdditionalApps           (manual / plugin overrides)
-	//   3. config.yaml AdditionalApps              (LEGACY upgrade compat)
+	// Managed-app sources (unioned in loadSettings / hot-reload):
+	//   1. stplug-in/*.lua numeric filename stems
+	//   2. luaappids.yaml AdditionalApps
+	// Installed Accela and legacy config entries are added only to addedAppIds.
 	std::unordered_set<uint32_t> discoverStPluginAppIds();
 	std::unordered_set<uint32_t> loadLuaAppIdsYaml();
 

@@ -45,7 +45,7 @@
 namespace AppInfoProvision
 {
 
-// Collect the DLC appids advertised by every provisioned AdditionalApp,
+// Collect the DLC appids advertised by every managed app,
 // read from the on-disk `picsbuffer_<appid>.bin` buffers (their
 // `extended.listofdlc` and `depots.<id>.dlcappid` fields).  Returns the
 // deduplicated set, excluding the AddedApp base ids themselves.
@@ -64,7 +64,8 @@ std::vector<uint32_t> collectDlcAppIdsForAddedApps();
 // a new buffer was written (or already cached).
 bool provisionApp(uint32_t appId, const std::string& appinfoVdfPath);
 
-// Run `provisionApp` for every AdditionalApps id in the loaded config.
+// Run `provisionApp` only for managed ids sourced from stplug-in or
+// luaappids.yaml. Installed compatibility ids never enter provider calls.
 // Returns the number of buffers newly written (0 means everything was
 // already provisioned or none needed).
 int provisionAllAddedApps(const std::string& appinfoVdfPath);

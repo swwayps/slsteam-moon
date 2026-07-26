@@ -3,6 +3,7 @@
 // See appinfo_provision.hpp for design notes.
 
 #include "appinfo_provision.hpp"
+#include "provision_result.hpp"
 
 #include "cmclient.hpp"
 #include "compattool.hpp"
@@ -644,11 +645,11 @@ void neutralizeLegacyCdKey(YAML::Node& body, uint32_t appId)
 }
 
 // Render the SteamCMD-style JSON object for one app into the wire-text
-// VDF format that AppInfoVdf::translateWireToIndexed accepts.  Returns
-// true on success.
-bool renderAppinfoBuffer(const YAML::Node& appNode, uint32_t appId, std::string& wireOut)
+// VDF format that AppInfoVdf::translateWireToIndexed accepts.
+SourceResult renderAppinfoBuffer(const YAML::Node& appNode, uint32_t appId,
+                                 std::string& wireOut)
 {
-	if (!appNode.IsMap()) return false;
+	if (!appNode.IsMap()) return SourceResult::InvalidResponse;
 
 	// Drop SteamCMD synthetic envelope fields ("_change_number", "_sha",
 	// "_size", "_missing_token").  They are not part of the appinfo
@@ -660,7 +661,13 @@ bool renderAppinfoBuffer(const YAML::Node& appNode, uint32_t appId, std::string&
 		if (!key.empty() && key.front() == '_') continue;
 		body[key] = it->second;
 	}
-	if (!body.IsMap() || body.size() == 0) return false;
+	if (!body.IsMap() || body.size() == 0) return SourceResult::InvalidResponse;
+
+	// Remember whether the provider supplied any concrete content before
+	// pruning. A valid token-limited response with no depot data may benefit
+	// from a secondary provider; concrete depots that are all rejected locally
+	// will not, so that result must be terminal.
+	bool hadConcreteContent = hasUsableContentDepot(body);
 
 	// Token-locked apps (product-info access token denied to anonymous
 	// sessions) arrive with NO depots.  Rebuild the block from the depot
@@ -670,8 +677,11 @@ bool renderAppinfoBuffer(const YAML::Node& appNode, uint32_t appId, std::string&
 	{
 		const int n = synthesizeDepotsFromStore(body, appId);
 		if (n > 0)
+		{
 			g_pLog->info("AppInfoProvision: app=%u synthesized %d depot(s) from "
 			             "stored manifests (product-info had none)\n", appId, n);
+			hadConcreteContent = hasUsableContentDepot(body);
+		}
 	}
 
 	// Strip depots we can't decrypt; narrow common.oslist accordingly.
@@ -679,11 +689,13 @@ bool renderAppinfoBuffer(const YAML::Node& appNode, uint32_t appId, std::string&
 	// reads is consistent and the change is invisible to Steam beyond
 	// "the user only owns the windows depot".
 	pruneUnsupportedDepots(body, appId);
-	if (!hasUsableContentDepot(body))
+	const SourceResult contentResult = classifyContentResult(
+	    hadConcreteContent, hasUsableContentDepot(body));
+	if (contentResult != SourceResult::Success)
 	{
 		g_pLog->info("AppInfoProvision: app=%u has no usable content depots "
 		             "after pruning, skipping\n", appId);
-		return false;
+		return contentResult;
 	}
 
 	// Clear the launch-time legacy CD-key gate (see helper above): without
@@ -701,7 +713,7 @@ bool renderAppinfoBuffer(const YAML::Node& appNode, uint32_t appId, std::string&
 	wireOut.append("\"appinfo\"\n{\n");
 	emitNode(wireOut, body, 1);
 	wireOut.append("}\n");
-	return true;
+	return SourceResult::Success;
 }
 
 // ---------------------------------------------------------------------------
@@ -1154,23 +1166,27 @@ private:
 };
 
 // Render+prune+sha+persist a parsed appinfo node (shared tail used by
-// both the CM and steamcmd paths).  Returns true if a buffer was
-// written.  `changeNumber` is the PICS/JSON change number for the meta
-// record.
-bool renderAndPersist(uint32_t appId, const YAML::Node& appNode,
-                      uint32_t changeNumber)
+// both the CM and steamcmd paths). `changeNumber` is the PICS/JSON change
+// number for the meta record.
+SourceResult renderAndPersist(uint32_t appId, const YAML::Node& appNode,
+                              uint32_t changeNumber)
 {
 	std::string wire;
-	if (!renderAppinfoBuffer(appNode, appId, wire))
+	const SourceResult renderResult = renderAppinfoBuffer(appNode, appId, wire);
+	if (renderResult != SourceResult::Success)
 	{
-		g_pLog->warn("AppInfoProvision: app=%u render failed "
-		             "(empty body or no usable depots)\n", appId);
-		return false;
+		const char* reason = "invalid response";
+		if (renderResult == SourceResult::IncompleteContent)
+			reason = "response contains no concrete depot data";
+		else if (renderResult == SourceResult::NoUsableContent)
+			reason = "concrete depots are not usable";
+		g_pLog->info("AppInfoProvision: app=%u render stopped (%s)\n", appId, reason);
+		return renderResult;
 	}
 	if (wire.find("\"depots\"") == std::string::npos)
 	{
-		g_pLog->warn("AppInfoProvision: app=%u buffer has no depots, skipping\n", appId);
-		return false;
+		g_pLog->info("AppInfoProvision: app=%u buffer has no depots, skipping\n", appId);
+		return SourceResult::IncompleteContent;
 	}
 
 	std::string sha20;
@@ -1182,28 +1198,27 @@ bool renderAndPersist(uint32_t appId, const YAML::Node& appNode,
 
 	if (!persistBuffer(appId, changeNumber, sha20, wire))
 	{
-		g_pLog->warn("AppInfoProvision: app=%u failed to persist buffer to cache\n", appId);
-		return false;
+		g_pLog->info("AppInfoProvision: app=%u failed to persist buffer to cache\n", appId);
+		return SourceResult::LocalFailure;
 	}
 
 	g_pLog->infoOnce("AppInfoProvision: app=%u provisioned (change=%u, %zu bytes wire)\n",
 	             appId, changeNumber, wire.size());
-	return true;
+	return SourceResult::Success;
 }
 
-// Provision one app from a native-CM wire buffer.  Returns true on
-// success (buffer persisted).  Mirrors the steamcmd path's tail but skips
-// the JSON parse — the CM buffer is already wire-text VDF.
-bool provisionAppFromCmBuffer(uint32_t appId, const std::string& cmWire,
-                              uint32_t changeNumber)
+// Provision one app from a native-CM wire buffer. Mirrors the steamcmd
+// path's tail but skips the JSON parse — the CM buffer is already wire VDF.
+SourceResult provisionAppFromCmBuffer(uint32_t appId, const std::string& cmWire,
+                                      uint32_t changeNumber)
 {
-	if (cmWire.empty()) return false;
+	if (cmWire.empty()) return SourceResult::InvalidResponse;
 	CmVdfReader reader(cmWire.data(), cmWire.data() + cmWire.size());
 	YAML::Node appNode = reader.parseAppinfo();
 	if (!appNode || !appNode.IsMap() || appNode.size() == 0)
 	{
 		g_pLog->info("AppInfoProvision: app=%u CM buffer parse failed, fallback\n", appId);
-		return false;
+		return SourceResult::InvalidResponse;
 	}
 	return renderAndPersist(appId, appNode, changeNumber);
 }
@@ -1265,12 +1280,28 @@ bool provisionApp(uint32_t appId, const std::string& appinfoVdfPath)
 			uint32_t cn = 0;
 			if (auto ci = g_cmChanges.find(appId); ci != g_cmChanges.end())
 				cn = ci->second;
-			if (provisionAppFromCmBuffer(appId, it->second, cn))
+			const SourceResult cmResult =
+			    provisionAppFromCmBuffer(appId, it->second, cn);
+			if (cmResult == SourceResult::Success)
 			{
 				g_pLog->info("AppInfoProvision: app=%u provisioned via CM\n", appId);
 				return true;
 			}
-			g_pLog->info("AppInfoProvision: app=%u CM buffer unusable, trying steamcmd\n", appId);
+			if (!shouldTryProviderFallback(cmResult))
+			{
+				g_pLog->info(
+				    "AppInfoProvision: app=%u CM result is terminal (%s); "
+				    "provider fallback suppressed\n", appId,
+				    cmResult == SourceResult::NoUsableContent
+				        ? "concrete depots are not usable"
+				        : "local cache write failed");
+				return false;
+			}
+			g_pLog->info("AppInfoProvision: app=%u CM response %s, trying steamcmd\n",
+			             appId,
+			             cmResult == SourceResult::IncompleteContent
+			                 ? "contains no concrete depot data"
+			                 : "is invalid");
 		}
 	}
 
@@ -1311,15 +1342,20 @@ bool provisionApp(uint32_t appId, const std::string& appinfoVdfPath)
 	std::string err;
 	if (!extractAppNode(body, appId, appNode, err))
 	{
-		g_pLog->warn("AppInfoProvision: app=%u parse failed: %s\n", appId, err.c_str());
+		g_pLog->info("AppInfoProvision: app=%u parse failed: %s\n", appId, err.c_str());
 		return false;
 	}
 
 	std::string wire;
-	if (!renderAppinfoBuffer(appNode, appId, wire))
+	const SourceResult renderResult = renderAppinfoBuffer(appNode, appId, wire);
+	if (renderResult != SourceResult::Success)
 	{
-		g_pLog->warn("AppInfoProvision: app=%u render failed "
-		             "(empty body or no usable depots)\n", appId);
+		const char* reason = "invalid response";
+		if (renderResult == SourceResult::IncompleteContent)
+			reason = "response contains no concrete depot data";
+		else if (renderResult == SourceResult::NoUsableContent)
+			reason = "concrete depots are not usable";
+		g_pLog->info("AppInfoProvision: app=%u render stopped (%s)\n", appId, reason);
 		return false;
 	}
 
@@ -1329,7 +1365,7 @@ bool provisionApp(uint32_t appId, const std::string& appinfoVdfPath)
 	// useless entry.
 	if (wire.find("\"depots\"") == std::string::npos)
 	{
-		g_pLog->warn("AppInfoProvision: app=%u JSON has no depots, skipping\n", appId);
+		g_pLog->info("AppInfoProvision: app=%u JSON has no depots, skipping\n", appId);
 		return false;
 	}
 
@@ -1384,7 +1420,7 @@ bool provisionApp(uint32_t appId, const std::string& appinfoVdfPath)
 
 	if (!persistBuffer(appId, changeNumber, sha20, wire))
 	{
-		g_pLog->warn("AppInfoProvision: app=%u failed to persist buffer to cache\n", appId);
+		g_pLog->info("AppInfoProvision: app=%u failed to persist buffer to cache\n", appId);
 		return false;
 	}
 
@@ -1395,7 +1431,7 @@ bool provisionApp(uint32_t appId, const std::string& appinfoVdfPath)
 
 int provisionAllAddedApps(const std::string& appinfoVdfPath)
 {
-	const auto added = g_config.addedAppIds.get();
+	const auto added = g_config.managedAppIds.get();
 	if (added.empty()) return 0;
 
 	// PRIMARY source: one batched anonymous-CM product-info request to
@@ -1445,11 +1481,10 @@ int provisionAllAddedApps(const std::string& appinfoVdfPath)
 		}
 		else
 		{
-			// Terminal: both the CM batch and the steamcmd fallback failed
-			// for this app, so it won't be installable this session. One
-			// emit point here (not per-provider) avoids a false popup when
-			// the CM path fails but steamcmd then succeeds. Throttled, so a
-			// fleet-wide outage at startup collapses to a single popup.
+			// Terminal for this app: providers failed, its concrete depots
+			// were not usable, or the local cache write failed. One emit point
+			// here avoids duplicate provider-level popups. Throttling collapses
+			// a fleet-wide outage at startup to a single notification.
 			g_pLog->notifyUser(UserMsg::GamePreparationFailed,
 			                   std::to_string(appId));
 		}
@@ -1477,7 +1512,7 @@ std::vector<uint32_t> collectDlcAppIdsForAddedApps()
 	std::vector<uint32_t> out;
 	std::unordered_set<uint32_t> seen;
 
-	const auto added = g_config.addedAppIds.get();
+	const auto added = g_config.managedAppIds.get();
 	if (added.empty()) return out;
 
 	for (uint32_t appId : added)

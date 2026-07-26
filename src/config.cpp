@@ -414,29 +414,38 @@ bool CConfig::loadSettings()
 
 	appIds = getList<uint32_t>(node, "AppIds");
 
-	// AdditionalApps is the UNION of three sources:
-	//   1. stplug-in/*.lua stems      — primary source for the new version
-	//   2. luaappids.yaml              — manual / plugin overrides
-	//   3. config.yaml AdditionalApps  — LEGACY: everything an upgrading user
-	//                                    already had lives here, and may not
-	//                                    exist under stplug-in, so we must keep
-	//                                    honouring it.
+	// Only stplug-in and luaappids.yaml are managed sources: their ids may
+	// enter appinfo acquisition. Existing Accela installs are rediscovered by
+	// appmanifest + .DepotDownloader, while old config entries survive only
+	// when their install directory still contains content. Those ids keep
+	// ownership/package behavior but never trigger CM or HTTP provider calls.
 	{
 		auto stplugApps  = discoverStPluginAppIds();
 		auto luaYamlApps = loadLuaAppIdsYaml();
 		auto legacyApps  = getList<uint32_t>(node, "AdditionalApps");
+		ConfigDiscovery::InstalledApps installed;
+		const auto steamRoot = findSteamRootForConfig();
+		if (!steamRoot.empty())
+		{
+			installed = ConfigDiscovery::scanInstalledApps(
+			    ConfigDiscovery::steamAppsRootsFor(steamRoot));
+		}
+		const auto ids = ConfigDiscovery::classifyAppIds(
+		    stplugApps, luaYamlApps, legacyApps, installed.all, installed.accela);
 
-		std::unordered_set<uint32_t> combined;
-		combined.insert(stplugApps.begin(),  stplugApps.end());
-		combined.insert(luaYamlApps.begin(), luaYamlApps.end());
-		combined.insert(legacyApps.begin(),  legacyApps.end());
+		std::size_t installedLegacy = 0;
+		for (uint32_t appId : legacyApps)
+			if (installed.all.contains(appId)) ++installedLegacy;
 
-		g_pLog->info("AdditionalApps sources: stplug-in=%zu luaappids.yaml=%zu "
-		             "config.yaml(legacy)=%zu -> total=%zu\n",
-		             stplugApps.size(), luaYamlApps.size(), legacyApps.size(),
-		             combined.size());
+		g_pLog->info("App sources: stplug-in=%zu luaappids.yaml=%zu managed=%zu "
+		             "Accela-installed=%zu legacy-installed=%zu legacy-stale=%zu "
+		             "-> active=%zu\n",
+		             stplugApps.size(), luaYamlApps.size(), ids.managed.size(),
+		             installed.accela.size(), installedLegacy,
+		             legacyApps.size() - installedLegacy, ids.active.size());
 
-		addedAppIds = combined;
+		managedAppIds = ids.managed;
+		addedAppIds = ids.active;
 	}
 
 	fakeOffline = getList<uint32_t>(node, "FakeOffline");
