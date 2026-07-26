@@ -110,6 +110,11 @@ void CLog::notifyUser(UserMsg msg, const std::string& detail)
 
 	const std::string cmd =
 		Notify::buildCommandRaw("SLSsteam-moon", shown, timeoutMs, "normal");
+	// Gamepad UI has no freedesktop notification surface. Hand the same event
+	// to Lumen, which renders it through Steam's own toast system only while
+	// Big Picture/Gamepad UI is active. Desktop keeps notify-send below as the
+	// visible path; the sidecar silently drains the duplicate event there.
+	(void)Notify::enqueueGamepadEventForUser("SLSsteam-moon", shown, timeoutMs);
 	const int rc = system(cmd.c_str());
 	(void)rc; // best-effort popup; nothing actionable if notify-send is absent
 }

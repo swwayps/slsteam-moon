@@ -11,8 +11,14 @@
 // Here every notifying level gets an explicit timeout AND a non-critical
 // urgency, so they all auto-dismiss.
 
+#include <atomic>
+#include <chrono>
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
 #include <string>
 #include <unordered_map>
+#include <unistd.h>
 
 enum class LogLevel : unsigned int
 {
@@ -28,6 +34,123 @@ enum class LogLevel : unsigned int
 
 namespace Notify
 {
+	inline long long epochMilliseconds()
+	{
+		return std::chrono::duration_cast<std::chrono::milliseconds>(
+			std::chrono::system_clock::now().time_since_epoch()).count();
+	}
+
+	inline long long processId()
+	{
+		return static_cast<long long>(::getpid());
+	}
+
+	// Escape arbitrary user-facing text into a JSON string. The Gamepad UI
+	// transport uses files rather than a shell command, so it needs its own
+	// encoder instead of shellEscapeDoubleQuoted().
+	inline std::string jsonEscape(const std::string& value)
+	{
+		static constexpr char hex[] = "0123456789abcdef";
+		std::string out;
+		out.reserve(value.size() + 8);
+		for (unsigned char c : value)
+		{
+			switch (c)
+			{
+				case '\0': break;
+				case '"': out += "\\\""; break;
+				case '\\': out += "\\\\"; break;
+				case '\b': out += "\\b"; break;
+				case '\f': out += "\\f"; break;
+				case '\n': out += "\\n"; break;
+				case '\r': out += "\\r"; break;
+				case '\t': out += "\\t"; break;
+				default:
+					if (c < 0x20)
+					{
+						out += "\\u00";
+						out.push_back(hex[(c >> 4) & 0x0f]);
+						out.push_back(hex[c & 0x0f]);
+					}
+					else
+					{
+						out.push_back(static_cast<char>(c));
+					}
+			}
+		}
+		return out;
+	}
+
+	inline std::string buildGamepadPayload(const std::string& title,
+	                                      const std::string& body,
+	                                      int timeoutMs,
+	                                      long long createdMs)
+	{
+		return "{\"version\":1,\"created_ms\":" + std::to_string(createdMs)
+			+ ",\"title\":\"" + jsonEscape(title)
+			+ "\",\"body\":\"" + jsonEscape(body)
+			+ "\",\"timeout_ms\":" + std::to_string(timeoutMs) + "}";
+	}
+
+	// Publish one event with write-then-rename semantics. Lumen ignores .tmp
+	// files, so it can never observe a partial JSON payload even when Steam is
+	// interrupted during the write. This is best-effort and deliberately does
+	// not depend on Decky, D-Bus, the desktop session, or a network socket.
+	inline bool enqueueGamepadEvent(const std::string& queueDir,
+	                                const std::string& title,
+	                                const std::string& body,
+	                                int timeoutMs,
+	                                long long createdMs = epochMilliseconds())
+	{
+		static std::atomic<unsigned long long> sequence{0};
+		try
+		{
+			const std::filesystem::path dir(queueDir);
+			std::error_code ec;
+			std::filesystem::create_directories(dir, ec);
+			if (ec) return false;
+			std::filesystem::permissions(dir,
+				std::filesystem::perms::owner_all,
+				std::filesystem::perm_options::replace, ec);
+			if (ec) return false;
+
+			const std::string stem = "event-" + std::to_string(processId()) + "-"
+				+ std::to_string(createdMs) + "-"
+				+ std::to_string(sequence.fetch_add(1, std::memory_order_relaxed));
+			const std::filesystem::path temporary = dir / ("." + stem + ".tmp");
+			const std::filesystem::path published = dir / (stem + ".json");
+
+			{
+				std::ofstream out(temporary, std::ios::binary | std::ios::trunc);
+				if (!out) return false;
+				out << buildGamepadPayload(title, body, timeoutMs, createdMs);
+				out.flush();
+				if (!out) return false;
+			}
+			std::filesystem::rename(temporary, published, ec);
+			if (ec)
+			{
+				std::filesystem::remove(temporary);
+				return false;
+			}
+			return true;
+		}
+		catch (...)
+		{
+			return false;
+		}
+	}
+
+	inline bool enqueueGamepadEventForUser(const std::string& title,
+	                                       const std::string& body,
+	                                       int timeoutMs)
+	{
+		const char* home = ::getenv("HOME");
+		if (!home || !home[0]) return false;
+		return enqueueGamepadEvent(std::string(home)
+			+ "/.local/share/Lumen/notifications", title, body, timeoutMs);
+	}
+
 	struct Spec
 	{
 		bool        enabled;   // does this level raise a desktop popup?

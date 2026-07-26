@@ -18,6 +18,8 @@
 #include "../src/notify.hpp"
 
 #include <cstdio>
+#include <filesystem>
+#include <fstream>
 #include <string>
 
 static int g_failures = 0;
@@ -200,6 +202,50 @@ int main()
 		CHECK(!thr.allow(1, 61500, suppressed), "next burst suppressed again");
 		CHECK(thr.allow(1, 122000, suppressed) && suppressed == 1,
 		      "counter reset: only 1 suppressed since last emit");
+	}
+
+	// 11) Gamepad UI transport: notifications are handed to the Lumen sidecar
+	//     through an atomic JSON event. This is intentionally independent of a
+	//     desktop notification daemon, so SteamOS/Bazzite-style sessions can
+	//     render the message inside Steam itself.
+	{
+		const std::string payload = Notify::buildGamepadPayload(
+			"SLSsteam-moon", "quoted \"body\"\nsecond line", 30000, 123456789);
+		CHECK(contains(payload, "\"version\":1"),
+		      "gamepad payload carries its schema version");
+		CHECK(contains(payload, "\"created_ms\":123456789"),
+		      "gamepad payload carries its creation time");
+		CHECK(contains(payload, "quoted \\\"body\\\"\\nsecond line"),
+		      "gamepad payload JSON-escapes quotes and newlines");
+		CHECK(contains(payload, "\"timeout_ms\":30000"),
+		      "gamepad payload carries the requested timeout");
+
+		const auto base = std::filesystem::temp_directory_path() /
+			("sls-notify-test-" + std::to_string(Notify::processId()));
+		std::error_code ec;
+		std::filesystem::remove_all(base, ec);
+		CHECK(Notify::enqueueGamepadEvent(base.string(), "SLSsteam-moon",
+		      "ready", 10000, 123456790),
+		      "gamepad event is queued atomically");
+
+		int jsonFiles = 0;
+		int temporaryFiles = 0;
+		std::string queued;
+		for (const auto& entry : std::filesystem::directory_iterator(base))
+		{
+			if (entry.path().extension() == ".json")
+			{
+				++jsonFiles;
+				std::ifstream in(entry.path());
+				queued.assign(std::istreambuf_iterator<char>(in), {});
+			}
+			if (entry.path().extension() == ".tmp") ++temporaryFiles;
+		}
+		CHECK(jsonFiles == 1, "queue publishes exactly one JSON event");
+		CHECK(temporaryFiles == 0, "queue leaves no partially-written event");
+		CHECK(contains(queued, "\"body\":\"ready\""),
+		      "published event preserves its body");
+		std::filesystem::remove_all(base, ec);
 	}
 
 	if (g_failures == 0) { std::printf("\nALL PASS\n"); return 0; }
