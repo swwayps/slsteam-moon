@@ -23,8 +23,8 @@
 #include <sstream>
 
 CSteamId Ticket::oneTimeSteamIdSpoof = 0;
-std::map<AppId_t, Ticket::SavedTicket> Ticket::ticketMap = std::map<AppId_t, SavedTicket>();
-std::map<AppId_t, Ticket::SavedTicket> Ticket::encryptedTicketMap = std::map<AppId_t, SavedTicket>();
+std::unordered_map<AppId_t, Ticket::SavedTicket> Ticket::ticketMap = std::unordered_map<AppId_t, SavedTicket>();
+std::unordered_map<AppId_t, Ticket::SavedTicket> Ticket::encryptedTicketMap = std::unordered_map<AppId_t, SavedTicket>();
 
 std::string Ticket::getTicketDir()
 {

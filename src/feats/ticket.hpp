@@ -3,9 +3,9 @@
 #include "../sdk/CSteamID.hpp"
 
 #include <cstdint>
-#include <map>
 #include <mutex>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 
 class CMsgClientGetAppOwnershipTicketResponse;
@@ -37,8 +37,8 @@ public:
 	};
 
 	extern CSteamId oneTimeSteamIdSpoof;
-	extern std::map<uint32_t, SavedTicket> ticketMap;
-	extern std::map<uint32_t, SavedTicket> encryptedTicketMap;
+	extern std::unordered_map<AppId_t, SavedTicket> ticketMap;
+	extern std::unordered_map<AppId_t, SavedTicket> encryptedTicketMap;
 	inline std::mutex cacheMutex;
 	inline std::unordered_set<uint32_t> invalidatedApps;
 
