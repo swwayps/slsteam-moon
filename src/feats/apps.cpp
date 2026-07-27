@@ -211,7 +211,7 @@ bool Apps::unlockApp(uint32_t appId, CAppOwnershipInfo* info, uint32_t ownerId)
 {
 	info->owner = ownerId;
 	info->realOwner = 0;
-	info->familyShared = ownerId != g_currentSteamId;
+	info->familyShared = ownerId != g_currentSteamId.steamId;
 
 	info->licensePermanent = !info->familyShared;
 	info->retailLicense = false;
@@ -237,19 +237,19 @@ bool Apps::unlockApp(uint32_t appId, CAppOwnershipInfo* info, uint32_t ownerId)
 
 bool Apps::unlockApp(uint32_t appId, CAppOwnershipInfo* info)
 {
-	return unlockApp(appId, info, g_currentSteamId);
+	return unlockApp(appId, info, g_currentSteamId.steamId);
 }
 
 bool Apps::checkAppOwnership(uint32_t appId, CAppOwnershipInfo* pInfo)
 {
-	if (!applistRequested || !pInfo || !g_currentSteamId)
+	if (!applistRequested || !pInfo || !g_currentSteamId.steamId)
 	{
 		return false;
 	}
 
 	const uint32_t denuvoOwner = g_config.getDenuvoGameOwner(appId);
 
-	if (denuvoOwner && denuvoOwner != g_currentSteamId)
+	if (denuvoOwner && denuvoOwner != g_currentSteamId.steamId)
 	{
 		g_pLog->infoOnce("Skipping %u because it's a Denuvo game from someone else\n", appId);
 		return false;

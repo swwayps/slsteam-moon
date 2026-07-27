@@ -332,6 +332,8 @@ static void hkCMInterface_RecvPkt(void* pCMInterface, CNetPacket* pNetPacket)
 	Hooks::CCMInterface_RecvPkt.tramp.fn(pCMInterface, pNetPacket);
 }
 
+static CSteamId hkClientUser_GetSteamId(const CSteamId& steamId);
+
 static uint32_t hkProtoBufMsgBase_Send(CProtoBufMsgBase* pMsg)
 {
 	DepotKey::sendMsg(pMsg);
@@ -368,9 +370,10 @@ static uint32_t hkSteamEngine_ProcessIPCFrame(
 	{
 		const EIPCInterface interface =
 			*reinterpret_cast<EIPCInterface*>(pBufIn->mem.base + 1);
+		const uint32_t function =
+			*reinterpret_cast<uint32_t*>(pBufIn->mem.base + 6);
 		if (log)
 		{
-			const uint32_t function = *reinterpret_cast<uint32_t*>(pBufIn->mem.base + 6);
 			const auto utils = g_pSteamEngine->getUtils();
 			g_pLog->debug(
 				"RunInterface %s %u for %u (%u)\n",
@@ -383,6 +386,23 @@ static uint32_t hkSteamEngine_ProcessIPCFrame(
 		ret = Hooks::CSteamEngine_ProcessIPCFrame.tramp.fn(
 			pSteamEngine, hPipe, pBufIn, pBufOut);
 		FakeAppIds::runIPCFrame(true, interface);
+
+		const EIPCExitCode exitCode =
+			*reinterpret_cast<EIPCExitCode*>(pBufOut->mem.base);
+		if (interface == EIPCInterface::User &&
+			exitCode == EIPCExitCode::Success && function == 0xD6FC3200)
+		{
+			CSteamId id{};
+			std::memcpy(&id, pBufOut->mem.base + 1, sizeof(id));
+			if (!g_currentSteamId.steamId && id.steamId)
+			{
+				g_currentSteamId = id;
+				StatsPolicy::setAccount(id.steamId);
+			}
+
+			const CSteamId newId = hkClientUser_GetSteamId(g_currentSteamId);
+			std::memcpy(pBufOut->mem.base + 1, &newId, sizeof(newId));
+		}
 	}
 	else
 	{
@@ -1143,12 +1163,8 @@ static uint8_t hkClientUser_IsUserSubscribedAppInTicket(void* pClientUser, uint3
 	return ticketState;
 }
 
-__attribute__((stdcall))
-static uint32_t hkClientUser_GetSteamId(uint32_t steamId)
+static CSteamId hkClientUser_GetSteamId(const CSteamId& steamId)
 {
-	g_currentSteamId = steamId;
-	StatsPolicy::setAccount(steamId);
-
 	const auto utils = g_pSteamEngine->getUtils();
 	if (!utils)
 	{
@@ -1162,20 +1178,25 @@ static uint32_t hkClientUser_GetSteamId(uint32_t steamId)
 		return steamId;
 	}
 
+	CSteamId newId = steamId;
+
 	//Use Pipe AppId since getCachedEncryptedTicket handles logic for FakeAppIds itself
 	Ticket::SavedTicket ticket = Ticket::getCachedEncryptedTicket(utils->getAppId());
 
-	if (ticket.steamId)
+	//One time spoof should take presedence, otherwise SteamStub will fail
+	//for games that use encrypted tickets for online auth when you play on multiple accounts
+	if (Ticket::oneTimeSteamIdSpoof)
 	{
-		steamId = ticket.steamId;
-	}
-	else if (Ticket::oneTimeSteamIdSpoof)
-	{
-		steamId = Ticket::oneTimeSteamIdSpoof;
+		//One time spoof should be enough for this type
+		newId.steamId = Ticket::oneTimeSteamIdSpoof;
 		Ticket::oneTimeSteamIdSpoof = 0;
 	}
+	else if (ticket.steamId)
+	{
+		newId.steamId = ticket.steamId;
+	}
 
-	return steamId;
+	return newId;
 }
 
 static bool hkClientUser_RequiresLegacyCDKey(void* pClientUser, uint32_t appId, uint32_t* a2)
@@ -1256,96 +1277,6 @@ static void patchRetn(lm_address_t address)
 	LM_ProtMemory(address, 1, oldProt, LM_NULL);
 }
 
-static lm_address_t hkNakedGetSteamId;
-static bool createAndPlaceSteamIdHook()
-{
-	hkNakedGetSteamId = LM_AllocMemory(0, LM_PROT_XRW);
-	if (hkNakedGetSteamId == LM_ADDRESS_BAD)
-	{
-		g_pLog->debug("Failed to allocate memory for GetSteamId!\n");
-		return false;
-	}
-
-	g_pLog->debug("Allocated memory for GetSteamId hook at %p\n", hkNakedGetSteamId);
-
-	auto insts = std::vector<lm_inst_t>();
-	lm_address_t readAddr = Hooks::IClientUser_GetSteamId;
-	for(;;)
-	{
-		lm_inst_t inst;
-		if (!LM_Disassemble(readAddr, &inst))
-		{
-			g_pLog->debug("Failed to disassemble function at %p!\n", readAddr);
-			return false;
-		}
-
-		insts.emplace_back(inst);
-		readAddr = inst.address + inst.size;
-
-		if (strcmp(inst.mnemonic, "ret") == 0)
-		{
-			break;
-		}
-	}
-
-	const unsigned int retIdx = insts.size() - 1;
-
-	g_pLog->debug("Ret is instruction number %u\n", retIdx);
-	size_t totalBytes = 0;
-	unsigned int instsToOverwrite = 0;
-	for(int i = retIdx; i >= 0; i--)
-	{
-		lm_inst_t inst = insts.at(i);
-		totalBytes += inst.size;
-		instsToOverwrite++;
-
-		if (totalBytes >= 5)
-		{
-			break;
-		}
-	}
-
-	static uint32_t steamId;
-
-	lm_address_t writeAddr = hkNakedGetSteamId;
-	MemHlp::assembleCodeAt(writeAddr, "mov [%p], ecx", &steamId);
-	MemHlp::assembleCodeAt(writeAddr, "pushad", nullptr);
-	MemHlp::assembleCodeAt(writeAddr, "pushfd", nullptr);
-
-	MemHlp::assembleCodeAt(writeAddr, "mov eax, %p", &hkClientUser_GetSteamId);
-	MemHlp::assembleCodeAt(writeAddr, "mov ebx, [%p]", &steamId);
-	MemHlp::assembleCodeAt(writeAddr, "push ebx", steamId);
-	MemHlp::assembleCodeAt(writeAddr, "call eax", nullptr);
-	MemHlp::assembleCodeAt(writeAddr, "mov [%p], eax", &steamId);
-
-	MemHlp::assembleCodeAt(writeAddr, "popfd", nullptr);
-	MemHlp::assembleCodeAt(writeAddr, "popad", nullptr);
-	MemHlp::assembleCodeAt(writeAddr, "mov ecx, [%p]", &steamId);
-	
-
-
-
-	for (unsigned int i = 0; i < instsToOverwrite; i++)
-	{
-		lm_inst_t inst = insts.at(insts.size() - instsToOverwrite + i);
-		memcpy(reinterpret_cast<void*>(writeAddr), inst.bytes, inst.size);
-
-		writeAddr += inst.size;
-		g_pLog->debug("Copied %s %s to tramp\n", inst.mnemonic, inst.op_str);
-	}
-
-	lm_address_t jmpAddr = insts.at(insts.size() - instsToOverwrite).address;
-	g_pLog->debug("Placing jmp at %p\n", jmpAddr);
-
-	lm_prot_t oldProt;
-	LM_ProtMemory(jmpAddr, 5, LM_PROT_XRW, &oldProt);
-	*reinterpret_cast<lm_byte_t*>(jmpAddr) = 0xE9;
-	*reinterpret_cast<lm_address_t*>(jmpAddr + 1) = hkNakedGetSteamId - jmpAddr - 5;
-	LM_ProtMemory(jmpAddr, 5, oldProt, nullptr);
-
-	return true;
-}
-
 namespace Hooks
 {
 	static bool familyShareHookReady = false;
@@ -1406,18 +1337,12 @@ namespace Hooks
 	VFTHook<IClientUtils_GetAppId_t> IClientUtils_GetAppId("IClientUtils::GetAppId");
 	VFTHook<IClientUtils_GetOfflineMode_t> IClientUtils_GetOfflineMode("IClientUtils::GetOfflineMode");
 
-
 	DetourHook<ISteamMatchmakingPingResponse_ServerResponded_t> ISteamMatchmakingPingResponse_ServerResponded;
-
-
-	lm_address_t IClientUser_GetSteamId;
 }
 
 bool Hooks::setup()
 {
 	g_pLog->debug("Hooks::setup()\n");
-
-	IClientUser_GetSteamId = Patterns::IClientUser::GetSteamId.address;
 
 	bool succeeded =
 		TraceIPC.setup(Patterns::TraceIPC, &hkTraceIPC)
@@ -1554,8 +1479,6 @@ void Hooks::place()
 	IClientUser_RequiresLegacyCDKey.place();
 
 	ISteamMatchmakingPingResponse_ServerResponded.place();
-
-	createAndPlaceSteamIdHook();
 }
 
 void Hooks::remove()
@@ -1645,15 +1568,11 @@ void Hooks::remove()
 	IClientRemoteStorage_IsCloudEnabledForApp.remove();
 
 	IClientUtils_GetAppId.remove();
-	
+	IClientUtils_GetOfflineMode.remove();
+
 	PackagePatch::remove();
 	ManifestBind::remove();
 	DepotQuarantine::remove();
 	ReconcilePin::remove();
 	Parental::remove();
-
-	if (hkNakedGetSteamId != LM_ADDRESS_BAD)
-	{
-		LM_FreeMemory(hkNakedGetSteamId, 0);
-	}
 }

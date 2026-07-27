@@ -190,10 +190,6 @@ namespace Hooks
 
 
 	extern DetourHook<ISteamMatchmakingPingResponse_ServerResponded_t> ISteamMatchmakingPingResponse_ServerResponded;
-
-
-	extern lm_address_t IClientUser_GetSteamId;
-
 	bool setup();
 	void place();
 	void remove();

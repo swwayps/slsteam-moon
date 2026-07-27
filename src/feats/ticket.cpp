@@ -94,7 +94,7 @@ bool Ticket::saveTicketToCache(CMsgClientGetAppOwnershipTicketResponse* resp)
 	YAML::Emitter node;
 	node << YAML::BeginMap;
 	node << YAML::Key << "steamId";
-	node << YAML::Value << g_currentSteamId;
+	node << YAML::Value << g_currentSteamId.steamId;
 	node << YAML::Key << "ticket";
 	node << YAML::Value << base64::to_base64(bytes);
 	node << YAML::EndMap;
@@ -213,7 +213,7 @@ bool Ticket::saveEncryptedTicketToCache(CMsgClientRequestEncryptedAppTicketRespo
 	YAML::Emitter node;
 	node << YAML::BeginMap;
 	node << YAML::Key << "steamId";
-	node << YAML::Value << g_currentSteamId;
+	node << YAML::Value << g_currentSteamId.steamId;
 	node << YAML::Key << "encryptedTicket";
 	//node << YAML::Value << YAML::EncodeBase64(reinterpret_cast<const unsigned char*>(bytes.c_str()), bytes.size());
 	node << YAML::Value << base64::to_base64(bytes);
@@ -229,7 +229,7 @@ bool Ticket::saveEncryptedTicketToCache(CMsgClientRequestEncryptedAppTicketRespo
 
 	//TODO: Skip copy
 	SavedTicket ticket {};
-	ticket.steamId = g_currentSteamId;
+	ticket.steamId = g_currentSteamId.steamId;
 	ticket.ticket = bytes;
 	encryptedTicketMap[appId] = ticket;
 	return true;
