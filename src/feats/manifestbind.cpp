@@ -99,6 +99,9 @@ namespace
 	constexpr size_t kVecBaseOff = 0x00;
 	constexpr size_t kVecCapacityOff = 0x04;
 	constexpr size_t kVecCountOff = 0x0c;
+	// Steam invokes BuildDepotDependency in pairs: flag 0 builds the
+	// acquisition target and flag 1 describes the installed side.
+	constexpr uint32_t kTargetPlanFlag = 0;
 
 	struct Detour
 	{
@@ -696,15 +699,15 @@ namespace
 					char* e = base + static_cast<size_t>(i) * kDepotEntryStride;
 					const uint32_t depotId =
 					    *reinterpret_cast<const uint32_t*>(e);
-					const uint64_t size =
-					    *reinterpret_cast<const uint64_t*>(e + kDepotEntrySizeOff);
+					auto* const sizep =
+					    reinterpret_cast<uint64_t*>(e + kDepotEntrySizeOff);
 					const uint32_t dlcAppId =
 					    *reinterpret_cast<const uint32_t*>(e + kDepotEntryDlcAppIdOff);
 					auto* const gidp =
 					    reinterpret_cast<uint64_t*>(e + kDepotEntryGidOff);
 
 					if (ManagedDepotFilter::shouldDrop(
-					        size, DepotKey::isManagedDepot(depotId)))
+					        *sizep, DepotKey::isManagedDepot(depotId)))
 					{
 						g_pLog->info(
 						    "ManifestBind[build]: dropping empty depot %u (size 0) from plan\n",
@@ -725,15 +728,39 @@ namespace
 						*reinterpret_cast<const uint32_t*>(e + kDepotEntryAppIdOff);
 					const uint64_t pin = g_config.getManifestPinForPlanner(
 						entryAppId, depotId);
-					if (pin && *gidp != pin)
+					if (flag == kTargetPlanFlag && pin)
 					{
-						g_pLog->info(
-						    "ManifestBind[build]: app=%u depot=%u plan gid=%llu -> "
-						    "pinned gid=%llu (DepotEntry patch)\n",
-						    entryAppId, depotId,
-						    static_cast<unsigned long long>(*gidp),
-						    static_cast<unsigned long long>(pin));
-						*gidp = pin;
+						const auto pinSize = ManifestStore::installedSize(depotId, pin);
+						if (pinSize)
+						{
+							if (*gidp != pin || *sizep != *pinSize)
+							{
+								g_pLog->info(
+								    "ManifestBind[build]: app=%u depot=%u target "
+								    "gid=%llu size=%llu -> pinned gid=%llu size=%llu\n",
+								    entryAppId, depotId,
+								    static_cast<unsigned long long>(*gidp),
+								    static_cast<unsigned long long>(*sizep),
+								    static_cast<unsigned long long>(pin),
+								    static_cast<unsigned long long>(*pinSize));
+							}
+							*gidp = pin;
+							*sizep = *pinSize;
+						}
+						else
+						{
+							// Lua-imported pins may arrive before their manifest has
+							// been archived. Start the existing bounded fetch now; a
+							// later plan pass can use its cached metadata atomically.
+							ManifestFetch::submitManifestBlob(pin, entryAppId, depotId);
+							g_pLog->debugOnce(
+							    "ManifestBind[build]: app=%u depot=%u pinned gid=%llu "
+							    "has no known size; leaving target gid=%llu size=%llu\n",
+							    entryAppId, depotId,
+							    static_cast<unsigned long long>(pin),
+							    static_cast<unsigned long long>(*gidp),
+							    static_cast<unsigned long long>(*sizep));
+						}
 					}
 
 					// This is the exact set Steam selected for the real plan,

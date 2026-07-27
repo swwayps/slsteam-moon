@@ -14,6 +14,7 @@
 
 # Force g++; clang miscompiles a few hooks.
 CXX := g++
+STEAMCLIENT ?= $(HOME)/.local/share/Steam/ubuntu12_32/steamclient.so
 
 libs := $(wildcard lib/*.a)
 srcs := $(shell find src/ -type f -iname "*.cpp")
@@ -46,7 +47,7 @@ ifeq ($(shell type mold &> /dev/null && echo "found"),found)
 	LDFLAGS += -fuse-ld=mold
 endif
 
-.PHONY: all build rebuild clean install release test-cmwire test-cmclient-loader test-dlcids test-dlc-scope test-dlc-metadata test-config-path test-config-discovery test-synthmark test-pattern-catalog test-pattern-cache test-pattern-refresh test-process-lock test-atomic-file test-cache-pair test-appinfo-transaction test-appinfo-reload test-audit-symbols test-audit-policy test-memhlp-target test-memhlp-prologue test-memhlp-pic test-utils-sha test-provision-cache test-provision-refresh test-provision-result test-provision-terminal test-pending-proton test-provision-schedule test-provision-pass test-runtime-dependencies test-thread-start test-steamstub-warmup test-boundedexecutor test-steamless-prewarm test-depotkey-scope test-curl-timeout test-manifest-index test-manifeststore-io test-hotreload-inputs test-hotreload-capabilities test-libraryremoval test-pics test-prewarm-backoff test-yaml-runtime
+.PHONY: all build rebuild clean install release test-cmwire test-cmclient-loader test-dlcids test-dlc-scope test-dlc-metadata test-config-path test-config-discovery test-synthmark test-pattern-catalog test-pattern-cache test-pattern-refresh test-process-lock test-atomic-file test-cache-pair test-appinfo-transaction test-appinfo-reload test-audit-symbols test-audit-policy test-memhlp-target test-memhlp-prologue test-memhlp-pic test-utils-sha test-provision-cache test-provision-refresh test-provision-result test-provision-terminal test-pending-proton test-provision-schedule test-provision-pass test-runtime-dependencies test-thread-start test-steamstub-warmup test-boundedexecutor test-steamless-prewarm test-depotkey-scope test-curl-timeout test-manifest-index test-manifeststore-io test-hotreload-inputs test-hotreload-capabilities test-libraryremoval test-pics test-prewarm-backoff test-yaml-runtime test-manifestpin-patterns
 .NOTPARALLEL: clean rebuild
 
 all: build
@@ -388,6 +389,11 @@ test-cmclient-live: build
 		obj/sdk/protobufs/encrypted_app_ticket.pb.o \
 		lib/libprotobuf-lite.a lib/libyaml-cpp.a \
 		-lpthread -ldl -lcurl -o /tmp/test_cmclient_live
+
+test-manifestpin-patterns:
+	$(CXX) -std=c++20 tools/test_manifestpin_patterns.cpp \
+		-o /tmp/test_manifestpin_patterns
+	/tmp/test_manifestpin_patterns "$(STEAMCLIENT)"
 
 release:
 	bash scripts/release.sh

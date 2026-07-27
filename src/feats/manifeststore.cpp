@@ -4,14 +4,19 @@
 
 #include "manifeststore.hpp"
 #include "manifeststore_io.hpp"
+#include "manifestsynth.hpp"
 
 #include "../globals.hpp"
 #include "../log.hpp"
 
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
+#include <iterator>
+#include <mutex>
 #include <sys/stat.h>
 #include <system_error>
+#include <unordered_map>
 
 namespace fs = std::filesystem;
 
@@ -52,6 +57,41 @@ namespace
 	{
 		return std::to_string(depotId) + "_" + std::to_string(gid)
 		    + ".manifest";
+	}
+
+	struct ManifestKey
+	{
+		uint32_t depotId;
+		uint64_t gid;
+
+		bool operator==(const ManifestKey&) const = default;
+	};
+
+	struct ManifestKeyHash
+	{
+		size_t operator()(const ManifestKey& key) const
+		{
+			return std::hash<uint64_t>{}(
+			    (static_cast<uint64_t>(key.depotId) << 32) ^ key.gid);
+		}
+	};
+
+	std::mutex g_sizeMutex;
+	std::unordered_map<ManifestKey, uint64_t, ManifestKeyHash> g_installedSizes;
+
+	std::optional<uint64_t> parseInstalledSize(const fs::path& path)
+	{
+		if (!ManifestStoreIO::isValidManifest(path)) return std::nullopt;
+		std::ifstream input(path, std::ios::binary);
+		if (!input) return std::nullopt;
+		const std::string bytes{std::istreambuf_iterator<char>(input),
+		                        std::istreambuf_iterator<char>()};
+		uint64_t installed = 0;
+		uint64_t download = 0;
+		if (!ManifestSynth::parseManifestSizes(bytes, installed, download)
+		    || installed == 0)
+			return std::nullopt;
+		return installed;
 	}
 }
 
@@ -152,6 +192,39 @@ namespace ManifestStore
 		if (store.empty()) return false;
 		return ManifestStoreIO::isValidManifest(
 		    fs::path(store) / manifestName(depotId, gid));
+	}
+
+	void cacheInstalledSize(uint32_t depotId, uint64_t gid, uint64_t size)
+	{
+		if (!depotId || !gid || !size) return;
+		std::lock_guard lock(g_sizeMutex);
+		g_installedSizes[{depotId, gid}] = size;
+	}
+
+	std::optional<uint64_t> installedSize(uint32_t depotId, uint64_t gid)
+	{
+		if (!depotId || !gid) return std::nullopt;
+		const ManifestKey key{depotId, gid};
+		{
+			std::lock_guard lock(g_sizeMutex);
+			if (const auto it = g_installedSizes.find(key);
+			    it != g_installedSizes.end())
+				return it->second;
+		}
+
+		std::optional<uint64_t> size;
+		const std::string store = dir();
+		if (!store.empty())
+			size = parseInstalledSize(fs::path(store) / manifestName(depotId, gid));
+		if (!size)
+		{
+			const std::string root = steamRoot();
+			if (!root.empty())
+				size = parseInstalledSize(
+				    fs::path(root) / "depotcache" / manifestName(depotId, gid));
+		}
+		if (size) cacheInstalledSize(depotId, gid, *size);
+		return size;
 	}
 
 	bool restoreToDepotcache(uint32_t depotId, uint64_t gid)

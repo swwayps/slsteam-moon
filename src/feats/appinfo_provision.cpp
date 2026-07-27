@@ -683,7 +683,8 @@ int synthesizeDepotsFromStore(YAML::Node& body, uint32_t appId)
 				if (oslist == "windows")     { for (auto& f : files) winFiles.push_back(f); }
 				else if (oslist == "linux")  { for (auto& f : files) linFiles.push_back(f); }
 				else if (oslist == "macos")  { for (auto& f : files) macFiles.push_back(f); }
-				ManifestSynth::parseManifestSizes(bytes, size, download);
+				if (ManifestSynth::parseManifestSizes(bytes, size, download))
+					ManifestStore::cacheInstalledSize(depotId, gid, size);
 			}
 		}
 		depots.push_back({depotId, gid, oslist, size, download});

@@ -11,6 +11,7 @@
 
 #include "depotkey.hpp"
 #include "manageddepotfilter.hpp"
+#include "manifeststore.hpp"
 
 #include "libmem/libmem.h"
 
@@ -52,7 +53,41 @@ namespace
 	// stride 0x20.
 	constexpr size_t kDepotEntryStride = ManagedDepotFilter::kDepotEntryStride;
 	constexpr size_t kDepotEntryGidOff = 0x08;
+	constexpr size_t kDepotEntrySizeOff = ManagedDepotFilter::kDepotSizeOff;
 	constexpr int32_t kMaxDepots = 512;
+
+	bool applyPinnedEntry(const char* site, uint32_t appId, uint8_t* entry,
+	                      uint32_t depotId, uint64_t pin)
+	{
+		auto* const gidp =
+		    reinterpret_cast<uint64_t*>(entry + kDepotEntryGidOff);
+		auto* const sizep =
+		    reinterpret_cast<uint64_t*>(entry + kDepotEntrySizeOff);
+		const auto pinSize = ManifestStore::installedSize(depotId, pin);
+		if (!pinSize)
+		{
+			g_pLog->debugOnce(
+			    "ReconcilePin[%s]: app=%u depot=%u pinned gid=%llu has no "
+			    "known size; leaving target gid=%llu size=%llu\n",
+			    site, appId, depotId, static_cast<unsigned long long>(pin),
+			    static_cast<unsigned long long>(*gidp),
+			    static_cast<unsigned long long>(*sizep));
+			return false;
+		}
+		if (*gidp != pin || *sizep != *pinSize)
+		{
+			g_pLog->info(
+			    "ReconcilePin[%s]: app=%u depot=%u target gid=%llu size=%llu "
+			    "-> pinned gid=%llu size=%llu\n",
+			    site, appId, depotId, static_cast<unsigned long long>(*gidp),
+			    static_cast<unsigned long long>(*sizep),
+			    static_cast<unsigned long long>(pin),
+			    static_cast<unsigned long long>(*pinSize));
+		}
+		*gidp = pin;
+		*sizep = *pinSize;
+		return true;
+	}
 
 	void traceLog(uint32_t appId, uint32_t flags, void* base, int32_t count)
 	{
@@ -126,16 +161,7 @@ namespace
 			const uint32_t depotId = *reinterpret_cast<const uint32_t*>(e);
 			const uint64_t pin = g_config.getManifestPin(appId, depotId);
 			if (!pin) continue;
-			auto* gidp = reinterpret_cast<uint64_t*>(e + kDepotEntryGidOff);
-			if (*gidp != pin)
-			{
-				g_pLog->info("ReconcilePin: app=%u target depot=%u gid=%llu -> "
-				             "pinned gid=%llu\n",
-				             appId, depotId,
-				             static_cast<unsigned long long>(*gidp),
-				             static_cast<unsigned long long>(pin));
-				*gidp = pin;
-			}
+			applyPinnedEntry("target-ctx", appId, e, depotId, pin);
 		}
 	}
 
@@ -199,16 +225,7 @@ namespace
 			const uint32_t depotId = *reinterpret_cast<const uint32_t*>(e);
 			const uint64_t pin = g_config.getManifestPin(appId, depotId);
 			if (!pin) continue;
-			auto* gidp = reinterpret_cast<uint64_t*>(e + kDepotEntryGidOff);
-			if (*gidp != pin)
-			{
-				g_pLog->info("ReconcilePin: app=%u target-local depot=%u "
-				             "gid=%llu -> pinned gid=%llu\n",
-				             appId, depotId,
-				             static_cast<unsigned long long>(*gidp),
-				             static_cast<unsigned long long>(pin));
-				*gidp = pin;
-			}
+			applyPinnedEntry("target-local", appId, e, depotId, pin);
 		}
 	}
 
