@@ -1037,7 +1037,7 @@ static uint32_t hkClientUser_BUpdateOwnershipTicket(void* pClientUser, uint32_t 
 {
 	const auto cached = Ticket::getCachedTicket(appId);
 	CUser* user = getLocalUser();
-	if (user != nullptr && user->isSubscribed(appId) && !cached.steamId.isSet())
+	if (user != nullptr && user->isSubscribed(appId) && !cached.isValid())
 	{
 		staleOnly = false;
 		g_pLog->debug("Force re-requesting OwnershipInfo for %u\n", appId);
@@ -1215,7 +1215,7 @@ static CSteamId hkClientUser_GetSteamId(const CSteamId& steamId)
 		newId = Ticket::oneTimeSteamIdSpoof;
 		Ticket::oneTimeSteamIdSpoof.steamId64 = 0;
 	}
-	else if (ticket.steamId.isSet())
+	else if (ticket.isValid())
 	{
 		newId = ticket.steamId;
 	}

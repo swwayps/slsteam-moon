@@ -29,6 +29,11 @@ namespace Ticket
 public:
 		CSteamId steamId;
 		std::string ticket;
+
+		constexpr bool isValid() const
+		{
+			return steamId.isSet() && ticket.size() > 0;
+		}
 	};
 
 	extern CSteamId oneTimeSteamIdSpoof;
