@@ -16,7 +16,6 @@ typedef uint32_t HSteamUser;
 constexpr static ENetPacket INVALID_NETPACKET_TYPE = -1;
 constexpr static ENetPacket PROTOBUF_TYPE_MASK = 0x80000000;
 
-
 enum class EIPCCmd : uint8_t
 {
 	RunInterface = 1,
@@ -29,6 +28,11 @@ enum class EIPCCmd : uint8_t
 };
 
 std::string EIPCCmd_ToString(const EIPCCmd cmd);
+
+enum class EIPCExitCode
+{
+	Success = 0xb
+};
 
 enum class EIPCInterface : uint8_t
 {
