@@ -29,7 +29,7 @@ enum class EIPCCmd : uint8_t
 
 std::string EIPCCmd_ToString(const EIPCCmd cmd);
 
-enum class EIPCExitCode
+enum class EIPCExitCode : uint8_t
 {
 	Success = 0xb
 };
