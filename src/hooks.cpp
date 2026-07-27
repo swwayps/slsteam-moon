@@ -404,10 +404,10 @@ static uint32_t hkSteamEngine_ProcessIPCFrame(
 			{
 				CSteamId id{};
 				std::memcpy(&id, pBufOut->mem.base + 1, sizeof(id));
-				if (!g_currentSteamId.steamId && id.steamId)
+				if (!g_currentSteamId.isSet() && id.isSet())
 				{
 					g_currentSteamId = id;
-					StatsPolicy::setAccount(id.steamId);
+					StatsPolicy::setAccount(id.accountId());
 				}
 
 				const CSteamId newId =
@@ -1037,7 +1037,7 @@ static uint32_t hkClientUser_BUpdateOwnershipTicket(void* pClientUser, uint32_t 
 {
 	const auto cached = Ticket::getCachedTicket(appId);
 	CUser* user = getLocalUser();
-	if (user != nullptr && user->isSubscribed(appId) && !cached.steamId)
+	if (user != nullptr && user->isSubscribed(appId) && !cached.steamId.isSet())
 	{
 		staleOnly = false;
 		g_pLog->debug("Force re-requesting OwnershipInfo for %u\n", appId);
@@ -1209,15 +1209,15 @@ static CSteamId hkClientUser_GetSteamId(const CSteamId& steamId)
 
 	//One time spoof should take presedence, otherwise SteamStub will fail
 	//for games that use encrypted tickets for online auth when you play on multiple accounts
-	if (Ticket::oneTimeSteamIdSpoof)
+	if (Ticket::oneTimeSteamIdSpoof.isSet())
 	{
 		//One time spoof should be enough for this type
-		newId.steamId = Ticket::oneTimeSteamIdSpoof;
-		Ticket::oneTimeSteamIdSpoof = 0;
+		newId = Ticket::oneTimeSteamIdSpoof;
+		Ticket::oneTimeSteamIdSpoof.steamId64 = 0;
 	}
-	else if (ticket.steamId)
+	else if (ticket.steamId.isSet())
 	{
-		newId.steamId = ticket.steamId;
+		newId = ticket.steamId;
 	}
 
 	return newId;

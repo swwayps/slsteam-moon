@@ -7,6 +7,7 @@
 
 class CAppOwnershipInfo;
 class CNetPacket;
+class CSteamId;
 
 namespace Apps
 {
@@ -37,7 +38,7 @@ namespace Apps
 			automaticFilter, isGameOrApplication);
 	}
 
-	bool unlockApp(uint32_t appId, CAppOwnershipInfo* info, uint32_t ownerId);
+	bool unlockApp(uint32_t appId, CAppOwnershipInfo* info, const CSteamId& ownerId);
 	bool unlockApp(uint32_t appId, CAppOwnershipInfo* info);
 
 	bool checkAppOwnership(uint32_t appId, CAppOwnershipInfo* info);

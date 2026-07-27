@@ -209,11 +209,12 @@ namespace
 bool Apps::applistRequested;
 std::map<uint32_t, int> Apps::appIdOwnerOverride;
 
-bool Apps::unlockApp(uint32_t appId, CAppOwnershipInfo* info, uint32_t ownerId)
+bool Apps::unlockApp(uint32_t appId, CAppOwnershipInfo* info, const CSteamId& ownerId)
 {
-	info->owner = ownerId;
+	//Changing the purchased field is enough, but just for nicety in the Steamclient UI we change the owner too
+	info->owner = ownerId.accountId();
 	info->realOwner = 0;
-	info->familyShared = ownerId != g_currentSteamId.steamId;
+	info->familyShared = info->owner != g_currentSteamId.accountId();
 
 	info->licensePermanent = !info->familyShared;
 	info->retailLicense = false;
@@ -239,19 +240,20 @@ bool Apps::unlockApp(uint32_t appId, CAppOwnershipInfo* info, uint32_t ownerId)
 
 bool Apps::unlockApp(uint32_t appId, CAppOwnershipInfo* info)
 {
-	return unlockApp(appId, info, g_currentSteamId.steamId);
+	return unlockApp(appId, info, g_currentSteamId);
 }
 
 bool Apps::checkAppOwnership(uint32_t appId, CAppOwnershipInfo* pInfo)
 {
-	if (!applistRequested || !pInfo || !g_currentSteamId.steamId)
+	if (!applistRequested || !pInfo || !g_currentSteamId.isSet())
 	{
 		return false;
 	}
 
 	const uint32_t denuvoOwner = g_config.getDenuvoGameOwner(appId);
 
-	if (denuvoOwner && denuvoOwner != g_currentSteamId.steamId)
+	// Moon keeps DenuvoGames keyed by the 32-bit account id.
+	if (denuvoOwner && denuvoOwner != g_currentSteamId.accountId())
 	{
 		g_pLog->infoOnce("Skipping %u because it's a Denuvo game from someone else\n", appId);
 		return false;

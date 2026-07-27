@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../sdk/CSteamID.hpp"
+
 #include <cstdint>
 #include <map>
 #include <mutex>
@@ -25,11 +27,11 @@ namespace Ticket
 	class SavedTicket
 	{
 public:
-		uint32_t steamId;
+		CSteamId steamId;
 		std::string ticket;
 	};
 
-	extern uint32_t oneTimeSteamIdSpoof;
+	extern CSteamId oneTimeSteamIdSpoof;
 	extern std::map<uint32_t, SavedTicket> ticketMap;
 	extern std::map<uint32_t, SavedTicket> encryptedTicketMap;
 	inline std::mutex cacheMutex;
