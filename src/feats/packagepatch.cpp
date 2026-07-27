@@ -14,6 +14,9 @@
 #include "../sdk/CSteamEngine.hpp"
 #include "../sdk/CUser.hpp"
 
+#include "depotquarantine.hpp"
+#include "depotquarantine_store.hpp"
+
 #include "libmem/libmem.h"
 
 #include <atomic>
@@ -245,15 +248,30 @@ namespace
 			return 0;
 		}
 
+		// A DLC whose decryption key is proven unusable must not be injected:
+		// Steam rebuilds the app's DESIRED configuration from package 0, so
+		// keeping it here makes Steam re-add the depot after every successful
+		// commit ("config changed : added depots <dlc>"), re-plan, and retry
+		// chunks it can never decrypt — which also marks every CDN source bad
+		// for the whole client and breaks unrelated downloads.  Excluding it
+		// here costs that one DLC and leaves normal updates enabled.
+		const auto excluded = DepotQuarantine::package0Exclusions();
+		const auto injectable = DepotQuarantineStore::withoutIds(appIds, excluded);
+		if (injectable.empty())
+		{
+			return 0;
+		}
+
 		const uint32_t appsAdded = appendToVecLocked(
-			pPkg->AppIdVec, appIds, g_seededAppIds, "AppIdVec");
+			pPkg->AppIdVec, injectable, g_seededAppIds, "AppIdVec");
 
 		// Resolve depots from the SLSsteam depot-key cache.  Steam's depot
 		// eligibility filter looks at pkg.DepotIdVec — if we only added
 		// the appid, the install dialog still reports 0 B because no
 		// depots are eligible.
-		std::unordered_set<uint32_t> appFilter(appIds.begin(), appIds.end());
-		const auto depotIds = collectDepotsForApps(appFilter);
+		std::unordered_set<uint32_t> appFilter(injectable.begin(), injectable.end());
+		const auto depotIds = DepotQuarantineStore::withoutIds(
+			collectDepotsForApps(appFilter), excluded);
 		const uint32_t depotsAdded = appendToVecLocked(
 			pPkg->DepotIdVec, depotIds, g_seededDepotIds, "DepotIdVec");
 

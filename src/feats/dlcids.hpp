@@ -114,6 +114,61 @@ inline std::vector<uint32_t> extractDlcAppIds(const std::string& wire,
 	return out;
 }
 
+// Classify ONE depot from the base app's appinfo, without touching the
+// network or Steam's runtime structures.
+//
+// Needed because DepotEntry::DlcAppId is only observable inside the install
+// planner, and the planner is not consulted on every re-plan: a DLC-only
+// re-plan of an already-installed app never reported it, so bookkeeping that
+// depended on it never ran.  The base app's own appinfo carries the same
+// information: a content DLC's depot is either tagged `dlcappid` in the base
+// app's depots block, or — when the DLC ships its own depots
+// (`hasdepotsindlc`) — advertised by id in `extended.listofdlc`.  The base
+// depot appears in neither, so a base/shared depot can never be misclassified.
+//
+// Returns the owning DLC appid, or 0 when `depotId` is not DLC content.
+inline uint32_t dlcAppIdForDepot(const std::string& wire, uint32_t baseAppId,
+                                 uint32_t depotId)
+{
+	if (wire.empty() || depotId == 0 || depotId == baseAppId) return 0;
+
+	// Source A: an explicit `depots.<depotId>.dlcappid` tag. Scan the depot
+	// keys so the tag is attributed to the right depot.
+	{
+		const std::string key = "\"" + std::to_string(depotId) + "\"";
+		std::size_t pos = 0;
+		while ((pos = wire.find(key, pos)) != std::string::npos)
+		{
+			pos += key.size();
+			// The tag belongs to this depot only if it appears before the next
+			// depot block opens a sibling key at the same nesting level; a
+			// bounded window keeps this simple and allocation-free.
+			const std::size_t window = wire.find("\"dlcappid\"", pos);
+			if (window == std::string::npos) break;
+
+			std::string value;
+			std::size_t next = pos;
+			if (detail::nextQuotedValueFor(wire, "dlcappid", pos, value, next))
+			{
+				std::vector<uint32_t> parsed;
+				std::unordered_set<uint32_t> seen;
+				detail::addDlcId(parsed, seen, value, baseAppId);
+				if (!parsed.empty()) return parsed.front();
+			}
+			break;
+		}
+	}
+
+	// Source B: the depot id is itself an advertised DLC appid, which is how
+	// Steam models a DLC that ships its own depots.
+	for (uint32_t advertised : extractDlcAppIds(wire, baseAppId))
+	{
+		if (advertised == depotId) return depotId;
+	}
+
+	return 0;
+}
+
 // Remove appids in `unsupported` from an extended.listofdlc value while
 // preserving the original order and every unrelated token.  This keeps the
 // ownership metadata consistent with pruneUnsupportedDepots(): advertising a

@@ -158,6 +158,8 @@ bool Patterns::init()
 	CDepotDownloadMgr::PrepareDepotDownload.optional = true;
 	CDepotDownloadMgr::BuildDepotDependency.optional = true;
 	CDepotDownloadMgr::EvaluateConfigChanges.optional = true;
+	CDepotDownloadMgr::OnChunkUnpackedStack.optional = true;
+	CDepotDownloadMgr::OnChunkUnpackedReg.optional = true;
 	for(auto& pattern : patterns())
 	{
 		if (!pattern->find())
@@ -543,6 +545,26 @@ namespace Patterns
 		{
 			"CDepotDownloadMgr::BuildDepotDependency",
 			"E8 ? ? ? ? 05 ? ? ? ? 55 89 E5 57 56 53 81 EC 8C 04 00 00 8B 55 10 8B 7D 0C 89 85 A0 FB FF FF 8B 45 08",
+			SigFollowMode::None
+		};
+
+		// Structured chunk-completion callbacks. Steam reaches these before it
+		// formats the content_log line, with the unpack result still available as
+		// the final argument. There are two compiler-generated ABI variants for
+		// the same body: ordinary cdecl and regparm(3). Both are optional and
+		// independently hooked; a future signature drift disables quarantine
+		// detection rather than affecting the download pipeline.
+		Pattern_t OnChunkUnpackedStack
+		{
+			"CDepotDownloadMgr::OnChunkUnpacked[cdecl]",
+			"55 89 E5 57 56 E8 ? ? ? ? 81 C6 ? ? ? ? 53 81 EC 7C 04 00 00 8B 45 0C 8B 7D 08 89 85 90 FB FF FF 8B 45 10 89 85 8C FB FF FF",
+			SigFollowMode::None
+		};
+
+		Pattern_t OnChunkUnpackedReg
+		{
+			"CDepotDownloadMgr::OnChunkUnpacked[regparm3]",
+			"55 89 E5 57 E8 ? ? ? ? 81 C7 ? ? ? ? 56 89 C6 53 81 EC 7C 04 00 00 8B 45 0C 89 95 90 FB FF FF 89 8D 8C FB FF FF 89 85 94 FB FF FF",
 			SigFollowMode::None
 		};
 

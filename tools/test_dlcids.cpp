@@ -176,6 +176,63 @@ int main()
 		CHECK(removed == 1, "filter: all unsupported count is correct");
 	}
 
+	// 10) Offline DLC classification for a single depot.
+	//
+	// The install planner is the only place that exposes Steam's structured
+	// DepotEntry::DlcAppId, and it is NOT consulted for every re-plan (a
+	// DLC-only re-plan of an already-installed app never reported it).  The
+	// quarantine bookkeeping therefore needs to answer "is this depot DLC
+	// content?" from data already on disk.  The base app's own appinfo answers
+	// it: a content DLC's depot id is advertised in extended.listofdlc (and/or
+	// tagged with dlcappid), while the base depot never is.
+	{
+		// Shape taken from a real provisioned buffer: the DLC depots live in
+		// the DLCs' own appinfo (hasdepotsindlc), so only listofdlc names them.
+		const std::string wire =
+			"\"appinfo\"\n{\n"
+			"\t\"appid\"\t\t\"1902690\"\n"
+			"\t\"extended\"\n\t{\n"
+			"\t\t\"listofdlc\"\t\t\"2407210,2426930,2473120,2473121,2494230\"\n"
+			"\t}\n"
+			"\t\"depots\"\n\t{\n"
+			"\t\t\"hasdepotsindlc\"\t\t\"1\"\n"
+			"\t\t\"1902696\"\n\t\t{\n\t\t\t\"config\"\n\t\t\t{\n"
+			"\t\t\t\t\"oslist\"\t\t\"windows\"\n\t\t\t}\n\t\t}\n"
+			"\t}\n"
+			"}\n";
+
+		CHECK(AppInfoProvision::dlcAppIdForDepot(wire, 1902690, 2473120)
+		      == 2473120,
+		      "classify: an advertised DLC depot resolves to its dlc appid");
+		CHECK(AppInfoProvision::dlcAppIdForDepot(wire, 1902690, 2473121)
+		      == 2473121,
+		      "classify: the sibling DLC depot resolves too");
+		CHECK(AppInfoProvision::dlcAppIdForDepot(wire, 1902690, 1902696) == 0,
+		      "classify: the base depot is never classified as DLC");
+		CHECK(AppInfoProvision::dlcAppIdForDepot(wire, 1902690, 1902690) == 0,
+		      "classify: the base appid itself is never classified as DLC");
+		CHECK(AppInfoProvision::dlcAppIdForDepot(wire, 1902690, 228988) == 0,
+		      "classify: a shared runtime depot is not classified as DLC");
+		CHECK(AppInfoProvision::dlcAppIdForDepot(wire, 1902690, 0) == 0,
+		      "classify: a zero depot id yields no classification");
+		CHECK(AppInfoProvision::dlcAppIdForDepot("", 1902690, 2473120) == 0,
+		      "classify: without appinfo nothing is classified");
+
+		// A depot tagged directly in the base app's depots block must resolve
+		// to the tag, not to the depot id.
+		const std::string tagged =
+			"\"appinfo\"\n{\n"
+			"\t\"depots\"\n\t{\n"
+			"\t\t\"250911\"\n\t\t{\n\t\t\t\"dlcappid\"\t\t\"1426300\"\n\t\t}\n"
+			"\t}\n"
+			"}\n";
+		CHECK(AppInfoProvision::dlcAppIdForDepot(tagged, 250900, 250911)
+		      == 1426300,
+		      "classify: a dlcappid-tagged depot resolves to the tag");
+		CHECK(AppInfoProvision::dlcAppIdForDepot(tagged, 250900, 250900) == 0,
+		      "classify: tagged form still protects the base app");
+	}
+
 	if (g_failures == 0) { std::printf("\nALL PASS\n"); return 0; }
 	std::printf("\n%d CHECK(S) FAILED\n", g_failures);
 	return 1;

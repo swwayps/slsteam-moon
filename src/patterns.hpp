@@ -131,6 +131,8 @@ namespace Patterns
 		extern Pattern_t PrepareDepotDownload;
 		extern Pattern_t BuildDepotDependency;
 		extern Pattern_t EvaluateConfigChanges;
+		extern Pattern_t OnChunkUnpackedStack;
+		extern Pattern_t OnChunkUnpackedReg;
 	}
 
 	namespace IClientUtils

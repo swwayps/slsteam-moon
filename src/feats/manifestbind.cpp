@@ -6,6 +6,7 @@
 
 #include "depotkey.hpp"
 #include "depotkey_scope.hpp"
+#include "depotquarantine.hpp"
 #include "manifestselection.hpp"
 #include "manifeststore.hpp"
 
@@ -87,6 +88,7 @@ namespace
 	constexpr size_t kDepotEntryStride = 0x20;
 	constexpr size_t kDepotEntryGidOff = 0x08;
 	constexpr size_t kDepotEntrySizeOff = 0x10;
+	constexpr size_t kDepotEntryDlcAppIdOff = 0x18;
 	constexpr size_t kVecBaseOff = 0x00;
 	constexpr size_t kVecCapacityOff = 0x04;
 	constexpr size_t kVecCountOff = 0x0c;
@@ -643,6 +645,8 @@ namespace
 					    *reinterpret_cast<const uint32_t*>(e);
 					const uint64_t size =
 					    *reinterpret_cast<const uint64_t*>(e + kDepotEntrySizeOff);
+					const uint32_t dlcAppId =
+					    *reinterpret_cast<const uint32_t*>(e + kDepotEntryDlcAppIdOff);
 					auto* const gidp =
 					    reinterpret_cast<uint64_t*>(e + kDepotEntryGidOff);
 
@@ -651,6 +655,15 @@ namespace
 						g_pLog->info(
 						    "ManifestBind[build]: dropping empty depot %u (size 0) from plan\n",
 						    depotId);
+						continue;
+					}
+
+					if (DepotQuarantine::shouldDropManagedDlc(depotId, dlcAppId))
+					{
+						g_pLog->info(
+						    "ManifestBind[build]: omitting quarantined DLC depot=%u "
+						    "dlcappid=%u on retry\n",
+						    depotId, dlcAppId);
 						continue;
 					}
 
