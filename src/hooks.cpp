@@ -18,6 +18,7 @@
 #include "sdk/IClientUtils.hpp"
 
 #include "feats/achievements.hpp"
+#include "feats/appticket.hpp"
 #include "feats/apps.hpp"
 #include "feats/depotkey.hpp"
 #include "feats/depotquarantine.hpp"
@@ -34,12 +35,14 @@
 
 #include "libmem/libmem.h"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <memory>
 #include <pthread.h>
+#include <span>
 #include <strings.h>
 #include <unistd.h>
 #include <vector>
@@ -720,6 +723,42 @@ static uint32_t hkClientUser_BUpdateOwnershipTicket(void* pClientUser, uint32_t 
 	return ret;
 }
 
+static std::vector<uint8_t> getClientLocalOwnershipTicket(void* pClientUser)
+{
+	// Query Steam's own per-user ticket store first. This keeps the common path
+	// self-contained on fresh installs; the on-disk cache below is only needed
+	// if the client store is temporarily unavailable (for example, offline).
+	std::array<uint8_t, 1024> buffer {};
+	uint32_t appIdOffset = 0;
+	uint32_t steamIdOffset = 0;
+	uint32_t signatureOffset = 0;
+	uint32_t signatureSize = 0;
+	const uint32_t size = Hooks::IClientUser_GetAppOwnershipTicketExtendedData.tramp.fn(
+		pClientUser,
+		AppTicket::kLocalSourceAppId,
+		buffer.data(),
+		static_cast<uint32_t>(buffer.size()),
+		&appIdOffset,
+		&steamIdOffset,
+		&signatureOffset,
+		&signatureSize);
+
+	if (size == 0 || size > buffer.size())
+	{
+		return {};
+	}
+
+	const auto bytes = std::span<const uint8_t>(buffer.data(), size);
+	if (!AppTicket::isLocalSourceTicket(bytes))
+	{
+		g_pLog->debugOnce(
+			"AppTicket: client returned an unusable local source size=%u\n", size);
+		return {};
+	}
+
+	return std::vector<uint8_t>(bytes.begin(), bytes.end());
+}
+
 static uint32_t hkClientUser_GetAppOwnershipTicketExtendedData(
 	void* pClientUser,
 	uint32_t appId,
@@ -733,6 +772,56 @@ static uint32_t hkClientUser_GetAppOwnershipTicketExtendedData(
 {
 	const uint32_t ret = Hooks::IClientUser_GetAppOwnershipTicketExtendedData.tramp.fn(pClientUser, appId, pTicket, ticketSize, a4, a5, a6, a7);
 	g_pLog->debugOnce("%s(%u)->%u\n", Hooks::IClientUser_GetAppOwnershipTicketExtendedData.name.c_str(), appId, ret);
+
+	// Preserve a genuine client result.  Managed apps whose client lookup
+	// returned no data may use either their cached signed ticket or a local
+	// ticket derived from app 7.  This writes the direct IClientUser output
+	// buffer, avoiding protobuf arena string mutation entirely.
+	if (ret == 0 && g_config.isAddedAppId(appId))
+	{
+		const auto explicitTicket = Ticket::getCachedTicket(appId);
+		auto localSource = getClientLocalOwnershipTicket(pClientUser);
+		const bool localSourceFromClient = !localSource.empty();
+		if (localSource.empty())
+		{
+			const auto cachedSource = Ticket::getCachedTicket(AppTicket::kLocalSourceAppId);
+			localSource.assign(cachedSource.ticket.begin(), cachedSource.ticket.end());
+		}
+		const auto bytes = [](const std::string& value)
+		{
+			return std::span<const uint8_t>(
+				reinterpret_cast<const uint8_t*>(value.data()), value.size());
+		};
+
+		const auto prepared = AppTicket::prepareOwnershipTicket(
+			bytes(explicitTicket.ticket),
+			std::span<const uint8_t>(localSource.data(), localSource.size()),
+			appId);
+		if (AppTicket::copyOwnershipTicket(
+			prepared, pTicket, ticketSize, a4, a5, a6, a7))
+		{
+			const char* source = "explicit";
+			if (prepared.source == AppTicket::Source::LocalDerived)
+			{
+				source = localSourceFromClient
+					? "local-client-derived" : "local-cache-derived";
+			}
+			g_pLog->infoOnce(
+				"AppTicket: served %s ownership ticket for app=%u "
+				"physical=%zu logical=%u\n",
+				source, appId, prepared.data.size(), prepared.totalSize);
+
+			if (prepared.source == AppTicket::Source::Explicit)
+			{
+				Ticket::getTicketOwnershipExtendedData(appId);
+			}
+			return prepared.totalSize;
+		}
+
+		g_pLog->debugOnce(
+			"AppTicket: no usable ownership ticket for app=%u capacity=%u\n",
+			appId, ticketSize);
+	}
 
 	Ticket::getTicketOwnershipExtendedData(appId);
 
