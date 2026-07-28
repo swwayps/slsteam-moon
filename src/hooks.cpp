@@ -1223,16 +1223,16 @@ static CSteamId hkClientUser_GetSteamId(const CSteamId& steamId)
 	}
 
 	//Never spoof inside the Steamclient
-	const AppId_t appId = utils->getAppId();
-	if (!appId)
+	const AppId_t realAppId = FakeAppIds::getRealAppIdForCurrentPipe();
+	if (!realAppId)
 	{
 		return steamId;
 	}
 
-	if (Ticket::oneTimeSteamIdSpoof.isSet())
+	if (Ticket::oneTimeSteamIdSpoof.contains(realAppId))
 	{
-		const CSteamId newId = Ticket::oneTimeSteamIdSpoof;
-		Ticket::oneTimeSteamIdSpoof.steamId64 = 0;
+		const CSteamId newId = Ticket::oneTimeSteamIdSpoof.at(realAppId);
+		Ticket::oneTimeSteamIdSpoof.erase(realAppId);
 
 		return newId;
 	}

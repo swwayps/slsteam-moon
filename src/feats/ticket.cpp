@@ -22,7 +22,7 @@
 #include <mutex>
 #include <sstream>
 
-CSteamId Ticket::oneTimeSteamIdSpoof = 0;
+std::unordered_map<AppId_t, CSteamId> Ticket::oneTimeSteamIdSpoof = std::unordered_map<AppId_t, CSteamId>();
 std::unordered_map<AppId_t, Ticket::SavedTicket> Ticket::ticketMap = std::unordered_map<AppId_t, SavedTicket>();
 std::unordered_map<AppId_t, Ticket::SavedTicket> Ticket::encryptedTicketMap = std::unordered_map<AppId_t, SavedTicket>();
 
@@ -139,7 +139,7 @@ void Ticket::getEncryptedAppTicket(uint32_t appId)
 		return;
 	}
 
-	oneTimeSteamIdSpoof = cached.steamId;
+	oneTimeSteamIdSpoof[appId] = cached.steamId;
 }
 
 void Ticket::getTicketOwnershipExtendedData(uint32_t appId)
@@ -150,7 +150,7 @@ void Ticket::getTicketOwnershipExtendedData(uint32_t appId)
 		return;
 	}
 
-	oneTimeSteamIdSpoof = cached.steamId;
+	oneTimeSteamIdSpoof[appId] = cached.steamId;
 }
 
 std::string Ticket::getEncryptedTicketPath(uint32_t appId)
