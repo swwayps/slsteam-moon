@@ -1259,6 +1259,13 @@ static CSteamId hkClientUser_GetSteamId(const CSteamId& steamId)
 		return newId;
 	}
 
+	//Use pipe AppId, getCachedEncryptedTicket handles FakeAppIds internally
+	const auto ticket = Ticket::getCachedEncryptedTicket(utils->getAppId());
+	if (ticket.isValid())
+	{
+		return ticket.steamId;
+	}
+
 	return steamId;
 }
 
