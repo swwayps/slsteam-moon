@@ -407,11 +407,41 @@ dc_rewrite_installed_stub_exec() {
 	return 1
 }
 
+# _dc_primary_exec_text <file> — print the Exec value of the main Desktop Entry.
+_dc_primary_exec_text() {
+	local f="$1" line in_entry=0
+	[ -f "$f" ] || return 1
+	while IFS= read -r line || [ -n "$line" ]; do
+		case "$line" in
+			'[Desktop Entry]') in_entry=1 ;;
+			'['*']') [ "$in_entry" = 1 ] && return 1 ;;
+			Exec=*)
+				[ "$in_entry" = 1 ] || continue
+				printf '%s\n' "${line#Exec=}"
+				return 0
+				;;
+		esac
+	done < "$f"
+	return 1
+}
+
+# _dc_exec_is_steam_shell_wrapper <exec-text> — true only for the narrow
+# `sh -c '[STEAM_FRAME_FORCE_CLOSE=1 ]steam %U'` shape: Debian/Ubuntu's stub and
+# the widely shared tweak for Steam not exiting. Nothing beyond a single field
+# code may follow the launcher, and every other shell command stays unsupported,
+# because the rewrite reproduces the launch instead of preserving the original
+# command.
+_dc_exec_is_steam_shell_wrapper() {
+	printf '%s\n' "$1" | grep -Eq \
+"^(/bin/|/usr/bin/)?(sh|bash)[[:space:]]+-c[[:space:]]+'?(STEAM_FRAME_FORCE_CLOSE=1[[:space:]]+)?(/bin/|/usr/bin/|/usr/games/)?(steam|bazzite-steam|steam-jupiter)([[:space:]]+%[a-zA-Z])?'?\$"
+}
+
 # dc_patch_one <file> [sudo] — back up once, strip pre-header, rewrite Exec to
 # the wrapper, drop a stale tag, insert the tag after [Desktop Entry], write back
-# as a regular 0644 file (replacing a symlink). Only commits if an Exec now runs
-# the wrapper, so we never tag a file we failed to rewrite. $2="sudo" for system
-# files. Returns 0 on patch, 1 on no-op/failure.
+# as a regular 0644 file (replacing a symlink). Only commits when the MAIN entry
+# now runs the wrapper: a wrapper-backed Desktop Action is not launch coverage,
+# and tagging such a file would make every later run believe it is done.
+# $2="sudo" for system files. Returns 0 on patch, 1 on no-op/failure.
 dc_patch_one() {
 	local f="$1" S="${2:-}" bak tmp kind
 	bak="$(dc_backup_path "$f")"
@@ -434,7 +464,17 @@ dc_patch_one() {
 		rm -f "$tmp"
 		return 1
 	fi
-	if ! dc_rewrite_exec "$tmp" || ! dc_file_has_wrapper_exec "$tmp"; then
+	dc_rewrite_exec "$tmp"
+	# A shell-wrapped primary launcher is not a supported Exec token, so the
+	# pass above rewrote only the Desktop Actions. Repair the main entry
+	# explicitly — independent of how the file was classified, since an entry
+	# already carrying our tag classifies as "patched" and would otherwise keep
+	# an unwrapped launcher forever.
+	if ! _dc_file_has_primary_wrapper_exec "$tmp" \
+	   && _dc_exec_is_steam_shell_wrapper "$(_dc_primary_exec_text "$tmp")"; then
+		dc_rewrite_installed_stub_exec "$tmp" || true
+	fi
+	if ! _dc_file_has_primary_wrapper_exec "$tmp"; then
 		rm -f "$tmp"
 		return 1
 	fi

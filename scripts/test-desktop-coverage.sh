@@ -557,6 +557,78 @@ check "system run patches installed Debian shell stub" \
   "Exec=env STEAM_FRAME_FORCE_CLOSE=1 $WRAPPER %U" \
   "$(grep -m1 '^Exec=' "$S16/steam.desktop" 2>/dev/null || true)"
 
+# A force-close shell wrapper on a Steam-named entry (a widely shared tweak for
+# Steam not exiting) leaves the primary launcher outside the wrapper. Desktop
+# Actions alone must never satisfy the patch, and an already-tagged entry must
+# still be repaired instead of being treated as done.
+FC1="$TMP/home-fc1"; AFC1="$FC1/data/applications"
+mkdir -p "$AFC1"
+cat > "$AFC1/steam.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Steam
+Exec=sh -c 'STEAM_FRAME_FORCE_CLOSE=1 steam %U'
+[Desktop Action Store]
+Name=Store
+Exec=steam steam://store
+EOF
+DC_HOME="$FC1" DC_BACKUP_ROOT="$FC1/backup" DC_SUDO="" dc_patch_one "$AFC1/steam.desktop"
+check "force-close wrapper: untagged primary Exec repaired" \
+  "Exec=env STEAM_FRAME_FORCE_CLOSE=1 $WRAPPER %U" \
+  "$(grep -m1 '^Exec=' "$AFC1/steam.desktop" 2>/dev/null || true)"
+
+FC2="$TMP/home-fc2"; AFC2="$FC2/data/applications"
+mkdir -p "$AFC2"
+cat > "$AFC2/steam.desktop" <<EOF
+[Desktop Entry]
+$DC_TAG
+Type=Application
+Name=Steam
+Exec=sh -c 'STEAM_FRAME_FORCE_CLOSE=1 steam %U'
+[Desktop Action Store]
+Name=Store
+Exec=$WRAPPER steam://store
+EOF
+DC_HOME="$FC2" DC_BACKUP_ROOT="$FC2/backup" DC_SUDO="" dc_patch_one "$AFC2/steam.desktop"
+check "force-close wrapper: tagged entry with wrapper actions still repaired" \
+  "Exec=env STEAM_FRAME_FORCE_CLOSE=1 $WRAPPER %U" \
+  "$(grep -m1 '^Exec=' "$AFC2/steam.desktop" 2>/dev/null || true)"
+
+# An unsupported primary launcher we cannot rewrite must never be tagged as
+# patched: the tag is what makes a later run believe the entry is covered.
+FC3="$TMP/home-fc3"; AFC3="$FC3/data/applications"
+mkdir -p "$AFC3"
+cat > "$AFC3/steam.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Steam
+Exec=/opt/custom/launch-steam.sh %U
+[Desktop Action Store]
+Name=Store
+Exec=steam steam://store
+EOF
+DC_HOME="$FC3" DC_BACKUP_ROOT="$FC3/backup" DC_SUDO="" dc_patch_one "$AFC3/steam.desktop"
+check "unrewritable primary Exec is not tagged as patched" "0" \
+  "$(grep -cF "$DC_TAG" "$AFC3/steam.desktop" 2>/dev/null | head -1)"
+
+# A shell command that does more than launch Steam must stay untouched: the
+# repair reproduces the launch, so anything else would be silently discarded.
+FC4="$TMP/home-fc4"; AFC4="$FC4/data/applications"
+mkdir -p "$AFC4"
+cat > "$AFC4/steam.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Steam
+Exec=sh -c 'mangohud steam %U && notify-send done'
+[Desktop Action Store]
+Name=Store
+Exec=steam steam://store
+EOF
+DC_HOME="$FC4" DC_BACKUP_ROOT="$FC4/backup" DC_SUDO="" dc_patch_one "$AFC4/steam.desktop"
+check "compound shell command is left untouched" \
+  "Exec=sh -c 'mangohud steam %U && notify-send done'" \
+  "$(grep -m1 '^Exec=' "$AFC4/steam.desktop" 2>/dev/null || true)"
+
 # Guardian command shims make serialization and cache ordering observable.
 GUARDIAN_EVENTS="$TMP/guardian-events"
 FLOCK_SHIM="$TMP/flock-shim"
