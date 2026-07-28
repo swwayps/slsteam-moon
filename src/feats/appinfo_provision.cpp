@@ -1540,8 +1540,23 @@ std::vector<uint32_t> collectDlcAppIdsForAddedApps()
 
 	if (!out.empty())
 	{
-		g_pLog->info("AppInfoProvision: collected %zu DLC appid(s) from %zu AdditionalApps\n",
-		             out.size(), added.size());
+		// List the ids, not just how many: these enter package 0 without an
+		// appinfo entry of their own, so when a boot stalls on the client's
+		// library reconcile the log has to name the exact suspects.  Bounded so
+		// a large library cannot flood the file.
+		constexpr std::size_t kMaxLogged = 24;
+		std::string ids;
+		for (std::size_t i = 0; i < out.size() && i < kMaxLogged; ++i)
+		{
+			if (i) ids += ' ';
+			ids += std::to_string(out[i]);
+		}
+		if (out.size() > kMaxLogged)
+		{
+			ids += " ... (+" + std::to_string(out.size() - kMaxLogged) + ")";
+		}
+		g_pLog->info("AppInfoProvision: collected %zu DLC appid(s) from %zu AdditionalApps: %s\n",
+		             out.size(), added.size(), ids.c_str());
 	}
 	return out;
 }
