@@ -89,6 +89,7 @@ public:
 	MTVariable<ManifestPins::PinMap> manifestPinsByApp;
 
 	MTVariable<std::unordered_map<uint32_t, std::unordered_set<uint32_t>>> denuvoGames;
+	MTVariable<std::unordered_map<AppId_t, uint64_t>> steamIdOverride;
 
 	MTVariable<bool> disableFamilyLock;
 	MTVariable<bool> disableParentalRestrictions;

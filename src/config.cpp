@@ -533,6 +533,7 @@ bool CConfig::loadSettings()
 	achievementOwners = getMap<uint32_t, uint64_t>(node, "AchievementOwners");
 	gameTitles = getMap<uint32_t, std::string>(node, "GameTitles");
 	subscriptionTimestamps = getMap<uint32_t, uint32_t>(node, "SubscriptionTimestamps");
+	steamIdOverride = getMap<AppId_t, uint64_t>(node, "SteamIdOverride");
 
 	//Do not warn for these (yet?)
 	const auto idleStatusNode = node["IdleStatus"];

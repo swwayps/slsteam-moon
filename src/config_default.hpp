@@ -80,6 +80,12 @@ SubscriptionTimestamps:
 #Blocks games from unlocking on wrong accounts
 DenuvoGames:
 
+#Overrides your SteamId an app sees. Only needed when the automatic SteamId spoofing
+#fails (some games do call GetSteamId before they request your ticket)
+#Also can be used to workaround locked saves
+#Either set to SteamId or to 0 to use the SteamId in the cached AppOwnershipTicket
+SteamIdOverride:
+
 #Automatically disable SLSsteam when steamclient.so does not match a predefined file hash that is known to work
 #You should enable this if you're planing to use SLSsteam with Steam Deck's gamemode
 #DEPRECATED / no-op: this option is force-disabled in code. The Steam wrapper's

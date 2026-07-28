@@ -1229,6 +1229,28 @@ static CSteamId hkClientUser_GetSteamId(const CSteamId& steamId)
 		return steamId;
 	}
 
+	const auto overrides = g_config.steamIdOverride.get();
+	if (overrides.contains(realAppId))
+	{
+		const uint64_t& id64 = overrides.at(realAppId);
+		if (id64)
+		{
+			return CSteamId(id64);
+		}
+
+		const auto cached = Ticket::getCachedTicket(realAppId);
+		if (cached.isValid())
+		{
+			return cached.steamId;
+		}
+
+		g_pLog->infoOnce
+		(
+			"SteamIdOverride for %u is set with automatic mode, but no AppOwnershipTicket exists in cache! Falling through to normal operation\n",
+			realAppId
+		);
+	}
+
 	if (Ticket::oneTimeSteamIdSpoof.contains(realAppId))
 	{
 		const CSteamId newId = Ticket::oneTimeSteamIdSpoof.at(realAppId);
