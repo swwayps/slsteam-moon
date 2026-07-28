@@ -83,6 +83,7 @@ public:
 	bool saveTicketToCache(CMsgClientGetAppOwnershipTicketResponse* resp);
 
 	void launchApp(uint32_t appId);
+	void getEncryptedAppTicket(uint32_t appId);
 	void getTicketOwnershipExtendedData(uint32_t appId);
 
 	std::string getEncryptedTicketPath(uint32_t appId);

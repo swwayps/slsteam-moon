@@ -131,6 +131,17 @@ void Ticket::launchApp(uint32_t appId)
 	g_pLog->infoOnce("Force loaded AppOwnershipTicket for %i\n", appId);
 }
 
+void Ticket::getEncryptedAppTicket(uint32_t appId)
+{
+	const SavedTicket cached = Ticket::getCachedEncryptedTicket(appId);
+	if (!cached.isValid())
+	{
+		return;
+	}
+
+	oneTimeSteamIdSpoof = cached.steamId;
+}
+
 void Ticket::getTicketOwnershipExtendedData(uint32_t appId)
 {
 	const SavedTicket cached = Ticket::getCachedTicket(appId);
@@ -152,22 +163,13 @@ std::string Ticket::getEncryptedTicketPath(uint32_t appId)
 
 Ticket::SavedTicket Ticket::getCachedEncryptedTicket(uint32_t appId)
 {
-	const uint32_t realAppId = FakeAppIds::getRealAppIdForCurrentPipe();
-	const uint32_t fakeAppId = FakeAppIds::getFakeAppId(realAppId);
-
-	SavedTicket ticket {};
-
-	if (realAppId && fakeAppId && appId != realAppId)
-	{
-		g_pLog->infoOnce("Returning empty cached encrypted ticket for %u because it's set to %u\n", realAppId, fakeAppId);
-		return ticket;
-	}
-
 	std::lock_guard<std::mutex> lock(cacheMutex);
 	if (invalidatedApps.contains(appId)) return {};
 
 	const auto it = encryptedTicketMap.find(appId);
 	if (it != encryptedTicketMap.end()) return it->second;
+
+	SavedTicket ticket {};
 
 	const auto path = getEncryptedTicketPath(appId);
 	if (!std::filesystem::exists(path.c_str()))

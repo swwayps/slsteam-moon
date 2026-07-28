@@ -1164,7 +1164,31 @@ static uint32_t hkClientUser_GetAppOwnershipTicketExtendedData(
 	return ret;
 }
 
-static uint8_t hkClientUser_IsUserSubscribedAppInTicket(void* pClientUser, uint32_t steamId, uint32_t a2, uint32_t a3, uint32_t appId)
+static bool hkClientUser_GetEncryptedAppTicket(void* pClientUser, void* pTicket, uint32_t ticketSize, uint32_t* pTicketSize)
+{
+	const bool success = Hooks::IClientUser_GetEncryptedAppTicket.originalFn.fn(pClientUser, pTicket, ticketSize, pTicketSize);
+
+	g_pLog->debug
+	(
+		"%s(%p, %p, %u, %p) -> %u\n",
+
+		Hooks::IClientUser_GetEncryptedAppTicket.name.c_str(),
+		pClientUser,
+		pTicket,
+		ticketSize,
+		pTicketSize,
+		success
+	);
+
+	if (success)
+	{
+		Ticket::getEncryptedAppTicket(FakeAppIds::getRealAppIdForCurrentPipe());
+	}
+
+	return success;
+}
+
+static uint8_t hkClientUser_IsUserSubscribedAppInTicket(void* pClientUser, uint32_t steamId, uint32_t a2, uint32_t a3, AppId_t appId)
 {
 	const uint8_t ticketState = Hooks::IClientUser_IsUserSubscribedAppInTicket.tramp.fn(pClientUser, steamId, a2, a3, appId);
 	g_pLog->debug
@@ -1202,25 +1226,15 @@ static CSteamId hkClientUser_GetSteamId(const CSteamId& steamId)
 		return steamId;
 	}
 
-	CSteamId newId = steamId;
-
-	//Use Pipe AppId since getCachedEncryptedTicket handles logic for FakeAppIds itself
-	Ticket::SavedTicket ticket = Ticket::getCachedEncryptedTicket(utils->getAppId());
-
-	//One time spoof should take presedence, otherwise SteamStub will fail
-	//for games that use encrypted tickets for online auth when you play on multiple accounts
 	if (Ticket::oneTimeSteamIdSpoof.isSet())
 	{
-		//One time spoof should be enough for this type
-		newId = Ticket::oneTimeSteamIdSpoof;
+		const CSteamId newId = Ticket::oneTimeSteamIdSpoof;
 		Ticket::oneTimeSteamIdSpoof.steamId64 = 0;
-	}
-	else if (ticket.isValid())
-	{
-		newId = ticket.steamId;
+
+		return newId;
 	}
 
-	return newId;
+	return steamId;
 }
 
 static bool hkClientUser_RequiresLegacyCDKey(void* pClientUser, uint32_t appId, uint32_t* a2)
@@ -1344,6 +1358,7 @@ namespace Hooks
 	DetourHook<IClientUser_BLoggedOn_t> IClientUser_BLoggedOn;
 	DetourHook<IClientUser_BUpdateAppOwnershipTicket_t> IClientUser_BUpdateAppOwnershipTicket;
 	DetourHook<IClientUser_GetAppOwnershipTicketExtendedData_t> IClientUser_GetAppOwnershipTicketExtendedData;
+	DetourHook<IClientUser_GetEncryptedAppTicket_t> IClientUser_GetEncryptedAppTicket;
 	DetourHook<IClientUser_IsUserSubscribedAppInTicket_t> IClientUser_IsUserSubscribedAppInTicket;
 	DetourHook<IClientUser_RequiresLegacyCDKey_t> IClientUser_RequiresLegacyCDKey;
 
