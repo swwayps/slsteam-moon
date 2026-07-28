@@ -4,16 +4,20 @@
 
 
 template<typename T>
-struct CUtlMemory
+class CUtlMemory
 {
+public:
+
 	T* base;
 	uint32_t alloc;
 	uint32_t growSize;
 };
 
 template<typename T>
-struct CUtlVector
+class CUtlVector
 {
+public:
+
 	CUtlMemory<T> memory;
 	uint32_t size;
 
