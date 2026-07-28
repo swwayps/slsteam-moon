@@ -7,6 +7,7 @@
 #include "depotkey.hpp"
 #include "depotkey_scope.hpp"
 #include "depotquarantine.hpp"
+#include "manageddepotfilter.hpp"
 #include "manifestselection.hpp"
 #include "manifeststore.hpp"
 
@@ -85,9 +86,9 @@ namespace
 	//   +0x1e u8 SharedInstall ; stride 0x20.
 	// CUtlVector<DepotEntry>: element base @ +0x00 (m_Memory.m_pMemory),
 	//   count (m_Size) @ +0x0c.
-	constexpr size_t kDepotEntryStride = 0x20;
+	constexpr size_t kDepotEntryStride = ManagedDepotFilter::kDepotEntryStride;
 	constexpr size_t kDepotEntryGidOff = 0x08;
-	constexpr size_t kDepotEntrySizeOff = 0x10;
+	constexpr size_t kDepotEntrySizeOff = ManagedDepotFilter::kDepotSizeOff;
 	constexpr size_t kDepotEntryDlcAppIdOff = 0x18;
 	constexpr size_t kVecBaseOff = 0x00;
 	constexpr size_t kVecCapacityOff = 0x04;
@@ -650,7 +651,8 @@ namespace
 					auto* const gidp =
 					    reinterpret_cast<uint64_t*>(e + kDepotEntryGidOff);
 
-					if (size == 0 && DepotKey::isManagedDepot(depotId))
+					if (ManagedDepotFilter::shouldDrop(
+					        size, DepotKey::isManagedDepot(depotId)))
 					{
 						g_pLog->info(
 						    "ManifestBind[build]: dropping empty depot %u (size 0) from plan\n",

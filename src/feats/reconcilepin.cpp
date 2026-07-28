@@ -9,6 +9,9 @@
 #include "../log.hpp"
 #include "../patterns.hpp"
 
+#include "depotkey.hpp"
+#include "manageddepotfilter.hpp"
+
 #include "libmem/libmem.h"
 
 #include <atomic>
@@ -45,8 +48,9 @@ namespace
 	constexpr size_t kCtxDepotCountOff = 0x84;
 	// flag bit marking the TARGET/appinfo ctx (vs the ACTIVE/installed ctx).
 	constexpr uint32_t kFlagTargetSide = 0x8;
-	// DepotEntry: DepotId @ +0, ManifestGid @ +0x8, stride 0x20.
-	constexpr size_t kDepotEntryStride = 0x20;
+	// DepotEntry: DepotId @ +0, ManifestGid @ +0x8, Size @ +0x10,
+	// stride 0x20.
+	constexpr size_t kDepotEntryStride = ManagedDepotFilter::kDepotEntryStride;
 	constexpr size_t kDepotEntryGidOff = 0x08;
 	constexpr int32_t kMaxDepots = 512;
 
@@ -82,21 +86,39 @@ namespace
 		}
 	}
 
-	// The fix: on the TARGET call for a LOCKED app, force each pinned depot's
-	// target gid to the pin so the reconcile sees active(pinned)==target(pin)
-	// once the downgrade has committed (no loop), while a still-public install
-	// (active=public != target=pin) still triggers the one downgrade.
-	void applyTargetPin(void* ctxv, uint32_t appId, uint32_t flags)
+	int32_t filterEmptyManaged(uint8_t* base, int32_t count,
+	                           uint32_t appId, const char* side)
 	{
-		if (!g_pinActive) return;
+		return ManagedDepotFilter::compactEmptyManaged(
+		    base, count,
+		    [](uint32_t depotId) { return DepotKey::isManagedDepot(depotId); },
+		    [appId, side](uint32_t depotId)
+		    {
+			    g_pLog->info(
+			        "ReconcilePin: app=%u %s dropping empty managed depot=%u "
+			        "from target\n",
+			        appId, side, depotId);
+		    });
+	}
+
+	// Keep the reconciler's TARGET set aligned with the install planner, then
+	// apply configured gid pins.  The ACTIVE/installed side is never changed:
+	// real updates and the first public->pinned transition remain visible.
+	void patchTargetCtx(void* ctxv, uint32_t appId, uint32_t flags)
+	{
 		if (!(flags & kFlagTargetSide)) return;       // target/appinfo side only
-		if (!g_config.isAppLocked(appId)) return;
 
 		auto* ctx = reinterpret_cast<uint8_t*>(ctxv);
 		auto* base = *reinterpret_cast<uint8_t* const*>(ctx + kCtxDepotPtrOff);
-		const int32_t count =
-		    *reinterpret_cast<const int32_t*>(ctx + kCtxDepotCountOff);
+		auto* const countPtr =
+		    reinterpret_cast<int32_t*>(ctx + kCtxDepotCountOff);
+		int32_t count = *countPtr;
 		if (!base || count <= 0 || count > kMaxDepots) return;
+
+		count = filterEmptyManaged(base, count, appId, "target-ctx");
+		*countPtr = count;
+
+		if (!g_pinActive || !g_config.isAppLocked(appId)) return;
 
 		auto* e = base;
 		for (int32_t i = 0; i < count; ++i, e += kDepotEntryStride)
@@ -154,20 +176,22 @@ namespace
 	lm_size_t       g_buildSize = 0;
 	uintptr_t       g_buildRet = 0;  // EvaluateConfigChanges call-site return addr
 
-	// Walk the appinfo-derived TARGET CUtlVector and force each pinned depot's
-	// gid to the pin (same DepotEntry layout as everywhere).  This is ALWAYS
-	// the appinfo/desired side (never the installed/active side), so forcing it
-	// to the pin is unconditionally safe: a still-public install reads
-	// active(public) != target(pin) and the one downgrade fires; afterwards
-	// active(pin) == target(pin) and the loop never starts.
+	// Walk the appinfo-derived TARGET CUtlVector. Filter the same managed
+	// size-zero entries as the final install plan, then force configured gids
+	// to their pins. This is always the desired side, never ACTIVE/installed.
 	void patchTargetVec(void* vecv, uint32_t appId)
 	{
 		if (!vecv) return;
 		auto* vec = reinterpret_cast<uint8_t*>(vecv);
 		auto* base = *reinterpret_cast<uint8_t* const*>(vec + kVecBaseOff);
-		const int32_t count =
-		    *reinterpret_cast<const int32_t*>(vec + kVecCountOff);
+		auto* const countPtr = reinterpret_cast<int32_t*>(vec + kVecCountOff);
+		int32_t count = *countPtr;
 		if (!base || count <= 0 || count > kMaxDepots) return;
+
+		count = filterEmptyManaged(base, count, appId, "target-local");
+		*countPtr = count;
+
+		if (!g_pinActive || !g_config.isAppLocked(appId)) return;
 
 		auto* e = base;
 		for (int32_t i = 0; i < count; ++i, e += kDepotEntryStride)
@@ -197,8 +221,7 @@ namespace
 		// caller's — EvaluateConfigChanges when the gate matches).
 		const bool ours =
 		    reinterpret_cast<uintptr_t>(__builtin_return_address(0)) == g_buildRet;
-		const bool act =
-		    g_pinActive && ours && targetVec && g_config.isAppLocked(appId);
+		const bool act = ours && targetVec;
 
 		void* r = g_origBuild(a0, appId, a2, targetVec, a4, ctx, a6, a7);
 
@@ -262,7 +285,7 @@ namespace
 				    *reinterpret_cast<const int32_t*>(c + kCtxDepotCountOff);
 				traceLog(appId, flags, base, count);
 			}
-			applyTargetPin(ctx, appId, flags);
+			patchTargetCtx(ctx, appId, flags);
 		}
 		return g_orig(mgr, ctx, a1, a2);
 	}
@@ -286,11 +309,6 @@ namespace ReconcilePin
 		{
 			g_trace = !(e[0] == '0' && e[1] == '\0');
 		}
-		if (!g_pinActive && !g_trace)
-		{
-			return false;  // nothing to do; don't touch the hot reconcile path
-		}
-
 		auto& pat = Patterns::CDepotDownloadMgr::EvaluateConfigChanges;
 		if (pat.address == LM_ADDRESS_BAD)
 		{
@@ -313,18 +331,16 @@ namespace ReconcilePin
 		}
 		g_orig = reinterpret_cast<ReconFn_t>(g_tramp);
 		g_pLog->info("ReconcilePin: hooked EvaluateConfigChanges at %p "
-		             "(pin=%d trace=%d)\n",
+		             "(pin=%d empty=1 trace=%d)\n",
 		             reinterpret_cast<void*>(g_addr),
 		             static_cast<int>(g_pinActive), static_cast<int>(g_trace));
 
 		// Also patch the appinfo-derived TARGET local (the -0x90(ebp)
 		// CUtlVector) via a caller-gated hook on its builder, for apps whose
-		// divergent gid lives there instead of in [ctx+0x78].  Only meaningful
-		// when the gid rewrite is on; a drift degrades to the ctx-vector patch.
-		if (g_pinActive)
-		{
-			installBuildTargetHook(g_addr);
-		}
+		// divergent target entries live there instead of in [ctx+0x78]. The
+		// hook is also required when pinning is disabled because the empty-depot
+		// filter is always active. A drift degrades to the ctx-vector patch.
+		installBuildTargetHook(g_addr);
 		return true;
 	}
 
