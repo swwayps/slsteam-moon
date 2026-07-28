@@ -1159,7 +1159,10 @@ static uint32_t hkClientUser_GetAppOwnershipTicketExtendedData(
 			appId, ticketSize);
 	}
 
-	Ticket::getTicketOwnershipExtendedData(appId);
+	if (ret)
+	{
+		Ticket::getTicketOwnershipExtendedData(appId);
+	}
 
 	return ret;
 }
