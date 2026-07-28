@@ -12,6 +12,7 @@
 #include "../globals.hpp"
 
 #include "appinfo_provision.hpp"
+#include "clouddecision.hpp"
 #include "fakeappid.hpp"
 #include "synthmark.hpp"
 #include "../utils/ManifestFetch.hpp"
@@ -329,22 +330,32 @@ bool Apps::isAddedAppDlcId(uint32_t appId)
 
 bool Apps::shouldDisableCloud(uint32_t appId)
 {
-	if (!g_config.disableCloud.get())
+	const bool enabled = g_config.disableCloud.get();
+	if (!enabled)
 	{
 		return false;
 	}
 
-	// AdditionalApps are injected into package 0 so Steam treats them as
+	// Managed apps are injected into package 0 so Steam treats them as
 	// owned — which means isSubscribed() returns true for them.  Cloud
 	// saves still can't sync: Valve's cloud backend validates ownership
 	// server-side and rejects the upload with "Access Denied" (visible in
-	// cloud_log.txt).  Disable cloud for AddedApps explicitly so Steam
-	// doesn't attempt the doomed sync and surface a cloud error to the
-	// user; the isSubscribed() check below would otherwise be defeated by
-	// our own ownership injection.
-	if (g_config.isAddedAppId(appId))
+	// cloud_log.txt).  Disable cloud for them explicitly so Steam doesn't
+	// attempt the doomed sync and surface a cloud error to the user; the
+	// ownership check below would otherwise be defeated by our own
+	// ownership injection.
+	const bool managed = g_config.isAddedAppId(appId);
+	const bool unlockNotOwned = g_config.playNotOwnedGames.get();
+
+	// Query Steam only when the decision can depend on its answer.  That
+	// answer flips to "not owned" for genuinely owned apps while the client
+	// rebuilds its license set, so it must never reach a decision it cannot
+	// change.
+	bool steamReportsOwned = true;
+	if (managed || !unlockNotOwned)
 	{
-		return true;
+		return Apps::cloudDisableDecision(enabled, managed, unlockNotOwned,
+		                                  steamReportsOwned);
 	}
 
 	CUser* user = getLocalUser();
@@ -352,7 +363,10 @@ bool Apps::shouldDisableCloud(uint32_t appId)
 	{
 		return false;
 	}
-	return !user->isSubscribed(appId);
+	steamReportsOwned = user->isSubscribed(appId);
+
+	return Apps::cloudDisableDecision(enabled, managed, unlockNotOwned,
+	                                  steamReportsOwned);
 }
 
 bool Apps::shouldDisableCDKey(uint32_t appId)
