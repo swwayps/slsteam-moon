@@ -106,10 +106,9 @@ bool Ticket::saveTicketToCache(CMsgClientGetAppOwnershipTicketResponse* resp)
 
 	g_pLog->infoOnce("Saved ticket for %u\n", appId);
 
-	//TODO: Skip copy
-	SavedTicket ticket {};
+	SavedTicket& ticket = ticketMap[appId];
+	ticket.steamId = g_currentSteamId;
 	ticket.ticket = bytes;
-	ticketMap[appId] = ticket;
 	return true;
 }
 
@@ -233,11 +232,9 @@ bool Ticket::saveEncryptedTicketToCache(CMsgClientRequestEncryptedAppTicketRespo
 
 	g_pLog->infoOnce("Saved encrypted ticket for %u\n", appId);
 
-	//TODO: Skip copy
-	SavedTicket ticket {};
+	SavedTicket& ticket = encryptedTicketMap[appId];
 	ticket.steamId = g_currentSteamId;
 	ticket.ticket = bytes;
-	encryptedTicketMap[appId] = ticket;
 	return true;
 }
 
