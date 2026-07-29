@@ -298,11 +298,62 @@ static void test_decky()
 	}
 }
 
+// The contract carries the owning client's identity so Lumen can tell a live
+// contract from one left behind by the previous session (which used to cost the
+// sidecar 4-8 s of polling a dead port at every boot).
+static void test_contract_owner()
+{
+	using CefPort::formatContract;
+	using CefPort::parseStatStartTicks;
+
+	// Line 1 stays a bare port so an older Lumen (which reads only the first
+	// line) keeps working; the owner record goes on line 2.
+	CHECK(formatContract(49777, 4242, 987654) == "49777\nowner 4242 987654\n",
+	      "contract: port line then owner line");
+	CHECK(formatContract(8080, 0, 0) == "8080\n",
+	      "contract: no owner -> port only (legacy shape)");
+	CHECK(formatContract(8080, 4242, 0) == "8080\n",
+	      "contract: unusable start time -> no owner line");
+	CHECK(formatContract(8080, 0, 987654) == "8080\n",
+	      "contract: unusable pid -> no owner line");
+
+	// The written file must be readable by readPortFile (which stops at the
+	// first token) so the extra line cannot break the existing reader.
+	{
+		const std::string path = "/tmp/cefport_owner_" + std::to_string(getpid());
+		CHECK(CefPort::writePortFile(path, 51515, 4242, 987654), "contract: written");
+		CHECK(readLine(path) == "51515", "contract: first line is the port");
+		CHECK(CefPort::readPortFile(path) == 51515, "contract: readPortFile still works");
+		::unlink(path.c_str());
+	}
+
+	// /proc/<pid>/stat field 22, with the awkward cases: comm containing spaces
+	// and/or a closing paren.
+	CHECK(parseStatStartTicks(
+	          "1234 (steam) S 1 1234 1234 0 -1 4194560 100 0 0 0 1 2 0 0 20 0 3 0 "
+	          "555666 100 200 300") == 555666,
+	      "stat: plain comm");
+	CHECK(parseStatStartTicks(
+	          "1234 (we ird) na:me) S 1 1234 1234 0 -1 4194560 100 0 0 0 1 2 0 0 20 0 3 0 "
+	          "777888 100 200 300") == 777888,
+	      "stat: comm with spaces and parens");
+	CHECK(parseStatStartTicks("") == 0, "stat: empty line -> 0");
+	CHECK(parseStatStartTicks("1234 (steam) S 1 2 3") == 0,
+	      "stat: truncated line -> 0");
+	CHECK(parseStatStartTicks("no parens here") == 0, "stat: malformed -> 0");
+
+	// Our own start time is readable and non-zero; a pid that cannot exist is 0.
+	CHECK(CefPort::readProcStartTicks(getpid()) > 0, "stat: own start time readable");
+	CHECK(CefPort::readProcStartTicks(0) == 0, "stat: pid 0 -> 0");
+	CHECK(CefPort::readProcStartTicks(-1) == 0, "stat: negative pid -> 0");
+}
+
 int main()
 {
 	test_rewrite();
 	test_ports();
 	test_decky();
+	test_contract_owner();
 
 	if (g_failures == 0) { std::printf("test_cefport: ALL PASS (%d checks)\n", g_checks); return 0; }
 	std::printf("test_cefport: %d/%d CHECK(S) FAILED\n", g_failures, g_checks);

@@ -115,6 +115,15 @@ static uint16_t g_cefSessionPort = 0;
 // fallback resolve in the exec hook can't pick a port behind our back.
 static bool g_cefKeepDefaultPort = false;
 
+// Identity of THIS Steam client, captured in setup() (i.e. inside the client
+// itself, before it forks anything) and stamped into the CEF port contract when
+// the exec hook publishes it. It lets the Lumen sidecar tell a live contract
+// from a leftover one written by a previous session: the pid must still exist
+// and must still have this start time. Captured here — not at publish time —
+// because the exec hook runs in a fork child, whose pid is not the client's.
+static long g_clientPid = 0;
+static unsigned long long g_clientStartTicks = 0;
+
 static void setup()
 {
 	lm_process_t proc {};
@@ -150,6 +159,10 @@ static void setup()
 	// Owner-IPC-thread handoff for watcher-originated Steam-owned work.
 	// Reads its env overrides; starts no thread, touches no Steam memory.
 	OwnerWork::init();
+
+	// Client identity for the CEF port contract (see g_clientPid).
+	g_clientPid = static_cast<long>(getpid());
+	g_clientStartTicks = CefPort::readProcStartTicks(g_clientPid);
 
 	// Strip ourselves from $LD_AUDIT so child processes Steam spawns
 	// (reaper, steamwebhelper, games) don't re-audit and re-run our
@@ -661,14 +674,22 @@ namespace
 		// runs setup() but exits at the single-instance lock before ever reaching
 		// this exec hook, so it never overwrites the contract. Idempotent within
 		// the tree (guarded); contract == live by construction.
+		//
+		// The contract also carries this client's identity (pid + start time,
+		// captured in setup()), so the sidecar can ignore a contract left behind
+		// by a previous session instead of polling its dead port — and so a
+		// vanilla Steam launch after an injected one falls back to 8080 instead
+		// of chasing a stale ephemeral port forever.
 		static bool published = false;
-		if (!published && CefPort::writePortFile(CefPort::contractPath(), port))
+		if (!published && CefPort::writePortFile(CefPort::contractPath(), port,
+		                                        g_clientPid, g_clientStartTicks))
 		{
 			published = true;
 			if (g_pLog)
 			{
-				g_pLog->info("CEF: published debug port %u to %s\n",
-				             port, CefPort::contractPath().c_str());
+				g_pLog->info("CEF: published debug port %u to %s (owner pid %ld, start %llu)\n",
+				             port, CefPort::contractPath().c_str(), g_clientPid,
+				             g_clientStartTicks);
 			}
 		}
 

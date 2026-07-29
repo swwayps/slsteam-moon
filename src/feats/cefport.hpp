@@ -152,7 +152,106 @@ namespace CefPort
 		return static_cast<uint16_t>(v);
 	}
 
-	inline bool writePortFile(const std::string& path, uint16_t port)
+	// ── contract ownership ────────────────────────────────────────────────
+	//
+	// The contract file used to hold nothing but a port number, which made it
+	// impossible for Lumen to tell "the port this session is listening on" from
+	// "the port the PREVIOUS session listened on". Measured consequence: for the
+	// first 4-8 s of a boot the sidecar polls the dead port of the last session
+	// (it is only replaced when this client's exec hook fires), and a leftover
+	// contract from an injected session makes a later VANILLA Steam launch
+	// unreachable forever (Lumen never falls back to 8080).
+	//
+	// So the contract now carries the identity of the client that owns it:
+	//   line 1: <port>                      (unchanged — old Lumen still works)
+	//   line 2: owner <pid> <startTicks>    (optional; ignored by old Lumen)
+	// `startTicks` is field 22 of /proc/<pid>/stat, so pid reuse cannot make a
+	// stale contract look live. Lumen ignores a contract whose owner is gone.
+	//
+	// This is identity only: nothing here changes WHEN the contract is written.
+	// It is still published exclusively from the exec hook that launches the
+	// webhelper (never at preinit), which is what keeps a losing single-instance
+	// client from ever publishing a port nothing listens on.
+	inline std::string formatContract(uint16_t port, long ownerPid,
+	                                  unsigned long long ownerStartTicks)
+	{
+		std::string out = std::to_string(port);
+		out += "\n";
+		if (ownerPid > 0 && ownerStartTicks > 0)
+		{
+			out += "owner ";
+			out += std::to_string(ownerPid);
+			out += " ";
+			out += std::to_string(ownerStartTicks);
+			out += "\n";
+		}
+		return out;
+	}
+
+	// Field 22 (starttime, in clock ticks since boot) of a /proc/<pid>/stat
+	// line, or 0 when it cannot be parsed. The executable name in field 2 is
+	// parenthesised and may itself contain spaces and ')', so parsing starts
+	// after the LAST ')'.
+	inline unsigned long long parseStatStartTicks(const std::string& stat)
+	{
+		const size_t close = stat.rfind(')');
+		if (close == std::string::npos)
+		{
+			return 0;
+		}
+
+		// After the comm field the next token is field 3 (state), so field 22 is
+		// the 20th token from here.
+		size_t i = close + 1;
+		for (int field = 3; field <= 22; ++field)
+		{
+			while (i < stat.size() && stat[i] == ' ')
+			{
+				++i;
+			}
+			const size_t start = i;
+			while (i < stat.size() && stat[i] != ' ' && stat[i] != '\n')
+			{
+				++i;
+			}
+			if (start == i)
+			{
+				return 0;
+			}
+			if (field == 22)
+			{
+				try
+				{
+					return std::stoull(stat.substr(start, i - start));
+				}
+				catch (...)
+				{
+					return 0;
+				}
+			}
+		}
+		return 0;
+	}
+
+	// Process start time of `pid` in clock ticks, or 0 when unreadable.
+	inline unsigned long long readProcStartTicks(long pid)
+	{
+		if (pid <= 0)
+		{
+			return 0;
+		}
+		std::ifstream f("/proc/" + std::to_string(pid) + "/stat");
+		if (!f)
+		{
+			return 0;
+		}
+		std::string line;
+		std::getline(f, line);
+		return parseStatStartTicks(line);
+	}
+
+	inline bool writePortFile(const std::string& path, uint16_t port, long ownerPid,
+	                          unsigned long long ownerStartTicks)
 	{
 		std::error_code ec;
 		const auto parent = std::filesystem::path(path).parent_path();
@@ -165,8 +264,13 @@ namespace CefPort
 		{
 			return false;
 		}
-		f << port << "\n";
+		f << formatContract(port, ownerPid, ownerStartTicks);
 		return static_cast<bool>(f);
+	}
+
+	inline bool writePortFile(const std::string& path, uint16_t port)
+	{
+		return writePortFile(path, port, 0, 0);
 	}
 
 	// Decide the port to use this session WITHOUT persisting it: reuse the
