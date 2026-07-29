@@ -909,5 +909,125 @@ check "system fallback propagates failed privileged patch" "2" "$system25_status
 check "failed system fallback leaves source unchanged" "$sys25_before" \
   "$(sha256sum "$S25/steam.desktop" | awk '{print $1}')"
 
+# ── unchanged-input fast path ───────────────────────────────────────────────
+# The pass is idempotent and does nothing on an untouched desktop, but costs
+# seconds of CPU to find that out — while Steam is starting. A fingerprint of
+# everything the pass reads gates it. What must hold: a repeat run skips, and
+# ANY real drift (hand-broken entry, tag removed, new donor, wrapper moved)
+# still reconciles.
+FP_HOME="$TMP/home-fp"; FP_APPS="$FP_HOME/data/applications"
+FP_SYS="$TMP/sys-fp/applications"
+mkdir -p "$FP_APPS" "$FP_HOME/conf/autostart" "$FP_HOME/state" "$FP_HOME/runtime" "$FP_SYS"
+fp_env() {
+  XDG_DATA_HOME="$FP_HOME/data" XDG_DATA_DIRS="${FP_SYS%/applications}" \
+    XDG_CONFIG_HOME="$FP_HOME/conf" XDG_STATE_HOME="$FP_HOME/state" \
+    DC_HOME="$FP_HOME" DC_BACKUP_ROOT="$FP_HOME/backup" DC_SYS_APPS="$TMP/none" \
+    DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" DC_STEAM_INSTALLED=1 "$@"
+}
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/bin/steam %%U\n' > "$FP_APPS/steam.desktop"
+fp_digest_1="$(fp_env dc_coverage_digest --user)"
+check "fingerprint digest is a single non-empty token" "yes" \
+  "$([ -n "$fp_digest_1" ] && [ "$(printf '%s' "$fp_digest_1" | wc -w)" = 1 ] && echo yes || echo no)"
+check "fingerprint is stable across repeated reads" "$fp_digest_1" \
+  "$(fp_env dc_coverage_digest --user)"
+check "fingerprint has no recorded digest yet" "no" \
+  "$(fp_env dc_coverage_unchanged user --user && echo yes || echo no)"
+fp_env dc_run --user
+check "first pass patches the entry" "patched" "$(dc_classify "$FP_APPS/steam.desktop")"
+check "first pass records a digest" "yes" \
+  "$([ -s "$(fp_env dc_fingerprint_path user)" ] && echo yes || echo no)"
+check "second pass sees unchanged inputs" "yes" \
+  "$(fp_env dc_coverage_unchanged user --user && echo yes || echo no)"
+check "DC_FORCE ignores the recorded digest" "no" \
+  "$(DC_FORCE=1 fp_env dc_coverage_unchanged user --user && echo yes || echo no)"
+# Drift 1: a hand-broken entry (wrapper Exec replaced) must still be repaired.
+printf '[Desktop Entry]\n%s\nName=Steam\nExec=/usr/bin/steam %%U\n' "$DC_TAG" \
+  > "$FP_APPS/steam.desktop"
+check "hand-edited entry invalidates the digest" "no" \
+  "$(fp_env dc_coverage_unchanged user --user && echo yes || echo no)"
+fp_env dc_run --user
+check "hand-edited entry is repaired" "Exec=$WRAPPER %U" \
+  "$(grep -m1 '^Exec=' "$FP_APPS/steam.desktop")"
+# Drift 2: only the tag removed (a same-size edit) — the tag census catches it.
+check "repaired entry is cached again" "yes" \
+  "$(fp_env dc_coverage_unchanged user --user && echo yes || echo no)"
+grep -vxF "$DC_TAG" "$FP_APPS/steam.desktop" > "$TMP/fp-untagged" \
+  && cat "$TMP/fp-untagged" > "$FP_APPS/steam.desktop"
+check "removing our tag invalidates the digest" "no" \
+  "$(fp_env dc_coverage_unchanged user --user && echo yes || echo no)"
+fp_env dc_run --user
+check "untagged entry is re-tagged" "patched" "$(dc_classify "$FP_APPS/steam.desktop")"
+# Drift 3: a new system donor appears -> a new same-ID shadow is still seeded.
+check "post-repair state is cached" "yes" \
+  "$(fp_env dc_coverage_unchanged user --user && echo yes || echo no)"
+printf '[Desktop Entry]\nType=Application\nName=Valve Steam\nExec=/usr/bin/steam %%U\n' \
+  > "$FP_SYS/com.valvesoftware.Steam.desktop"
+check "a new donor invalidates the digest" "no" \
+  "$(fp_env dc_coverage_unchanged user --user && echo yes || echo no)"
+fp_env dc_run --user
+check "new donor gets its same-ID shadow" "patched" \
+  "$(dc_classify "$FP_APPS/com.valvesoftware.Steam.desktop")"
+# Drift 4: the wrapper path itself changes (a reinstall elsewhere).
+check "state after seeding is cached" "yes" \
+  "$(fp_env dc_coverage_unchanged user --user && echo yes || echo no)"
+check "a different wrapper path invalidates the digest" "no" \
+  "$(WRAPPER="/tmp/other/path/steam" fp_env dc_coverage_unchanged user --user && echo yes || echo no)"
+check "a different library version invalidates the digest" "no" \
+  "$(DC_FINGERPRINT_VERSION=99 fp_env dc_coverage_unchanged user --user && echo yes || echo no)"
+# Scopes are independent: the --user digest must not satisfy the guardian.
+check "guardian scope has its own digest" "no" \
+  "$(fp_env dc_coverage_unchanged guardian --user && echo yes || echo no)"
+check "forget drops the recorded digest" "no" \
+  "$(fp_env dc_coverage_forget user; fp_env dc_coverage_unchanged user --user && echo yes || echo no)"
+
+# The guardian takes the same fast path: an unchanged desktop is skipped (and
+# says so in its log), while a hand-broken entry is still repaired.
+GHOME="$TMP/home-fpg"
+mkdir -p "$GHOME/data/applications" "$GHOME/conf/autostart" "$GHOME/state" \
+  "$GHOME/runtime" "$TMP/empty-fpg/applications"
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/bin/steam %%U\n' \
+  > "$GHOME/data/applications/steam.desktop"
+gstate="$GHOME/state/slsteam-moon/guardian.log"
+guardian_fp() {
+  : > "$GUARDIAN_EVENTS"
+  XDG_DATA_HOME="$GHOME/data" XDG_DATA_DIRS="$TMP/empty-fpg" XDG_CONFIG_HOME="$GHOME/conf" \
+    XDG_STATE_HOME="$GHOME/state" XDG_RUNTIME_DIR="$GHOME/runtime" DC_HOME="$GHOME" \
+    DC_BACKUP_ROOT="$GHOME/backup" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" \
+    DC_SUDO="" DC_FLOCK="$FLOCK_SHIM" DC_UPDATE_DESKTOP_DATABASE="$UPDATE_SHIM" \
+    DC_KBUILDSYCOCA="$KBUILD_SHIM" DC_TEST_EVENTS="$GUARDIAN_EVENTS" \
+    DC_TEST_STATE_LOG="$gstate" DC_TEST_APP="$GHOME/data/applications/steam.desktop" \
+    dc_guardian_run
+}
+guardian_fp; check "guardian first pass succeeds" "0" "$?"
+check "guardian first pass patches the entry" "patched" \
+  "$(dc_classify "$GHOME/data/applications/steam.desktop")"
+check "guardian first pass logs real counters" "yes" \
+  "$(tail -n 1 "$gstate" | grep -Eq '^[^ ]+ examined=[1-9]' && echo yes || echo no)"
+guardian_fp; check "guardian repeat pass succeeds" "0" "$?"
+check "guardian repeat pass records the skip" "yes" \
+  "$(grep -q 'unchanged: desktop launch sources match' "$gstate" && echo yes || echo no)"
+check "guardian repeat pass still ends with the six counters" "yes" \
+  "$(tail -n 1 "$gstate" | grep -Eq '^[^ ]+ examined=0 changed=0 app_changed=0 autostart_changed=0 skipped=0 failed=0$' && echo yes || echo no)"
+check "guardian repeat pass runs no cache command" "0" \
+  "$(grep -Ec '^(update|kbuild):' "$GUARDIAN_EVENTS" 2>/dev/null || true)"
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/bin/steam %%U\n' \
+  > "$GHOME/data/applications/steam.desktop"
+guardian_fp >/dev/null 2>&1
+check "guardian repairs a hand-broken entry despite a recorded digest" "patched" \
+  "$(dc_classify "$GHOME/data/applications/steam.desktop")"
+# A failed pass must never be remembered: the next trigger has to retry it.
+printf '[Desktop Entry]\nName=Steam\nExec="/usr/bin/steam %%U\n' \
+  > "$GHOME/data/applications/steam.desktop"
+guardian_fp >/dev/null 2>&1; guardian_fp_failed=$?
+check "guardian reports the malformed entry" "2" "$guardian_fp_failed"
+check "a failed guardian pass is not cached" "no" \
+  "$(XDG_STATE_HOME="$GHOME/state" DC_HOME="$GHOME" dc_coverage_unchanged guardian --user \
+     && echo yes || echo no)"
+
+# CLI: --force is accepted after a mode, garbage after a mode is not.
+check "CLI accepts --user --force" "0" "$(cli_status "$H22" --user --force)"
+check "CLI accepts --guardian --force" "2" "$(cli_status "$H22" --guardian --force)"
+check "CLI rejects a bogus second argument" "2" "$(cli_status "$H22" --user --nope)"
+
 [ "$fail" = 0 ] && echo "ALL PASS" || echo "FAILURES"
 exit "$fail"

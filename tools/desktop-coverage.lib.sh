@@ -1015,6 +1015,138 @@ dc_state_home() {
 	esac
 }
 
+# ── unchanged-input fast path ───────────────────────────────────────────────
+# Reconciliation is idempotent, and on an untouched desktop it changes nothing:
+# three timed passes on the test VM reported examined=3 changed=0 every time, at
+# a cost of 2.9-3.9 s of shell CPU (hundreds of forks over every *.desktop in
+# every XDG applications directory) *while Steam itself was starting* on a
+# 4-vCPU box. So a pass now first takes a cheap fingerprint of everything it
+# would read and returns in milliseconds when it matches the last successful
+# pass. A fingerprint match means the inputs are identical, so the full pass
+# would be a no-op — it can never mask real drift:
+#   * each candidate directory's own mtime, so an added/removed/renamed entry
+#     invalidates (a new donor, a resurrected legacy .slssteam-backup, …);
+#   * name + size + mtime + mode + type of every *.desktop in those directories,
+#     so ANY edit invalidates — a hand-broken launcher always changes its mtime
+#     and normally its size too, and a symlink appearing is a type change;
+#   * which Steam-named entries currently carry our patched tag;
+#   * the wrapper path, both tag strings and DC_STEAM_INSTALLED, because the
+#     rewrite and the stub's eligibility depend on them;
+#   * a version counter, so a coverage library with new behaviour forces one
+#     full pass even on an unchanged desktop.
+# Callers that must never take the fast path (the installer, an explicit repair)
+# set DC_FORCE=1 / pass --force to the CLI.
+DC_FINGERPRINT_VERSION=1
+
+# Where the last successful pass' digest lives. One file per scope: the guardian
+# (mandatory, user-only), the legacy best-effort --user pass and the optional
+# --system pass do different work and must not satisfy each other's cache.
+dc_fingerprint_path() {
+	local scope="${1:-user}"
+	printf '%s/coverage.fingerprint.%s\n' \
+		"${DC_FINGERPRINT_DIR:-$(dc_state_home)/slsteam-moon}" "$scope"
+}
+
+# Nanosecond mtimes when this coreutils supports them, whole seconds otherwise.
+# An unsupported format must NOT silently become a constant, or every mtime
+# change would go unnoticed.
+_dc_stat_time_format() {
+	case "$(stat -c '%.9Y' / 2>/dev/null)" in
+		''|*[!0-9.,]*) printf '%s' '%Y' ;;
+		*) printf '%s' '%.9Y' ;;
+	esac
+}
+
+# dc_coverage_fingerprint [--user|--system] — print the raw fingerprint material.
+dc_coverage_fingerprint() {
+	local mode="${1:---user}" time_format
+	time_format="$(_dc_stat_time_format)"
+	(
+		# nocaseglob because a donor may be named Steam.desktop / STEAM.DESKTOP;
+		# nullglob so an empty directory contributes nothing instead of a literal.
+		shopt -s nullglob nocaseglob 2>/dev/null || true
+		local dir
+		local -a dirs=() files=() named=()
+		printf 'v%s mode=%s wrapper=%s tag=%s seed=%s installed=%s\n' \
+			"$DC_FINGERPRINT_VERSION" "$mode" "$WRAPPER" "$DC_TAG" "$DC_SEED_TAG" \
+			"${DC_STEAM_INSTALLED:-0}"
+		while IFS= read -r dir; do
+			[ -n "$dir" ] && dirs+=("$dir")
+		done < <(dc_application_dirs)
+		while IFS= read -r dir; do
+			[ -n "$dir" ] && dirs+=("$dir")
+		done < <(dc_autostart_dirs)
+		dir="$(dc_desktop_dir)"
+		[ -n "$dir" ] && dirs+=("$dir")
+		if [ "$mode" = "--system" ]; then
+			dirs+=("$DC_SYS_APPS" "$DC_SYS_AUTOSTART")
+		fi
+		for dir in "${dirs[@]}"; do
+			files+=("$dir"/*.desktop \
+			        "$dir"/*steam*.desktop.slssteam-backup \
+			        "$dir"/*steam*.desktop.slsteam-bak)
+			named+=("$dir"/*steam*.desktop)
+		done
+		stat -c "d %n $time_format" -- "${dirs[@]}" 2>/dev/null | sort
+		if [ "${#files[@]}" -gt 0 ]; then
+			stat -c "f %n %s $time_format %a %F" -- "${files[@]}" 2>/dev/null | sort
+		fi
+		if [ "${#named[@]}" -gt 0 ]; then
+			grep -lxF -- "$DC_TAG" "${named[@]}" 2>/dev/null | sed 's|^|t |' | sort
+		fi
+		return 0
+	)
+}
+
+# dc_coverage_digest [--user|--system] — one-line digest of the material above.
+dc_coverage_digest() {
+	local material
+	material="$(dc_coverage_fingerprint "${1:---user}")" || return 1
+	if command -v sha256sum >/dev/null 2>&1; then
+		printf '%s\n' "$material" | sha256sum | cut -d' ' -f1
+	else
+		printf '%s\n' "$material" | cksum | tr -d ' '
+	fi
+}
+
+# dc_coverage_unchanged <scope> [mode] — true when a previous successful pass
+# recorded exactly this digest (and DC_FORCE is not set).
+dc_coverage_unchanged() {
+	local scope="${1:-user}" mode="${2:---user}" recorded current
+	[ "${DC_FORCE:-0}" = 1 ] && return 1
+	recorded="$(cat "$(dc_fingerprint_path "$scope")" 2>/dev/null)" || return 1
+	[ -n "$recorded" ] || return 1
+	current="$(dc_coverage_digest "$mode")" || return 1
+	[ -n "$current" ] || return 1
+	[ "$recorded" = "$current" ]
+}
+
+# dc_coverage_remember <scope> [mode] — record the digest AFTER a successful
+# pass (the pass itself changes the inputs it just repaired).
+dc_coverage_remember() {
+	local scope="${1:-user}" mode="${2:---user}" digest path
+	digest="$(dc_coverage_digest "$mode")" || return 1
+	[ -n "$digest" ] || return 1
+	path="$(dc_fingerprint_path "$scope")"
+	mkdir -p "$(dirname "$path")" 2>/dev/null || return 1
+	printf '%s\n' "$digest" > "$path" 2>/dev/null || return 1
+	chmod 0600 "$path" 2>/dev/null || true
+	return 0
+}
+
+# dc_coverage_forget [scope...] — drop recorded digests (uninstall, or any time
+# a caller wants the next pass to do full work).
+dc_coverage_forget() {
+	local scope
+	if [ "$#" -eq 0 ]; then
+		set -- user guardian system
+	fi
+	for scope in "$@"; do
+		rm -f -- "$(dc_fingerprint_path "$scope")" 2>/dev/null || true
+	done
+	return 0
+}
+
 dc_guardian_write_summary() {
 	local dir log timestamp
 	dir="$(dc_state_home)/slsteam-moon"
@@ -1025,6 +1157,19 @@ dc_guardian_write_summary() {
 		"$timestamp" "$DC_EXAMINED" "$DC_CHANGED" "$DC_APP_CHANGED" \
 		"$DC_AUTOSTART_CHANGED" "$DC_SKIPPED" "$DC_FAILED" >> "$log" 2>/dev/null \
 		|| return 2
+}
+
+# A skipped pass is still one recorded pass per trigger: the note says WHY it did
+# no work, and the ordinary all-zero summary line follows it, so log consumers
+# (and the tests) keep seeing the same six-counter shape as the last line.
+dc_guardian_write_cached_note() {
+	local dir log timestamp
+	dir="$(dc_state_home)/slsteam-moon"
+	log="$dir/guardian.log"
+	mkdir -p "$dir" 2>/dev/null || return 2
+	timestamp="$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null)" || return 2
+	printf '%s unchanged: desktop launch sources match the last reconciliation -> skipped\n' \
+		"$timestamp" >> "$log" 2>/dev/null || return 2
 }
 
 # dc_guardian_run — serialized, mandatory user-only reconciliation. Lock
@@ -1042,6 +1187,17 @@ dc_guardian_run() {
 	fi
 
 	dc_guardian_reset_results
+	# Nothing to reconcile when every input is byte-identical to the last
+	# successful pass (see dc_coverage_unchanged). This is the boot-path win: the
+	# guardian is kicked by the wrapper at every launch, and on an unchanged
+	# desktop the full pass costs seconds of CPU to change nothing.
+	if dc_coverage_unchanged guardian --user; then
+		dc_guardian_write_cached_note || true
+		dc_guardian_write_summary || true
+		"$DC_FLOCK" -u 9 >/dev/null 2>&1 || true
+		exec 9>&-
+		return 0
+	fi
 	# Required order: legacy migration, application shadow/repair, autostart
 	# shadow/repair, existing shortcut, then cache convergence.
 	dc_guardian_migrate_legacy
@@ -1053,6 +1209,11 @@ dc_guardian_run() {
 	dc_guardian_refresh_cache
 
 	[ "$DC_FAILED" -eq 0 ] || status=2
+	# Only a fully successful pass may be remembered: a run that left an entry
+	# unreconciled must be retried by the next trigger, not skipped.
+	if [ "$status" -eq 0 ]; then
+		dc_coverage_remember guardian --user || true
+	fi
 	# The summary log is diagnostic only. A failure to persist it (unwritable or
 	# odd XDG_STATE_HOME, full disk) must never be reported as a reconciliation
 	# failure, since callers (setup.sh, the guardian service) gate real work on
@@ -1069,7 +1230,17 @@ dc_guardian_run() {
 # the system menu dir + stub (caller must provide sudo rights). An existing
 # desktop shortcut is patched in place; one is never created implicitly.
 dc_run() {
-	local mode="${1:---user}" menu user_apps user_autostart failed=0
+	local mode="${1:---user}" menu user_apps user_autostart failed=0 scope
+	case "$mode" in
+		--system) scope=system ;;
+		*) scope=user ;;
+	esac
+	# Same unchanged-input fast path as the guardian (see dc_coverage_unchanged):
+	# this is the per-launch legacy path on desktops without a working user
+	# manager, so it also runs while Steam is starting.
+	if dc_coverage_unchanged "$scope" "$mode"; then
+		return 0
+	fi
 	user_apps="$(dc_data_home)/applications"
 	user_autostart="$(dc_config_home)/autostart"
 	menu="$user_apps/steam.desktop"
@@ -1088,6 +1259,7 @@ dc_run() {
 	fi
 	[ -f "$menu" ] && dc_patch_shortcut "$(dc_desktop_dir)/steam.desktop"
 	[ "$failed" = 0 ] || return 2
+	dc_coverage_remember "$scope" "$mode" || true
 	return 0
 }
 
@@ -1151,6 +1323,9 @@ dc_restore_directory() {
 # entries and their backups so a later uninstall can retry safely.
 dc_restore_all() {
 	local system_failed=0 user_failed=0
+	# Restoring makes every recorded digest meaningless; drop them so a later
+	# re-install never takes the unchanged-input fast path over vanilla entries.
+	dc_coverage_forget
 	dc_migrate_legacy_backups --system || system_failed=1
 	dc_restore_directory "$DC_SYS_APPS" "$DC_SUDO" || system_failed=1
 	dc_restore_directory "$DC_SYS_AUTOSTART" "$DC_SUDO" || system_failed=1

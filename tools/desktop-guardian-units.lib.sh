@@ -26,6 +26,12 @@ Description=Reconcile Steam desktop launch coverage
 
 [Service]
 Type=oneshot
+# Reconciliation is background repair work that must never compete with Steam's
+# own startup: the wrapper kicks this service at launch, and on a 4-vCPU box a
+# full pass costs seconds of CPU. Nice+idle IO keeps it off Steam's critical
+# path when it does have work to do.
+Nice=10
+IOSchedulingClass=idle
 ExecStart=%h/.local/share/SLSsteam/ensure-desktop-coverage.sh --guardian
 EOF
 }

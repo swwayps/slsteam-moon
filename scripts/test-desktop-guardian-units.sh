@@ -30,6 +30,10 @@ check "unit library sources coverage desktop helper" "yes" "$(type dc_desktop_di
 service="$(dgu_service_content)"
 contains "service has oneshot section" "$service" $'[Service]\nType=oneshot'
 contains "service invokes guardian safely" "$service" 'ExecStart=%h/.local/share/SLSsteam/ensure-desktop-coverage.sh --guardian'
+# The wrapper kicks this service while Steam is starting, so a pass that does
+# have work to do must never compete with the client for CPU or IO.
+contains "service runs at reduced priority" "$service" $'\nNice=10'
+contains "service uses idle IO scheduling" "$service" $'\nIOSchedulingClass=idle'
 
 timer="$(dgu_timer_content)"
 contains "timer starts after login" "$timer" 'OnStartupSec=30s'

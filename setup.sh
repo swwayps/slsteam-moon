@@ -614,7 +614,13 @@ if command -v systemctl >/dev/null 2>&1 && \
    systemctl --user --quiet is-enabled slsteam-desktop-guardian.path >/dev/null 2>&1; then
 	systemctl --user start slsteam-desktop-guardian.service >/dev/null 2>&1 &
 elif [ -x "$SLSDIR/ensure-desktop-coverage.sh" ]; then
-	WRAPPER="$SLSDIR/path/steam" "$SLSDIR/ensure-desktop-coverage.sh" --user >/dev/null 2>&1 &
+	# Lowest priority we can give it: this fallback runs concurrently with Steam's
+	# own start, and a pass that does have work to do is seconds of shell CPU.
+	if command -v nice >/dev/null 2>&1; then
+		WRAPPER="$SLSDIR/path/steam" nice -n 10 "$SLSDIR/ensure-desktop-coverage.sh" --user >/dev/null 2>&1 &
+	else
+		WRAPPER="$SLSDIR/path/steam" "$SLSDIR/ensure-desktop-coverage.sh" --user >/dev/null 2>&1 &
+	fi
 fi
 
 LD_AUDIT="$AUDIT${LD_AUDIT:+:$LD_AUDIT}" exec "$STEAM_BIN" "$@"
@@ -685,7 +691,10 @@ setup_path_and_desktop()
 	# guardian timer/path retries it), so it must NOT abort installation of the
 	# guardian itself — that would leave the machine with no ongoing self-healing,
 	# which is exactly the "injection lost after reboot" failure.
-	if dc_guardian_run; then
+	# DC_FORCE: installing is never a boot path, and the shipped coverage logic may
+	# behave differently from the one that recorded the last digest, so the
+	# unchanged-input fast path must not apply here.
+	if DC_FORCE=1 dc_guardian_run; then
 		log_success "Reconciled user desktop entries"
 	else
 		log_warn "Some user desktop entries could not be fully reconciled yet; the guardian will retry them"
@@ -719,7 +728,7 @@ setup_path_and_desktop()
 			log_warn "Administrator access not granted: the system-wide Steam entry stays unpatched. Menu and taskbar launches still use the injected per-user entry (it wins by desktop-file-id); only a launcher pinned by absolute path to the system file would skip the wrapper. Re-run with admin access to also cover the system entry."
 		else
 			dc_migrate_legacy_backups --system
-			if dc_run --system; then
+			if DC_FORCE=1 dc_run --system; then
 				system_desktop_changed=1
 				log_success "Patched optional system Steam desktop entries"
 			else

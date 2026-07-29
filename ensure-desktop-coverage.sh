@@ -26,7 +26,16 @@ elif [ -f "$SELF_DIR/tools/desktop-guardian-units.lib.sh" ]; then
 	. "$SELF_DIR/tools/desktop-guardian-units.lib.sh"
 fi
 
-[ "$#" -eq 1 ] || exit 2
+# A pass whose inputs are unchanged returns in milliseconds (see
+# dc_coverage_unchanged in the lib). `--force` after the mode always does the
+# full reconciliation — used by an explicit repair, and by anything that cannot
+# assume the shipped coverage logic is the one that recorded the digest.
+[ "$#" -ge 1 ] && [ "$#" -le 2 ] || exit 2
+case "${2:-}" in
+	'') : ;;
+	--force) DC_FORCE=1; export DC_FORCE ;;
+	*) exit 2 ;;
+esac
 case "$1" in
 	--user)
 		dc_run --user || true
