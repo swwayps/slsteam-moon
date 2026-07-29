@@ -1,9 +1,11 @@
 #include "config.hpp"
 
+#include "afftrace.hpp"
 #include "confload.hpp"
 #include "config_default.hpp"
 #include "filewatcher.hpp"
 #include "log.hpp"
+#include "ownerwork.hpp"
 #include "yaml-cpp/yaml.h"
 
 #include "feats/depotkey.hpp"
@@ -237,6 +239,12 @@ bool CConfig::createFile()
 
 static void onFileChange()
 {
+	// This runs on the inotify watcher pthread. Everything below is local
+	// bookkeeping EXCEPT the package-0 injection and the license broadcast,
+	// which enter Steam-owned code — those are handed to the owner IPC thread
+	// (see ownerwork.hpp).
+	auto watchSpan = AffTrace::watchSpan(AffTrace::Src::Config);
+
 	// Snapshot the AdditionalApps set BEFORE reloading so we can tell whether
 	// the change added any new games.
 	const auto before = g_config.addedAppIds.get();
@@ -260,16 +268,21 @@ static void onFileChange()
 
 	if (hasNewApp)
 	{
+		// Local (non-Steam) work stays on this thread, unchanged and in the
+		// same order as before.
 		DepotKey::importLuaScripts();
 		ManifestId::importLuaScripts();
-		{
-			const auto ids = std::vector<uint32_t>(after.begin(), after.end());
-			PackagePatch::injectIntoPackage0(ids);
-		}
-		PackagePatch::forceReconcileLicenses();
 
-		g_pLog->info("Config watcher: hot-add detected, injected into package 0 "
-		             "and broadcast license update\n");
+		// Steam-owned work: same two calls, same order, same inputs, but
+		// executed on the owner IPC thread. This does NOT wait for the owner —
+		// the hot-add is already asynchronous from the user's point of view, so
+		// the watcher hands the work over and returns (see ownerwork.hpp for
+		// the measurements that ruled out a blocking handoff).
+		const auto ids = std::vector<uint32_t>(after.begin(), after.end());
+		const auto mode = OwnerWork::submitHotAdd(ids);
+
+		g_pLog->info("Config watcher: hot-add detected, package 0 injection + "
+		             "license broadcast dispatched %s\n", OwnerWork::modeName(mode));
 	}
 }
 

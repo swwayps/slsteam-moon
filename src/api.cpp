@@ -2,8 +2,10 @@
 
 #include "sdk/IClientAppManager.hpp"
 
+#include "afftrace.hpp"
 #include "config.hpp"
 #include "filewatcher.hpp"
+#include "ownerwork.hpp"
 #include "utils.hpp"
 
 #include <ios>
@@ -23,6 +25,11 @@ bool SLSAPI::isEnabled()
 
 void SLSAPI::onFileChange()
 {
+	// Runs on the API watcher pthread. The install request below enters
+	// Steam-owned code, so it is handed to the owner IPC thread without waiting
+	// (see ownerwork.hpp); parsing stays here.
+	auto watchSpan = AffTrace::watchSpan(AffTrace::Src::Api);
+
 	//Hot reload support :)
 	if (!isEnabled())
 	{
@@ -54,7 +61,10 @@ void SLSAPI::onFileChange()
 
 			g_pLog->info("API Installing %s to %s\n", split[1].c_str(), split[2].c_str());
 
-			g_pClientAppManager->installApp(appId, library);
+			// Same call, same arguments — executed on the owner IPC thread.
+			// Non-blocking: the watcher does not wait for the owner.
+			const auto mode = OwnerWork::submitInstallApp(appId, library);
+			g_pLog->debug("API install request dispatched %s\n", OwnerWork::modeName(mode));
 		}
 		catch(...)
 		{

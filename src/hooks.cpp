@@ -32,6 +32,8 @@
 #include "feats/reconcilepin.hpp"
 #include "feats/steamstub.hpp"
 #include "feats/ticket.hpp"
+#include "afftrace.hpp"
+#include "ownerwork.hpp"
 
 #include "libmem/libmem.h"
 
@@ -477,6 +479,13 @@ static void hkClientAppManager_RunIPCFrame(void* pClientAppManager, void* a1, vo
 
 	g_pLog->debug("IClientAppManager->vft at %p\n", vft->vtable);
 
+	// Owner-frame accounting (see the note above hkClientUtils_RunIPCFrame):
+	// every dispatcher that can run on the owner thread accounts its frame, so
+	// ipc_depth/ipc_frames describe real owner activity. This one is a one-shot
+	// (it unhooks itself below), but it still counts while it runs.
+	AffTrace::FrameGuard frame;
+	OwnerWork::drainOnOwnerFrame();
+
 	Hooks::IClientAppManager_RunIPCFrame.remove();
 	Hooks::IClientAppManager_RunIPCFrame.originalFn.fn(pClientAppManager, a1, a2, a3);
 }
@@ -572,6 +581,15 @@ static void hkClientApps_RunIPCFrame(void* pClientApps, void* a1, void* a2, void
 		hooked = true;
 	}
 
+	// Extra drain opportunity, plus owner-frame accounting. Both are no-ops
+	// unless this really is the latched owner thread. Measured on the guest:
+	// adding these extra drain points did NOT shorten the owner wake cadence
+	// (3.30 s -> 3.41 s), so they are not a latency mechanism — they are there
+	// so whichever dispatcher runs first takes the work, and so the frame
+	// counters cover all owner-thread IPC activity instead of one interface's.
+	AffTrace::FrameGuard frame;
+	OwnerWork::drainOnOwnerFrame();
+
 	Hooks::IClientApps_RunIPCFrame.tramp.fn(pClientApps, a1, a2, a3);
 }
 
@@ -613,7 +631,10 @@ static void hkClientRemoteStorage_RunIPCFrame(void* pClientRemoteStorage, void* 
 
 		hooked = true;
 	}
-	
+
+	AffTrace::FrameGuard frame;
+	OwnerWork::drainOnOwnerFrame();
+
 	FakeAppIds::runIPCFrame(false);
 	Hooks::IClientRemoteStorage_RunIPCFrame.tramp.fn(pClientRemoteStorage, a1, a2, a3);
 	FakeAppIds::runIPCFrame(true);
@@ -621,6 +642,9 @@ static void hkClientRemoteStorage_RunIPCFrame(void* pClientRemoteStorage, void* 
 
 static void hkClientUGC_RunIPCFrame(void* pClientUGC, void* a1, void* a2, void* a3)
 {
+	AffTrace::FrameGuard frame;
+	OwnerWork::drainOnOwnerFrame();
+
 	FakeAppIds::runIPCFrame(false);
 	Hooks::IClientUGC_RunIPCFrame.tramp.fn(pClientUGC, a1, a2, a3);
 	FakeAppIds::runIPCFrame(true);
@@ -661,6 +685,13 @@ static bool hkClientUtils_GetOfflineMode(void* pClientUtils)
 	return ret;
 }
 
+// The IClientUtils dispatcher defines the "owner IPC thread" for this process:
+// it is the thread a controlled VM run latched and compared against, and it is
+// where the owner TID is latched. Every hooked dispatcher then drains and
+// accounts its frame, but only when it observes itself running on that latched
+// thread. The drain sits inside the frame (before the original runs) so queued
+// work is serialised with the dispatcher instead of racing it from an inotify
+// pthread.
 static void hkClientUtils_RunIPCFrame(void* pClientUtils, void* a1, void* a2, void* a3)
 {
 	static bool hooked = false;
@@ -681,6 +712,11 @@ static void hkClientUtils_RunIPCFrame(void* pClientUtils, void* a1, void* a2, vo
 
 		hooked = true;
 	}
+
+	OwnerWork::latchOwnerThread();
+
+	AffTrace::FrameGuard frame;
+	OwnerWork::drainOnOwnerFrame();
 
 	Hooks::IClientUtils_RunIPCFrame.tramp.fn(pClientUtils, a1, a2, a3);
 }
@@ -907,15 +943,17 @@ static bool hkClientUser_RequiresLegacyCDKey(void* pClientUser, uint32_t appId, 
 
 static void hkClientUser_RunIPCFrame(void* pClientUser, void* a1, void* a2, void* a3)
 {
+	AffTrace::FrameGuard frame;
+	OwnerWork::drainOnOwnerFrame();
 
-
-
-	
 	Hooks::IClientUser_RunIPCFrame.tramp.fn(pClientUser, a1, a2, a3);
 }
 
 static void hkClientUserStats_RunIPCFrame(void* pClientUserStats, void* a1, void* a2, void* a3)
 {
+	AffTrace::FrameGuard frame;
+	OwnerWork::drainOnOwnerFrame();
+
 	FakeAppIds::runIPCFrame(false);
 	Hooks::IClientUserStats_RunIPCFrame.tramp.fn(pClientUserStats, a1, a2, a3);
 	FakeAppIds::runIPCFrame(true);
@@ -1154,6 +1192,24 @@ bool Hooks::setup()
 
 void Hooks::place()
 {
+	// Mark the placement pass as ENTERED before the first hook goes in.
+	//
+	// Hooks::remove() is NOT only the teardown path: main.cpp's load() runs
+	// once per audited module open, and its "the other module isn't mapped yet"
+	// retry routes through unload() -> Hooks::remove() before anything is
+	// hooked (LM_FindModule("steamui.so") fails on the first steamclient.so
+	// la_objopen). That was a harmless no-op before the owner-thread work queue
+	// existed. Closing the queue from there refuses every watcher-originated
+	// Steam call for the WHOLE SESSION — the work is abandoned, not merely
+	// executed elsewhere: no package-0 injection and no license broadcast for
+	// as long as the client runs.
+	//
+	// Marking here (rather than at the end of place()) means a teardown that
+	// interrupts a partial placement still counts as a real teardown, which is
+	// the safe direction: closing the queue when hooks may be live is correct,
+	// leaving it open when none are is correct too.
+	OwnerWork::notePlacement();
+
 	if (g_config.disableFamilyLock.get())
 	{
 		patchRetn(Patterns::FamilyGroupRunningApp.address);
@@ -1204,6 +1260,24 @@ void Hooks::place()
 
 void Hooks::remove()
 {
+	// Close the owner-thread work queue FIRST: after this nothing new is
+	// accepted and anything pending is abandoned, so unhooking can never race
+	// a fresh watcher-originated Steam-owned call in.
+	//
+	// Only on a real teardown, though — see the placement note in
+	// Hooks::place(). shutdownIfPlaced() is idempotent, so a repeated teardown
+	// is a no-op and the benign pre-hook cleanup path leaves the queue
+	// accepting work.
+	if (OwnerWork::shutdownIfPlaced())
+	{
+		g_pLog->info("Hooks::remove: owner-thread work queue closed\n");
+	}
+	else
+	{
+		g_pLog->info("Hooks::remove: no hook placement to tear down; owner-thread work "
+		             "queue left accepting work\n");
+	}
+
 	TraceIPC.remove();
 
 	CAPIJob_GetPlayerStats.remove();

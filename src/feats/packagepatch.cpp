@@ -4,6 +4,7 @@
 
 #include "packagepatch.hpp"
 
+#include "../afftrace.hpp"
 #include "../config.hpp"
 #include "../globals.hpp"
 #include "../log.hpp"
@@ -113,7 +114,13 @@ namespace
 			return;
 		}
 
-		const bool notified = user->notifyLicensesUpdated();
+		bool notified = false;
+		{
+			// Exact Steam-owned call site (see afftrace.hpp).
+			auto span = AffTrace::fnSpan(AffTrace::Call::NotifyLicensesUpdated,
+			                             AffTrace::Mode::NA);
+			notified = user->notifyLicensesUpdated();
+		}
 		if (notified)
 		{
 			g_licenseReconciled.store(true, std::memory_order_release);
@@ -211,7 +218,13 @@ namespace
 
 		const uint32_t oldSize = vec.m_Size;
 		const uint32_t toAdd = static_cast<uint32_t>(fresh.size());
-		g_pCUtlMemoryGrow(&vec.m_Memory, static_cast<int>(toAdd));
+		{
+			// Exact Steam-owned call site (see afftrace.hpp): resolved
+			// CUtlMemoryGrow against a live Steam vector.
+			auto span = AffTrace::fnSpan(AffTrace::Call::CutlMemoryGrow,
+			                             AffTrace::Mode::NA);
+			g_pCUtlMemoryGrow(&vec.m_Memory, static_cast<int>(toAdd));
+		}
 
 		const uint32_t available = vec.m_Memory.m_nAllocationCount;
 		if (available < oldSize + toAdd)

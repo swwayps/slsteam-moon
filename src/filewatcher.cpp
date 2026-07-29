@@ -1,7 +1,9 @@
 #include "filewatcher.hpp"
 
 #include "log.hpp"
+#include "ownerwork.hpp"
 
+#include <poll.h>
 #include <sys/inotify.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -37,6 +39,26 @@ void* watchLoop(void* args)
 	{
 		g_pLog->debug("Watching for changes...\n");
 
+		// Bounded wait instead of a blocking read, so this thread also gets a
+		// periodic tick with NO extra thread (spawning threads from the
+		// LD_AUDIT preinit path is a recorded anti-pattern). The tick drives
+		// the owner-queue staleness sweep: watcher-originated Steam work is
+		// handed to the owner IPC thread without waiting, and if the owner
+		// never drains it, this tick eventually runs it here instead of losing
+		// it (see ownerwork.hpp). Cost is 2 idle wakeups per second, each a
+		// single relaxed atomic load when nothing is pending.
+		struct pollfd pfd{};
+		pfd.fd = watcher->notifyFd;
+		pfd.events = POLLIN;
+		const int ready = poll(&pfd, 1, OwnerWork::kIdleTickMs);
+		if (ready <= 0 || (pfd.revents & POLLIN) == 0)
+		{
+			// Timeout, EINTR, or a non-readable event: no inotify batch to
+			// handle, just service the queue and go round again.
+			OwnerWork::idleTick();
+			continue;
+		}
+
 		// Read a full batch.  Directory events carry a trailing name of
 		// variable length, so a fixed sizeof(inotify_event) read would leave
 		// the name bytes in the kernel buffer and mis-align the next read.
@@ -50,7 +72,6 @@ void* watchLoop(void* args)
 		}
 
 		g_pLog->debug("inotify batch bytes=%zd\n", size);
-		watcher->onModify();
 
 		// The config is rewritten via atomic rename (write tmp, then rename over
 		// the target), which swaps the file's inode. inotify watches the inode,
@@ -59,7 +80,18 @@ void* watchLoop(void* args)
 		// would silently stop after one edit. Re-arm on the current inode after
 		// each event so repeated writes (e.g. successive menu pin/unlock saves)
 		// keep reloading.
+		//
+		// Re-arm BEFORE running the callback, not after: anything written
+		// during an unarmed window is lost outright, and the callback does
+		// non-trivial local work (config reload, Lua import) even though it no
+		// longer blocks on Steam. Re-arming first shrinks that window to
+		// nothing — writes that land while the callback runs simply queue in
+		// the kernel and are read on the next iteration. inotify_add_watch is
+		// idempotent for an unchanged inode, so this is the same work, just
+		// earlier.
 		watcher->rearm();
+
+		watcher->onModify();
 	}
 
 	return nullptr;

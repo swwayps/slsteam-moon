@@ -5,6 +5,8 @@ protocol handlers, SteamStub support, and a Lua manifest importer.
 
 See the [wiki][wiki] for build, install, and configuration.
 For just the build flow, see [`docs/BUILDING.md`](docs/BUILDING.md).
+For the optional thread-affinity trace and the owner-thread handoff switches,
+see [`docs/DIAGNOSTICS.md`](docs/DIAGNOSTICS.md).
 
 [wiki]: https://github.com/swwayps/slsteam-moon/wiki
 
