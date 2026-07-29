@@ -66,6 +66,22 @@ int main()
 	CHECK(mustFetchSynchronously(true, true),
 	      "both on forces a synchronous fetch");
 
+	// --- mustVerifyClientHash --------------------------------------------
+	// 0.22 s of blocking preinit (SHA-256 of the 49 MB steamclient.so) is
+	// only worth paying when something actually consumes the digest.
+	using Updater::cache::mustVerifyClientHash;
+	CHECK(!mustVerifyClientHash(/*safeMode=*/false, /*warnHashMissmatch=*/false,
+	                            /*extendedLogging=*/false),
+	      "default config skips the steamclient.so hash");
+	CHECK(mustVerifyClientHash(true, false, false),
+	      "SafeMode still hashes (it aborts on an unknown hash)");
+	CHECK(mustVerifyClientHash(false, true, false),
+	      "WarnHashMissmatch still hashes (it warns on mismatch)");
+	CHECK(mustVerifyClientHash(false, false, true),
+	      "ExtendedLogging still hashes (diagnostic log line)");
+	CHECK(mustVerifyClientHash(true, true, true),
+	      "everything on still hashes");
+
 	if (g_failures == 0) std::printf("\nall update-cache checks passed\n");
 	else                 std::printf("\n%d update-cache check(s) FAILED\n", g_failures);
 	return g_failures == 0 ? 0 : 1;

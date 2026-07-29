@@ -223,6 +223,20 @@ bool Updater::verifySafeModeHash()
 {
 	auto path = std::filesystem::path(g_modSteamClient.path);
 
+	// Nothing consumes the digest with the default config (SafeMode: no,
+	// WarnHashMissmatch: no), and computing it streams the whole 49 MB
+	// steamclient.so through SHA-256 *inside* the client's dlopen — 0.22 s of
+	// blocking boot time per launch, measured. Report "verified" so load()
+	// takes neither the abort nor the warn branch (both are no-ops when the
+	// flags are off anyway).
+	if (!cache::mustVerifyClientHash(g_config.safeMode.get(),
+	                                 g_config.warnHashMissmatch.get(),
+	                                 g_config.extendedLogging.get()))
+	{
+		g_pLog->debug("Skipping steamclient.so hash (no hash check enabled)\n");
+		return true;
+	}
+
 	try
 	{
 		std::string sha256 = Utils::getFileSHA256(path.c_str());
