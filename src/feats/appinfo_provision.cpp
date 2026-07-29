@@ -14,7 +14,7 @@
 #include "manifeststore.hpp"
 #include "manifestsynth.hpp"
 #include "provision_cache.hpp"
-#include "retry.hpp"
+#include "provision_network.hpp"
 #include "synthmark.hpp"
 #include "usabledepot.hpp"
 
@@ -106,11 +106,17 @@ std::size_t curlWriteCb(const char* p, std::size_t sz, std::size_t n, std::strin
 	return sz * n;
 }
 
-bool httpGetJson(const std::string& url, std::string& body, std::string& diag)
+NetworkFailure httpGetJson(const std::string& url, std::string& body,
+                           std::string& diag, long timeoutMs)
 {
-	if (!loadCurl()) { diag = "libcurl unavailable"; return false; }
+	if (!loadCurl()) { diag = "libcurl unavailable"; return NetworkFailure::Provider; }
+	if (timeoutMs <= 0)
+	{
+		diag = "startup network budget exhausted";
+		return NetworkFailure::Transient;
+	}
 	CURL* c = p_curl_easy_init();
-	if (!c) { diag = "curl_easy_init failed"; return false; }
+	if (!c) { diag = "curl_easy_init failed"; return NetworkFailure::Provider; }
 
 	body.clear();
 	p_curl_easy_setopt(c, CURLOPT_URL, url.c_str());
@@ -120,14 +126,12 @@ bool httpGetJson(const std::string& url, std::string& body, std::string& diag)
 	// Bounded timeouts.  AppInfoProvision runs in setup() on the startup
 	// path, so we must not stall Steam's launch for too long if
 	// steamcmd.net is slow or unreachable.  The fetch is now wrapped in a
-	// bounded retry (see provisionApp), so each individual attempt can be
-	// tighter: a genuinely down host fails fast at connect (8s) instead of
-	// burning the full transfer budget, while a transient slow transfer
-	// still gets a generous 20s and is retried with backoff.  Worst case
-	// per app ≈ 3*20s + (1s+2s) backoff ≈ 63s only if every attempt times
-	// out at the transfer stage; an unreachable host is ≈ 3*8s + 3s.
-	p_curl_easy_setopt(c, CURLOPT_TIMEOUT, 20L);
-	p_curl_easy_setopt(c, CURLOPT_CONNECTTIMEOUT, 8L);
+	// bounded retry (see provisionApp), and all provider attempts in this
+	// startup pass share one 15-second wall-clock budget. A slow mirror can
+	// therefore never multiply this timeout by app count or retry count.
+	p_curl_easy_setopt(c, CURLOPT_TIMEOUT_MS, timeoutMs);
+	p_curl_easy_setopt(c, CURLOPT_CONNECTTIMEOUT_MS,
+	                   std::min(timeoutMs, 8000L));
 	// Same multi-thread safety justification as ManifestFetch::httpGet.
 	p_curl_easy_setopt(c, CURLOPT_NOSIGNAL, 1L);
 	p_curl_easy_setopt(c, CURLOPT_USERAGENT, "SLSsteam-AppInfoProvision/0.1");
@@ -146,16 +150,16 @@ bool httpGetJson(const std::string& url, std::string& body, std::string& diag)
 	if (rc != CURLE_OK)
 	{
 		diag = p_curl_easy_strerror ? p_curl_easy_strerror(rc) : "curl error";
-		return false;
+		return classifyCurlFailure(rc);
 	}
 	if (status != 200)
 	{
 		std::stringstream s; s << "HTTP " << status;
 		diag = s.str();
-		return false;
+		return classifyHttpFailure(status);
 	}
-	if (body.empty()) { diag = "empty body"; return false; }
-	return true;
+	if (body.empty()) { diag = "empty body"; return NetworkFailure::Provider; }
+	return NetworkFailure::None;
 }
 
 // ---------------------------------------------------------------------------
@@ -1165,6 +1169,83 @@ private:
 	const char* end_;
 };
 
+bool hasValidatedCachedBuffer(uint32_t appId, std::string& diag)
+{
+	try
+	{
+		const YAML::Node meta = YAML::LoadFile(getMetaPath(appId));
+		const uint32_t metadataAppId = meta["appid"].as<uint32_t>();
+		const size_t declaredSize = meta["wire_size"].as<size_t>();
+		const std::string declaredSha = std::string(
+		    base64::from_base64(meta["sha_b64"].as<std::string>()));
+
+		std::ifstream ifs(getBufferPath(appId), std::ios::binary | std::ios::ate);
+		if (!ifs.is_open()) { diag = "buffer is missing"; return false; }
+		const std::streamsize rawSize = ifs.tellg();
+		if (rawSize <= 0 || rawSize > (16LL << 20))
+		{
+			diag = "buffer size is outside the accepted range";
+			return false;
+		}
+		std::string wire(static_cast<size_t>(rawSize), '\0');
+		ifs.seekg(0, std::ios::beg);
+		if (!ifs.read(wire.data(), rawSize))
+		{
+			diag = "buffer read failed";
+			return false;
+		}
+
+		std::uint8_t digestBytes[20]{};
+		sha1Bytes(wire.data(), wire.size(), digestBytes);
+		const std::string actualSha(
+		    reinterpret_cast<const char*>(digestBytes), sizeof(digestBytes));
+
+		CmVdfReader reader(wire.data(), wire.data() + wire.size());
+		const YAML::Node appNode = reader.parseAppinfo();
+		const bool parsed = appNode && appNode.IsMap() && appNode.size() > 0;
+		const cache::CacheRecordFacts facts{
+		    .requestedAppId = appId,
+		    .metadataAppId = metadataAppId,
+		    .declaredSize = declaredSize,
+		    .actualSize = wire.size(),
+		    .shaSize = declaredSha.size(),
+		    .shaMatches = declaredSha == actualSha,
+		    .parsed = parsed,
+		    .hasUsableContent = parsed && hasUsableContentDepot(appNode),
+		};
+		if (!cache::isCacheRecordValid(facts))
+		{
+			diag = "metadata, SHA-1, or depot validation failed";
+			return false;
+		}
+		return true;
+	}
+	catch (const std::exception& e)
+	{
+		diag = e.what();
+		return false;
+	}
+}
+
+cache::CacheUse cacheUseForApp(uint32_t appId, bool refreshUnavailable)
+{
+	long long mtime = 0;
+	const bool present = statBuffer(appId, mtime);
+	if (!present) return cache::CacheUse::None;
+
+	std::string diag;
+	const bool valid = hasValidatedCachedBuffer(appId, diag);
+	if (!valid)
+	{
+		g_pLog->info("AppInfoProvision: app=%u cached buffer rejected (%s)\n",
+		             appId, diag.c_str());
+	}
+	const long long now = static_cast<long long>(std::time(nullptr));
+	const bool fresh = cache::isBufferReusable(
+	    present, mtime, now, provisionTtlSecs());
+	return cache::chooseCacheUse(valid, fresh, refreshUnavailable);
+}
+
 // Render+prune+sha+persist a parsed appinfo node (shared tail used by
 // both the CM and steamcmd paths). `changeNumber` is the PICS/JSON change
 // number for the meta record.
@@ -1236,10 +1317,12 @@ std::unordered_map<uint32_t, uint32_t>    g_cmChanges;
 // Public API
 // ---------------------------------------------------------------------------
 
-bool provisionApp(uint32_t appId, const std::string& appinfoVdfPath)
+ProvisionOutcome provisionAppDetailed(uint32_t appId,
+                                      const std::string& appinfoVdfPath,
+                                      ProvisionPassState& pass)
 {
 	(void)appinfoVdfPath;
-	if (appId == 0) return false;
+	if (appId == 0) return ProvisionOutcome::IncompleteContent;
 
 	// Short-lived on-disk cache to tame startup cost.  Steam re-execs
 	// setup() several times during a single cold boot (observed 4x on
@@ -1256,17 +1339,11 @@ bool provisionApp(uint32_t appId, const std::string& appinfoVdfPath)
 	// gid; we must NOT serve a stale cross-session buffer, or we'd
 	// reintroduce the staged-gid vs requested-gid mismatch the
 	// install-first-attempt fix resolved.
+	if (cacheUseForApp(appId, false) == cache::CacheUse::Fresh)
 	{
-		const long long ttl = provisionTtlSecs();
-		long long mtime = 0;
-		const bool present = statBuffer(appId, mtime);
-		const long long now = static_cast<long long>(std::time(nullptr));
-		if (cache::isBufferReusable(present, mtime, now, ttl))
-		{
-			g_pLog->debug("AppInfoProvision: app=%u reusing cached buffer (age<%llds)\n",
-			              appId, ttl);
-			return true;
-		}
+		g_pLog->debug("AppInfoProvision: app=%u reusing validated same-boot cache\n",
+		              appId);
+		return ProvisionOutcome::FreshCache;
 	}
 
 	// Native CM batch result (fetched once per provisionAllAddedApps pass,
@@ -1285,7 +1362,7 @@ bool provisionApp(uint32_t appId, const std::string& appinfoVdfPath)
 			if (cmResult == SourceResult::Success)
 			{
 				g_pLog->info("AppInfoProvision: app=%u provisioned via CM\n", appId);
-				return true;
+				return ProvisionOutcome::Updated;
 			}
 			if (!shouldTryProviderFallback(cmResult))
 			{
@@ -1295,7 +1372,9 @@ bool provisionApp(uint32_t appId, const std::string& appinfoVdfPath)
 				    cmResult == SourceResult::NoUsableContent
 				        ? "concrete depots are not usable"
 				        : "local cache write failed");
-				return false;
+				return cmResult == SourceResult::LocalFailure
+				    ? ProvisionOutcome::LocalFailure
+				    : ProvisionOutcome::IncompleteContent;
 			}
 			g_pLog->info("AppInfoProvision: app=%u CM response %s, trying steamcmd\n",
 			             appId,
@@ -1305,9 +1384,21 @@ bool provisionApp(uint32_t appId, const std::string& appinfoVdfPath)
 		}
 	}
 
+	if (!pass.shouldAttemptProvider())
+	{
+		if (cacheUseForApp(appId, true) == cache::CacheUse::Fallback)
+		{
+			g_pLog->info("AppInfoProvision: app=%u using validated cached buffer "
+			             "because live sources are unavailable\n", appId);
+			return ProvisionOutcome::FallbackCache;
+		}
+		return ProvisionOutcome::NetworkUnavailable;
+	}
+
 	std::string body, diag;
 	std::string url;
 	bool fetched = false;
+	NetworkFailure finalFailure = NetworkFailure::Provider;
 	for (const auto& tmpl : providerChain())
 	{
 		url = expandUrl(tmpl, appId);
@@ -1320,22 +1411,46 @@ bool provisionApp(uint32_t appId, const std::string& appinfoVdfPath)
 		// JSON is, the more likely the 30s total-transfer timeout trips on
 		// a slow first request (observed: Outlast 238320's 8-depot JSON
 		// timed out while the smaller 2262770 succeeded in the same pass).
-		const bool ok = retryWithBackoff(
-			[&] { return httpGetJson(url, body, diag); },
+		finalFailure = retryNetworkOperation(
+			[&] {
+				return httpGetJson(
+				    url, body, diag,
+				    pass.providerOperationTimeoutMs(/*operationCapMs=*/12000));
+			},
 			/*maxAttempts=*/3, /*baseDelayMs=*/1000,
-			[](int ms) { std::this_thread::sleep_for(std::chrono::milliseconds(ms)); });
-		if (ok) { fetched = true; break; }
+			[&](int ms) {
+				const long delay = pass.providerDelayMs(ms);
+				if (delay > 0)
+					std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+			});
+		if (finalFailure == NetworkFailure::None)
+		{
+			fetched = true;
+			pass.noteProviderSuccess();
+			break;
+		}
 
 		// Use info, not warn: warn fires a critical notify-send popup
 		// (CLog ctor configures urgency=critical for warn).  A single
 		// provider exhausting its retries isn't user-actionable noise.
 		g_pLog->info("AppInfoProvision: app=%u provider failed after retries (%s), trying next\n",
 		             appId, diag.c_str());
+		if (pass.providerBudgetExhausted()) break;
 	}
 	if (!fetched)
 	{
 		g_pLog->info("AppInfoProvision: app=%u all providers failed\n", appId);
-		return false;
+		pass.noteFinalProviderFailure(finalFailure);
+		if (pass.providerCircuitOpen() &&
+		    cacheUseForApp(appId, true) == cache::CacheUse::Fallback)
+		{
+			g_pLog->info("AppInfoProvision: app=%u using validated cached buffer "
+			             "after provider transport failure\n", appId);
+			return ProvisionOutcome::FallbackCache;
+		}
+		return pass.providerCircuitOpen()
+		    ? ProvisionOutcome::NetworkUnavailable
+		    : ProvisionOutcome::IncompleteContent;
 	}
 
 	YAML::Node appNode;
@@ -1343,7 +1458,7 @@ bool provisionApp(uint32_t appId, const std::string& appinfoVdfPath)
 	if (!extractAppNode(body, appId, appNode, err))
 	{
 		g_pLog->info("AppInfoProvision: app=%u parse failed: %s\n", appId, err.c_str());
-		return false;
+		return ProvisionOutcome::IncompleteContent;
 	}
 
 	std::string wire;
@@ -1356,7 +1471,9 @@ bool provisionApp(uint32_t appId, const std::string& appinfoVdfPath)
 		else if (renderResult == SourceResult::NoUsableContent)
 			reason = "concrete depots are not usable";
 		g_pLog->info("AppInfoProvision: app=%u render stopped (%s)\n", appId, reason);
-		return false;
+		return renderResult == SourceResult::LocalFailure
+		    ? ProvisionOutcome::LocalFailure
+		    : ProvisionOutcome::IncompleteContent;
 	}
 
 	// Spot-check: the wire must contain the depots block, otherwise the
@@ -1366,7 +1483,7 @@ bool provisionApp(uint32_t appId, const std::string& appinfoVdfPath)
 	if (wire.find("\"depots\"") == std::string::npos)
 	{
 		g_pLog->info("AppInfoProvision: app=%u JSON has no depots, skipping\n", appId);
-		return false;
+		return ProvisionOutcome::IncompleteContent;
 	}
 
 	// Manifest-GID pins for a GENERAL (non-locked) AddedApp are DELIBERATELY
@@ -1421,12 +1538,18 @@ bool provisionApp(uint32_t appId, const std::string& appinfoVdfPath)
 	if (!persistBuffer(appId, changeNumber, sha20, wire))
 	{
 		g_pLog->info("AppInfoProvision: app=%u failed to persist buffer to cache\n", appId);
-		return false;
+		return ProvisionOutcome::LocalFailure;
 	}
 
 	g_pLog->infoOnce("AppInfoProvision: app=%u provisioned (change=%u, %zu bytes wire)\n",
 	             appId, changeNumber, wire.size());
-	return true;
+	return ProvisionOutcome::Updated;
+}
+
+bool provisionApp(uint32_t appId, const std::string& appinfoVdfPath)
+{
+	ProvisionPassState pass;
+	return isProvisioned(provisionAppDetailed(appId, appinfoVdfPath, pass));
 }
 
 int provisionAllAddedApps(const std::string& appinfoVdfPath)
@@ -1443,6 +1566,7 @@ int provisionAllAddedApps(const std::string& appinfoVdfPath)
 	// request at all.  Disable entirely via SLSSTEAM_DISABLE_CM=1.
 	g_cmBuffers.clear();
 	g_cmChanges.clear();
+	ProvisionPassState pass;
 	const bool cmDisabled = [] {
 		const char* v = std::getenv("SLSSTEAM_DISABLE_CM");
 		return v && *v && std::string(v) != "0";
@@ -1450,43 +1574,92 @@ int provisionAllAddedApps(const std::string& appinfoVdfPath)
 	if (!cmDisabled)
 	{
 		std::vector<uint32_t> toFetch;
-		const long long ttl = provisionTtlSecs();
-		const long long now = static_cast<long long>(std::time(nullptr));
 		for (uint32_t appId : added)
 		{
-			long long mtime = 0;
-			const bool present = statBuffer(appId, mtime);
-			if (!cache::isBufferReusable(present, mtime, now, ttl))
+			if (cacheUseForApp(appId, false) != cache::CacheUse::Fresh)
 				toFetch.push_back(appId);
 		}
 		if (!toFetch.empty())
 		{
 			g_pLog->info("AppInfoProvision: fetching %zu app(s) via native CM\n",
 			             toFetch.size());
-			if (!CmClient::fetchProductInfo(toFetch, g_cmBuffers, &g_cmChanges))
+			const auto cmResult = CmClient::fetchProductInfoDetailed(
+			    toFetch, g_cmBuffers, &g_cmChanges);
+			if (cmResult != CmClient::FetchResult::Success)
 			{
 				g_cmBuffers.clear();
 				g_cmChanges.clear();
-				g_pLog->info("AppInfoProvision: native CM batch failed, using steamcmd fallback\n");
+				pass.noteCmBatchFailure();
+				if (cmResult == CmClient::FetchResult::NetworkUnavailable)
+				{
+					pass.noteFinalProviderFailure(NetworkFailure::Connectivity);
+					g_pLog->info("AppInfoProvision: native CM batch found no network; "
+					             "using validated local buffers\n");
+				}
+				else
+				{
+					g_pLog->info("AppInfoProvision: native CM batch failed, "
+					             "probing provider fallback\n");
+				}
 			}
 		}
 	}
 
 	int provisioned = 0;
-	for (uint32_t appId : added)
+	auto appIt = added.begin();
+	while (appIt != added.end())
 	{
-		if (provisionApp(appId, appinfoVdfPath))
+		const uint32_t appId = *appIt++;
+		const ProvisionOutcome outcome =
+		    provisionAppDetailed(appId, appinfoVdfPath, pass);
+		if (isProvisioned(outcome))
 		{
 			++provisioned;
 		}
-		else
+
+		// A successful fallback proves that connectivity returned after the
+		// initial CM attempt. Give the primary source one recovery batch for
+		// every app still pending; success keeps the rest of the fleet off the
+		// slower per-app mirror.
+		if (pass.takeCmRecoveryRequest() && appIt != added.end())
 		{
-			// Terminal for this app: providers failed, its concrete depots
-			// were not usable, or the local cache write failed. One emit point
-			// here avoids duplicate provider-level popups. Throttling collapses
-			// a fleet-wide outage at startup to a single notification.
+			std::vector<uint32_t> remaining(appIt, added.end());
+			g_pLog->info("AppInfoProvision: provider reachable; retrying native CM "
+			             "for %zu remaining app(s)\n", remaining.size());
+			const auto recovery = CmClient::fetchProductInfoDetailed(
+			    remaining, g_cmBuffers, &g_cmChanges);
+			if (recovery == CmClient::FetchResult::Success)
+			{
+				g_pLog->info("AppInfoProvision: native CM recovered for remaining apps\n");
+			}
+			else if (recovery == CmClient::FetchResult::NetworkUnavailable)
+			{
+				pass.noteFinalProviderFailure(NetworkFailure::Connectivity);
+				g_pLog->info("AppInfoProvision: native CM recovery lost connectivity; "
+				             "using validated local buffers\n");
+			}
+			else
+			{
+				g_pLog->info("AppInfoProvision: native CM recovery failed; "
+				             "provider fallback remains active\n");
+			}
+		}
+
+		const ProvisionNotice notice = noticeForOutcome(outcome);
+		if (notice == ProvisionNotice::MetadataUnavailable)
+		{
+			if (pass.takeConnectivityNotice())
+				g_pLog->notifyUser(UserMsg::GameMetadataUnavailable,
+				                   std::to_string(appId));
+		}
+		else if (notice == ProvisionNotice::ReviewGameData)
+		{
 			g_pLog->notifyUser(UserMsg::GamePreparationFailed,
 			                   std::to_string(appId));
+		}
+		else if (notice == ProvisionNotice::LocalStorage)
+		{
+			g_pLog->notifyUser(UserMsg::LocalStorageError);
 		}
 	}
 	if (provisioned > 0)

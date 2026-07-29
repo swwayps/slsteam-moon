@@ -41,6 +41,7 @@ enum class UserMsg
 	ContentServersUnavailable, // CDN unreachable / 5xx; {detail} = HTTP code
 	DownloadAuthUnavailable,   // could not obtain a manifest request code
 	DownloadTimedOut,          // timed out waiting on Steam's servers
+	GameMetadataUnavailable,  // no network and no local metadata; {detail}=appid
 	GamePreparationFailed,     // could not assemble a title's metadata
 	DrmRemovalFailed,          // SteamStub unpack failed; title may not launch
 	LocalStorageError,         // local write/extract failed (disk full / perms)
@@ -195,6 +196,13 @@ inline UiMessage messageFor(UserMsg m, Lang lang)
 			            : "Steam took too long to respond. Check your connection and "
 			              "try downloading the game again.",
 			         Severity::Error };
+
+		case UserMsg::GameMetadataUnavailable:
+			return { pt ? "Não foi possível atualizar os dados do AppID {detail} "
+			              "sem conexão. Conecte-se à internet e reinicie a Steam."
+			            : "Couldn't update AppID {detail} data without a network "
+			              "connection. Reconnect and restart Steam.",
+			         Severity::Warning };
 
 		case UserMsg::GamePreparationFailed:
 			return { pt ? "O AppID {detail} tem dados de instalação incompletos. "

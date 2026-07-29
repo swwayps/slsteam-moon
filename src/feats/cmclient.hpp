@@ -34,6 +34,20 @@
 namespace CmClient
 {
 
+enum class FetchResult
+{
+	Success,
+	NetworkUnavailable,
+	Failed,
+};
+
+// Detailed form used by startup provisioning so a directory/DNS failure can
+// open its fleet-wide network circuit instead of entering per-app fallbacks.
+FetchResult fetchProductInfoDetailed(
+    const std::vector<uint32_t>& appids,
+    std::unordered_map<uint32_t, std::string>& out,
+    std::unordered_map<uint32_t, uint32_t>* changesOut = nullptr);
+
 // Fetch PICS product-info wire buffers for `appids`.  On success fills
 // `out[appid] = wire_text_vdf_buffer` for every app the CM returned a
 // non-empty buffer for, and returns true.  On any error returns false

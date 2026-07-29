@@ -18,7 +18,11 @@ static int g_failures = 0;
 int main()
 {
 	using AppInfoProvision::SourceResult;
+	using AppInfoProvision::ProvisionOutcome;
+	using AppInfoProvision::ProvisionNotice;
 	using AppInfoProvision::classifyContentResult;
+	using AppInfoProvision::isProvisioned;
+	using AppInfoProvision::noticeForOutcome;
 	using AppInfoProvision::shouldTryProviderFallback;
 
 	CHECK(classifyContentResult(false, true) == SourceResult::Success,
@@ -38,6 +42,24 @@ int main()
 	      "concrete depots removed as unusable are terminal");
 	CHECK(!shouldTryProviderFallback(SourceResult::LocalFailure),
 	      "local persistence failure is terminal");
+
+	CHECK(isProvisioned(ProvisionOutcome::Updated),
+	      "freshly updated appinfo counts as provisioned");
+	CHECK(isProvisioned(ProvisionOutcome::FreshCache),
+	      "fresh same-boot cache counts as provisioned");
+	CHECK(isProvisioned(ProvisionOutcome::FallbackCache),
+	      "validated offline fallback counts as provisioned");
+	CHECK(noticeForOutcome(ProvisionOutcome::FallbackCache) == ProvisionNotice::None,
+	      "validated fallback cache is silent");
+	CHECK(noticeForOutcome(ProvisionOutcome::NetworkUnavailable) ==
+	          ProvisionNotice::MetadataUnavailable,
+	      "network failure without cache gets a connectivity notice");
+	CHECK(noticeForOutcome(ProvisionOutcome::IncompleteContent) ==
+	          ProvisionNotice::ReviewGameData,
+	      "unusable depot data asks the user to review the game data");
+	CHECK(noticeForOutcome(ProvisionOutcome::LocalFailure) ==
+	          ProvisionNotice::LocalStorage,
+	      "cache write failure gets a local-storage notice");
 
 	if (g_failures == 0) { std::printf("\nALL PASS\n"); return 0; }
 	std::printf("\n%d CHECK(S) FAILED\n", g_failures);

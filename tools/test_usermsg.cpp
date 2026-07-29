@@ -128,6 +128,21 @@ int main()
 		      "GamePreparationFailed does not recommend restarting Steam");
 	}
 
+	// Network loss is not incomplete local metadata and re-adding the title
+	// cannot repair it. Point to connectivity/restart and identify the app.
+	{
+		const UiMessage en = messageFor(UserMsg::GameMetadataUnavailable, Lang::English);
+		const UiMessage pt = messageFor(UserMsg::GameMetadataUnavailable, Lang::Portuguese);
+		CHECK(contains(en.body, "{detail}") && contains(pt.body, "{detail}"),
+		      "GameMetadataUnavailable identifies the AppID");
+		CHECK(contains(en.body, "connection") && contains(pt.body, "conex"),
+		      "GameMetadataUnavailable explains the connectivity problem");
+		CHECK(contains(en.body, "restart Steam") && contains(pt.body, "reinicie a Steam"),
+		      "GameMetadataUnavailable explains how to refresh after reconnecting");
+		CHECK(!contains(en.body, "Re-add") && !contains(pt.body, "Adicione"),
+		      "GameMetadataUnavailable never recommends re-adding the title");
+	}
+
 	// 6) Severity is exposed so the popup layer can pick a timeout/urgency:
 	//    a success is Info, a hard failure is Error.
 	{

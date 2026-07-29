@@ -9,6 +9,8 @@
 #include "../log.hpp"
 
 #include "base64/base64.hpp"
+#include "prewarm.hpp"
+#include "provision_cache.hpp"
 #include "yaml-cpp/yaml.h"
 
 #include <algorithm>
@@ -656,7 +658,8 @@ struct CachedBuffer
 	std::string buffer;  // raw v39-inline binary VDF
 };
 
-bool loadCachedBuffer(const std::string& metaPath, CachedBuffer& out,
+bool loadCachedBuffer(const std::string& metaPath, uint32_t expectedAppId,
+                      CachedBuffer& out,
                       std::string& err)
 {
 	try
@@ -683,7 +686,32 @@ bool loadCachedBuffer(const std::string& metaPath, CachedBuffer& out,
 		}
 		ifs.seekg(0, std::ios::beg);
 		out.buffer.resize(sz);
-		ifs.read(out.buffer.data(), static_cast<std::streamsize>(sz));
+		if (!ifs.read(out.buffer.data(), static_cast<std::streamsize>(sz)))
+		{
+			err = "buffer read failed";
+			return false;
+		}
+
+		uint8_t digest[20]{};
+		sha1(out.buffer.data(), out.buffer.size(), digest);
+		const bool shaMatches = out.sha.size() == sizeof(digest) &&
+		    std::memcmp(out.sha.data(), digest, sizeof(digest)) == 0;
+		const AppInfoProvision::cache::CacheRecordFacts facts{
+		    .requestedAppId = expectedAppId,
+		    .metadataAppId = out.appid,
+		    .declaredSize = wireSize,
+		    .actualSize = out.buffer.size(),
+		    .shaSize = out.sha.size(),
+		    .shaMatches = shaMatches,
+		    .parsed = out.buffer.find("\"appinfo\"") != std::string::npos,
+		    .hasUsableContent =
+		        !Prewarm::extractDepotsAndGids(out.buffer).empty(),
+		};
+		if (!AppInfoProvision::cache::isCacheRecordValid(facts))
+		{
+			err = "metadata, SHA-1, or depot validation failed";
+			return false;
+		}
 		return true;
 	}
 	catch (const std::exception& e)
@@ -733,7 +761,10 @@ int injectAllCached(const std::string& path)
 
 		CachedBuffer cb;
 		std::string err;
-		if (!loadCachedBuffer(entry.path().string(), cb, err))
+		uint32_t expectedAppId = 0;
+		try { expectedAppId = static_cast<uint32_t>(std::stoul(m[1].str())); }
+		catch (...) {}
+		if (!loadCachedBuffer(entry.path().string(), expectedAppId, cb, err))
 		{
 			g_pLog->debug("AppInfoVdf: skip %s: %s\n",
 			              fname.c_str(), err.c_str());

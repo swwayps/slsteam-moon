@@ -37,7 +37,11 @@ static int g_failures = 0;
 
 int main()
 {
+	using AppInfoProvision::cache::CacheUse;
+	using AppInfoProvision::cache::CacheRecordFacts;
+	using AppInfoProvision::cache::chooseCacheUse;
 	using AppInfoProvision::cache::isBufferReusable;
+	using AppInfoProvision::cache::isCacheRecordValid;
 
 	const long long ttl = 300; // 5 minutes
 	const long long now = 1'000'000;
@@ -72,6 +76,56 @@ int main()
 	// be trusted — fall back to a fetch rather than serve an unverifiable file.
 	CHECK(!isBufferReusable(true, now + 10, now, ttl),
 	      "future mtime is not trusted");
+
+	// A cryptographically/structurally valid stale buffer is a contingency,
+	// not the normal online source. This catches either extreme: rejecting
+	// every cross-session cache while offline, or silently hiding updates by
+	// preferring stale data while refresh is available.
+	CHECK(chooseCacheUse(true, true, false) == CacheUse::Fresh,
+	      "fresh valid cache skips duplicate work in the same boot");
+	CHECK(chooseCacheUse(true, false, false) == CacheUse::None,
+	      "stale cache does not hide online updates");
+	CHECK(chooseCacheUse(true, false, true) == CacheUse::Fallback,
+	      "stale valid cache is accepted after refresh becomes unavailable");
+	CHECK(chooseCacheUse(false, false, true) == CacheUse::None,
+	      "invalid cache is never accepted as an offline fallback");
+
+	const CacheRecordFacts validRecord{
+	    .requestedAppId = 420530,
+	    .metadataAppId = 420530,
+	    .declaredSize = 8192,
+	    .actualSize = 8192,
+	    .shaSize = 20,
+	    .shaMatches = true,
+	    .parsed = true,
+	    .hasUsableContent = true,
+	};
+	CHECK(isCacheRecordValid(validRecord),
+	      "matching metadata, digest and content form a valid cache record");
+	{
+		auto facts = validRecord;
+		facts.metadataAppId = 588650;
+		CHECK(!isCacheRecordValid(facts),
+		      "cache metadata for another AppID is rejected");
+	}
+	{
+		auto facts = validRecord;
+		facts.actualSize = 8191;
+		CHECK(!isCacheRecordValid(facts),
+		      "truncated cache buffer is rejected");
+	}
+	{
+		auto facts = validRecord;
+		facts.shaMatches = false;
+		CHECK(!isCacheRecordValid(facts),
+		      "cache buffer with a mismatched SHA-1 is rejected");
+	}
+	{
+		auto facts = validRecord;
+		facts.hasUsableContent = false;
+		CHECK(!isCacheRecordValid(facts),
+		      "cache buffer without a concrete manifest is rejected");
+	}
 
 	if (g_failures == 0) std::printf("\nall provision-cache checks passed\n");
 	else                 std::printf("\n%d provision-cache check(s) FAILED\n", g_failures);

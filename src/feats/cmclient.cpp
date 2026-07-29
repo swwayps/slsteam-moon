@@ -23,7 +23,9 @@
 
 #include "cmclient.hpp"
 
+#include "cm_budget.hpp"
 #include "cmlist_cache.hpp"
+#include "provision_network.hpp"
 
 #include "../config.hpp"
 #include "../log.hpp"
@@ -73,6 +75,43 @@ constexpr uint64_t kAnonSteamId =
 // Overall wall-clock budget for the whole exchange.  Past this we bail
 // and the caller falls back to steamcmd.net.
 constexpr int kTotalTimeoutSecs = 15;
+constexpr long long kTotalTimeoutMs = kTotalTimeoutSecs * 1000LL;
+
+class BatchBudget
+{
+public:
+	using Clock = std::chrono::steady_clock;
+
+	BatchBudget() : m_started(Clock::now()) {}
+
+	long remainingSeconds(long operationCapSecs) const
+	{
+		const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+		    Clock::now() - m_started).count();
+		return remainingBudgetSeconds(elapsed, kTotalTimeoutMs,
+		                              operationCapSecs);
+	}
+
+	long remainingMilliseconds(long operationCapMs) const
+	{
+		const long long elapsed =
+		    std::chrono::duration_cast<std::chrono::milliseconds>(
+		        Clock::now() - m_started).count();
+		if (elapsed >= kTotalTimeoutMs || operationCapMs <= 0) return 0;
+		return static_cast<long>(std::min<long long>(
+		    kTotalTimeoutMs - std::max(0LL, elapsed),
+		    static_cast<long long>(operationCapMs)));
+	}
+
+	bool expired() const { return remainingMilliseconds(kTotalTimeoutMs) == 0; }
+	Clock::time_point deadline() const
+	{
+		return m_started + std::chrono::milliseconds(kTotalTimeoutMs);
+	}
+
+private:
+	Clock::time_point m_started;
+};
 
 // ---------------------------------------------------------------------------
 // libcurl via dlsym (same portable pattern as ManifestFetch / provision).
@@ -121,18 +160,22 @@ std::size_t writeCb(const char* p, std::size_t sz, std::size_t n, std::string* d
 }
 
 // Plain HTTPS GET (one-shot, not CONNECT_ONLY) for the CM list.
-bool httpsGet(const std::string& url, std::string& body)
+AppInfoProvision::NetworkFailure httpsGet(const std::string& url,
+                                          std::string& body,
+                                          const BatchBudget& budget)
 {
-	if (!loadCurl()) return false;
+	if (!loadCurl()) return AppInfoProvision::NetworkFailure::Provider;
+	const long timeoutMs = budget.remainingMilliseconds(8000);
+	if (timeoutMs == 0) return AppInfoProvision::NetworkFailure::Provider;
 	CURL* c = p_init();
-	if (!c) return false;
+	if (!c) return AppInfoProvision::NetworkFailure::Provider;
 	body.clear();
 	p_setopt(c, CURLOPT_URL, url.c_str());
 	p_setopt(c, CURLOPT_FOLLOWLOCATION, 1L);
 	p_setopt(c, CURLOPT_WRITEFUNCTION, writeCb);
 	p_setopt(c, CURLOPT_WRITEDATA, &body);
-	p_setopt(c, CURLOPT_TIMEOUT, 8L);
-	p_setopt(c, CURLOPT_CONNECTTIMEOUT, 5L);
+	p_setopt(c, CURLOPT_TIMEOUT_MS, timeoutMs);
+	p_setopt(c, CURLOPT_CONNECTTIMEOUT_MS, std::min(timeoutMs, 5000L));
 	p_setopt(c, CURLOPT_NOSIGNAL, 1L);
 	p_setopt(c, CURLOPT_USERAGENT, "SLSsteam-CmClient/0.1");
 	// Pin the system trust store (see cainfo.hpp): without it the libcurl
@@ -144,7 +187,10 @@ bool httpsGet(const std::string& url, std::string& body)
 	long status = 0;
 	p_getinfo(c, CURLINFO_RESPONSE_CODE, &status);
 	p_cleanup(c);
-	return rc == CURLE_OK && status == 200 && !body.empty();
+	if (rc != CURLE_OK) return AppInfoProvision::classifyCurlFailure(rc);
+	if (status != 200) return AppInfoProvision::classifyHttpFailure(status);
+	return body.empty() ? AppInfoProvision::NetworkFailure::Provider
+	                    : AppInfoProvision::NetworkFailure::None;
 }
 
 // ---------------------------------------------------------------------------
@@ -233,8 +279,10 @@ void writeCachedCmList(const std::vector<Endpoint>& eps)
 	for (const auto& e : eps) ofs << e.host << ':' << e.port << '\n';
 }
 
-std::vector<Endpoint> fetchCmList()
+std::vector<Endpoint> fetchCmList(AppInfoProvision::NetworkFailure& failure,
+                                  const BatchBudget& budget)
 {
+	failure = AppInfoProvision::NetworkFailure::None;
 	// Reuse a fresh on-disk cache first — skips the ~400ms HTTP GET on
 	// cold boots.  A stale/missing cache falls through to the live fetch.
 	{
@@ -252,7 +300,8 @@ std::vector<Endpoint> fetchCmList()
 		"https://api.steampowered.com/ISteamDirectory/GetCMListForConnect/v1/"
 		"?cellid=0&cmtype=websockets&format=json";
 	std::string body;
-	if (!httpsGet(url, body)) return out;
+	failure = httpsGet(url, body, budget);
+	if (failure != AppInfoProvision::NetworkFailure::None) return out;
 
 	parseEndpointsFromJson(body, out);
 	writeCachedCmList(out);
@@ -303,10 +352,14 @@ bool gzipInflate(const std::string& in, uint32_t expected, std::string& out)
 class TlsSocket
 {
 public:
+	explicit TlsSocket(const BatchBudget& budget)
+	    : m_budget(budget), m_deadline(budget.deadline()) {}
 	~TlsSocket() { if (m_c) p_cleanup(m_c); }
 
 	bool connect(const Endpoint& ep)
 	{
+		const long timeoutMs = m_budget.remainingMilliseconds(kTotalTimeoutMs);
+		if (timeoutMs == 0) return false;
 		m_c = p_init();
 		if (!m_c) return false;
 		// Use an https URL so curl performs the TLS handshake; the path
@@ -317,8 +370,8 @@ public:
 		p_setopt(m_c, CURLOPT_CONNECT_ONLY, 1L);
 		// Speak plain HTTP/1.1 for the websocket upgrade — no h2.
 		p_setopt(m_c, CURLOPT_SSL_ENABLE_ALPN, 0L);
-		p_setopt(m_c, CURLOPT_CONNECTTIMEOUT, 6L);
-		p_setopt(m_c, CURLOPT_TIMEOUT, static_cast<long>(kTotalTimeoutSecs));
+		p_setopt(m_c, CURLOPT_CONNECTTIMEOUT_MS, std::min(timeoutMs, 6000L));
+		p_setopt(m_c, CURLOPT_TIMEOUT_MS, timeoutMs);
 		p_setopt(m_c, CURLOPT_NOSIGNAL, 1L);
 		// Pin the system trust store so the wss:// TLS handshake verifies on
 		// SteamOS/Arch (see cainfo.hpp); no-op when no bundle is found.
@@ -360,11 +413,6 @@ public:
 
 	std::string& rx() { return m_rx; }
 
-	void startDeadline()
-	{
-		m_deadline = std::chrono::steady_clock::now() +
-		             std::chrono::seconds(kTotalTimeoutSecs);
-	}
 	bool expired() const
 	{
 		return std::chrono::steady_clock::now() >= m_deadline;
@@ -373,6 +421,7 @@ public:
 private:
 	CURL* m_c = nullptr;
 	std::string m_rx;
+	const BatchBudget& m_budget;
 	std::chrono::steady_clock::time_point m_deadline;
 };
 
@@ -599,10 +648,10 @@ bool pumpUntil(TlsSocket& sock, Session& session,
 
 bool runSession(const Endpoint& ep, const std::vector<uint32_t>& appids,
                 std::unordered_map<uint32_t, std::string>& out,
-                std::unordered_map<uint32_t, uint32_t>* changes)
+                std::unordered_map<uint32_t, uint32_t>* changes,
+                const BatchBudget& budget)
 {
-	TlsSocket sock;
-	sock.startDeadline();
+	TlsSocket sock(budget);
 	if (!sock.connect(ep)) return false;
 	if (!wsHandshake(sock, ep)) return false;
 
@@ -633,22 +682,28 @@ bool runSession(const Endpoint& ep, const std::vector<uint32_t>& appids,
 } // namespace
 
 
-bool fetchProductInfo(const std::vector<uint32_t>& appids,
-                      std::unordered_map<uint32_t, std::string>& out,
-                      std::unordered_map<uint32_t, uint32_t>* changesOut)
+FetchResult fetchProductInfoDetailed(
+    const std::vector<uint32_t>& appids,
+    std::unordered_map<uint32_t, std::string>& out,
+    std::unordered_map<uint32_t, uint32_t>* changesOut)
 {
-	if (appids.empty()) return false;
+	if (appids.empty()) return FetchResult::Failed;
 	if (!loadCurl())
 	{
 		g_pLog->info("CmClient: libcurl unavailable, falling back\n");
-		return false;
+		return FetchResult::Failed;
 	}
+	const BatchBudget budget;
 
-	auto cms = fetchCmList();
+	AppInfoProvision::NetworkFailure listFailure =
+	    AppInfoProvision::NetworkFailure::None;
+	auto cms = fetchCmList(listFailure, budget);
 	if (cms.empty())
 	{
 		g_pLog->info("CmClient: empty CM list, falling back\n");
-		return false;
+		return listFailure == AppInfoProvision::NetworkFailure::Connectivity
+		    ? FetchResult::NetworkUnavailable
+		    : FetchResult::Failed;
 	}
 
 	// Try a few CMs before giving up; a single edge may refuse/drop.
@@ -659,22 +714,24 @@ bool fetchProductInfo(const std::vector<uint32_t>& appids,
 		const size_t maxTries = std::min<size_t>(cms.size(), 4);
 		for (size_t i = 0; i < maxTries; ++i)
 		{
+			if (budget.expired()) break;
 			out.clear();
 			if (changesOut) changesOut->clear();
 			const auto& ep = cms[i];
 			g_pLog->info("CmClient: trying CM %s:%d (%zu apps)\n",
 			             ep.host.c_str(), ep.port, appids.size());
-			if (runSession(ep, appids, out, changesOut))
+			if (runSession(ep, appids, out, changesOut, budget))
 			{
 				g_pLog->info("CmClient: fetched %zu/%zu apps via %s\n",
 				             out.size(), appids.size(), ep.host.c_str());
-				return true;
+				return FetchResult::Success;
 			}
 		}
 		// All cached endpoints failed on the first round: invalidate the
 		// on-disk cache and refetch a fresh list for one more round.
 		if (round == 0)
 		{
+			if (budget.expired()) break;
 			std::error_code ec;
 			std::filesystem::remove(cmListCachePath(), ec);
 			std::vector<Endpoint> fresh;
@@ -682,12 +739,23 @@ bool fetchProductInfo(const std::vector<uint32_t>& appids,
 				"https://api.steampowered.com/ISteamDirectory/GetCMListForConnect/v1/"
 				"?cellid=0&cmtype=websockets&format=json";
 			std::string body;
-			if (httpsGet(url, body))
+			const auto freshFailure = httpsGet(url, body, budget);
+			if (freshFailure == AppInfoProvision::NetworkFailure::None)
 			{
 				parseEndpointsFromJson(body, fresh);
 				writeCachedCmList(fresh);
 			}
-			if (fresh.empty()) break;
+			if (fresh.empty())
+			{
+				if (freshFailure == AppInfoProvision::NetworkFailure::Connectivity)
+				{
+					out.clear();
+					if (changesOut) changesOut->clear();
+					g_pLog->info("CmClient: CM directory unavailable; network appears offline\n");
+					return FetchResult::NetworkUnavailable;
+				}
+				break;
+			}
 			g_pLog->info("CmClient: cached CMs failed, retrying with fresh list (%zu)\n",
 			             fresh.size());
 			cms.swap(fresh);
@@ -696,7 +764,15 @@ bool fetchProductInfo(const std::vector<uint32_t>& appids,
 	out.clear();
 	if (changesOut) changesOut->clear();
 	g_pLog->info("CmClient: all CM attempts failed, falling back\n");
-	return false;
+	return FetchResult::Failed;
+}
+
+bool fetchProductInfo(const std::vector<uint32_t>& appids,
+                      std::unordered_map<uint32_t, std::string>& out,
+                      std::unordered_map<uint32_t, uint32_t>* changesOut)
+{
+	return fetchProductInfoDetailed(appids, out, changesOut) ==
+	       FetchResult::Success;
 }
 
 } // namespace CmClient

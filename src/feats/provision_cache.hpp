@@ -26,6 +26,48 @@ namespace AppInfoProvision
 namespace cache
 {
 
+enum class CacheUse
+{
+	None,
+	Fresh,
+	Fallback,
+};
+
+struct CacheRecordFacts
+{
+	unsigned int requestedAppId = 0;
+	unsigned int metadataAppId = 0;
+	unsigned long long declaredSize = 0;
+	unsigned long long actualSize = 0;
+	unsigned long long shaSize = 0;
+	bool shaMatches = false;
+	bool parsed = false;
+	bool hasUsableContent = false;
+};
+
+inline bool isCacheRecordValid(const CacheRecordFacts& facts)
+{
+	return facts.requestedAppId != 0
+	    && facts.metadataAppId == facts.requestedAppId
+	    && facts.declaredSize > 0
+	    && facts.declaredSize == facts.actualSize
+	    && facts.shaSize == 20
+	    && facts.shaMatches
+	    && facts.parsed
+	    && facts.hasUsableContent;
+}
+
+// A stale buffer may preserve the last known-good appinfo only after the live
+// refresh path is unavailable. It must never win while online, where doing so
+// would conceal new change numbers and manifest gids.
+inline CacheUse chooseCacheUse(bool cacheValid, bool cacheFresh,
+                               bool refreshUnavailable)
+{
+	if (!cacheValid) return CacheUse::None;
+	if (cacheFresh) return CacheUse::Fresh;
+	return refreshUnavailable ? CacheUse::Fallback : CacheUse::None;
+}
+
 // Decide whether an existing provisioned buffer can be reused (i.e. the
 // network fetch can be skipped) given:
 //   bufExists  — whether picsbuffer_<appid>.bin is present and non-empty
