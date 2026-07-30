@@ -2,7 +2,14 @@ schema = 1
 
 # Trusted, data-only scenarios used by the real-Steam candidate validator.
 # These entries select existing monitor scenarios; they cannot execute code or
-# supply commands. A changed locator without a safe profile is not promoted.
+# supply commands. Independently resolved locators use the resolution-only
+# default; known startup hooks below retain stronger install/invocation proof.
+
+[default]
+install_kind = "resolution"
+scenario = "startup"
+required_events = ["locator-resolved"]
+timeout_seconds = 90
 
 [[probe]]
 symbol = "Patterns::IClientAppManager::RunIPCFrame"
