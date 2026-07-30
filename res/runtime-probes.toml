@@ -1,0 +1,54 @@
+schema = 1
+
+# Trusted, data-only scenarios used by the real-Steam candidate validator.
+# These entries select existing monitor scenarios; they cannot execute code or
+# supply commands. A changed locator without a safe profile is not promoted.
+
+[[probe]]
+symbol = "Patterns::IClientAppManager::RunIPCFrame"
+install_kind = "detour"
+scenario = "startup"
+required_events = ["locator-resolved", "hook-installed", "hook-invoked"]
+timeout_seconds = 90
+
+[[probe]]
+symbol = "Patterns::IClientApps::RunIPCFrame"
+install_kind = "detour"
+scenario = "startup"
+required_events = ["locator-resolved", "hook-installed", "hook-invoked"]
+timeout_seconds = 90
+
+[[probe]]
+symbol = "Patterns::IClientRemoteStorage::RunIPCFrame"
+install_kind = "detour"
+scenario = "startup"
+required_events = ["locator-resolved", "hook-installed", "hook-invoked"]
+timeout_seconds = 90
+
+[[probe]]
+symbol = "Patterns::IClientUGC::RunIPCFrame"
+install_kind = "detour"
+scenario = "startup"
+required_events = ["locator-resolved", "hook-installed", "hook-invoked"]
+timeout_seconds = 90
+
+[[probe]]
+symbol = "Patterns::IClientUtils::RunIPCFrame"
+install_kind = "detour"
+scenario = "startup"
+required_events = ["locator-resolved", "hook-installed", "hook-invoked"]
+timeout_seconds = 90
+
+[[probe]]
+symbol = "Patterns::IClientUser::RunIPCFrame"
+install_kind = "detour"
+scenario = "startup"
+required_events = ["locator-resolved", "hook-installed", "hook-invoked"]
+timeout_seconds = 90
+
+[[probe]]
+symbol = "Patterns::IClientUserStats::RunIPCFrame"
+install_kind = "detour"
+scenario = "startup"
+required_events = ["locator-resolved", "hook-installed", "hook-invoked"]
+timeout_seconds = 90

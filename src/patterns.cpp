@@ -3,6 +3,7 @@
 #include "globals.hpp"
 #include "memhlp.hpp"
 #include "feats/ipcframe.hpp"
+#include "runtime_attestation.hpp"
 
 #include "libmem/libmem.h"
 
@@ -30,8 +31,54 @@ Pattern_t::Pattern_t(const char* name, const char* pattern, MemHlp::SigFollowMod
 
 bool Pattern_t::find()
 {
-	address = MemHlp::searchSignature(name.c_str(), pattern.c_str(), module ? *module : g_modSteamClient , followMode, &prologue[0], prologue.size());
-	return address != LM_ADDRESS_BAD;
+	lm_module_t& targetModule = module ? *module : g_modSteamClient;
+	address = MemHlp::searchSignature
+	(
+		name.c_str(), pattern.c_str(), targetModule, followMode,
+		prologue.empty() ? nullptr : prologue.data(), prologue.size()
+	);
+	const bool resolved = address != LM_ADDRESS_BAD;
+
+	if (RuntimeAttestation::enabled())
+	{
+		const char* moduleName = module == &g_modSteamUI ? "steamui" : "steamclient";
+		if (!resolved)
+		{
+			RuntimeAttestation::emit
+			(
+				"locator-missing",
+				{
+					RuntimeAttestation::Field::text("locator", name),
+					RuntimeAttestation::Field::text("module", moduleName),
+					RuntimeAttestation::Field::boolean("optional", optional),
+				}
+			);
+		}
+		else
+		{
+			lm_segment_t segment {};
+			const bool executable = LM_FindSegment(address, &segment)
+			                     && (segment.prot & LM_PROT_XR) == LM_PROT_XR;
+			const bool insideModule = address >= targetModule.base
+			                       && address < targetModule.base + targetModule.size;
+			RuntimeAttestation::emit
+			(
+				"locator-resolved",
+				{
+					RuntimeAttestation::Field::text("locator", name),
+					RuntimeAttestation::Field::text("module", moduleName),
+					RuntimeAttestation::Field::number
+					(
+						"target_rva", insideModule ? address - targetModule.base : 0
+					),
+					RuntimeAttestation::Field::boolean("inside_module", insideModule),
+					RuntimeAttestation::Field::boolean("executable", executable),
+				}
+			);
+		}
+	}
+
+	return resolved;
 }
 
 // Re-derive the volatile dispatch-tree root of every IClient*::RunIPCFrame in

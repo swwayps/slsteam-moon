@@ -7,6 +7,7 @@
 #include "log.hpp"
 #include "ownerwork.hpp"
 #include "patterns.hpp"
+#include "runtime_attestation.hpp"
 #include "update.hpp"
 #include "utils.hpp"
 
@@ -352,6 +353,28 @@ static void load()
 	             static_cast<void*>(&loadDone), getpid());
 	loadDone = true;
 
+	// Runtime evidence is opt-in and used only by the isolated repair runner.
+	// Bind every event to the exact SLSsteam.so bytes that this process loaded;
+	// a source diff or a successful log line alone is not sufficient evidence.
+	if (const char* attestationPath = getenv("SLSSTEAM_ATTESTATION_FILE");
+	    attestationPath != nullptr && attestationPath[0] != '\0')
+	{
+		lm_module_t selfModule {};
+		if (!LM_FindModule("SLSsteam.so", &selfModule))
+		{
+			g_pLog->warn("attestation: unable to identify loaded SLSsteam.so\n");
+		}
+		else
+		{
+			const std::string candidateId = Utils::getFileSHA256(selfModule.path);
+			if (candidateId.empty()
+			    || !RuntimeAttestation::initialize(candidateId))
+			{
+				g_pLog->warn("attestation: failed to initialize runtime evidence\n");
+			}
+		}
+	}
+
 	auto path = std::filesystem::path(g_modSteamClient.path);
 	auto dir = path.parent_path();
 
@@ -378,7 +401,7 @@ static void load()
 	// just our LD_AUDIT namespace. Missing modules (e.g. no CloudRedirect)
 	// are reported as such rather than skipped.
 	{
-		const auto logBuildId = [](const char* modName)
+		const auto logBuildId = [](const char* modName, const char* component)
 		{
 			lm_module_t mod {};
 			if (!LM_FindModule(modName, &mod))
@@ -389,12 +412,30 @@ static void load()
 			const std::string id = Utils::getBuildId(mod.path);
 			g_pLog->info("buildid: %-18s %s\n", modName,
 			             id.empty() ? "(no build-id)" : id.c_str());
+			if (RuntimeAttestation::enabled())
+			{
+				RuntimeAttestation::emit
+				(
+					"module-loaded",
+					{
+						RuntimeAttestation::Field::text("module", component),
+						RuntimeAttestation::Field::text("module_file", modName),
+						RuntimeAttestation::Field::text("build_id", id),
+						RuntimeAttestation::Field::text
+						(
+							"sha256", Utils::getFileSHA256(mod.path)
+						),
+						RuntimeAttestation::Field::number("base", mod.base),
+						RuntimeAttestation::Field::number("size", mod.size),
+					}
+				);
+			}
 		};
-		logBuildId("SLSsteam.so");
-		logBuildId("library-inject.so");
-		logBuildId("steamclient.so");
-		logBuildId("steamui.so");
-		logBuildId("cloud_redirect.so");
+		logBuildId("SLSsteam.so", "candidate");
+		logBuildId("library-inject.so", "audit-loader");
+		logBuildId("steamclient.so", "steamclient");
+		logBuildId("steamui.so", "steamui");
+		logBuildId("cloud_redirect.so", "cloud-redirect");
 	}
 
 	if (!Updater::verifySafeModeHash())

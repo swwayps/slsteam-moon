@@ -34,6 +34,7 @@
 #include "feats/ticket.hpp"
 #include "afftrace.hpp"
 #include "ownerwork.hpp"
+#include "runtime_attestation.hpp"
 
 #include "libmem/libmem.h"
 
@@ -43,11 +44,43 @@
 #include <cstdio>
 #include <cstring>
 #include <memory>
+#include <mutex>
 #include <pthread.h>
 #include <span>
 #include <strings.h>
 #include <unistd.h>
 #include <vector>
+
+
+static bool isExecutableAddress(lm_address_t address)
+{
+	if (address == LM_ADDRESS_BAD)
+		return false;
+	lm_segment_t segment {};
+	return LM_FindSegment(address, &segment)
+	    && (segment.prot & LM_PROT_XR) == LM_PROT_XR;
+}
+
+static void attestHookInvocation(std::once_flag& once, const std::string& symbol)
+{
+	if (!RuntimeAttestation::enabled())
+		return;
+	std::call_once
+	(
+		once,
+		[&symbol]
+		{
+			RuntimeAttestation::emit
+			(
+				"hook-invoked",
+				{
+					RuntimeAttestation::Field::text("locator", symbol),
+					RuntimeAttestation::Field::number("count", 1),
+				}
+			);
+		}
+	);
+}
 
 
 template<typename T>
@@ -94,6 +127,55 @@ void DetourHook<T>::place()
 {
 	this->size = LM_HookCode(this->originalFn.address, this->hookFn.address, &this->tramp.address);
 	MemHlp::fixPICThunkCall(this->name.c_str(), this->originalFn.address, this->tramp.address);
+
+	if (RuntimeAttestation::enabled())
+	{
+		const lm_module_t* targetModule = nullptr;
+		const char* moduleName = "unknown";
+		if (this->originalFn.address >= g_modSteamClient.base
+		    && this->originalFn.address < g_modSteamClient.base + g_modSteamClient.size)
+		{
+			targetModule = &g_modSteamClient;
+			moduleName = "steamclient";
+		}
+		else if (this->originalFn.address >= g_modSteamUI.base
+		         && this->originalFn.address < g_modSteamUI.base + g_modSteamUI.size)
+		{
+			targetModule = &g_modSteamUI;
+			moduleName = "steamui";
+		}
+
+		const bool targetExecutable = isExecutableAddress(this->originalFn.address);
+		const bool trampolineExecutable = isExecutableAddress(this->tramp.address);
+		RuntimeAttestation::emit
+		(
+			"hook-installed",
+			{
+				RuntimeAttestation::Field::text("locator", this->name),
+				RuntimeAttestation::Field::text("install_kind", "detour"),
+				RuntimeAttestation::Field::text("module", moduleName),
+				RuntimeAttestation::Field::number
+				(
+					"target_rva",
+					targetModule ? this->originalFn.address - targetModule->base : 0
+				),
+				RuntimeAttestation::Field::number("patch_size", this->size),
+				RuntimeAttestation::Field::boolean
+				(
+					"target_executable", targetExecutable
+				),
+				RuntimeAttestation::Field::boolean
+				(
+					"trampoline_executable", trampolineExecutable
+				),
+				RuntimeAttestation::Field::boolean
+				(
+					"installed", this->size != 0 && targetExecutable
+					             && trampolineExecutable
+				),
+			}
+		);
+	}
 
 	g_pLog->debug
 	(
@@ -462,6 +544,9 @@ static bool hkClientAppManager_GetUpdateInfo(void* pClientAppManager, uint32_t a
 __attribute__((hot))
 static void hkClientAppManager_RunIPCFrame(void* pClientAppManager, void* a1, void* a2, void* a3)
 {
+	static std::once_flag attestationOnce;
+	attestHookInvocation(attestationOnce, Hooks::IClientAppManager_RunIPCFrame.name);
+
 	g_pClientAppManager = reinterpret_cast<IClientAppManager*>(pClientAppManager);
 
 	std::shared_ptr<lm_vmt_t> vft = std::make_shared<lm_vmt_t>();
@@ -560,6 +645,9 @@ static bool hkClientApps_GetDLCDataByIndex(void* pClientApps, uint32_t appId, in
 __attribute__((hot))
 static void hkClientApps_RunIPCFrame(void* pClientApps, void* a1, void* a2, void* a3)
 {
+	static std::once_flag attestationOnce;
+	attestHookInvocation(attestationOnce, Hooks::IClientApps_RunIPCFrame.name);
+
 	static bool hooked = false;
 	if (!hooked)
 	{
@@ -617,6 +705,8 @@ static bool hkClientRemoteStorage_IsCloudEnabledForApp(void* pClientRemoteStorag
 
 static void hkClientRemoteStorage_RunIPCFrame(void* pClientRemoteStorage, void* a1, void* a2, void* a3)
 {
+	static std::once_flag attestationOnce;
+	attestHookInvocation(attestationOnce, Hooks::IClientRemoteStorage_RunIPCFrame.name);
 
 	static bool hooked = false;
 	if (!hooked)
@@ -642,6 +732,9 @@ static void hkClientRemoteStorage_RunIPCFrame(void* pClientRemoteStorage, void* 
 
 static void hkClientUGC_RunIPCFrame(void* pClientUGC, void* a1, void* a2, void* a3)
 {
+	static std::once_flag attestationOnce;
+	attestHookInvocation(attestationOnce, Hooks::IClientUGC_RunIPCFrame.name);
+
 	AffTrace::FrameGuard frame;
 	OwnerWork::drainOnOwnerFrame();
 
@@ -694,6 +787,9 @@ static bool hkClientUtils_GetOfflineMode(void* pClientUtils)
 // pthread.
 static void hkClientUtils_RunIPCFrame(void* pClientUtils, void* a1, void* a2, void* a3)
 {
+	static std::once_flag attestationOnce;
+	attestHookInvocation(attestationOnce, Hooks::IClientUtils_RunIPCFrame.name);
+
 	static bool hooked = false;
 	if (!hooked)
 	{
@@ -943,6 +1039,9 @@ static bool hkClientUser_RequiresLegacyCDKey(void* pClientUser, uint32_t appId, 
 
 static void hkClientUser_RunIPCFrame(void* pClientUser, void* a1, void* a2, void* a3)
 {
+	static std::once_flag attestationOnce;
+	attestHookInvocation(attestationOnce, Hooks::IClientUser_RunIPCFrame.name);
+
 	AffTrace::FrameGuard frame;
 	OwnerWork::drainOnOwnerFrame();
 
@@ -951,6 +1050,9 @@ static void hkClientUser_RunIPCFrame(void* pClientUser, void* a1, void* a2, void
 
 static void hkClientUserStats_RunIPCFrame(void* pClientUserStats, void* a1, void* a2, void* a3)
 {
+	static std::once_flag attestationOnce;
+	attestHookInvocation(attestationOnce, Hooks::IClientUserStats_RunIPCFrame.name);
+
 	AffTrace::FrameGuard frame;
 	OwnerWork::drainOnOwnerFrame();
 
