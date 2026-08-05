@@ -12,11 +12,11 @@ struct servernetadr_t;
 
 namespace FakeAppIds
 {
-	extern uint32_t lastAppLaunched;
+	extern AppId_t lastAppLaunched;
 
-	extern std::unordered_map<uint32_t, uint32_t> fakeAppIdMap;
-	extern std::unordered_map<uint32_t, uint32_t> fakeAppIdMapServer;
-	extern std::unordered_map<uint64_t, uint32_t> fakeAppIdMapPings;
+	extern std::unordered_map<HSteamPipe, AppId_t> fakeAppIdMap;
+	extern std::unordered_map<uint32_t, AppId_t> fakeAppIdMapServer;
+	extern std::unordered_map<uint64_t, AppId_t> fakeAppIdMapPings;
 
 	AppId_t getFakeAppId(const AppId_t appId);
 	AppId_t getRealAppIdForCurrentPipe(const bool fallback = true);
