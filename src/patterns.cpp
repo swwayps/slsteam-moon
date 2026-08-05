@@ -1004,6 +1004,15 @@ namespace Patterns
 			"E8 ? ? ? ? E9 ? ? ? ? ? ? ? ? ? 8B 85 ? ? ? ? 83 EC 08 FF B5",
 			SigFollowMode::Relative
 		};
+		Pattern_t ProcessIPCFrame
+		{
+			"CSteamEngine::ProcessIPCFrame",
+			"5E C3 FF 74 24",
+			SigFollowMode::PrologueUpwards,
+			std::vector<int16_t> { 0xC3, 0x81, -1, -1, -1, -1, 0xE8, 0x53, 0x56 },
+			nullptr,
+			"Patterns::CSteamEngine::ProcessIPCFrame"
+		};
 		Pattern_t Offset_ClientUtils
 		{
 			"CSteamEngine::m_ClientUtils",

@@ -12,6 +12,7 @@
 #include "sdk/CProtoBufMsgBase.hpp"
 #include "sdk/CSteamEngine.hpp"
 #include "sdk/CSteamMatchmakingServers.hpp"
+#include "sdk/CUtl.hpp"
 #include "sdk/CUser.hpp"
 #include "sdk/EResult.hpp"
 #include "sdk/IClientAppManager.hpp"
@@ -339,6 +340,36 @@ static uint32_t hkProtoBufMsgBase_Send(CProtoBufMsgBase* pMsg)
 
 	return ret;
 }
+
+static uint32_t hkSteamEngine_ProcessIPCFrame(
+	void* pSteamEngine,
+	HSteamPipe pipe,
+	CUtlBuffer* pBufIn,
+	CUtlBuffer* pBufOut)
+{
+	if (!g_pSteamEngine)
+	{
+		g_pSteamEngine = reinterpret_cast<CSteamEngine*>(pSteamEngine);
+	}
+
+	const EIPCCmd cmd = *reinterpret_cast<EIPCCmd*>(pBufIn->mem.base);
+	if (cmd != EIPCCmd::RunInterface)
+	{
+		return Hooks::CSteamEngine_ProcessIPCFrame.tramp.fn(
+			pSteamEngine, pipe, pBufIn, pBufOut);
+	}
+
+	const EInterfaceType interface =
+		*reinterpret_cast<EInterfaceType*>(pBufIn->mem.base + 1);
+	FakeAppIds::runIPCFrame(false, interface);
+
+	const uint32_t ret = Hooks::CSteamEngine_ProcessIPCFrame.tramp.fn(
+		pSteamEngine, pipe, pBufIn, pBufOut);
+
+	FakeAppIds::runIPCFrame(true, interface);
+	return ret;
+}
+
 static void hkSteamEngine_Init(void* pSteamEngine)
 {
 	Hooks::CSteamEngine_Init.tramp.fn(pSteamEngine);
@@ -818,9 +849,7 @@ static void hkClientRemoteStorage_RunIPCFrame(void* pClientRemoteStorage, void* 
 	AffTrace::FrameGuard frame;
 	OwnerWork::drainOnOwnerFrame();
 
-	FakeAppIds::runIPCFrame(false, k_EInterfaceTypeClientRemoteStorage);
 	Hooks::IClientRemoteStorage_RunIPCFrame.tramp.fn(pClientRemoteStorage, a1, a2, a3);
-	FakeAppIds::runIPCFrame(true, k_EInterfaceTypeClientRemoteStorage);
 }
 
 static void hkClientUGC_RunIPCFrame(void* pClientUGC, void* a1, void* a2, void* a3)
@@ -831,9 +860,7 @@ static void hkClientUGC_RunIPCFrame(void* pClientUGC, void* a1, void* a2, void* 
 	AffTrace::FrameGuard frame;
 	OwnerWork::drainOnOwnerFrame();
 
-	FakeAppIds::runIPCFrame(false, k_EInterfaceTypeClientUGC);
 	Hooks::IClientUGC_RunIPCFrame.tramp.fn(pClientUGC, a1, a2, a3);
-	FakeAppIds::runIPCFrame(true, k_EInterfaceTypeClientUGC);
 }
 
 static uint32_t hkClientUtils_GetAppId(void* pClientUtils)
@@ -1161,9 +1188,7 @@ static void hkClientUserStats_RunIPCFrame(void* pClientUserStats, void* a1, void
 	AffTrace::FrameGuard frame;
 	OwnerWork::drainOnOwnerFrame();
 
-	FakeAppIds::runIPCFrame(false, k_EInterfaceTypeClientUserStats);
 	Hooks::IClientUserStats_RunIPCFrame.tramp.fn(pClientUserStats, a1, a2, a3);
-	FakeAppIds::runIPCFrame(true, k_EInterfaceTypeClientUserStats);
 }
 
 static void hkSteamMatchmakingPingResponse_ServerResponded(void* pSteamMatchingPingResponse, gameserverdetails_t* details)
@@ -1310,6 +1335,7 @@ namespace Hooks
 	DetourHook<CSteamMatchmakingServers_RequestInternetServerList_t> CSteamMatchmakingServers_RequestInternetServerList;
 
 	DetourHook<CSteamEngine_Init_t> CSteamEngine_Init;
+	DetourHook<CSteamEngine_ProcessIPCFrame_t> CSteamEngine_ProcessIPCFrame;
 	DetourHook<CSteamEngine_SetAppIdForCurrentPipe_t> CSteamEngine_SetAppIdForCurrentPipe;
 
 	DetourHook<CUser_CheckAppOwnership_t> CUser_CheckAppOwnership;
@@ -1376,6 +1402,7 @@ bool Hooks::setup()
 		&& IClientFriends_GetFriendGamePlayed.setup(Patterns::IClientFriends::GetFriendGamePlayed, &hkClientFriends_GetFriendGamePlayed)
 
 		&& CSteamEngine_Init.setup(Patterns::CSteamEngine::Init, &hkSteamEngine_Init)
+		&& CSteamEngine_ProcessIPCFrame.setup(Patterns::CSteamEngine::ProcessIPCFrame, &hkSteamEngine_ProcessIPCFrame)
 		&& CSteamEngine_SetAppIdForCurrentPipe.setup(Patterns::CSteamEngine::SetAppIdForCurrentPipe, &hkSteamEngine_SetAppIdForCurrentPipe)
 
 		&& IClientAppManager_BCanRemotePlayTogether.setup(Patterns::IClientAppManager::BCanRemotePlayTogether, hkClientAppManager_BCanRemotePlayTogether)
@@ -1457,6 +1484,7 @@ void Hooks::place()
 	CJobMgr_BRouteMsgToJob.place();
 	CDepotDownloadMgr_BYldRequestDepotManifest.place();
 	CSteamEngine_Init.place();
+	CSteamEngine_ProcessIPCFrame.place();
 	CSteamEngine_SetAppIdForCurrentPipe.place();
 
 	CSteamMatchmakingServers_GetServerDetails.place();
@@ -1535,6 +1563,7 @@ void Hooks::remove()
 	CJobMgr_BRouteMsgToJob.remove();
 	CDepotDownloadMgr_BYldRequestDepotManifest.remove();
 	CSteamEngine_Init.remove();
+	CSteamEngine_ProcessIPCFrame.remove();
 	CSteamEngine_SetAppIdForCurrentPipe.remove();
 
 	CSteamMatchmakingServers_GetServerDetails.remove();

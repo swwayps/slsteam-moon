@@ -1,5 +1,7 @@
 #pragma once
 
+#include "sdk/steam.hpp"
+
 #include "libmem/libmem.h"
 
 #include <cstddef>
@@ -8,6 +10,7 @@
 
 class CAppOwnershipInfo;
 class CProtoBufMsgBase;
+class CUtlBuffer;
 
 struct gameserverdetails_t;
 struct GamePlayed_t;
@@ -90,6 +93,7 @@ namespace Hooks
 	typedef uint32_t(*CProtoBufMsgBase_Send_t)(CProtoBufMsgBase*);
 
 	typedef void(*CSteamEngine_Init_t)(void*);
+	typedef uint32_t(*CSteamEngine_ProcessIPCFrame_t)(void*, HSteamPipe, CUtlBuffer*, CUtlBuffer*);
 	typedef uint32_t(*CSteamEngine_SetAppIdForCurrentPipe_t)(void*, uint32_t, bool);
 
 	typedef gameserverdetails_t*(*CSteamMatchmakingServers_GetServerDetails_t)(void*, uint32_t, uint32_t);
@@ -141,6 +145,7 @@ namespace Hooks
 	extern DetourHook<IClientUserStats_RunIPCFrame_t> IClientUserStats_RunIPCFrame;
 
 	extern DetourHook<CSteamEngine_Init_t> CSteamEngine_Init;
+	extern DetourHook<CSteamEngine_ProcessIPCFrame_t> CSteamEngine_ProcessIPCFrame;
 	extern DetourHook<CSteamEngine_SetAppIdForCurrentPipe_t> CSteamEngine_SetAppIdForCurrentPipe;
 
 	extern DetourHook<CUser_CheckAppOwnership_t> CUser_CheckAppOwnership;

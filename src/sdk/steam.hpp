@@ -17,7 +17,15 @@ constexpr static ENetPacket PROTOBUF_TYPE_MASK = 0x80000000;
 constexpr static HSteamPipe g_globalSteamPipe = 2;
 constexpr static HSteamPipe g_globalSteamUser = 1;
 
-enum EInterfaceType : uint32_t
+enum class EIPCCmd : uint8_t
+{
+	RunInterface = 1,
+	SerializeCallbacks = 2,
+	CreateGlobalUser = 3,
+	ConnectPipe = 9
+};
+
+enum EInterfaceType : uint8_t
 {
 	k_EInterfaceTypeClientUser = 0x1,
 	k_EInterfaceTypeClientGameServerInternal = 0x2,
