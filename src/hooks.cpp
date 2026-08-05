@@ -367,8 +367,8 @@ static uint32_t hkSteamEngine_ProcessIPCFrame(
 			pSteamEngine, pipe, pBufIn, pBufOut);
 	}
 
-	const EInterfaceType interface =
-		*reinterpret_cast<EInterfaceType*>(pBufIn->mem.base + 1);
+	const EIPCInterface interface =
+		*reinterpret_cast<EIPCInterface*>(pBufIn->mem.base + 1);
 	if (log)
 	{
 		const uint32_t function = *reinterpret_cast<uint32_t*>(pBufIn->mem.base + 6);

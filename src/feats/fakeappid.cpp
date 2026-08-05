@@ -61,59 +61,59 @@ uint32_t FakeAppIds::getRealAppIdForCurrentPipe(bool fallback)
 	return 0;
 }
 
-bool FakeAppIds::shouldUseRealAppIdForInterface(const EInterfaceType type)
+bool FakeAppIds::shouldUseRealAppIdForInterface(const EIPCInterface type)
 {
 	switch(type)
 	{
-		//case k_EInterfaceTypeClientUser:
-		//case k_EInterfaceTypeClientGameServerInternal:
-		//case k_EInterfaceTypeClientFriends:
-		case k_EInterfaceTypeClientUtils:
-		case k_EInterfaceTypeClientBilling:
-		//case k_EInterfaceTypeClientMatchmaking:
-		case k_EInterfaceTypeClientApps:
-		case k_EInterfaceTypeClientUserStats:
-		//case k_EInterfaceTypeClientNetworking:
-		case k_EInterfaceTypeClientRemoteStorage:
-		case k_EInterfaceTypeClientDepotBuilder:
-		case k_EInterfaceTypeClientAppManager:
-		case k_EInterfaceTypeClientConfigStore:
-		//case k_EInterfaceTypeClientGameCoordinator:
-		//case k_EInterfaceTypeClientGameServerStats:
-		case k_EInterfaceTypeClientGameStats:
-		case k_EInterfaceTypeClientHTTP:
-		case k_EInterfaceTypeClientScreenshots:
-		case k_EInterfaceTypeClientAudio:
-		case k_EInterfaceTypeClientUnifiedMessages:
-		case k_EInterfaceTypeClientStreamLauncher:
-		case k_EInterfaceTypeClientParentalSettings:
-		case k_EInterfaceTypeClientNetworkDeviceManager:
-		case k_EInterfaceTypeClientMusic:
-		case k_EInterfaceTypeClientRemoteClientManager:
-		case k_EInterfaceTypeClientUGC:
-		case k_EInterfaceTypeClientStreamClient:
-		case k_EInterfaceTypeClientProductBuilder:
-		case k_EInterfaceTypeClientShortcuts:
-		case k_EInterfaceTypeClientGameNotifications:
-		case k_EInterfaceTypeClientVideo:
-		case k_EInterfaceTypeClientInventory:
-		case k_EInterfaceTypeClientVR:
-		case k_EInterfaceTypeClientControllerSerialized:
-		case k_EInterfaceTypeClientAppDisableUpdate:
-		case k_EInterfaceTypeClientSharedConnection:
-		case k_EInterfaceTypeClientShader:
-		//case k_EInterfaceTypeClientNetworkingSocketsSerialized:
-		case k_EInterfaceTypeClientCompat:
-		case k_EInterfaceTypeClientParties:
-		//case k_EInterfaceTypeClientNetworkingUtilsSerialized:
-		case k_EInterfaceTypeClientRemotePlay:
-		//case k_EInterfaceTypeClientGameServerPacketHandler:
-		case k_EInterfaceTypeClientSystemManager:
-		case k_EInterfaceTypeClientSystemPerfManager:
-		case k_EInterfaceTypeClientSystemDockManager:
-		case k_EInterfaceTypeClientSystemAudioManager:
-		case k_EInterfaceTypeClientSystemDisplayManager:
-		case k_EInterfaceTypeClientTimeline:
+		//case EIPCInterface::User:
+		//case EIPCInterface::GameServerInternal:
+		//case EIPCInterface::Friends:
+		case EIPCInterface::Utils:
+		case EIPCInterface::Billing:
+		//case EIPCInterface::Matchmaking:
+		case EIPCInterface::Apps:
+		case EIPCInterface::UserStats:
+		//case EIPCInterface::Networking:
+		case EIPCInterface::RemoteStorage:
+		case EIPCInterface::DepotBuilder:
+		case EIPCInterface::AppManager:
+		case EIPCInterface::ConfigStore:
+		//case EIPCInterface::GameCoordinator:
+		//case EIPCInterface::GameServerStats:
+		case EIPCInterface::GameStats:
+		case EIPCInterface::HTTP:
+		case EIPCInterface::Screenshots:
+		case EIPCInterface::Audio:
+		case EIPCInterface::UnifiedMessages:
+		case EIPCInterface::StreamLauncher:
+		case EIPCInterface::ParentalSettings:
+		case EIPCInterface::NetworkDeviceManager:
+		case EIPCInterface::Music:
+		case EIPCInterface::RemoteClientManager:
+		case EIPCInterface::UGC:
+		case EIPCInterface::StreamClient:
+		case EIPCInterface::ProductBuilder:
+		case EIPCInterface::Shortcuts:
+		case EIPCInterface::GameNotifications:
+		case EIPCInterface::Video:
+		case EIPCInterface::Inventory:
+		case EIPCInterface::VR:
+		case EIPCInterface::ControllerSerialized:
+		case EIPCInterface::AppDisableUpdate:
+		case EIPCInterface::SharedConnection:
+		case EIPCInterface::Shader:
+		//case EIPCInterface::NetworkingSocketsSerialized:
+		case EIPCInterface::Compat:
+		case EIPCInterface::Parties:
+		//case EIPCInterface::NetworkingUtilsSerialized:
+		case EIPCInterface::RemotePlay:
+		//case EIPCInterface::GameServerPacketHandler:
+		case EIPCInterface::SystemManager:
+		case EIPCInterface::SystemPerfManager:
+		case EIPCInterface::SystemDockManager:
+		case EIPCInterface::SystemAudioManager:
+		case EIPCInterface::SystemDisplayManager:
+		case EIPCInterface::Timeline:
 			return true;
 
 		default:
@@ -153,7 +153,7 @@ void FakeAppIds::setAppIdForCurrentPipe(uint32_t& appId)
 	}
 }
 
-void FakeAppIds::runIPCFrame(const bool post, const EInterfaceType interface)
+void FakeAppIds::runIPCFrame(const bool post, const EIPCInterface interface)
 {
 	if (!shouldUseRealAppIdForInterface(interface))
 	{
