@@ -22,6 +22,9 @@ enum class EIPCCmd : uint8_t
 	RunInterface = 1,
 	SerializeCallbacks = 2,
 	CreateGlobalUser = 3,
+	DisconnectGlobalUser = 4,
+	ClosePipe = 5,
+	Heartbeat = 6,
 	ConnectPipe = 9
 };
 
