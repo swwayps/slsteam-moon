@@ -94,6 +94,7 @@ namespace Hooks
 
 	typedef uint32_t(*CUser_CheckAppOwnership_t)(void*, uint32_t, CAppOwnershipInfo*);
 	typedef uint32_t(*CUser_GetSubscribedApps_t)(void*, uint32_t*, uint32_t, uint8_t);
+	typedef uint32_t(*CUser_PostCallbackToAppId_t)(void*, uint32_t, uint32_t, void*, uint32_t);
 	typedef bool(*IClientAppManager_BCanRemotePlayTogether_t)(void*, uint32_t);
 
 	typedef bool(*IClientUser_BLoggedOn_t)(void*);
@@ -139,6 +140,7 @@ namespace Hooks
 
 	extern DetourHook<CUser_CheckAppOwnership_t> CUser_CheckAppOwnership;
 	extern DetourHook<CUser_GetSubscribedApps_t> CUser_GetSubscribedApps;
+	extern DetourHook<CUser_PostCallbackToAppId_t> CUser_PostCallbackToAppId;
 
 	extern DetourHook<IClientAppManager_BCanRemotePlayTogether_t> IClientAppManager_BCanRemotePlayTogether;
 

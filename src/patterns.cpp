@@ -1052,6 +1052,13 @@ namespace Patterns
 			nullptr,
 			"Patterns::CUser::PostCallback"
 		};
+		Pattern_t PostCallbackToAppId
+		{
+			"CUser::PostCallbackToAppId",
+			"84 C0 0F 45 F8 89 F8",
+			SigFollowMode::PrologueUpwards,
+			std::vector<uint8_t> { 0xE8, 0x53, 0x56, 0x57, 0x55 }
+		};
 		Pattern_t UpdateAppOwnershipTicket
 		{
 			"IClientUser::UpdateAppOwnershipTicket",
