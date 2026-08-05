@@ -15,6 +15,7 @@
 #include "sdk/EResult.hpp"
 #include "sdk/IClientAppManager.hpp"
 #include "sdk/IClientApps.hpp"
+#include "sdk/IClientFriends.hpp"
 #include "sdk/IClientUtils.hpp"
 
 #include "feats/achievements.hpp"
@@ -685,6 +686,24 @@ static bool hkClientApps_GetDLCDataByIndex(void* pClientApps, uint32_t appId, in
 	return ret;
 }
 
+static uint32_t hkClientFriends_GetFriendGamePlayed(void* pClientFriends, uint64_t steamId, GamePlayed_t* gamePlayed)
+{
+	const uint32_t ret = Hooks::IClientFriends_GetFriendGamePlayed.tramp.fn(pClientFriends, steamId, gamePlayed);
+
+	const uint32_t realAppId = FakeAppIds::getRealAppIdForCurrentPipe();
+	const uint32_t fakeAppId = FakeAppIds::getFakeAppId(realAppId);
+
+	if (fakeAppId && fakeAppId == gamePlayed->appId)
+	{
+		g_pLog->debug("Set friend GamePlayed from %u to %u\n", gamePlayed->appId, realAppId);
+		gamePlayed->appId = realAppId;
+	}
+
+	//We do not log this function, it's basically useless since we don't want any SteamIds in the logs
+
+	return ret;
+}
+
 __attribute__((hot))
 static void hkClientApps_RunIPCFrame(void* pClientApps, void* a1, void* a2, void* a3)
 {
@@ -1248,6 +1267,8 @@ namespace Hooks
 	DetourHook<CUser_CheckAppOwnership_t> CUser_CheckAppOwnership;
 	DetourHook<CUser_GetSubscribedApps_t> CUser_GetSubscribedApps;
 	DetourHook<CUser_PostCallbackToAppId_t> CUser_PostCallbackToAppId;
+
+	DetourHook<IClientFriends_GetFriendGamePlayed_t> IClientFriends_GetFriendGamePlayed;
 
 	DetourHook<IClientAppManager_BCanRemotePlayTogether_t> IClientAppManager_BCanRemotePlayTogether;
 
