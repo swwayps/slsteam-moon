@@ -23,9 +23,9 @@ namespace FakeAppIds
 	bool shouldUseRealAppIdForInterface(const EInterfaceType type);
 
 	//General functionality
-	void launchApp(uint32_t appId);
-	void setAppIdForCurrentPipe(uint32_t& appId);
-	void runIPCFrame(bool post);
+	void launchApp(const AppId_t appId);
+	void setAppIdForCurrentPipe(AppId_t& appId);
+	void runIPCFrame(const bool post, const EInterfaceType interface);
 
 	//Serverbrowser
 	void getServerDetails(uint32_t handle, gameserverdetails_t& details);

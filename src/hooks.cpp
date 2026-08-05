@@ -818,9 +818,9 @@ static void hkClientRemoteStorage_RunIPCFrame(void* pClientRemoteStorage, void* 
 	AffTrace::FrameGuard frame;
 	OwnerWork::drainOnOwnerFrame();
 
-	FakeAppIds::runIPCFrame(false);
+	FakeAppIds::runIPCFrame(false, k_EInterfaceTypeClientRemoteStorage);
 	Hooks::IClientRemoteStorage_RunIPCFrame.tramp.fn(pClientRemoteStorage, a1, a2, a3);
-	FakeAppIds::runIPCFrame(true);
+	FakeAppIds::runIPCFrame(true, k_EInterfaceTypeClientRemoteStorage);
 }
 
 static void hkClientUGC_RunIPCFrame(void* pClientUGC, void* a1, void* a2, void* a3)
@@ -831,9 +831,9 @@ static void hkClientUGC_RunIPCFrame(void* pClientUGC, void* a1, void* a2, void* 
 	AffTrace::FrameGuard frame;
 	OwnerWork::drainOnOwnerFrame();
 
-	FakeAppIds::runIPCFrame(false);
+	FakeAppIds::runIPCFrame(false, k_EInterfaceTypeClientUGC);
 	Hooks::IClientUGC_RunIPCFrame.tramp.fn(pClientUGC, a1, a2, a3);
-	FakeAppIds::runIPCFrame(true);
+	FakeAppIds::runIPCFrame(true, k_EInterfaceTypeClientUGC);
 }
 
 static uint32_t hkClientUtils_GetAppId(void* pClientUtils)
@@ -1161,9 +1161,9 @@ static void hkClientUserStats_RunIPCFrame(void* pClientUserStats, void* a1, void
 	AffTrace::FrameGuard frame;
 	OwnerWork::drainOnOwnerFrame();
 
-	FakeAppIds::runIPCFrame(false);
+	FakeAppIds::runIPCFrame(false, k_EInterfaceTypeClientUserStats);
 	Hooks::IClientUserStats_RunIPCFrame.tramp.fn(pClientUserStats, a1, a2, a3);
-	FakeAppIds::runIPCFrame(true);
+	FakeAppIds::runIPCFrame(true, k_EInterfaceTypeClientUserStats);
 }
 
 static void hkSteamMatchmakingPingResponse_ServerResponded(void* pSteamMatchingPingResponse, gameserverdetails_t* details)

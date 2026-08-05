@@ -153,10 +153,15 @@ void FakeAppIds::setAppIdForCurrentPipe(uint32_t& appId)
 	}
 }
 
-void FakeAppIds::runIPCFrame(bool post)
+void FakeAppIds::runIPCFrame(const bool post, const EInterfaceType interface)
 {
-	uint32_t appId = getRealAppIdForCurrentPipe(false);
-	uint32_t fakeAppId = getFakeAppId(appId);
+	if (!shouldUseRealAppIdForInterface(interface))
+	{
+		return;
+	}
+
+	AppId_t appId = getRealAppIdForCurrentPipe(false);
+	const AppId_t fakeAppId = getFakeAppId(appId);
 
 	if (!appId || !fakeAppId || appId == fakeAppId)
 	{
