@@ -1,5 +1,6 @@
 #include <dlfcn.h>
 #include "afftrace.hpp"
+#include "sdk/steam.hpp"
 #include "api.hpp"
 #include "runtimedir.hpp"
 #include "audit_log.hpp"
@@ -609,6 +610,12 @@ static void load()
 		}
 	}
 
+	if (!Steam::init())
+	{
+		g_pLog->warn("Failed to find steam exports!\n");
+		return;
+	}
+
 	{
 		BootProf::Span patternProfile(g_pLog.get(), "pattern_scan");
 		if (!Patterns::init())
@@ -814,7 +821,6 @@ namespace
 			default: return "<unknown>";
 		}
 	}
-
 	const char* auditObjectName(uintptr_t* cookie) noexcept
 	{
 		if (cookie == nullptr || *cookie == 0)
