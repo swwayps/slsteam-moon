@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 
 typedef uint32_t AppId_t;
 typedef uint32_t EMsg;
@@ -27,6 +28,8 @@ enum class EIPCCmd : uint8_t
 	Heartbeat = 6,
 	ConnectPipe = 9
 };
+
+std::string EIPCCmd_ToString(const EIPCCmd cmd);
 
 enum class EIPCInterface : uint8_t
 {
@@ -80,6 +83,8 @@ enum class EIPCInterface : uint8_t
 	SystemDisplayManager = 0x3c,
 	Timeline = 0x3d
 };
+
+std::string EIPCInterface_ToString(const EIPCInterface interface);
 
 namespace Steam
 {
