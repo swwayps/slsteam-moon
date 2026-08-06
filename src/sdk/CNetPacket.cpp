@@ -14,3 +14,12 @@ CMsgProtoBufHeader CNetPacket::deserializeHeader() const
 
 	return header;
 }
+
+void CNetPacket::free()
+{
+	Steam::Plat_Free(body);
+
+	size = 0;
+	body = nullptr;
+	originalBody = nullptr;
+}

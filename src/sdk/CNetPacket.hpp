@@ -113,10 +113,5 @@ public:
 		return msg;
 	}
 
-	constexpr void clearBody()
-	{
-		//Hide body and call original function so steam uses it's own free
-		//We can also free the body ourself if we don't call the original function
-		size = body->headerSize + sizeof(CNetPacketBody);
-	}
+	void free();
 }; //0x14
