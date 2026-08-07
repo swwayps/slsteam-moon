@@ -315,7 +315,13 @@ static void hkCMInterface_RecvPkt(void* pCMInterface, CNetPacket* pNetPacket)
 			return;
 		}
 
-		if (disableFamilyShareLock && type == EMSG_SERVICE_METHOD && header.target_job_name() == "FamilyGroupsClient.NotifyRunningApps#1")
+		if
+		(
+			disableFamilyShareLock
+			&& type == EMSG_SERVICE_METHOD
+			&& header.has_target_job_name() //Do not modify header by blindly requesting the target_job_name
+			&& header.target_job_name() == "FamilyGroupsClient.NotifyRunningApps#1"
+		)
 		{
 			g_pLog->debug("Choking FamilyGroupsClient.NotifyRunningApps#1\n");
 			pNetPacket->free();
