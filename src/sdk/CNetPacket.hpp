@@ -39,6 +39,7 @@ public:
 	uint32_t size;					//0x8
 	int32_t refs;					//0xC
 	CNetPacketBody* originalBody;	//0x10
+	uint8_t __pad0x10[0xC];			//0x14
 
 	constexpr bool isValid() const
 	{
@@ -114,4 +115,4 @@ public:
 	}
 
 	void free();
-}; //0x14
+}; //0x20
