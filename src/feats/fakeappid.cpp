@@ -233,6 +233,7 @@ void FakeAppIds::runIPCFrame(const bool post, const EIPCInterface interface)
 	{
 		return;
 	}
+
 	g_pSteamEngine->setAppIdForCurrentPipe(appId);
 }
 
