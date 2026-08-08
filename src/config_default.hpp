@@ -61,8 +61,9 @@ FakeOffline:
 
 #Change AppIds of games to enable networking features
 #Use 0 as a key to set for all unowned Apps
-#Keeps track of the proper AppIds via game launches, so please do not start multiple FakeAppId enabled games simultaneously
-#Do not run multiple apps under the same AppId simultaneously!
+#Do not run multiple apps under the same AppId simultaneously! It's possible but
+#will most likely cause undefined behaviour
+#Requires access to /proc to read processes' real AppId from their environment (most distros allow this by default)
 FakeAppIds:
 
 #Custom ingame statuses. Set AppId to 0 to disable
