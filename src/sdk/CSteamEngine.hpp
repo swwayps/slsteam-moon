@@ -7,9 +7,17 @@ class CUser;
 class IClientCompat;
 class IClientUtils;
 
+class CServerPipe
+{
+public:
+	uint8_t __pad0x0[0x14];
+	uint32_t pid;
+};
+
 class CSteamEngine
 {
 public:
+	CServerPipe* getServerPipe(HSteamPipe pipe);
 	CUser* getUser(uint32_t index);
 	IClientUtils* getUtils();
 	void setAppIdForCurrentPipe(uint32_t appId);

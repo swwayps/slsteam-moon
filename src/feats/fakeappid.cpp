@@ -9,7 +9,12 @@
 #include "../sdk/CUser.hpp"
 #include "../sdk/IClientUtils.hpp"
 
-AppId_t FakeAppIds::lastAppLaunched;
+#include <algorithm>
+#include <fstream>
+#include <iterator>
+#include <regex>
+#include <sstream>
+#include <string>
 
 std::unordered_map<HSteamPipe, AppId_t> FakeAppIds::fakeAppIdMap = std::unordered_map<HSteamPipe, AppId_t>();
 std::unordered_map<uint32_t, AppId_t> FakeAppIds::fakeAppIdMapServer = std::unordered_map<uint32_t, AppId_t>();
@@ -35,7 +40,59 @@ AppId_t FakeAppIds::getFakeAppId(const AppId_t appId)
 	return 0;
 }
 
-uint32_t FakeAppIds::getRealAppIdForCurrentPipe(bool fallback)
+AppId_t FakeAppIds::getRealAppIdFromEnv(const HSteamPipe pipe)
+{
+	if (fakeAppIdMap.contains(pipe))
+	{
+		return fakeAppIdMap.at(pipe);
+	}
+	if (!g_pSteamEngine)
+	{
+		return 0;
+	}
+
+	const auto serverPipe = g_pSteamEngine->getServerPipe(pipe);
+	if (!serverPipe)
+	{
+		g_pLog->debug("ServerPipe for %u is null!\n", pipe);
+		return 0;
+	}
+
+	std::ostringstream pathSS;
+	pathSS << "/proc/" << serverPipe->pid << "/environ";
+	const std::string path = pathSS.str();
+	std::ifstream ifstream(path);
+	if (!ifstream.is_open())
+	{
+		g_pLog->debug("Failed to open %s to get %u's appId!\n", path.c_str(), pipe);
+		return 0;
+	}
+
+	std::string environ;
+	std::copy(
+		std::istreambuf_iterator<char>(ifstream),
+		std::istreambuf_iterator<char>(),
+		std::back_inserter(environ));
+
+	std::smatch appIdMatch;
+	AppId_t appId = 0;
+	if (std::regex_search(environ, appIdMatch, std::regex("SteamAppId=[0-9]+")))
+	{
+		environ = appIdMatch.str();
+		std::regex_search(environ, appIdMatch, std::regex("[0-9]+"));
+		appId = std::stoul(appIdMatch.str());
+	}
+	else
+	{
+		g_pLog->debug("No SteamAppId in %s! Using 0\n", path.c_str());
+	}
+
+	fakeAppIdMap[pipe] = appId;
+	g_pLog->debug("AppId for %u is %u\n", pipe, appId);
+	return appId;
+}
+
+AppId_t FakeAppIds::getRealAppIdForCurrentPipe(const bool fallback)
 {
 	// g_pClientUtils is populated lazily from IClientUtils::RunIPCFrame.
 	// Under the LD_PRELOAD injection model our hooks are placed after
@@ -47,10 +104,10 @@ uint32_t FakeAppIds::getRealAppIdForCurrentPipe(bool fallback)
 		return 0;
 	}
 
-	uint32_t hPipe = *g_pClientUtils->getPipeIndex();
-	if (fakeAppIdMap.contains(hPipe))
+	const AppId_t appId = getRealAppIdFromEnv(*g_pClientUtils->getPipeIndex());
+	if (appId)
 	{
-		return fakeAppIdMap[hPipe];
+		return appId;
 	}
 
 	if (fallback)
@@ -121,24 +178,17 @@ bool FakeAppIds::shouldUseRealAppIdForInterface(const EIPCInterface type)
 	}
 }
 
-void FakeAppIds::launchApp(const AppId_t appId)
+void FakeAppIds::closePipe(const HSteamPipe pipe)
 {
-	lastAppLaunched = appId;
+	if (fakeAppIdMap.contains(pipe))
+	{
+		g_pLog->debug("Deleting fake appId mapping %u for %u\n", fakeAppIdMap.at(pipe), pipe);
+		fakeAppIdMap.erase(pipe);
+	}
 }
 
-void FakeAppIds::setAppIdForCurrentPipe(uint32_t& appId)
+void FakeAppIds::setAppIdForCurrentPipe(AppId_t& appId)
 {
-	if (!g_pClientUtils)
-	{
-		return;
-	}
-
-	//Keep track of every AppId, for various reasons
-	//fakeAppIdMap[*g_pClientUtils->getPipeIndex()] = appId;
-	fakeAppIdMap[*g_pClientUtils->getPipeIndex()] = lastAppLaunched;
-
-	g_pLog->debug("fakeAppIdMap[%p] = %u\n", *g_pClientUtils->getPipeIndex(), appId);
-
 	//Do not change Steam Client itself (AppId 0)
 	if (!appId)
 	{

@@ -24,6 +24,12 @@ bool executableAddress(lm_address_t address)
 }
 }
 
+CServerPipe* CSteamEngine::getServerPipe(const HSteamPipe pipe)
+{
+	const static auto fn = reinterpret_cast<CServerPipe*(*)(void*, HSteamPipe)>(
+		Patterns::CSteamEngine::GetServerPipe.address);
+	return fn(this, pipe);
+}
 
 CUser* CSteamEngine::getUser(uint32_t index)
 {

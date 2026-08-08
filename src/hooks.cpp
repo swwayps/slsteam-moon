@@ -343,7 +343,7 @@ static uint32_t hkProtoBufMsgBase_Send(CProtoBufMsgBase* pMsg)
 
 static uint32_t hkSteamEngine_ProcessIPCFrame(
 	void* pSteamEngine,
-	HSteamPipe pipe,
+	HSteamPipe hPipe,
 	CUtlBuffer* pBufIn,
 	CUtlBuffer* pBufOut)
 {
@@ -358,34 +358,41 @@ static uint32_t hkSteamEngine_ProcessIPCFrame(
 	{
 		g_pLog->debug(
 			"ProcessIPCFrame pipe %u command %s\n",
-			pipe,
+			hPipe,
 			EIPCCmd_ToString(cmd).c_str());
 	}
-	if (cmd != EIPCCmd::RunInterface)
+
+	uint32_t ret;
+	if (cmd == EIPCCmd::RunInterface)
 	{
-		return Hooks::CSteamEngine_ProcessIPCFrame.tramp.fn(
-			pSteamEngine, pipe, pBufIn, pBufOut);
+		const EIPCInterface interface =
+			*reinterpret_cast<EIPCInterface*>(pBufIn->mem.base + 1);
+		if (log)
+		{
+			const uint32_t function = *reinterpret_cast<uint32_t*>(pBufIn->mem.base + 6);
+			const auto utils = g_pSteamEngine->getUtils();
+			g_pLog->debug(
+				"RunInterface %s %u for %u (%u)\n",
+				EIPCInterface_ToString(interface).c_str(),
+				function,
+				FakeAppIds::getRealAppIdForCurrentPipe(),
+				utils ? utils->getAppId() : 0);
+		}
+		FakeAppIds::runIPCFrame(false, interface);
+		ret = Hooks::CSteamEngine_ProcessIPCFrame.tramp.fn(
+			pSteamEngine, hPipe, pBufIn, pBufOut);
+		FakeAppIds::runIPCFrame(true, interface);
+	}
+	else
+	{
+		ret = Hooks::CSteamEngine_ProcessIPCFrame.tramp.fn(
+			pSteamEngine, hPipe, pBufIn, pBufOut);
 	}
 
-	const EIPCInterface interface =
-		*reinterpret_cast<EIPCInterface*>(pBufIn->mem.base + 1);
-	if (log)
+	if (cmd == EIPCCmd::ClosePipe)
 	{
-		const uint32_t function = *reinterpret_cast<uint32_t*>(pBufIn->mem.base + 6);
-		const auto utils = g_pSteamEngine->getUtils();
-		g_pLog->debug(
-			"RunInterface %s %u for %u (%u)\n",
-			EIPCInterface_ToString(interface).c_str(),
-			function,
-			FakeAppIds::getRealAppIdForCurrentPipe(),
-			utils ? utils->getAppId() : 0);
+		FakeAppIds::closePipe(hPipe);
 	}
-	FakeAppIds::runIPCFrame(false, interface);
-
-	const uint32_t ret = Hooks::CSteamEngine_ProcessIPCFrame.tramp.fn(
-		pSteamEngine, pipe, pBufIn, pBufOut);
-
-	FakeAppIds::runIPCFrame(true, interface);
 	return ret;
 }
 
@@ -587,7 +594,6 @@ static void* hkClientAppManager_LaunchApp(void* pClientAppManager, uint32_t* pAp
 			a4
 		);
 
-		FakeAppIds::launchApp(*pAppId);
 		Ticket::launchApp(*pAppId);
 		SteamStub::onLaunchApp(*pAppId);
 	}

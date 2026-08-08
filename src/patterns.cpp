@@ -992,6 +992,15 @@ namespace Patterns
 
 	namespace CSteamEngine
 	{
+		Pattern_t GetServerPipe
+		{
+			"CSteamEngine::GetServerPipe",
+			"0F B7 CA 31 C0 3B 4B",
+			SigFollowMode::PrologueUpwards,
+			std::vector<int16_t> { 0x53, 0x56, 0x57 },
+			nullptr,
+			"Patterns::CSteamEngine::GetServerPipe"
+		};
 		Pattern_t Init
 		{
 			"CSteamEngine::Init",
