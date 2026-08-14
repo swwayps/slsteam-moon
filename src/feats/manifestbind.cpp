@@ -99,6 +99,9 @@ namespace
 	constexpr size_t kVecBaseOff = 0x00;
 	constexpr size_t kVecCapacityOff = 0x04;
 	constexpr size_t kVecCountOff = 0x0c;
+	// Steam invokes BuildDepotDependency in pairs: flag 0 builds the
+	// acquisition target and flag 1 describes the installed side.
+	constexpr uint32_t kTargetPlanFlag = 0;
 
 	struct Detour
 	{
@@ -690,21 +693,44 @@ namespace
 			if (base && ManifestSelection::validVectorBounds(
 			                count, capacity, kDepotEntryStride))
 			{
+				// Start every first-import pin before waiting on any one of
+				// them. The bounded executor may then fetch concurrently while
+				// the rewrite loop below joins each job against one shared
+				// absolute deadline.
+				if (flag == kTargetPlanFlag)
+				{
+					for (int32_t i = 0; i < count; ++i)
+					{
+						const char* const e =
+						    base + static_cast<size_t>(i) * kDepotEntryStride;
+						const uint32_t depotId =
+						    *reinterpret_cast<const uint32_t*>(e);
+						const uint32_t entryAppId =
+						    *reinterpret_cast<const uint32_t*>(e + kDepotEntryAppIdOff);
+						const uint64_t pin = g_config.getManifestPinForPlanner(
+						    entryAppId, depotId);
+						if (pin && !ManifestStore::installedSize(depotId, pin))
+						{
+							ManifestFetch::submitManifestBlob(pin, entryAppId, depotId);
+						}
+					}
+				}
+
 				int32_t writeIdx = 0;
 				for (int32_t i = 0; i < count; ++i)
 				{
 					char* e = base + static_cast<size_t>(i) * kDepotEntryStride;
 					const uint32_t depotId =
 					    *reinterpret_cast<const uint32_t*>(e);
-					const uint64_t size =
-					    *reinterpret_cast<const uint64_t*>(e + kDepotEntrySizeOff);
+					auto* const sizep =
+					    reinterpret_cast<uint64_t*>(e + kDepotEntrySizeOff);
 					const uint32_t dlcAppId =
 					    *reinterpret_cast<const uint32_t*>(e + kDepotEntryDlcAppIdOff);
 					auto* const gidp =
 					    reinterpret_cast<uint64_t*>(e + kDepotEntryGidOff);
 
 					if (ManagedDepotFilter::shouldDrop(
-					        size, DepotKey::isManagedDepot(depotId)))
+					        *sizep, DepotKey::isManagedDepot(depotId)))
 					{
 						g_pLog->info(
 						    "ManifestBind[build]: dropping empty depot %u (size 0) from plan\n",
@@ -725,15 +751,54 @@ namespace
 						*reinterpret_cast<const uint32_t*>(e + kDepotEntryAppIdOff);
 					const uint64_t pin = g_config.getManifestPinForPlanner(
 						entryAppId, depotId);
-					if (pin && *gidp != pin)
+					if (flag == kTargetPlanFlag && pin)
 					{
-						g_pLog->info(
-						    "ManifestBind[build]: app=%u depot=%u plan gid=%llu -> "
-						    "pinned gid=%llu (DepotEntry patch)\n",
-						    entryAppId, depotId,
-						    static_cast<unsigned long long>(*gidp),
-						    static_cast<unsigned long long>(pin));
-						*gidp = pin;
+						// Register the pinned target before waiting so every depot in
+						// this builder pass shares the same absolute plan deadline.
+						// A first-import pin may have no archived manifest yet; join
+						// its deduplicated fetch, then retry the size lookup. The pure
+						// policy keeps Steam's public gid/size pair intact on every
+						// failure or timeout.
+						registerPlanTarget(depotId, pin, planDeadline);
+						const auto resolved = ManifestSelection::resolvePinnedPair(
+						    *gidp, *sizep, pin,
+						    remainingPlanBudgetMs(depotId, pin),
+						    [depotId, pin]()
+						    {
+							return ManifestStore::installedSize(depotId, pin);
+						    },
+						    [depotId, pin](int waitMs)
+						    {
+							return ManifestFetch::awaitManifestBlobFor(
+							    pin, depotId, waitMs, /*notifyOnTimeout=*/false);
+						    });
+						if (resolved.pinned)
+						{
+							if (*gidp != resolved.gid || *sizep != resolved.size)
+							{
+								g_pLog->info(
+								    "ManifestBind[build]: app=%u depot=%u target "
+								    "gid=%llu size=%llu -> pinned gid=%llu size=%llu\n",
+								    entryAppId, depotId,
+								    static_cast<unsigned long long>(*gidp),
+								    static_cast<unsigned long long>(*sizep),
+								    static_cast<unsigned long long>(pin),
+								    static_cast<unsigned long long>(resolved.size));
+							}
+							*gidp = resolved.gid;
+							*sizep = resolved.size;
+						}
+						else
+						{
+							g_pLog->debugOnce(
+							    "ManifestBind[build]: app=%u depot=%u pinned gid=%llu "
+							    "was not ready before the shared deadline; leaving target "
+							    "gid=%llu size=%llu\n",
+							    entryAppId, depotId,
+							    static_cast<unsigned long long>(pin),
+							    static_cast<unsigned long long>(*gidp),
+							    static_cast<unsigned long long>(*sizep));
+						}
 					}
 
 					// This is the exact set Steam selected for the real plan,

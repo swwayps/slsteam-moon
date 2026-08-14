@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <optional>
 
 namespace ManifestSelection
 {
@@ -32,6 +33,35 @@ namespace ManifestSelection
 		ChoiceSource source;
 		bool final;
 	};
+
+	struct DepotPair
+	{
+		uint64_t gid;
+		uint64_t size;
+		bool pinned;
+	};
+
+	// Resolve a pinned target without ever exposing a half-updated depot
+	// entry. The caller owns the bounded wait; this policy only retries the
+	// size lookup after that wait succeeds and otherwise preserves Steam's
+	// original public gid/size pair.
+	template<typename SizeLookup, typename AwaitPinned>
+	DepotPair resolvePinnedPair(uint64_t publicGid, uint64_t publicSize,
+	                            uint64_t pinnedGid, int remainingBudgetMs,
+	                            SizeLookup&& installedSize,
+	                            AwaitPinned&& awaitPinned)
+	{
+		if (!pinnedGid) return {publicGid, publicSize, false};
+
+		auto pinnedSize = installedSize();
+		if (!pinnedSize && remainingBudgetMs > 0
+		    && awaitPinned(remainingBudgetMs))
+		{
+			pinnedSize = installedSize();
+		}
+		if (!pinnedSize) return {publicGid, publicSize, false};
+		return {pinnedGid, *pinnedSize, true};
+	}
 
 	inline Decision choose(uint64_t plannedGid, ExactState exactState,
 	                       uint64_t preferredLocalGid,
