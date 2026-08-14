@@ -693,6 +693,29 @@ namespace
 			if (base && ManifestSelection::validVectorBounds(
 			                count, capacity, kDepotEntryStride))
 			{
+				// Start every first-import pin before waiting on any one of
+				// them. The bounded executor may then fetch concurrently while
+				// the rewrite loop below joins each job against one shared
+				// absolute deadline.
+				if (flag == kTargetPlanFlag)
+				{
+					for (int32_t i = 0; i < count; ++i)
+					{
+						const char* const e =
+						    base + static_cast<size_t>(i) * kDepotEntryStride;
+						const uint32_t depotId =
+						    *reinterpret_cast<const uint32_t*>(e);
+						const uint32_t entryAppId =
+						    *reinterpret_cast<const uint32_t*>(e + kDepotEntryAppIdOff);
+						const uint64_t pin = g_config.getManifestPinForPlanner(
+						    entryAppId, depotId);
+						if (pin && !ManifestStore::installedSize(depotId, pin))
+						{
+							ManifestFetch::submitManifestBlob(pin, entryAppId, depotId);
+						}
+					}
+				}
+
 				int32_t writeIdx = 0;
 				for (int32_t i = 0; i < count; ++i)
 				{
@@ -730,10 +753,28 @@ namespace
 						entryAppId, depotId);
 					if (flag == kTargetPlanFlag && pin)
 					{
-						const auto pinSize = ManifestStore::installedSize(depotId, pin);
-						if (pinSize)
+						// Register the pinned target before waiting so every depot in
+						// this builder pass shares the same absolute plan deadline.
+						// A first-import pin may have no archived manifest yet; join
+						// its deduplicated fetch, then retry the size lookup. The pure
+						// policy keeps Steam's public gid/size pair intact on every
+						// failure or timeout.
+						registerPlanTarget(depotId, pin, planDeadline);
+						const auto resolved = ManifestSelection::resolvePinnedPair(
+						    *gidp, *sizep, pin,
+						    remainingPlanBudgetMs(depotId, pin),
+						    [depotId, pin]()
+						    {
+							return ManifestStore::installedSize(depotId, pin);
+						    },
+						    [depotId, pin](int waitMs)
+						    {
+							return ManifestFetch::awaitManifestBlobFor(
+							    pin, depotId, waitMs, /*notifyOnTimeout=*/false);
+						    });
+						if (resolved.pinned)
 						{
-							if (*gidp != pin || *sizep != *pinSize)
+							if (*gidp != resolved.gid || *sizep != resolved.size)
 							{
 								g_pLog->info(
 								    "ManifestBind[build]: app=%u depot=%u target "
@@ -742,20 +783,17 @@ namespace
 								    static_cast<unsigned long long>(*gidp),
 								    static_cast<unsigned long long>(*sizep),
 								    static_cast<unsigned long long>(pin),
-								    static_cast<unsigned long long>(*pinSize));
+								    static_cast<unsigned long long>(resolved.size));
 							}
-							*gidp = pin;
-							*sizep = *pinSize;
+							*gidp = resolved.gid;
+							*sizep = resolved.size;
 						}
 						else
 						{
-							// Lua-imported pins may arrive before their manifest has
-							// been archived. Start the existing bounded fetch now; a
-							// later plan pass can use its cached metadata atomically.
-							ManifestFetch::submitManifestBlob(pin, entryAppId, depotId);
 							g_pLog->debugOnce(
 							    "ManifestBind[build]: app=%u depot=%u pinned gid=%llu "
-							    "has no known size; leaving target gid=%llu size=%llu\n",
+							    "was not ready before the shared deadline; leaving target "
+							    "gid=%llu size=%llu\n",
 							    entryAppId, depotId,
 							    static_cast<unsigned long long>(pin),
 							    static_cast<unsigned long long>(*gidp),
