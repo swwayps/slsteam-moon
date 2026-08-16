@@ -30,7 +30,7 @@ public:
 	uint8_t __pad0x30[8];				//0x30
 	uint32_t numQueuedCallbacks;		//0x38
 	uint8_t __pad0x3C[20];				//0x3C
-	CUtlVector<void>debugText;			//0x50
+	CUtlVector<void> debugText;			//0x50
 }; //0x60
 
 static_assert(offsetof(CServerPipe, pipeHandle) == 0x8);
