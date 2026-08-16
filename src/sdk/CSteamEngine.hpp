@@ -13,7 +13,7 @@ class IClientUtils;
 class IProcessPipe { };
 using CUtlString = char*;
 
-class CServerPipe
+class __attribute__((packed)) __attribute__((aligned(1))) CServerPipe
 {
 public:
 	IProcessPipe* internalPipe;		//0x0
@@ -31,7 +31,7 @@ public:
 	uint32_t numQueuedCallbacks;		//0x38
 	uint8_t __pad0x3C[20];				//0x3C
 	CUtlVector<void>debugText;			//0x50
-};//0x60
+}; //0x60
 
 static_assert(offsetof(CServerPipe, pipeHandle) == 0x8);
 static_assert(offsetof(CServerPipe, pid) == 0x14);
