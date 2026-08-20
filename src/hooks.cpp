@@ -1191,17 +1191,15 @@ static bool hkClientUser_GetEncryptedAppTicket(void* pClientUser, void* pTicket,
 	return success;
 }
 
-static uint8_t hkClientUser_IsUserSubscribedAppInTicket(void* pClientUser, uint32_t steamId, uint32_t a2, uint32_t a3, AppId_t appId)
+static uint8_t hkClientUser_IsUserSubscribedAppInTicket(void* pClientUser, uint64_t steamId, AppId_t appId)
 {
-	const uint8_t ticketState = Hooks::IClientUser_IsUserSubscribedAppInTicket.tramp.fn(pClientUser, steamId, a2, a3, appId);
+	const uint8_t ticketState = Hooks::IClientUser_IsUserSubscribedAppInTicket.tramp.fn(pClientUser, steamId, appId);
 	g_pLog->debug
 	(
-		"%s(%p, %u, %u, %u) -> %i\n",
+		"%s(%p, %u) -> %i\n",
 
 		Hooks::IClientUser_IsUserSubscribedAppInTicket.name.c_str(),
 		pClientUser,
-		a2,
-		a3,
 		appId,
 		ticketState
 	);
