@@ -432,6 +432,7 @@ static uint32_t hkSteamEngine_ProcessIPCFrame(
 			{
 				g_processMap.insert_or_assign(
 					serverPipe->pipeHandle, std::move(process));
+				Ticket::connectPipe(hPipe);
 			}
 			else
 			{
@@ -1257,14 +1258,31 @@ static CSteamId hkClientUser_GetSteamId(const CSteamId& steamId)
 		return newId;
 	}
 
-	//Use pipe AppId, getCachedEncryptedTicket handles FakeAppIds internally
-	const auto ticket = Ticket::getCachedEncryptedTicket(utils->getAppId());
-	if (ticket.isValid())
+	const auto ticket = Ticket::getCachedEncryptedTicket(realAppId);
+	if (!ticket.isValid())
 	{
-		return ticket.steamId;
+		return steamId;
 	}
 
-	return steamId;
+	if (g_config.smartTickets.get() && Ticket::pipesCreated.contains(realAppId))
+	{
+		const unsigned int pipes = Ticket::pipesCreated.at(realAppId);
+		//First pipe steam.exe
+		//Second pipe game.exe -> Denuvo
+		//Third+ pipe game.exe -> Game itself
+		//Counter only increases when protected executable ConnectsPipe
+		//TODO: Investigate native denuvo enabled game (do these exist?)
+		if (pipes == 1)
+		{
+			return ticket.steamId;
+		}
+		else
+		{
+			return steamId;
+		}
+	}
+
+	return ticket.steamId;
 }
 
 static bool hkClientUser_RequiresLegacyCDKey(void* pClientUser, uint32_t appId, uint32_t* a2)

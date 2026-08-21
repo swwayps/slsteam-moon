@@ -39,6 +39,7 @@ public:
 	extern std::unordered_map<AppId_t, CSteamId> oneTimeSteamIdSpoof;
 	extern std::unordered_map<AppId_t, SavedTicket> ticketMap;
 	extern std::unordered_map<AppId_t, SavedTicket> encryptedTicketMap;
+	extern std::unordered_map<AppId_t, unsigned int> pipesCreated;
 	inline std::mutex cacheMutex;
 	inline std::unordered_set<uint32_t> invalidatedApps;
 
@@ -82,6 +83,8 @@ public:
 	SavedTicket getCachedTicket(uint32_t appId);
 	bool saveTicketToCache(CMsgClientGetAppOwnershipTicketResponse* resp);
 
+	void closePipe(HSteamPipe pipe);
+	void connectPipe(HSteamPipe pipe);
 	void launchApp(uint32_t appId);
 	void getEncryptedAppTicket(uint32_t appId);
 	void getTicketOwnershipExtendedData(uint32_t appId);

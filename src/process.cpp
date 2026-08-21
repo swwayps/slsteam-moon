@@ -1,5 +1,6 @@
 #include "process.hpp"
 
+#include "config.hpp"
 #include "log.hpp"
 #include "utils.hpp"
 
@@ -63,27 +64,27 @@ bool IExecutableFile::hasSteamDRM()
 
 bool IExecutableFile::hasDenuvo()
 {
-	return false;
-	//double text = 0.0;
-	//bool sec1 = false;
+	double text = 0.0;
+	double xtext = 0.0;
 
-	//for (const auto& sec : sections)
-	//{
-	//	if (sec.name == ".text")
-	//	{
-	//		const auto bytes = readSection(sec);
-	//		text = Utils::calculateEntropy(bytes);
-	//		LOG_DEBUG(".text has entropy of %f\n", text);
-	//	}
+	for (const auto& sec : sections)
+	{
+		if (sec.name == ".text")
+		{
+			const auto bytes = readSection(sec);
+			text = Utils::calculateEntropy(bytes);
+			LOG_DEBUG(".text has entropy of %f\n", text);
+		}
 
-	//	else if (sec.name.ends_with("1"))
-	//	{
-	//		sec1 = true;
-	//		LOG_DEBUG(".%s present!\n", sec.name.c_str());
-	//	}
-	//}
+		else if (sec.name == ".xtext")
+		{
+			const auto bytes = readSection(sec);
+			xtext = Utils::calculateEntropy(bytes);
+			LOG_DEBUG(".xtext has entropy of %f\n", xtext);
+		}
+	}
 
-	//return text >= 7.0 && sec1;
+	return text >= 7.0 || xtext >= 7.0;
 }
 
 std::vector<uint8_t> IExecutableFile::readSection(const SectionHdr_t& section)
@@ -472,6 +473,11 @@ bool Process_t::init(const pid_t pid, const HSteamPipe pipeHandle)
 	if (!appId) //Will fail on steam process
 	{
 		return false;
+	}
+
+	if (!g_config.smartTickets.get())
+	{
+		return true;
 	}
 
 	if (exe.filename().string().ends_with(".exe"))

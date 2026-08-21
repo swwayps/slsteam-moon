@@ -414,6 +414,7 @@ bool CConfig::loadSettings()
 	useWhiteList = getSetting<bool>(node, "UseWhitelist", false);
 	automaticFilter = getSetting<bool>(node, "AutoFilterList", true);
 	playNotOwnedGames = getSetting<bool>(node, "PlayNotOwnedGames", false);
+	smartTickets = getSetting<bool>(node, "SmartTickets", false);
 	// SafeMode (abort the load on an unknown steamclient.so hash) is force-
 	// disabled. Its hash whitelist cannot be kept current: it goes stale on
 	// every Steam client update and would disable an otherwise-working client,
