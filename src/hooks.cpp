@@ -5,6 +5,7 @@
 #include "log.hpp"
 #include "memhlp.hpp"
 #include "patterns.hpp"
+#include "process.hpp"
 #include "vftableinfo.hpp"
 
 #include "sdk/CAppOwnershipInfo.hpp"
@@ -389,9 +390,23 @@ static uint32_t hkSteamEngine_ProcessIPCFrame(
 			pSteamEngine, hPipe, pBufIn, pBufOut);
 	}
 
+	if (cmd == EIPCCmd::ConnectPipe)
+	{
+		const auto serverPipe = g_pSteamEngine->getServerPipe(hPipe);
+		if (serverPipe)
+		{
+			auto& proc = g_processMap[serverPipe->pipe];
+			proc.init(serverPipe->pid, serverPipe->pipe);
+		}
+	}
+
 	if (cmd == EIPCCmd::ClosePipe)
 	{
-		FakeAppIds::closePipe(hPipe);
+		if (g_processMap.contains(hPipe))
+		{
+			g_pLog->debug("Deleting g_processMap mapping %u for %u\n", g_processMap.at(hPipe).appId, hPipe);
+			g_processMap.erase(hPipe);
+		}
 	}
 	return ret;
 }
