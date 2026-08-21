@@ -33,6 +33,11 @@ bool IExecutableFile::load(const std::string filePath)
 		return false;
 	}
 
+	if (!parseSections())
+	{
+		return false;
+	}
+
 	return true;
 }
 
@@ -189,6 +194,162 @@ bool CPortableExecutableFile::parseSections()
 	return true;
 }
 
+bool CELFExecutableFile::parseElf32Headers(const Elf64_Ehdr& hdr)
+{
+	if (sizeof(Elf32_Shdr) < hdr.e_shentsize)
+	{
+		LOG_ERROR("hdr.e_shentsize < sizeof(Elf_Shdr)!\n");
+		return false;
+	}
+
+	auto shdrs = std::vector<Elf32_Shdr>();
+	shdrs.resize(hdr.e_shnum);
+
+	if (fseek(file, hdr.e_shoff, SEEK_SET) != 0)
+	{
+		LOG_ERROR("Failed to seek to section headers\n");
+		return false;
+	}
+
+	if (fread(shdrs.data(), sizeof(Elf32_Shdr), shdrs.size(), file) < shdrs.size())
+	{
+		LOG_ERROR("Failed to read section headers\n");
+		return false;
+	}
+
+	const Elf32_Shdr& strHdr = shdrs[hdr.e_shstrndx];
+	auto strSec = std::vector<char>();
+	strSec.resize(strHdr.sh_size);
+
+	if (fseek(file, strHdr.sh_offset, SEEK_SET) != 0)
+	{
+		LOG_ERROR("Failed to seek to strHdr.sh_addr!\n");
+		return false;
+	}
+
+	if (fread(strSec.data(), sizeof(unsigned char), strSec.size(), file) < strSec.size())
+	{
+		LOG_ERROR("Failed to seek to strHdr.sh_addr!\n");
+		return false;
+	}
+
+	LOG_DEBUG("strHdr name %u address 0x%x\n", strHdr.sh_name, strHdr.sh_offset);
+
+	for (const auto& shdr : shdrs)
+	{
+		if (!shdr.sh_name)
+		{
+			LOG_DEBUG("Skipping nameless section\n");
+			continue;
+		}
+
+		const char* name = &strSec[shdr.sh_name];
+		LOG_DEBUG("Section header name %s, address 0x%x, offset 0x%x\n", name, shdr.sh_addr, shdr.sh_offset);
+		sections.emplace_back(SectionHdr_t { name, shdr.sh_addr, shdr.sh_offset });
+	}
+
+	return true;
+}
+
+bool CELFExecutableFile::parseElf64Headers(const Elf64_Ehdr& hdr)
+{
+	if (sizeof(Elf64_Shdr) < hdr.e_shentsize)
+	{
+		LOG_ERROR("hdr.e_shentsize < sizeof(Elf_Shdr)!\n");
+		return false;
+	}
+
+	auto shdrs = std::vector<Elf64_Shdr>();
+	shdrs.resize(hdr.e_shnum);
+
+	if (fseek(file, hdr.e_shoff, SEEK_SET) != 0)
+	{
+		LOG_ERROR("Failed to seek to section headers\n");
+		return false;
+	}
+
+	if (fread(shdrs.data(), sizeof(Elf64_Shdr), shdrs.size(), file) < shdrs.size())
+	{
+		LOG_ERROR("Failed to read section headers\n");
+		return false;
+	}
+
+	const Elf64_Shdr& strHdr = shdrs[hdr.e_shstrndx];
+	auto strSec = std::vector<char>();
+	strSec.resize(strHdr.sh_size);
+
+	if (fseek(file, strHdr.sh_offset, SEEK_SET) != 0)
+	{
+		LOG_ERROR("Failed to seek to strHdr.sh_addr!\n");
+		return false;
+	}
+
+	if (fread(strSec.data(), sizeof(unsigned char), strSec.size(), file) < strSec.size())
+	{
+		LOG_ERROR("Failed to seek to strHdr.sh_addr!\n");
+		return false;
+	}
+
+	LOG_DEBUG("strHdr name %u address 0x%llx\n", strHdr.sh_name, strHdr.sh_offset);
+
+	for (const auto& shdr : shdrs)
+	{
+		if (!shdr.sh_name)
+		{
+			LOG_DEBUG("Skipping nameless section\n");
+			continue;
+		}
+
+		const char* name = &strSec[shdr.sh_name];
+		LOG_DEBUG("Section header name %s, address 0x%llx, offset 0x%llx\n", name, shdr.sh_addr, shdr.sh_offset);
+		sections.emplace_back(SectionHdr_t { name, shdr.sh_addr, shdr.sh_offset });
+	}
+
+	return true;
+}
+
+bool CELFExecutableFile::parseSections()
+{
+	FILE* file = fopen(path.c_str(), "r");
+	if (!file)
+	{
+		LOG_ERROR("Failed to open file for parsing Elf headers!\n");
+		return false;
+	}
+
+	Elf64_Ehdr hdr;
+	if (fread(&hdr, sizeof(hdr), 1, file) < 1)
+	{
+		LOG_ERROR("Failed to read Elf header!\n");
+		return false;
+	}
+
+	if
+	(
+		hdr.e_ident[EI_MAG0] != ELFMAG0
+		|| hdr.e_ident[EI_MAG1] != ELFMAG1
+		|| hdr.e_ident[EI_MAG2] != ELFMAG2
+		|| hdr.e_ident[EI_MAG3] != ELFMAG3
+	)
+	{
+		LOG_ERROR("ELF magic unknown!\n");
+		return false;
+	}
+
+	LOG_DEBUG("shsstrndx %u\n", hdr.e_shstrndx);
+
+	if (hdr.e_machine == ISA_X86)
+	{
+		parseElf32Headers(hdr);
+	}
+	else if (hdr.e_machine == ISA_AMD64)
+	{
+		parseElf64Headers(hdr);
+	}
+
+	return true;
+}
+
 std::filesystem::path Process_t::getPath(const char* fileName)
 {
 	std::ostringstream pathSS;
@@ -318,11 +479,6 @@ bool Process_t::init(const pid_t pid, const HSteamPipe pipeHandle)
 		file = std::make_unique<CPortableExecutableFile>();
 
 		if (!file->load(exe))
-		{
-			return false;
-		}
-
-		if (!file->parseSections())
 		{
 			return false;
 		}

@@ -2,6 +2,7 @@
 
 #include "sdk/steam.hpp"
 
+#include <elf.h>
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -37,6 +38,8 @@ public:
 
 class CPortableExecutableFile : public IExecutableFile
 {
+public:
+
 	constexpr static uint32_t MACHINE_I386 = 0x14c;
 	constexpr static uint32_t MACHINE_X64 = 0x8664;
 
@@ -51,6 +54,20 @@ class CPortableExecutableFile : public IExecutableFile
 
 class CELFExecutableFile : public IExecutableFile
 {
+public:
+
+	constexpr static uint32_t ISA_X86 = 0x3;
+	constexpr static uint32_t ISA_AMD64 = 0x3e;
+
+	constexpr static size_t ELF_HEADER32_SIZE = sizeof(Elf32_Ehdr);
+	constexpr static size_t ELF_HEADER64_SIZE = sizeof(Elf64_Ehdr);
+
+	constexpr static size_t ELF_SHEADER32_SIZE = sizeof(Elf32_Shdr);
+	constexpr static size_t ELF_SHEADER64_SIZE = sizeof(Elf64_Shdr);
+
+	bool parseElf32Headers(const Elf64_Ehdr& hdr);
+	bool parseElf64Headers(const Elf64_Ehdr& hdr);
+	virtual bool parseSections();
 };
 
 struct Process_t
