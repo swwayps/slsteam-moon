@@ -713,10 +713,14 @@ void recvProductInfoResponse(CMsgClientPICSProductInfoResponse* resp)
 	}
 	const auto plan = AppInfoProvision::selectRefreshRequests(
 		observed, AppInfoProvision::RefreshReason::PicsProductInfo);
-	const auto refreshRequests = excludeRefreshRequestsForApps(
+	auto refreshRequests = excludeRefreshRequestsForApps(
 		plan.requests,
 		rawCacheWorkerAvailable ? rawCacheRepairs
 		                        : std::unordered_set<uint32_t>{});
+	auto startupCacheRepairs = HotReload::takeMissingCacheRepairRequests();
+	refreshRequests.insert(
+		refreshRequests.end(), startupCacheRepairs.begin(),
+		startupCacheRepairs.end());
 	if (!refreshRequests.empty())
 		AppInfoProvision::refreshInBackground(appinfoVdfPath, refreshRequests);
 
@@ -799,6 +803,10 @@ void recvChangesSinceResponse(CMsgClientPICSChangesSinceResponse* resp)
 				managedChanges, AppInfoProvision::RefreshReason::PicsChanges).requests,
 			suppressedSyntheticApps);
 	}
+	auto startupCacheRepairs = HotReload::takeMissingCacheRepairRequests();
+	refreshRequests.insert(
+		refreshRequests.end(), startupCacheRepairs.begin(),
+		startupCacheRepairs.end());
 	if (!refreshRequests.empty())
 	{
 		const std::string appinfoVdfPath = AppInfoVdf::findExistingPath();

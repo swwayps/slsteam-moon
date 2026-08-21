@@ -107,7 +107,12 @@ namespace
 	std::uint64_t g_deferredLogGeneration = 0;
 	bool g_deferredLogValid = false;
 	bool g_runtimeRefreshPending = false;
+	std::atomic<bool> g_runtimeRefreshPendingHint{false};
 	std::unordered_set<std::uint32_t> g_pendingMetadataAppIds;
+	HotReloadPackage::AppInfoRequestState g_appInfoRequestState;
+	std::uint64_t g_fallbackReconcileGeneration = 0;
+	thread_local bool t_processingRuntimeRefresh = false;
+	std::atomic<bool> g_runtimeRefreshExecuting{false};
 
 	// Force Steam to re-read licenses (and therefore package 0, now
 	// holding our injected managed ids) by broadcasting a
@@ -164,6 +169,22 @@ namespace
 			// Mark as done so we don't log this every call.
 			g_licenseReconciled.store(true, std::memory_order_release);
 		}
+	}
+
+	void reconcileGenerationOnce(std::uint64_t generation)
+	{
+		bool claimed = false;
+		{
+			std::lock_guard<std::mutex> lock(g_seededMutex);
+			if (generation > g_fallbackReconcileGeneration)
+			{
+				g_fallbackReconcileGeneration = generation;
+				claimed = true;
+			}
+		}
+		if (!claimed) return;
+		g_licenseReconciled.store(false, std::memory_order_release);
+		reconcileLicensesOnce();
 	}
 
 	// Walk the SLSsteam depot-key cache (`<config>/cache/depotkey_*.yaml`)
@@ -232,6 +253,13 @@ namespace
 		bool changed = false;
 		bool appAdded = false;
 		std::vector<std::uint32_t> appInfoRequestIds;
+	};
+
+	enum class RuntimeRefreshResult
+	{
+		Complete,
+		Deferred,
+		Busy,
 	};
 
 	bool validLiveVector(const CUtlVector<std::uint32_t>& vec) noexcept
@@ -375,8 +403,8 @@ namespace
 		}
 		auto nextSeededApps = buildNextSeeded(g_seededAppIds, appPlan);
 		auto nextSeededDepots = buildNextSeeded(g_seededDepotIds, depotPlan);
-		auto appInfoRequestIds = HotReloadPackage::idsToRequestAfterApply(
-			true, snapshot.addedAppIds);
+		auto appInfoRequestIds =
+			HotReloadPackage::snapshotAppInfoRequestIdsAfterApply(true, snapshot);
 		auto nextPendingMetadata = g_pendingMetadataAppIds;
 		if (snapshot.metadataComplete)
 		{
@@ -425,7 +453,7 @@ namespace
 		result.available = true;
 		result.changed = appsChanged || depotsChanged;
 		result.appInfoRequestIds = std::move(appInfoRequestIds);
-		result.appAdded = !result.appInfoRequestIds.empty();
+		result.appAdded = !snapshot.addedAppIds.empty();
 		g_appliedGeneration = snapshot.generation;
 		if (result.appAdded)
 			g_package0Injected.store(true, std::memory_order_release);
@@ -452,7 +480,48 @@ namespace
 		}
 	}
 
-	bool processRuntimeRefresh(
+	void requestLiveAppInfo(
+		std::uint64_t generation,
+		const std::vector<std::uint32_t>& appIds)
+	{
+		if (appIds.empty()) return;
+		std::vector<std::uint32_t> pending;
+		{
+			std::lock_guard<std::mutex> lock(g_seededMutex);
+			pending = g_appInfoRequestState.reserve(generation, appIds);
+		}
+		if (pending.empty()) return;
+
+		bool accepted = false;
+		if (g_pClientApps == nullptr)
+		{
+			g_pLog->info(
+				"PackagePatch: live appinfo request generation %llu deferred "
+				"(client apps unavailable)\n",
+				static_cast<unsigned long long>(generation));
+		}
+		else if (g_pClientApps->requestAppInfoUpdate(pending))
+		{
+			accepted = true;
+			g_pLog->info(
+				"PackagePatch: requested live appinfo for %zu app(s) "
+				"in generation %llu\n",
+				pending.size(), static_cast<unsigned long long>(generation));
+		}
+		else
+		{
+			g_pLog->info(
+				"PackagePatch: live appinfo request generation %llu not accepted "
+				"(client offline or updater unavailable)\n",
+				static_cast<unsigned long long>(generation));
+		}
+		{
+			std::lock_guard<std::mutex> lock(g_seededMutex);
+			g_appInfoRequestState.finish(generation, pending, accepted);
+		}
+	}
+
+	RuntimeRefreshResult processRuntimeRefresh(
 		std::uint64_t generation,
 		bool unresolvedStateSafe,
 		bool changed
@@ -465,21 +534,47 @@ namespace
 			unresolvedStateSafe,
 			changed);
 		if (action == Action::NoChange)
-			return true;
+		{
+			std::lock_guard<std::mutex> lock(g_seededMutex);
+			g_processedGeneration = std::max(g_processedGeneration, generation);
+			if (g_runtimeRefreshPending && g_pendingGeneration == generation)
+			{
+				g_runtimeRefreshPending = false;
+				g_pendingGeneration = 0;
+			}
+			g_runtimeRefreshPendingHint.store(
+				g_runtimeRefreshPending, std::memory_order_release);
+			return RuntimeRefreshResult::Complete;
+		}
 		if (action == Action::Defer)
 		{
 			const char* reason = !unresolvedStateSafe
 				? "app metadata is unresolved and the guard is unavailable"
 				: "mark/process capability is unavailable";
 			logDeferredOnce(generation, reason);
-			return false;
+			return RuntimeRefreshResult::Deferred;
 		}
+		if (t_processingRuntimeRefresh)
+			return RuntimeRefreshResult::Busy;
+		bool expected = false;
+		if (!g_runtimeRefreshExecuting.compare_exchange_strong(
+			expected, true, std::memory_order_acq_rel))
+			return RuntimeRefreshResult::Busy;
+		t_processingRuntimeRefresh = true;
+		struct ProcessingGuard
+		{
+			~ProcessingGuard()
+			{
+				t_processingRuntimeRefresh = false;
+				g_runtimeRefreshExecuting.store(false, std::memory_order_release);
+			}
+		} processingGuard;
 
 		CUser* const user = getLocalUser();
 		if (user == nullptr)
 		{
 			logDeferredOnce(generation, "the local user is not ready");
-			return false;
+			return RuntimeRefreshResult::Deferred;
 		}
 
 		{
@@ -496,7 +591,7 @@ namespace
 		if (!processed)
 		{
 			logDeferredOnce(generation, "Steam retained the pending update");
-			return false;
+			return RuntimeRefreshResult::Deferred;
 		}
 
 		{
@@ -507,11 +602,13 @@ namespace
 				g_runtimeRefreshPending = false;
 				g_pendingGeneration = 0;
 			}
+			g_runtimeRefreshPendingHint.store(
+				g_runtimeRefreshPending, std::memory_order_release);
 		}
 		g_pLog->info(
 			"PackagePatch: processed runtime package change generation %llu\n",
 			static_cast<unsigned long long>(generation));
-		return true;
+		return RuntimeRefreshResult::Complete;
 	}
 
 	// Generic append-to-CUtlVector helper.  Caller holds g_seededMutex.
@@ -681,17 +778,83 @@ namespace
 		// luaappids union plus its discovered planner IDs.
 		try
 		{
-			std::lock_guard<std::mutex> lock(g_seededMutex);
-			if (g_hasDesiredSnapshot)
+			SnapshotApplyResult applied;
+			PackageSnapshot desired;
+			bool hasDesired = false;
+			bool refreshNeeded = false;
+			bool unresolvedStateSafe = false;
+			bool allowColdFallbackReconcile = false;
 			{
-				const SnapshotApplyResult applied = applySnapshotLocked(
-					pInfo, g_desiredSnapshot);
+				std::lock_guard<std::mutex> lock(g_seededMutex);
+				if (g_hasDesiredSnapshot)
+				{
+					allowColdFallbackReconcile = g_processedGeneration == 0;
+					desired = g_desiredSnapshot;
+					applied = applySnapshotLocked(pInfo, desired);
+					if (applied.available)
+					{
+						if (applied.changed)
+						{
+							g_runtimeRefreshPending = true;
+							g_runtimeRefreshPendingHint.store(
+								true, std::memory_order_release);
+							g_pendingGeneration = desired.generation;
+						}
+						else if (g_runtimeRefreshPending)
+						{
+							g_pendingGeneration = desired.generation;
+						}
+						refreshNeeded = g_runtimeRefreshPending;
+						unresolvedStateSafe =
+							LicenseRefreshPolicy::unresolvedStateSafe(
+								!g_pendingMetadataAppIds.empty(),
+								AppInfoState::ready());
+					}
+					hasDesired = true;
+				}
+			}
+			if (hasDesired)
+			{
+				if (!applied.available)
+				{
+					{
+						std::lock_guard<std::mutex> lock(g_seededMutex);
+						g_pendingGeneration = desired.generation;
+					}
+					logDeferredOnce(
+						desired.generation, "package 0 apply did not complete");
+					return result;
+				}
 				if (applied.changed)
 				{
 					g_pLog->info(
 						"PackagePatch: reapplied runtime package state generation %llu\n",
-						static_cast<unsigned long long>(
-							g_desiredSnapshot.generation));
+						static_cast<unsigned long long>(desired.generation));
+				}
+				// A snapshot can arrive before Steam exposes package 0. Complete its
+				// generation-scoped license/UI work after the deferred apply.
+				RuntimeRefreshResult refreshResult = RuntimeRefreshResult::Busy;
+				if (!t_processingRuntimeRefresh)
+				{
+					refreshResult = processRuntimeRefresh(
+						desired.generation, unresolvedStateSafe, refreshNeeded);
+				}
+				if (refreshResult == RuntimeRefreshResult::Complete)
+				{
+					for (const std::uint32_t appId : desired.addedAppIds)
+						LibraryRemoval::restore(appId);
+				}
+				else if (refreshResult == RuntimeRefreshResult::Deferred &&
+					allowColdFallbackReconcile &&
+					!t_processingRuntimeRefresh)
+				{
+					reconcileGenerationOnce(desired.generation);
+				}
+				if (refreshResult != RuntimeRefreshResult::Busy &&
+					!t_processingRuntimeRefresh)
+				{
+					requestLiveAppInfo(
+						desired.generation, applied.appInfoRequestIds);
 				}
 				return result;
 			}
@@ -825,7 +988,11 @@ namespace PackagePatch
 		g_deferredLogGeneration = 0;
 		g_deferredLogValid = false;
 		g_runtimeRefreshPending = false;
+		g_runtimeRefreshPendingHint.store(false, std::memory_order_release);
+		g_runtimeRefreshExecuting.store(false, std::memory_order_release);
 		g_pendingMetadataAppIds.clear();
+		g_appInfoRequestState.clear();
+		g_fallbackReconcileGeneration = 0;
 	}
 
 	void setExtraAppIds(const std::vector<uint32_t>& appIds)
@@ -878,6 +1045,7 @@ namespace PackagePatch
 	void synchronizePackage0(const PackageSnapshot& snapshot)
 	{
 		SnapshotApplyResult applied;
+		PackageSnapshot desired = snapshot;
 		bool refreshNeeded = false;
 		bool unresolvedStateSafe = false;
 		bool stale = false;
@@ -899,15 +1067,28 @@ namespace PackagePatch
 			}
 			else
 			{
-				g_desiredSnapshot = snapshot;
+				if (g_hasDesiredSnapshot)
+				{
+					const bool previousAppInfoRequested =
+						g_appInfoRequestState.allAccepted(
+							g_desiredSnapshot.generation,
+							g_desiredSnapshot.appInfoRequestIds);
+					desired = HotReloadPackage::carryPendingSnapshotWork(
+						g_desiredSnapshot, desired,
+						g_processedGeneration >= g_desiredSnapshot.generation,
+						previousAppInfoRequested);
+				}
+				g_desiredSnapshot = desired;
 				g_hasDesiredSnapshot = true;
 				applied = applySnapshotLocked(
-					g_pPackage0.load(std::memory_order_acquire), snapshot);
+					g_pPackage0.load(std::memory_order_acquire), desired);
 				if (applied.available)
 				{
 					if (applied.changed)
 					{
 						g_runtimeRefreshPending = true;
+						g_runtimeRefreshPendingHint.store(
+							true, std::memory_order_release);
 						g_pendingGeneration = snapshot.generation;
 					}
 					else if (g_runtimeRefreshPending)
@@ -950,40 +1131,16 @@ namespace PackagePatch
 				"PackagePatch: synchronized runtime package generation %llu\n",
 				static_cast<unsigned long long>(snapshot.generation));
 		}
-		const bool refreshComplete = processRuntimeRefresh(
+		const RuntimeRefreshResult refreshResult = processRuntimeRefresh(
 			snapshot.generation, unresolvedStateSafe, refreshNeeded);
-		if (refreshComplete)
+		if (refreshResult == RuntimeRefreshResult::Complete)
 		{
-			for (const std::uint32_t appId : snapshot.addedAppIds)
+			for (const std::uint32_t appId : desired.addedAppIds)
 				LibraryRemoval::restore(appId);
 		}
 
-		if (!applied.appInfoRequestIds.empty())
-		{
-			if (g_pClientApps == nullptr)
-			{
-				g_pLog->info(
-					"PackagePatch: live appinfo request generation %llu deferred "
-					"(client apps unavailable)\n",
-					static_cast<unsigned long long>(snapshot.generation));
-			}
-			else if (g_pClientApps->requestAppInfoUpdate(
-				applied.appInfoRequestIds))
-			{
-				g_pLog->info(
-					"PackagePatch: requested live appinfo for %zu inserted app(s) "
-					"in generation %llu\n",
-					applied.appInfoRequestIds.size(),
-					static_cast<unsigned long long>(snapshot.generation));
-			}
-			else
-			{
-				g_pLog->info(
-					"PackagePatch: live appinfo request generation %llu not accepted "
-					"(client offline or updater unavailable)\n",
-					static_cast<unsigned long long>(snapshot.generation));
-			}
-		}
+		if (refreshResult != RuntimeRefreshResult::Busy)
+			requestLiveAppInfo(snapshot.generation, applied.appInfoRequestIds);
 	}
 
 	bool runtimeRefreshReady()
@@ -997,29 +1154,43 @@ namespace PackagePatch
 		return capabilities.canProcessUnresolvedAdd();
 	}
 
+	bool runtimeRefreshPending() noexcept
+	{
+		return g_runtimeRefreshPendingHint.load(std::memory_order_acquire);
+	}
+
 	void reprocessCurrentState() noexcept
 	{
 		try
 		{
 			std::uint64_t generation = 0;
 			std::vector<std::uint32_t> addedAppIds;
+			std::vector<std::uint32_t> appInfoRequestIds;
+			bool unresolvedStateSafe = false;
 			{
 				std::lock_guard<std::mutex> lock(g_seededMutex);
-				if (!g_hasDesiredSnapshot ||
+				if (!g_runtimeRefreshPending || !g_hasDesiredSnapshot ||
 					g_appliedGeneration != g_desiredSnapshot.generation)
 				{
 					return;
 				}
 				generation = g_appliedGeneration;
 				addedAppIds = g_desiredSnapshot.addedAppIds;
-				g_runtimeRefreshPending = true;
+				appInfoRequestIds = g_desiredSnapshot.appInfoRequestIds;
 				g_pendingGeneration = generation;
+				unresolvedStateSafe =
+					LicenseRefreshPolicy::unresolvedStateSafe(
+						!g_pendingMetadataAppIds.empty(), AppInfoState::ready());
 			}
-			if (processRuntimeRefresh(generation, true, true))
+			const RuntimeRefreshResult result = processRuntimeRefresh(
+				generation, unresolvedStateSafe, true);
+			if (result == RuntimeRefreshResult::Complete)
 			{
 				for (const std::uint32_t appId : addedAppIds)
 					LibraryRemoval::restore(appId);
 			}
+			if (result != RuntimeRefreshResult::Busy)
+				requestLiveAppInfo(generation, appInfoRequestIds);
 		}
 		catch (...)
 		{

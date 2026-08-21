@@ -44,9 +44,12 @@ inline constexpr bool dlcMetadataPublishesLive(
 {
 	const std::uint8_t metadata = reasonMask(RefreshReason::DlcMetadata);
 	const std::uint8_t hotAdd = reasonMask(RefreshReason::HotAdd);
+	const std::uint8_t cacheRepair = reasonMask(RefreshReason::CacheRepair);
 	const bool metadataOnly = (request.reasons & ~metadata) == 0;
 	const bool explicitlyHotAdded = (request.reasons & hotAdd) != 0;
-	return request.publishRuntime && (metadataOnly || explicitlyHotAdded);
+	const bool startupCacheRecovery = (request.reasons & cacheRepair) != 0;
+	return request.publishRuntime &&
+		(metadataOnly || explicitlyHotAdded || startupCacheRecovery);
 }
 
 struct ObservedAppState

@@ -291,7 +291,8 @@ namespace OwnerWork
 		// commands and appinfo metadata completion share this owner boundary.
 		const std::size_t depthHint = queue().depthHint();
 		const bool resolvedHint = AppInfoState::resolvedDirtyHint();
-		if (depthHint == 0 && !resolvedHint)
+		const bool refreshPending = PackagePatch::runtimeRefreshPending();
+		if (depthHint == 0 && !resolvedHint && !refreshPending)
 			return;
 		if (!OwnerQueue::shouldDrain(cachedTid(),
 		                            g_ownerTid.load(std::memory_order_relaxed),
@@ -301,7 +302,8 @@ namespace OwnerWork
 		t_draining = true;
 		const std::size_t taken = depthHint == 0
 			? 0 : queue().drain(runner(AffTrace::Mode::Queued));
-		if (AppInfoState::takeResolvedDirty())
+		if (AppInfoState::takeResolvedDirty() ||
+			PackagePatch::runtimeRefreshPending())
 			PackagePatch::reprocessCurrentState();
 		t_draining = false;
 

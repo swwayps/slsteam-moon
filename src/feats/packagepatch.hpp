@@ -78,6 +78,10 @@ namespace PackagePatch
 	// per transition.
 	bool runtimeRefreshReady();
 
+	// Lock-free owner-frame hint for a generation whose mark/process work was
+	// deferred or lost a non-blocking execution claim.
+	bool runtimeRefreshPending() noexcept;
+
 	// Retry the latest applied desired state without mutating package vectors.
 	// OwnerWork invokes this after consuming the lock-free appinfo-resolution
 	// signal on the owner frame.

@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <iterator>
 #include <limits>
 #include <vector>
 
@@ -31,6 +32,39 @@ inline constexpr bool shouldAwaitDlcMetadata(
 	bool addedBaseNeedsMetadata) noexcept
 {
 	return !initialPublication && addedBaseNeedsMetadata;
+}
+
+inline std::vector<std::uint32_t> membershipAppInfoRequestIds(
+	bool initialPublication,
+	const std::vector<std::uint32_t>& addedBaseIds,
+	const std::vector<std::uint32_t>& cacheMissingBaseIds)
+{
+	std::vector<std::uint32_t> out = initialPublication
+		? cacheMissingBaseIds : addedBaseIds;
+	std::sort(out.begin(), out.end());
+	out.erase(std::unique(out.begin(), out.end()), out.end());
+	out.erase(std::remove(out.begin(), out.end(), 0), out.end());
+	return out;
+}
+
+inline std::vector<std::uint32_t> newTopologyAppInfoRequestIds(
+	const PackageSnapshot& previous,
+	const PackageSnapshot& next)
+{
+	std::vector<std::uint32_t> previousIds = previous.appIds;
+	std::vector<std::uint32_t> nextIds = next.appIds;
+	std::sort(previousIds.begin(), previousIds.end());
+	std::sort(nextIds.begin(), nextIds.end());
+	previousIds.erase(
+		std::unique(previousIds.begin(), previousIds.end()), previousIds.end());
+	nextIds.erase(std::unique(nextIds.begin(), nextIds.end()), nextIds.end());
+
+	std::vector<std::uint32_t> out;
+	std::set_difference(
+		nextIds.begin(), nextIds.end(), previousIds.begin(), previousIds.end(),
+		std::back_inserter(out));
+	out.erase(std::remove(out.begin(), out.end(), 0), out.end());
+	return out;
 }
 
 inline constexpr bool metadataRepairDue(
@@ -104,6 +138,15 @@ inline std::vector<std::uint32_t> mergeMetadataRepairIds(
 	out.erase(std::unique(out.begin(), out.end()), out.end());
 	out.erase(std::remove(out.begin(), out.end(), 0), out.end());
 	return out;
+}
+
+inline std::uint32_t takeNextCacheRepairId(
+	std::vector<std::uint32_t>& repairIds)
+{
+	if (repairIds.empty()) return 0;
+	const std::uint32_t next = repairIds.front();
+	std::rotate(repairIds.begin(), repairIds.begin() + 1, repairIds.end());
+	return next;
 }
 
 inline bool metadataSnapshotChanged(

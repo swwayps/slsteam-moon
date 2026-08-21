@@ -31,6 +31,7 @@ struct AppInput
 struct BuildResult
 {
 	PackageSnapshot snapshot;
+	std::vector<std::uint32_t> cacheMissingBaseIds;
 	std::vector<std::uint32_t> metadataMissingBaseIds;
 	std::unordered_map<std::uint32_t, std::int64_t> cacheMtimeSecs;
 	bool valid = false;
@@ -64,6 +65,8 @@ inline BuildResult build(std::uint64_t generation,
 		else
 		{
 			out.snapshot.metadataComplete = false;
+			if (input.baseAppId != 0)
+				out.cacheMissingBaseIds.push_back(input.baseAppId);
 		}
 
 		for (const std::uint32_t depotId : input.depotIds)
@@ -88,6 +91,8 @@ inline BuildResult build(std::uint64_t generation,
 	out.snapshot.depotIds.assign(depotIds.begin(), depotIds.end());
 	std::sort(out.snapshot.appIds.begin(), out.snapshot.appIds.end());
 	std::sort(out.snapshot.depotIds.begin(), out.snapshot.depotIds.end());
+	std::sort(out.cacheMissingBaseIds.begin(),
+	          out.cacheMissingBaseIds.end());
 	std::sort(out.metadataMissingBaseIds.begin(),
 	          out.metadataMissingBaseIds.end());
 	out.valid = true;

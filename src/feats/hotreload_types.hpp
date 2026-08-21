@@ -16,6 +16,10 @@ struct PackageSnapshot
 	// explicit when owner-queue coalescing means the live package vector already
 	// contains an id from an older generation.
 	std::vector<std::uint32_t> addedAppIds;
+	// Appinfo entries that Steam must invalidate after the corresponding
+	// ownership topology is installed. Unlike addedAppIds, this also carries
+	// planner children discovered by a later metadata generation.
+	std::vector<std::uint32_t> appInfoRequestIds;
 
 	bool operator==(const PackageSnapshot&) const = default;
 };

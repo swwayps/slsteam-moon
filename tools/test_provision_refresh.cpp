@@ -115,6 +115,11 @@ int main()
 	metadataAndHotAdd.publishRuntime = true;
 	CHECK(dlcMetadataPublishesLive(metadataAndHotAdd),
 	      "an explicitly authorized hot-add publishes its child metadata live");
+	RefreshRequest startupCacheRepair = metadataOnly;
+	startupCacheRepair.reasons = reasonMask(RefreshReason::CacheRepair);
+	startupCacheRepair.publishRuntime = true;
+	CHECK(dlcMetadataPublishesLive(startupCacheRepair),
+	      "an authorized startup cache recovery publishes child metadata live");
 	RefreshRequest coalescedLegacy = metadataOnly;
 	coalescedLegacy.reasons |= reasonMask(RefreshReason::LocalInputs);
 	coalescedLegacy.publishRuntime = true;

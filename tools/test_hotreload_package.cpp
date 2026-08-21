@@ -5,6 +5,7 @@
 //   tools/test_hotreload_package.cpp -o /tmp/test_hotreload_package
 
 #include "../src/feats/hotreload_package.hpp"
+#include "../src/feats/hotreload_types.hpp"
 
 #include <algorithm>
 #include <cstdint>
@@ -37,11 +38,14 @@ static std::vector<uint32_t> asVector(const uint32_t* data, uint32_t size)
 
 int main()
 {
+	using HotReloadPackage::AppInfoRequestState;
 	using HotReloadPackage::Contribution;
 	using HotReloadPackage::aggregate;
 	using HotReloadPackage::compactInjected;
+	using HotReloadPackage::carryPendingSnapshotWork;
 	using HotReloadPackage::idsToRequestAfterApply;
 	using HotReloadPackage::missingFromVector;
+	using HotReloadPackage::snapshotAppInfoRequestIdsAfterApply;
 
 	// Shared app and depot identifiers remain desired while at least one
 	// active base contributes them; inactive bases contribute nothing.
@@ -163,6 +167,69 @@ int main()
 		CHECK(idsToRequestAfterApply(true, generationAdditions) ==
 		          generationAdditions,
 		      "appinfo request: generation additions survive an already-present package id");
+		PackageSnapshot snapshot;
+		snapshot.addedAppIds = {668580};
+		snapshot.appInfoRequestIds = {2214820, 2214821};
+		CHECK(snapshotAppInfoRequestIdsAfterApply(false, snapshot).empty(),
+		      "appinfo request: failed snapshot apply requests nothing");
+		CHECK(snapshotAppInfoRequestIdsAfterApply(true, snapshot) ==
+		          std::vector<uint32_t>({2214820, 2214821}),
+		      "appinfo request: snapshot uses child refresh ids, not base UI additions");
+
+		PackageSnapshot pendingBase;
+		pendingBase.generation = 2;
+		pendingBase.appIds = {668580};
+		pendingBase.addedAppIds = {668580};
+		pendingBase.appInfoRequestIds = {668580};
+		PackageSnapshot metadataCompletion;
+		metadataCompletion.generation = 3;
+		metadataCompletion.appIds = {668580, 2214820, 2214821};
+		metadataCompletion.appInfoRequestIds = {2214820, 2214821};
+		const auto deferred = carryPendingSnapshotWork(
+			pendingBase, metadataCompletion,
+			/*previousOwnershipProcessed=*/false,
+			/*previousAppInfoRequested=*/false);
+		CHECK(deferred.addedAppIds == std::vector<uint32_t>({668580}) &&
+		      deferred.appInfoRequestIds ==
+		          std::vector<uint32_t>({668580, 2214820, 2214821}),
+		      "deferred apply carries base ownership work into DLC completion");
+		const auto licenseDeferred = carryPendingSnapshotWork(
+			pendingBase, metadataCompletion,
+			/*previousOwnershipProcessed=*/false,
+			/*previousAppInfoRequested=*/true);
+		CHECK(licenseDeferred.addedAppIds ==
+		          std::vector<uint32_t>({668580}) &&
+		      licenseDeferred.appInfoRequestIds ==
+		          std::vector<uint32_t>({2214820, 2214821}),
+		      "package apply does not retire base UI work before license processing");
+		CHECK(carryPendingSnapshotWork(
+			pendingBase, metadataCompletion,
+			/*previousOwnershipProcessed=*/true,
+			/*previousAppInfoRequested=*/true) ==
+		          metadataCompletion,
+		      "an applied base generation does not leak old one-shot work forward");
+		const auto requestRace = carryPendingSnapshotWork(
+			pendingBase, metadataCompletion,
+			/*previousOwnershipProcessed=*/true,
+			/*previousAppInfoRequested=*/false);
+		CHECK(requestRace.addedAppIds.empty() &&
+		      requestRace.appInfoRequestIds ==
+		          std::vector<uint32_t>({668580, 2214820, 2214821}),
+		      "DLC completion carries a base request not yet accepted by Steam");
+
+		AppInfoRequestState requestState;
+		const std::vector<uint32_t> childRequests{2214820, 2214821};
+		CHECK(requestState.reserve(3, childRequests) == childRequests,
+		      "request reservation claims every unrequested child");
+		CHECK(requestState.reserve(3, childRequests).empty(),
+		      "a concurrent caller cannot claim in-flight child requests");
+		requestState.finish(3, childRequests, /*accepted=*/false);
+		CHECK(requestState.reserve(3, childRequests) == childRequests,
+		      "a rejected request releases its reservation for retry");
+		requestState.finish(3, childRequests, /*accepted=*/true);
+		CHECK(requestState.reserve(3, childRequests).empty() &&
+		      requestState.allAccepted(3, childRequests),
+		      "accepted child requests remain deduplicated after completion");
 	}
 
 	if (g_failures == 0) { std::printf("\nALL PASS\n"); return 0; }

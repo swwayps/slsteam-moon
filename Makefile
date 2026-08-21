@@ -47,7 +47,7 @@ ifeq ($(shell type mold &> /dev/null && echo "found"),found)
 	LDFLAGS += -fuse-ld=mold
 endif
 
-.PHONY: all build rebuild clean install release test-cmwire test-cmclient-loader test-dlcids test-dlc-scope test-dlc-metadata test-config-path test-config-discovery test-synthmark test-pattern-catalog test-pattern-cache test-pattern-refresh test-process-lock test-atomic-file test-cache-pair test-appinfo-transaction test-appinfo-reload test-audit-symbols test-audit-policy test-memhlp-target test-memhlp-prologue test-memhlp-pic test-utils-sha test-provision-cache test-provision-refresh test-provision-result test-provision-terminal test-pending-proton test-provision-schedule test-provision-pass test-runtime-dependencies test-thread-start test-steamstub-warmup test-boundedexecutor test-steamless-prewarm test-depotkey-scope test-curl-timeout test-manifest-index test-manifestselection test-manifeststore-io test-hotreload-inputs test-hotreload-capabilities test-libraryremoval test-pics test-prewarm-backoff test-yaml-runtime test-manifestpin-patterns
+.PHONY: all build rebuild clean install release test-cmwire test-cmclient-loader test-dlcids test-dlc-scope test-dlc-metadata test-config-path test-config-discovery test-synthmark test-pattern-catalog test-pattern-cache test-pattern-refresh test-process-lock test-atomic-file test-cache-pair test-appinfo-transaction test-appinfo-reload test-audit-symbols test-audit-policy test-memhlp-target test-memhlp-prologue test-memhlp-pic test-utils-sha test-provision-cache test-provision-refresh test-provision-result test-provision-terminal test-pending-proton test-provision-schedule test-provision-pass test-runtime-dependencies test-thread-start test-steamstub-warmup test-boundedexecutor test-steamless-prewarm test-depotkey-scope test-curl-timeout test-manifest-index test-manifestselection test-manifeststore-io test-hotreload-inputs test-hotreload-package test-ownerqueue test-hotreload-capabilities test-libraryremoval test-pics test-prewarm-backoff test-yaml-runtime test-manifestpin-patterns
 .NOTPARALLEL: clean rebuild
 
 all: build
@@ -310,6 +310,16 @@ test-hotreload-inputs:
 		tools/test_hotreload_inputs.cpp src/feats/provision_terminal.cpp \
 		-o /tmp/test_hotreload_inputs
 	/tmp/test_hotreload_inputs
+
+test-hotreload-package:
+	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic \
+		tools/test_hotreload_package.cpp -o /tmp/test_hotreload_package
+	/tmp/test_hotreload_package
+
+test-ownerqueue:
+	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -pthread \
+		tools/test_ownerqueue.cpp -o /tmp/test_ownerqueue
+	/tmp/test_ownerqueue
 
 test-hotreload-capabilities:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src \

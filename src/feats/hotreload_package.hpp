@@ -6,10 +6,13 @@
 
 #pragma once
 
+#include "hotreload_types.hpp"
+
 #include <algorithm>
 #include <cstdint>
 #include <initializer_list>
 #include <iterator>
+#include <map>
 #include <set>
 #include <unordered_set>
 #include <vector>
@@ -132,4 +135,127 @@ namespace HotReloadPackage
 		if (!applied) return {};
 		return std::vector<uint32_t>(std::begin(missing), std::end(missing));
 	}
+
+	inline std::vector<uint32_t> snapshotAppInfoRequestIdsAfterApply(
+		bool applied,
+		const PackageSnapshot& snapshot)
+	{
+		return idsToRequestAfterApply(applied, snapshot.appInfoRequestIds);
+	}
+
+	inline PackageSnapshot carryPendingSnapshotWork(
+		const PackageSnapshot& previous,
+		PackageSnapshot next,
+		bool previousOwnershipProcessed,
+		bool previousAppInfoRequested)
+	{
+		const std::unordered_set<uint32_t> nextAppIds(
+			next.appIds.begin(), next.appIds.end());
+		const auto carryRelevant = [&nextAppIds](
+			const std::vector<uint32_t>& pending,
+			const std::vector<uint32_t>& current)
+		{
+			std::vector<uint32_t> out = pending;
+			out.insert(out.end(), current.begin(), current.end());
+			out.erase(
+				std::remove_if(out.begin(), out.end(), [&nextAppIds](uint32_t appId) {
+					return nextAppIds.count(appId) == 0;
+				}),
+				out.end());
+			std::sort(out.begin(), out.end());
+			out.erase(std::unique(out.begin(), out.end()), out.end());
+			return out;
+		};
+		if (!previousOwnershipProcessed)
+		{
+			next.addedAppIds = carryRelevant(
+				previous.addedAppIds, next.addedAppIds);
+		}
+		if (!previousAppInfoRequested)
+		{
+			next.appInfoRequestIds = carryRelevant(
+				previous.appInfoRequestIds, next.appInfoRequestIds);
+		}
+		return next;
+	}
+
+	// Caller supplies synchronization. Reservations close the window between
+	// checking an ID and recording the result of Steam's external request.
+	class AppInfoRequestState
+	{
+	public:
+		std::vector<uint32_t> reserve(
+			std::uint64_t generation,
+			const std::vector<uint32_t>& appIds)
+		{
+			highestGeneration_ = std::max(highestGeneration_, generation);
+			pruneAccepted();
+			std::vector<uint32_t> reserved;
+			reserved.reserve(appIds.size());
+			const auto accepted = accepted_.find(generation);
+			for (const uint32_t appId : appIds)
+			{
+				if (appId == 0 ||
+					(accepted != accepted_.end() &&
+					 accepted->second.count(appId) != 0) ||
+					inFlight_.count({generation, appId}) != 0)
+					continue;
+				inFlight_.insert({generation, appId});
+				reserved.push_back(appId);
+			}
+			return reserved;
+		}
+
+		void finish(
+			std::uint64_t generation,
+			const std::vector<uint32_t>& appIds,
+			bool accepted)
+		{
+			for (const uint32_t appId : appIds)
+				inFlight_.erase({generation, appId});
+			if (!accepted ||
+				(generation < highestGeneration_ &&
+				 highestGeneration_ - generation > 1)) return;
+			auto& completed = accepted_[generation];
+			completed.insert(appIds.begin(), appIds.end());
+			pruneAccepted();
+		}
+
+		bool allAccepted(
+			std::uint64_t generation,
+			const std::vector<uint32_t>& appIds) const
+		{
+			if (appIds.empty()) return true;
+			const auto accepted = accepted_.find(generation);
+			if (accepted == accepted_.end()) return false;
+			return std::all_of(
+				appIds.begin(), appIds.end(), [&](uint32_t appId) {
+					return accepted->second.count(appId) != 0;
+				});
+		}
+
+		void clear()
+		{
+			highestGeneration_ = 0;
+			accepted_.clear();
+			inFlight_.clear();
+		}
+
+	private:
+		void pruneAccepted()
+		{
+			for (auto current = accepted_.begin(); current != accepted_.end();)
+			{
+				if (current->first < highestGeneration_ &&
+					highestGeneration_ - current->first > 1)
+					current = accepted_.erase(current);
+				else
+					++current;
+			}
+		}
+
+		std::uint64_t highestGeneration_ = 0;
+		std::map<std::uint64_t, std::set<uint32_t>> accepted_;
+		std::set<std::pair<std::uint64_t, uint32_t>> inFlight_;
+	};
 }

@@ -36,6 +36,8 @@ struct CoordinatorState
 	std::unordered_map<std::uint32_t, std::int64_t> cacheMtimeSecs;
 	std::unordered_set<std::uint32_t> metadataPendingBaseIds;
 	std::unordered_set<std::uint32_t> metadataDeferredBaseIds;
+	std::vector<std::uint32_t> cacheRepairBaseIds;
+	std::chrono::steady_clock::time_point cacheRepairAfter{};
 	std::vector<std::uint32_t> metadataRepairBaseIds;
 	std::chrono::steady_clock::time_point metadataRepairAfter{};
 	bool metadataRepairOpportunitySeen = false;
@@ -133,6 +135,28 @@ bool publishLocked(
 		return false;
 	}
 	built.snapshot.addedAppIds = added;
+	built.snapshot.appInfoRequestIds =
+		HotReloadPublishPolicy::membershipAppInfoRequestIds(
+			initialPublication, added, built.cacheMissingBaseIds);
+	auto cacheRepairBaseIds = state.cacheRepairBaseIds;
+	if (initialPublication)
+	{
+		cacheRepairBaseIds = built.cacheMissingBaseIds;
+	}
+	else
+	{
+		const std::unordered_set<std::uint32_t> stillMissing(
+			built.cacheMissingBaseIds.begin(), built.cacheMissingBaseIds.end());
+		cacheRepairBaseIds.erase(
+			std::remove_if(
+				cacheRepairBaseIds.begin(), cacheRepairBaseIds.end(),
+				[&](std::uint32_t appId)
+				{
+					return managedAppIds.count(appId) == 0 ||
+						stillMissing.count(appId) == 0;
+				}),
+			cacheRepairBaseIds.end());
+	}
 
 	std::unordered_set<std::uint32_t> guardedAppIds(
 		built.snapshot.appIds.begin(), built.snapshot.appIds.end());
@@ -153,6 +177,7 @@ bool publishLocked(
 	state.generation = nextGeneration;
 	state.contentFingerprints = std::move(nextFingerprints);
 	state.metadataPendingBaseIds = std::move(metadataPendingBaseIds);
+	state.cacheRepairBaseIds = std::move(cacheRepairBaseIds);
 	state.metadataRepairBaseIds = built.metadataMissingBaseIds;
 	state.cacheMtimeSecs = built.cacheMtimeSecs;
 	for (const std::uint32_t appId : removed)
@@ -371,6 +396,43 @@ void repairMissingDlcMetadata(const std::string& appinfoVdfPath) noexcept
 	}
 }
 
+std::vector<AppInfoProvision::RefreshRequest>
+takeMissingCacheRepairRequests() noexcept
+{
+	try
+	{
+		CoordinatorState& state = coordinator();
+		std::lock_guard<std::mutex> coordinatorLock(state.mutex);
+		if (!state.initialized || state.cacheRepairBaseIds.empty()) return {};
+
+		const auto now = std::chrono::steady_clock::now();
+		if (now < state.cacheRepairAfter) return {};
+		for (std::size_t attempt = 0;
+			attempt < state.cacheRepairBaseIds.size(); ++attempt)
+		{
+			const std::uint32_t appId =
+				HotReloadPublishPolicy::takeNextCacheRepairId(
+					state.cacheRepairBaseIds);
+			const auto found = state.managedGenerations.find(appId);
+			if (found == state.managedGenerations.end()) continue;
+			state.cacheRepairAfter = now + std::chrono::seconds(30);
+			return {{
+				appId, 0, found->second,
+				AppInfoProvision::reasonMask(
+					AppInfoProvision::RefreshReason::CacheRepair),
+				true, true,
+			}};
+		}
+	}
+	catch (...)
+	{
+		if (g_pLog != nullptr)
+			g_pLog->warn(
+				"HotReload: startup cache repair scheduling failed; will retry\n");
+	}
+	return {};
+}
+
 bool noteDlcMetadataCacheCompletion(
 	std::uint32_t baseAppId,
 	std::uint64_t expectedManagedGeneration) noexcept
@@ -446,6 +508,12 @@ bool publishMetadataCompletion(
 		{
 			return false;
 		}
+		if (state.hasLastSnapshot)
+		{
+			built.snapshot.appInfoRequestIds =
+				HotReloadPublishPolicy::newTopologyAppInfoRequestIds(
+					state.lastSnapshot, built.snapshot);
+		}
 		const bool snapshotChanged = !state.hasLastSnapshot ||
 			HotReloadPublishPolicy::metadataSnapshotChanged(
 				state.lastSnapshot, built.snapshot);
@@ -457,6 +525,11 @@ bool publishMetadataCompletion(
 			state.metadataPendingBaseIds = std::move(remainingPending);
 			state.metadataRepairBaseIds = built.metadataMissingBaseIds;
 			state.cacheMtimeSecs = built.cacheMtimeSecs;
+			state.cacheRepairBaseIds.erase(
+				std::remove(state.cacheRepairBaseIds.begin(),
+					state.cacheRepairBaseIds.end(), baseAppId),
+				state.cacheRepairBaseIds.end());
+			if (state.cacheRepairBaseIds.empty()) state.cacheRepairAfter = {};
 			if (g_pLog != nullptr)
 				g_pLog->info(
 					"HotReload: DLC metadata live for base=%u; package topology unchanged\n",
@@ -474,6 +547,11 @@ bool publishMetadataCompletion(
 		state.metadataPendingBaseIds = std::move(remainingPending);
 		state.metadataRepairBaseIds = built.metadataMissingBaseIds;
 		state.cacheMtimeSecs = built.cacheMtimeSecs;
+		state.cacheRepairBaseIds.erase(
+			std::remove(state.cacheRepairBaseIds.begin(),
+				state.cacheRepairBaseIds.end(), baseAppId),
+			state.cacheRepairBaseIds.end());
+		if (state.cacheRepairBaseIds.empty()) state.cacheRepairAfter = {};
 		state.lastSnapshot = built.snapshot;
 		state.hasLastSnapshot = true;
 		if (g_pLog != nullptr)
@@ -511,6 +589,8 @@ void shutdown() noexcept
 		state.cacheMtimeSecs.clear();
 		state.metadataPendingBaseIds.clear();
 		state.metadataDeferredBaseIds.clear();
+		state.cacheRepairBaseIds.clear();
+		state.cacheRepairAfter = {};
 		state.metadataRepairBaseIds.clear();
 		state.metadataRepairAfter = {};
 		state.metadataRepairOpportunitySeen = false;

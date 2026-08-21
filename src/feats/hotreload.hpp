@@ -4,9 +4,11 @@
 #pragma once
 
 #include "hotreload_state.hpp"
+#include "provision_refresh.hpp"
 
 #include <cstdint>
 #include <unordered_set>
+#include <vector>
 
 namespace HotReload
 {
@@ -33,6 +35,11 @@ namespace HotReload
 	// caches; it never starts work from LD_AUDIT preinit.
 	void repairMissingDlcMetadata(
 		const std::string& appinfoVdfPath) noexcept;
+
+	// Called only from a real PICS callback. Returns at most one cold-start
+	// cache recovery request and applies a retry cooldown without doing I/O.
+	std::vector<AppInfoProvision::RefreshRequest>
+	takeMissingCacheRepairRequests() noexcept;
 
 	// Mark a migration sidecar durable without changing Steam's live appinfo or
 	// package state. It becomes visible naturally on the next cold splice.

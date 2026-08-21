@@ -124,8 +124,12 @@ static void test_coalescing()
 static void test_package_snapshot_last_write_wins()
 {
 	std::printf("[4a] package snapshots coalesce by generation (last write wins)\n");
-	const PackageSnapshot a{ 1, { 10, 20 }, { 110, 220 }, true, { 10, 20 } };
-	const PackageSnapshot b{ 2, { 20, 30 }, { 220, 330 }, false, { 30 } };
+	const PackageSnapshot a{
+		1, { 10, 20 }, { 110, 220 }, true, { 10, 20 }, { 10, 20 }
+	};
+	const PackageSnapshot b{
+		2, { 20, 30 }, { 220, 330 }, false, { 30 }, { 30 }
+	};
 
 	Queue q;
 	CHECK(q.push(Command::syncPackage0(a), kT0) == PushResult::Queued,
@@ -145,13 +149,16 @@ static void test_package_snapshot_last_write_wins()
 	});
 	PackageSnapshot carriedB = b;
 	carriedB.addedAppIds = { 20, 30 };
+	carriedB.appInfoRequestIds = { 20, 30 };
 	CHECK(received == carriedB,
 	      "owner receives the latest snapshot with still-relevant additions carried forward");
 	CHECK(received.appIds == std::vector<std::uint32_t>({ 20, 30 }) &&
 	      received.depotIds == std::vector<std::uint32_t>({ 220, 330 }) &&
 	      received.addedAppIds == std::vector<std::uint32_t>({ 20, 30 }) &&
+	      received.appInfoRequestIds ==
+	          std::vector<std::uint32_t>({ 20, 30 }) &&
 	      !received.metadataComplete,
-	      "latest snapshot payload is complete and exact");
+	      "latest snapshot preserves every still-relevant appinfo request");
 
 	Queue repeat;
 	CHECK(repeat.push(Command::syncPackage0(a), kT0) == PushResult::Queued,
@@ -162,7 +169,7 @@ static void test_package_snapshot_last_write_wins()
 	      "an exact repeat keeps one record and its original timestamp");
 
 	Queue sameGeneration;
-	const PackageSnapshot conflicting{ 1, { 99 }, { 999 }, false, {} };
+	const PackageSnapshot conflicting{ 1, { 99 }, { 999 }, false, {}, {} };
 	std::vector<PushResult> perCommand;
 	CHECK(sameGeneration.pushBatch({ Command::syncPackage0(a) }, kT0,
 	                               &perCommand),
@@ -278,34 +285,40 @@ static void test_bounded()
 
 	Queue snapshotAppCap(8, 3);
 	CHECK(snapshotAppCap.push(Command::syncPackage0(
-		PackageSnapshot{ 1, { 1, 2, 3 }, {}, true, {} }), kT0) == PushResult::Queued,
+		PackageSnapshot{ 1, { 1, 2, 3 }, {}, true, {}, {} }), kT0) == PushResult::Queued,
 	      "snapshot app-id list at the cap is accepted");
 	CHECK(snapshotAppCap.push(Command::syncPackage0(
-		PackageSnapshot{ 2, { 1, 2, 3, 4 }, {}, true, {} }), kT0 + 1) == PushResult::Full,
+		PackageSnapshot{ 2, { 1, 2, 3, 4 }, {}, true, {}, {} }), kT0 + 1) == PushResult::Full,
 	      "snapshot app-id list beyond the cap is rejected");
 
 	Queue snapshotDepotCap(8, 3);
 	CHECK(snapshotDepotCap.push(Command::syncPackage0(
-		PackageSnapshot{ 1, {}, { 11, 22, 33 }, true, {} }), kT0) == PushResult::Queued,
+		PackageSnapshot{ 1, {}, { 11, 22, 33 }, true, {}, {} }), kT0) == PushResult::Queued,
 	      "snapshot depot-id list at the cap is accepted");
 	CHECK(snapshotDepotCap.push(Command::syncPackage0(
-		PackageSnapshot{ 2, {}, { 11, 22, 33, 44 }, true, {} }), kT0 + 1) == PushResult::Full,
+		PackageSnapshot{ 2, {}, { 11, 22, 33, 44 }, true, {}, {} }), kT0 + 1) == PushResult::Full,
 	      "snapshot depot-id list beyond the cap is rejected");
 	CHECK(snapshotDepotCap.depth() == 1,
 	      "a rejected snapshot bound leaves the pending record unchanged");
 
 	Queue snapshotAddedCap(8, 2);
 	CHECK(snapshotAddedCap.push(Command::syncPackage0(
-		PackageSnapshot{ 1, { 1 }, { 11 }, true, { 1, 2, 3 } }), kT0) ==
+		PackageSnapshot{ 1, { 1 }, { 11 }, true, { 1, 2, 3 }, {} }), kT0) ==
 		      PushResult::Full,
 	      "snapshot added-id list beyond the cap is rejected");
 
+	Queue snapshotAppInfoRequestCap(8, 2);
+	CHECK(snapshotAppInfoRequestCap.push(Command::syncPackage0(
+		PackageSnapshot{ 1, { 1 }, { 11 }, true, { 1 }, { 1, 2, 3 } }), kT0) ==
+		      PushResult::Full,
+	      "snapshot appinfo request list beyond the cap is rejected");
+
 	Queue snapshotCapacity(1);
 	CHECK(snapshotCapacity.push(Command::syncPackage0(
-		PackageSnapshot{ 1, { 1 }, { 11 }, true, {} }), kT0) == PushResult::Queued,
+		PackageSnapshot{ 1, { 1 }, { 11 }, true, {}, {} }), kT0) == PushResult::Queued,
 	      "a snapshot occupies one capacity slot");
 	CHECK(snapshotCapacity.push(Command::syncPackage0(
-		PackageSnapshot{ 2, { 2 }, { 22 }, true, {} }), kT0 + 1) == PushResult::Coalesced,
+		PackageSnapshot{ 2, { 2 }, { 22 }, true, {}, {} }), kT0 + 1) == PushResult::Coalesced,
 	      "a newer snapshot still coalesces when the queue is at capacity");
 	CHECK(snapshotCapacity.push(Command::installApp(5, 0), kT0 + 2) == PushResult::Full,
 	      "a different command kind is rejected at snapshot capacity");
@@ -332,10 +345,10 @@ static void test_shutdown_rejection()
 
 	Queue snapshot;
 	snapshot.push(Command::syncPackage0(
-		PackageSnapshot{ 1, { 7 }, { 77 }, true, {} }), kT0);
+		PackageSnapshot{ 1, { 7 }, { 77 }, true, {}, {} }), kT0);
 	snapshot.shutdown();
 	CHECK(snapshot.push(Command::syncPackage0(
-		PackageSnapshot{ 2, { 8 }, { 88 }, true, {} }), kT0) == PushResult::ShuttingDown,
+		PackageSnapshot{ 2, { 8 }, { 88 }, true, {}, {} }), kT0) == PushResult::ShuttingDown,
 	      "a snapshot is rejected after shutdown");
 	CHECK(snapshot.depth() == 0 && snapshot.stats().abandoned == 1,
 	      "snapshot work is abandoned at shutdown");

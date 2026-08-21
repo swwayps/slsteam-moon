@@ -98,6 +98,7 @@
 #include <vector>
 
 #include "../feats/hotreload_types.hpp"
+#include "../feats/hotreload_package.hpp"
 
 namespace OwnerQueue
 {
@@ -516,7 +517,8 @@ namespace OwnerQueue
 			if (cmd.kind() == Kind::SyncPackage0 &&
 			    (cmd.packageSnapshot().appIds.size() > m_maxIds ||
 			     cmd.packageSnapshot().depotIds.size() > m_maxIds ||
-			     cmd.packageSnapshot().addedAppIds.size() > m_maxIds))
+			     cmd.packageSnapshot().addedAppIds.size() > m_maxIds ||
+			     cmd.packageSnapshot().appInfoRequestIds.size() > m_maxIds))
 				return false;
 
 			for (std::size_t i = 0; i < into.size(); ++i)
@@ -569,23 +571,13 @@ namespace OwnerQueue
 					}
 
 					const std::uint64_t oldest = pending.enqueuedUs;
-					PackageSnapshot replacement = cmd.packageSnapshot();
-					auto carriedAdditions = mergeIds(
-						pending.cmd.packageSnapshot().addedAppIds,
-						replacement.addedAppIds);
-					carriedAdditions.erase(
-						std::remove_if(carriedAdditions.begin(), carriedAdditions.end(),
-							[&replacement](std::uint32_t appId)
-							{
-								return std::find(replacement.appIds.begin(),
-								                 replacement.appIds.end(), appId) ==
-								       replacement.appIds.end();
-							}),
-						carriedAdditions.end());
-					std::sort(carriedAdditions.begin(), carriedAdditions.end());
-					if (carriedAdditions.size() > m_maxIds)
+					PackageSnapshot replacement =
+						HotReloadPackage::carryPendingSnapshotWork(
+							pending.cmd.packageSnapshot(), cmd.packageSnapshot(),
+							false, false);
+					if (replacement.addedAppIds.size() > m_maxIds ||
+						replacement.appInfoRequestIds.size() > m_maxIds)
 						return false;
-					replacement.addedAppIds = std::move(carriedAdditions);
 					into[i] = Entry{
 						Command::syncPackage0(std::move(replacement)), oldest };
 					if (result)

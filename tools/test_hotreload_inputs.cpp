@@ -39,6 +39,17 @@ int main()
 		"depot ids are deterministic");
 	check(!built.snapshot.metadataComplete,
 		"missing or malformed cache is unresolved");
+	check(built.cacheMissingBaseIds ==
+		std::vector<std::uint32_t>({20}),
+		"an invalid base cache is retained for post-login recovery");
+	check(HotReloadPublishPolicy::membershipAppInfoRequestIds(
+		/*initialPublication=*/true, {10, 20}, built.cacheMissingBaseIds) ==
+		std::vector<std::uint32_t>({20}),
+		"cold publication requests only bases whose cache is unusable");
+	check(HotReloadPublishPolicy::membershipAppInfoRequestIds(
+		/*initialPublication=*/false, {30}, built.cacheMissingBaseIds) ==
+		std::vector<std::uint32_t>({30}),
+		"runtime publication requests every newly added base");
 
 	const auto empty = HotReloadInputs::build(8, {});
 	check(empty.valid && empty.snapshot.metadataComplete &&
@@ -142,6 +153,11 @@ int main()
 		{10, 30}, {20, 30, 0}) ==
 		std::vector<std::uint32_t>({10, 20, 30}),
 		"failed hot-add completion joins migration repair without duplicates");
+	std::vector<std::uint32_t> cacheRepairs{10, 20, 30};
+	check(HotReloadPublishPolicy::takeNextCacheRepairId(cacheRepairs) == 10 &&
+		HotReloadPublishPolicy::takeNextCacheRepairId(cacheRepairs) == 20 &&
+		cacheRepairs == std::vector<std::uint32_t>({30, 10, 20}),
+		"failed cold repairs rotate so every missing base receives a turn");
 
 	PackageSnapshot previous;
 	previous.generation = 4;
@@ -154,6 +170,9 @@ int main()
 	completed.metadataComplete = true;
 	check(HotReloadPublishPolicy::metadataSnapshotChanged(previous, completed),
 		"metadata completion publishes the newly discovered DLC topology");
+	check(HotReloadPublishPolicy::newTopologyAppInfoRequestIds(
+		previous, completed) == std::vector<std::uint32_t>({2778580}),
+		"metadata completion requests appinfo for the newly introduced child");
 	PackageSnapshot duplicate = completed;
 	duplicate.generation = 99;
 	check(!HotReloadPublishPolicy::metadataSnapshotChanged(completed, duplicate),
