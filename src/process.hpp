@@ -3,10 +3,55 @@
 #include "sdk/steam.hpp"
 
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <sys/types.h>
 #include <unordered_map>
+#include <vector>
 
+
+struct SectionHdr_t
+{
+	std::string name;
+	uint64_t offset;
+	uint64_t size;
+};
+
+class IExecutableFile
+{
+public:
+	std::filesystem::path path;
+	FILE* file;
+	std::vector<SectionHdr_t> sections;
+
+	virtual ~IExecutableFile();
+
+	bool load(const std::string filePath);
+	std::vector<uint8_t> readSection(const SectionHdr_t& section);
+
+	bool hasSteamDRM();
+	bool hasDenuvo();
+
+	virtual bool parseSections() = 0;
+};
+
+class CPortableExecutableFile : public IExecutableFile
+{
+	constexpr static uint32_t MACHINE_I386 = 0x14c;
+	constexpr static uint32_t MACHINE_X64 = 0x8664;
+
+	constexpr static size_t PE_HEADER32_SIZE = 0xf8;
+	constexpr static size_t PE_HEADER64_SIZE = 0x108;
+
+	constexpr static size_t SECTION_HEADER_SIZE = 0x28;
+	constexpr static size_t SECTION_HEADER_NAME_SIZE = 0x8;
+
+	virtual bool parseSections();
+};
+
+class CELFExecutableFile : public IExecutableFile
+{
+};
 
 struct Process_t
 {
@@ -16,6 +61,10 @@ struct Process_t
 
 	AppId_t appId;
 	HSteamPipe pipeHandle;
+	std::unique_ptr<IExecutableFile> file;
+
+	bool steamDRM;
+	bool denuvo;
 
 	std::filesystem::path getPath(const char* fileName);
 	std::string readFile(const char* fileName);

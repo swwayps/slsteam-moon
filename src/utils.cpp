@@ -1,5 +1,7 @@
 #include "utils.hpp"
 
+#include <cctype>
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
@@ -7,11 +9,51 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 #ifndef SHA256_DIGEST_LENGTH
 #define SHA256_DIGEST_LENGTH 32
 #endif
+
+double Utils::calculateEntropy(const std::vector<uint8_t>& bytes)
+{
+	auto countMap = std::unordered_map<uint8_t, size_t>();
+	for (const auto& byte : bytes)
+	{
+		countMap[byte]++;
+	}
+
+	double val = 0.0;
+	for (const auto& count : countMap)
+	{
+		double freq = static_cast<double>(count.second) / bytes.size();
+		val += freq * log2(freq);
+	}
+
+	return -val;
+}
+
+bool Utils::isNumber(const char* str)
+{
+	const unsigned int len = strlen(str);
+	if (len < 1)
+	{
+		return false;
+	}
+
+	for (unsigned int i = 0; i < len; i++)
+	{
+		const char c = str[i];
+
+		if (!std::isdigit(c))
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
 
 // Split `str` on any character of `delimeter`, collapsing runs of delimiters and
 // ignoring leading/trailing ones — the same field sequence strtok produced, which
