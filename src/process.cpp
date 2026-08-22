@@ -44,6 +44,8 @@ bool IExecutableFile::load(const std::string filePath)
 
 bool IExecutableFile::hasSteamDRM()
 {
+	//SteamDRM appends .bind section with very high entropy (usually 7.9+)
+	//
 	const auto& last = sections.at(sections.size() - 1);
 
 	if (last.name == ".bind")
@@ -64,27 +66,40 @@ bool IExecutableFile::hasSteamDRM()
 
 bool IExecutableFile::hasDenuvo()
 {
-	double text = 0.0;
-	double xtext = 0.0;
+	static const std::vector<std::string> X_SECS =
+	{
+		".xtext",
+		".xcode",
+		".xdata",
+		".xpdata",
+		".xtls"
+	};
+
+	unsigned secsFound = 0;
+	double textEntropy = 0.0;
 
 	for (const auto& sec : sections)
 	{
-		if (sec.name == ".text")
+		for (const auto& xsec : X_SECS)
 		{
-			const auto bytes = readSection(sec);
-			text = Utils::calculateEntropy(bytes);
-			LOG_DEBUG(".text has entropy of %f\n", text);
+			if (sec.name == xsec)
+			{
+				secsFound++;
+				break;
+			}
 		}
 
-		else if (sec.name == ".xtext")
+		if (sec.name == ".text" || sec.name == ".xtext")
 		{
 			const auto bytes = readSection(sec);
-			xtext = Utils::calculateEntropy(bytes);
-			LOG_DEBUG(".xtext has entropy of %f\n", xtext);
+			const double entropy = Utils::calculateEntropy(bytes);
+			LOG_DEBUG("%s entropy is %f\n", sec.name.c_str(), entropy);
+			textEntropy = std::max(textEntropy, entropy);
 		}
 	}
 
-	return text >= 7.0 || xtext >= 7.0;
+	//At least one denuvo section & and code has to encrypted/obfuscated
+	return secsFound > 0 && textEntropy > 7.0;
 }
 
 std::vector<uint8_t> IExecutableFile::readSection(const SectionHdr_t& section)
