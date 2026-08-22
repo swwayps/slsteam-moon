@@ -23,6 +23,14 @@ class CFileWatcher;
 
 class CConfig {
 public:
+	typedef unsigned int SmartTicketsFlags;
+
+	enum ESmartTickets : SmartTicketsFlags
+	{
+		k_ESmartTicketsSteamDRM = 1 << 0,
+		k_ESmartTicketsDenuvo = 1 << 1,
+	};
+
 	struct FakeGame_t
 	{
 		uint32_t appId = 0;
@@ -96,7 +104,7 @@ public:
 	MTVariable<bool> useWhiteList;
 	MTVariable<bool> automaticFilter;
 	MTVariable<bool> playNotOwnedGames;
-	MTVariable<bool> smartTickets;
+	MTVariable<SmartTicketsFlags> smartTickets;
 	MTVariable<bool> safeMode;
 	MTVariable<bool> notifications;
 	MTVariable<bool> warnHashMissmatch;

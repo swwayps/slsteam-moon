@@ -72,6 +72,11 @@ bool IExecutableFile::hasSteamDRM()
 
 bool IExecutableFile::hasDenuvo()
 {
+	if (!(g_config.smartTickets.get() & CConfig::k_ESmartTicketsDenuvo))
+	{
+		return false;
+	}
+
 	static const std::vector<std::string> X_SECS =
 	{
 		".xtext",

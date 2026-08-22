@@ -116,11 +116,6 @@ bool Ticket::saveTicketToCache(CMsgClientGetAppOwnershipTicketResponse* resp)
 
 void Ticket::connectPipe(const HSteamPipe pipe)
 {
-	if (!g_config.smartTickets.get())
-	{
-		return;
-	}
-
 	const auto& proc = g_processMap.at(pipe);
 
 	if (proc.denuvo)
@@ -181,9 +176,12 @@ void Ticket::getEncryptedAppTicket(uint32_t appId)
 
 void Ticket::getTicketOwnershipExtendedData(uint32_t appId)
 {
-	if (g_config.smartTickets.get())
+	const auto utils = g_pSteamEngine->getUtils();
+
+	if ((g_config.smartTickets.get() & CConfig::k_ESmartTicketsSteamDRM) && g_processMap.at(utils->getCurrentSteamPipe()).steamDRM)
 	{
 		//Handled in connectPipe
+		//For other ticket requests we fall through to spoofing the next GetSteamID call
 		return;
 	}
 
@@ -208,9 +206,9 @@ Ticket::SavedTicket Ticket::getCachedEncryptedTicket(uint32_t appId)
 {
 	SavedTicket ticket {};
 	const AppId_t fakeAppId = FakeAppIds::getFakeAppId(appId);
-	const bool smartTickets = g_config.smartTickets.get();
+	const auto smartTickets = g_config.smartTickets.get();
 
-	if (!smartTickets && appId && fakeAppId && fakeAppId != appId)
+	if (!(smartTickets & CConfig::k_ESmartTicketsDenuvo) && appId && fakeAppId && fakeAppId != appId)
 	{
 		g_pLog->debug("Returning empty cached encrypted Ticket for %u because it's running as %u\n", appId, fakeAppId);
 		return ticket;
