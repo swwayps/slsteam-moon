@@ -1,9 +1,11 @@
 #pragma once
 
+#include "log.hpp"
 #include "sdk/steam.hpp"
 
 #include <elf.h>
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <sys/types.h>
 #include <unordered_map>
@@ -25,10 +27,12 @@ public:
 	std::filesystem::path path;
 	FILE* file;
 	std::vector<SectionHdr_t> sections;
+	//We use this to not clutter the log with failed open file reads
+	LogLevelFlags_t errorFlags;
 
 	virtual ~IExecutableFile();
 
-	bool load(const std::string& filePath);
+	bool load(const std::string& filePath, const LogLevelFlags_t logErrorFlags = ELogLevel::k_ELogLevelError);
 	std::vector<uint8_t> readSection(const SectionHdr_t& section);
 
 	bool hasSteamDRM();
@@ -37,7 +41,7 @@ public:
 	virtual bool checkMagic() = 0;
 	virtual bool parseSections() = 0;
 
-	static std::unique_ptr<IExecutableFile> create(const std::string& path);
+	static std::unique_ptr<IExecutableFile> create(const std::string& path, const LogLevelFlags_t logErrorFlags = ELogLevel::k_ELogLevelError);
 };
 
 class CPortableExecutableFile : public IExecutableFile

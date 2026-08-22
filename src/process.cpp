@@ -29,14 +29,15 @@ IExecutableFile::~IExecutableFile()
 	}
 }
 
-bool IExecutableFile::load(const std::string& filePath)
+bool IExecutableFile::load(const std::string& filePath, const LogLevelFlags_t logErrorFlags)
 {
 	path = filePath;
 	file = fopen(path.c_str(), "r");
+	errorFlags = logErrorFlags;
 
 	if (!file)
 	{
-		LOG_ERROR("Failed to open %s!\n", path.c_str());
+		LOG_CUSTOM(errorFlags, "Failed to open %s!\n", path.c_str());
 		return false;
 	}
 
@@ -158,7 +159,7 @@ std::vector<uint8_t> IExecutableFile::readSection(const SectionHdr_t& section)
 {
 	if (fseek(file, section.offset, SEEK_SET) != 0)
 	{
-		LOG_ERROR("Failed to seek to section %s!\n", section.name.c_str());
+		LOG_CUSTOM(errorFlags, "Failed to seek to section %s!\n", section.name.c_str());
 		return { };
 	}
 
@@ -167,23 +168,23 @@ std::vector<uint8_t> IExecutableFile::readSection(const SectionHdr_t& section)
 
 	if (fread(bytes.data(), bytes.size(), 1, file) < 1)
 	{
-		LOG_ERROR("Failed to read section %s!\n", section.name.c_str());
+		LOG_CUSTOM(errorFlags, "Failed to read section %s!\n", section.name.c_str());
 		return { };
 	}
 
 	return bytes;
 }
 
-std::unique_ptr<IExecutableFile> IExecutableFile::create(const std::string& path)
+std::unique_ptr<IExecutableFile> IExecutableFile::create(const std::string& path, const LogLevelFlags_t logErrorFlags)
 {
 	std::unique_ptr<IExecutableFile> file = std::make_unique<CPortableExecutableFile>();
-	if (file->load(path))
+	if (file->load(path, logErrorFlags))
 	{
 		return file;
 	}
 
 	file = std::make_unique<CELFExecutableFile>();
-	if (file->load(path))
+	if (file->load(path, logErrorFlags))
 	{
 		return file;
 	}
@@ -195,7 +196,7 @@ bool CPortableExecutableFile::checkMagic()
 {
 	if (fseek(file, 0, SEEK_SET) != 0)
 	{
-		LOG_ERROR("Failed to seek to magic!\n");
+		LOG_CUSTOM(errorFlags, "Failed to seek to magic!\n");
 		return false;
 	}
 
@@ -204,7 +205,7 @@ bool CPortableExecutableFile::checkMagic()
 
 	if (fread(magic.data(), magic.size(), 1, file) < 1)
 	{
-		LOG_ERROR("Failed to read e_magic!\n");
+		LOG_CUSTOM(errorFlags, "Failed to read e_magic!\n");
 		return false;
 	}
 
@@ -227,20 +228,20 @@ bool CPortableExecutableFile::parseSections()
 
 	if (fseek(file, 0x3C, SEEK_SET) != 0)
 	{
-		LOG_ERROR("Failed to seek to e_lfanew!\n");
+		LOG_CUSTOM(errorFlags, "Failed to seek to e_lfanew!\n");
 		return false;
 	}
 
 	uint32_t e_lfanew;
 	if (fread(&e_lfanew, sizeof(e_lfanew), 1, file) < 1)
 	{
-		LOG_ERROR("Failed to read e_lfanew!\n");
+		LOG_CUSTOM(errorFlags, "Failed to read e_lfanew!\n");
 		return false;
 	}
 
 	if (fseek(file, e_lfanew, SEEK_SET) != 0)
 	{
-		LOG_ERROR("Failed to seek to e_lfanew!\n");
+		LOG_CUSTOM(errorFlags, "Failed to seek to e_lfanew!\n");
 		return false;
 	}
 
@@ -248,7 +249,7 @@ bool CPortableExecutableFile::parseSections()
 
 	if (fread(peHdr, sizeof(peHdr), 1, file) < 1)
 	{
-		LOG_ERROR("Failed to read NT_HEADER64!\n");
+		LOG_CUSTOM(errorFlags, "Failed to read NT_HEADER64!\n");
 		return false;
 	}
 
@@ -269,13 +270,13 @@ bool CPortableExecutableFile::parseSections()
 	}
 	else
 	{
-		LOG_ERROR("Unknown machine %u!\n", machine);
+		LOG_CUSTOM(errorFlags, "Unknown machine %u!\n", machine);
 		return false;
 	}
 
 	if (fseek(file, sectionHdrsOffset, SEEK_SET) != 0)
 	{
-		LOG_ERROR("Failed to seek to section headers!\n");
+		LOG_CUSTOM(errorFlags, "Failed to seek to section headers!\n");
 		return false;
 	}
 
@@ -285,7 +286,7 @@ bool CPortableExecutableFile::parseSections()
 
 		if (fread(sectHdr, sizeof(sectHdr), 1, file) < 1)
 		{
-			LOG_ERROR("Failed to read section header %i!\n", i);
+			LOG_CUSTOM(errorFlags, "Failed to read section header %i!\n", i);
 			return false;
 		}
 
@@ -311,7 +312,7 @@ bool CELFExecutableFile::parseElf32Headers(const Elf32_Ehdr& hdr)
 {
 	if (sizeof(Elf32_Shdr) < hdr.e_shentsize)
 	{
-		LOG_ERROR("hdr.e_shentsize < sizeof(Elf_Shdr)!\n");
+		LOG_CUSTOM(errorFlags, "hdr.e_shentsize < sizeof(Elf_Shdr)!\n");
 		return false;
 	}
 
@@ -320,13 +321,13 @@ bool CELFExecutableFile::parseElf32Headers(const Elf32_Ehdr& hdr)
 
 	if (fseek(file, hdr.e_shoff, SEEK_SET) != 0)
 	{
-		LOG_ERROR("Failed to seek to section headers\n");
+		LOG_CUSTOM(errorFlags, "Failed to seek to section headers\n");
 		return false;
 	}
 
 	if (fread(shdrs.data(), sizeof(Elf32_Shdr), shdrs.size(), file) < shdrs.size())
 	{
-		LOG_ERROR("Failed to read section headers\n");
+		LOG_CUSTOM(errorFlags, "Failed to read section headers\n");
 		return false;
 	}
 
@@ -336,13 +337,13 @@ bool CELFExecutableFile::parseElf32Headers(const Elf32_Ehdr& hdr)
 
 	if (fseek(file, strHdr.sh_offset, SEEK_SET) != 0)
 	{
-		LOG_ERROR("Failed to seek to strHdr.sh_offset!\n");
+		LOG_CUSTOM(errorFlags, "Failed to seek to strHdr.sh_offset!\n");
 		return false;
 	}
 
 	if (fread(strSec.data(), sizeof(unsigned char), strSec.size(), file) < strSec.size())
 	{
-		LOG_ERROR("Failed to read strHdr!\n");
+		LOG_CUSTOM(errorFlags, "Failed to read strHdr!\n");
 		return false;
 	}
 
@@ -373,7 +374,7 @@ bool CELFExecutableFile::parseElf64Headers(const Elf64_Ehdr& hdr)
 {
 	if (sizeof(Elf64_Shdr) < hdr.e_shentsize)
 	{
-		LOG_ERROR("hdr.e_shentsize < sizeof(Elf_Shdr)!\n");
+		LOG_CUSTOM(errorFlags, "hdr.e_shentsize < sizeof(Elf_Shdr)!\n");
 		return false;
 	}
 
@@ -382,13 +383,13 @@ bool CELFExecutableFile::parseElf64Headers(const Elf64_Ehdr& hdr)
 
 	if (fseek(file, hdr.e_shoff, SEEK_SET) != 0)
 	{
-		LOG_ERROR("Failed to seek to section headers\n");
+		LOG_CUSTOM(errorFlags, "Failed to seek to section headers\n");
 		return false;
 	}
 
 	if (fread(shdrs.data(), sizeof(Elf64_Shdr), shdrs.size(), file) < shdrs.size())
 	{
-		LOG_ERROR("Failed to read section headers\n");
+		LOG_CUSTOM(errorFlags, "Failed to read section headers\n");
 		return false;
 	}
 
@@ -398,13 +399,13 @@ bool CELFExecutableFile::parseElf64Headers(const Elf64_Ehdr& hdr)
 
 	if (fseek(file, strHdr.sh_offset, SEEK_SET) != 0)
 	{
-		LOG_ERROR("Failed to seek to strHdr.sh_offset!\n");
+		LOG_CUSTOM(errorFlags, "Failed to seek to strHdr.sh_offset!\n");
 		return false;
 	}
 
 	if (fread(strSec.data(), sizeof(unsigned char), strSec.size(), file) < strSec.size())
 	{
-		LOG_ERROR("Failed to read strHdr!\n");
+		LOG_CUSTOM(errorFlags, "Failed to read strHdr!\n");
 		return false;
 	}
 
@@ -437,13 +438,13 @@ bool CELFExecutableFile::checkMagic()
 
 	if (fseek(file, 0, SEEK_SET) != 0)
 	{
-		LOG_ERROR("Failed to seek to Magic!\n");
+		LOG_CUSTOM(errorFlags, "Failed to seek to Magic!\n");
 		return false;
 	}
 
 	if (fread(magic, sizeof(magic), 1, file) < 1)
 	{
-		LOG_ERROR("Failed to read magic!\n");
+		LOG_CUSTOM(errorFlags, "Failed to read magic!\n");
 		return false;
 	}
 	
@@ -472,14 +473,14 @@ bool CELFExecutableFile::parseSections()
 
 	if (fseek(file, 0, SEEK_SET) != 0)
 	{
-		LOG_ERROR("Failed to seek to file beginning!\n");
+		LOG_CUSTOM(errorFlags, "Failed to seek to file beginning!\n");
 		return false;
 	}
 
 	Elf64_Ehdr hdr64;
 	if (fread(&hdr64, sizeof(hdr64), 1, file) < 1)
 	{
-		LOG_ERROR("Failed to read Elf header!\n");
+		LOG_CUSTOM(errorFlags, "Failed to read Elf header!\n");
 		return false;
 	}
 
@@ -499,7 +500,7 @@ bool CELFExecutableFile::parseSections()
 	}
 	else
 	{
-		LOG_ERROR("Unknown ELFCLASS/e_machine %u | %u!\n", hdr64.e_ident[EI_CLASS], hdr64.e_machine);
+		LOG_CUSTOM(errorFlags, "Unknown ELFCLASS/e_machine %u | %u!\n", hdr64.e_ident[EI_CLASS], hdr64.e_machine);
 		return false;
 	}
 
@@ -648,7 +649,7 @@ bool Process_t::analyse()
 	//So we check all of them
 	for (const auto& file : getOpenFiles())
 	{
-		const auto executable = IExecutableFile::create(file);
+		const auto executable = IExecutableFile::create(file, ELogLevel::k_ELogLevelDebug);
 		if (!executable)
 		{
 			continue;
