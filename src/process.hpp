@@ -79,7 +79,6 @@ struct Process_t
 
 	AppId_t appId;
 	HSteamPipe pipeHandle;
-	std::unique_ptr<IExecutableFile> file;
 
 	bool steamDRM;
 	bool denuvo;
@@ -88,6 +87,7 @@ struct Process_t
 	std::string readFile(const char* fileName);
 
 	AppId_t getAppIdFromEnv();
+	std::vector<std::filesystem::path> getOpenFiles();
 	std::filesystem::path getRealExe();
 
 	bool init(const pid_t pid, const HSteamPipe pipeHandle);

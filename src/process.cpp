@@ -5,6 +5,7 @@
 #include "utils.hpp"
 
 #include <charconv>
+#include <chrono>
 #include <cstdio>
 #include <cstring>
 #include <fcntl.h>
@@ -13,6 +14,8 @@
 #include <iterator>
 #include <sstream>
 #include <string_view>
+#include <memory>
+#include <regex>
 
 
 IExecutableFile::~IExecutableFile()
@@ -98,6 +101,8 @@ bool IExecutableFile::hasDenuvo()
 		}
 	}
 
+	LOG_DEBUG("%u denuvo sections\n", secsFound);
+
 	//At least one denuvo section & and code has to encrypted/obfuscated
 	return secsFound > 0 && textEntropy > 7.0;
 }
@@ -124,6 +129,8 @@ std::vector<uint8_t> IExecutableFile::readSection(const SectionHdr_t& section)
 
 bool CPortableExecutableFile::parseSections()
 {
+	LOG_DEBUG("Parsing PE %s\n", path.filename().c_str());
+
 	std::string magic;
 	magic.resize(2);
 
@@ -210,7 +217,10 @@ bool CPortableExecutableFile::parseSections()
 		const uint32_t size = *reinterpret_cast<uint32_t*>(&sectHdr[0x10]);
 		const uint32_t ptr = *reinterpret_cast<uint32_t*>(&sectHdr[0x14]);
 
-		LOG_DEBUG("Section header %s at 0x%x with size 0x%x\n", name, ptr, size);
+		if (g_config.extendedLogging.get())
+		{
+			LOG_DEBUG("Section header %s at 0x%x with size 0x%x\n", name, ptr, size);
+		}
 
 		sections.emplace_back(SectionHdr_t { std::string(name, strnlen(name, sizeof(name))), rva, ptr, size });
 	}
@@ -268,7 +278,12 @@ bool CELFExecutableFile::parseElf32Headers(const Elf32_Ehdr& hdr)
 		}
 
 		const char* name = &strSec[shdr.sh_name];
-		LOG_DEBUG("Section header name %s, address 0x%x, offset 0x%x\n", name, shdr.sh_addr, shdr.sh_offset);
+
+		if (g_config.extendedLogging.get())
+		{
+			LOG_DEBUG("Section header name %s, address 0x%x, offset 0x%x\n", name, shdr.sh_addr, shdr.sh_offset);
+		}
+
 		sections.emplace_back(SectionHdr_t { name, shdr.sh_addr, shdr.sh_offset, shdr.sh_size });
 	}
 
@@ -325,7 +340,12 @@ bool CELFExecutableFile::parseElf64Headers(const Elf64_Ehdr& hdr)
 		}
 
 		const char* name = &strSec[shdr.sh_name];
-		LOG_DEBUG("Section header name %s, address 0x%llx, offset 0x%llx\n", name, shdr.sh_addr, shdr.sh_offset);
+
+		if (g_config.extendedLogging.get())
+		{
+			LOG_DEBUG("Section header name %s, address 0x%llx, offset 0x%llx\n", name, shdr.sh_addr, shdr.sh_offset);
+		}
+
 		sections.emplace_back(SectionHdr_t { name, shdr.sh_addr, shdr.sh_offset, shdr.sh_size });
 	}
 
@@ -334,6 +354,8 @@ bool CELFExecutableFile::parseElf64Headers(const Elf64_Ehdr& hdr)
 
 bool CELFExecutableFile::parseSections()
 {
+	LOG_DEBUG("Parsing ELF %s\n", path.filename().c_str());
+
 	FILE* file = fopen(path.c_str(), "r");
 	if (!file)
 	{
@@ -446,6 +468,37 @@ AppId_t Process_t::getAppIdFromEnv()
 	return appId;
 }
 
+std::vector<std::filesystem::path> Process_t::getOpenFiles()
+{
+	auto files = std::vector<std::filesystem::path>();
+
+	const auto maps = getPath("map_files");
+	std::error_code error;
+	std::filesystem::directory_iterator file(maps, error);
+	const std::filesystem::directory_iterator end;
+	while (!error && file != end)
+	{
+		//Afaik all files should be symlinks. But better safe than sorry
+		std::error_code linkError;
+		if (std::filesystem::is_symlink(file->path(), linkError) && !linkError)
+		{
+			const auto path = std::filesystem::read_symlink(file->path(), linkError);
+			if (!linkError)
+			{
+				files.emplace_back(path);
+			}
+		}
+		else
+		{
+			files.emplace_back(file->path());
+		}
+
+		file.increment(error);
+	}
+
+	return files;
+}
+
 std::filesystem::path Process_t::getRealExe()
 {
 	std::error_code error;
@@ -464,21 +517,13 @@ std::filesystem::path Process_t::getRealExe()
 
 	//Wine does not point to the actual .exe files, so we iterate the open
 	//files and pick the one ending with .exe
-	const auto maps = getPath("map_files");
-	std::filesystem::directory_iterator link(maps, error);
-	const std::filesystem::directory_iterator end;
-	while (!error && link != end)
+	const auto files = getOpenFiles();
+	for (const auto& path : files)
 	{
-		std::error_code linkError;
-		const auto path =
-			std::filesystem::read_symlink(link->path(), linkError).string();
-
-		if (!linkError && path.ends_with(".exe"))
+		if (path.string().ends_with(".exe"))
 		{
 			return path;
 		}
-
-		link.increment(error);
 	}
 
 	return linkTarget;
@@ -513,18 +558,65 @@ bool Process_t::init(const pid_t pid, const HSteamPipe pipeHandle)
 		return true;
 	}
 
-	if (exe.filename().string().ends_with(".exe"))
-	{
-		file = std::make_unique<CPortableExecutableFile>();
+	const auto startPoint = std::chrono::system_clock::now();
 
-		if (!file->load(exe))
+	std::unique_ptr<IExecutableFile> exeFile = nullptr;
+
+	//TODO: Dynamically probe file header to check wheter
+	//it's a an executable instead of relying on easily changeable file endings
+	if (exe.extension() == ".exe")
+	{
+		exeFile = std::make_unique<CPortableExecutableFile>();
+	}
+	else
+	{
+		exeFile = std::make_unique<CELFExecutableFile>();
+	}
+
+	if (!exeFile->load(exe))
+	{
+		return false;
+	}
+
+	steamDRM = exeFile->hasSteamDRM();
+	denuvo = exeFile->hasDenuvo();
+
+	//Some games put denuvo in their dynamic link libraries
+	//So we check all of them
+	for (const auto& file : getOpenFiles())
+	{
+		std::unique_ptr<IExecutableFile> executable = nullptr;
+
+		//TODO: Dynamically probe file header to check wheter
+		//it's a link library instead of relying on easily changeable file endings
+		if (file.string().ends_with(".dll"))
+		{
+			executable = std::make_unique<CPortableExecutableFile>();
+		}
+		else if (file.string().ends_with(".so"))
+		{
+			executable = std::make_unique<CELFExecutableFile>();
+		}
+		else
+		{
+			continue;
+		}
+
+		if (!executable->load(file))
 		{
 			return false;
 		}
-	}
 
-	steamDRM = file->hasSteamDRM();
-	denuvo = file->hasDenuvo();
+		if (!steamDRM)
+		{
+			steamDRM |= executable->hasSteamDRM();
+		}
+
+		if (!denuvo)
+		{
+			denuvo |= executable->hasDenuvo();
+		}
+	}
 
 	if (steamDRM)
 	{
@@ -535,6 +627,10 @@ bool Process_t::init(const pid_t pid, const HSteamPipe pipeHandle)
 	{
 		LOG_DEBUG("Detected Denuvo in %s!\n", exe.filename().c_str());
 	}
+
+	const auto endPoint = std::chrono::system_clock::now();
+
+	LOG_DEBUG("Analysed %s in %llums\n", exe.c_str(), std::chrono::duration_cast<std::chrono::milliseconds>(endPoint - startPoint).count());
 
 	return true;
 }
