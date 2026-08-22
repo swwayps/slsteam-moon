@@ -28,13 +28,16 @@ public:
 
 	virtual ~IExecutableFile();
 
-	bool load(const std::string filePath);
+	bool load(const std::string& filePath);
 	std::vector<uint8_t> readSection(const SectionHdr_t& section);
 
 	bool hasSteamDRM();
 	bool hasDenuvo();
 
+	virtual bool checkMagic() = 0;
 	virtual bool parseSections() = 0;
+
+	static std::unique_ptr<IExecutableFile> create(const std::string& path);
 };
 
 class CPortableExecutableFile : public IExecutableFile
@@ -50,6 +53,7 @@ public:
 	constexpr static size_t SECTION_HEADER_SIZE = 0x28;
 	constexpr static size_t SECTION_HEADER_NAME_SIZE = 0x8;
 
+	virtual bool checkMagic();
 	virtual bool parseSections();
 };
 
@@ -68,6 +72,8 @@ public:
 
 	bool parseElf32Headers(const Elf32_Ehdr& hdr);
 	bool parseElf64Headers(const Elf64_Ehdr& hdr);
+
+	virtual bool checkMagic();
 	virtual bool parseSections();
 };
 
