@@ -100,7 +100,7 @@ std::vector<uint8_t> IExecutableFile::readSection(const SectionHdr_t& section)
 
 	if (fread(bytes.data(), bytes.size(), 1, file) < 1)
 	{
-		LOG_ERROR("Failed to read section %s (%s)!\n", section.name.c_str(), std::strerror(errno));
+		LOG_ERROR("Failed to read section %s!\n", section.name.c_str());
 		return { };
 	}
 
@@ -159,10 +159,17 @@ bool CPortableExecutableFile::parseSections()
 	if (machine == MACHINE_I386)
 	{
 		sectionHdrsOffset += PE_HEADER32_SIZE;
+		LOG_DEBUG("Parsing as 32 bit file\n");
 	}
 	else if (machine == MACHINE_X64)
 	{
 		sectionHdrsOffset += PE_HEADER64_SIZE;
+		LOG_DEBUG("Parsing as 64 bit file\n");
+	}
+	else
+	{
+		LOG_ERROR("Unknown machine %u!\n", machine);
+		return false;
 	}
 
 	if (fseek(file, sectionHdrsOffset, SEEK_SET) != 0)
@@ -184,18 +191,19 @@ bool CPortableExecutableFile::parseSections()
 		char name[SECTION_HEADER_NAME_SIZE];
 		strncpy(name, reinterpret_cast<char*>(sectHdr), sizeof(name));
 
+		const uint32_t rva = *reinterpret_cast<uint32_t*>(&sectHdr[0xC]);
 		const uint32_t size = *reinterpret_cast<uint32_t*>(&sectHdr[0x10]);
 		const uint32_t ptr = *reinterpret_cast<uint32_t*>(&sectHdr[0x14]);
 
 		LOG_DEBUG("Section header %s at 0x%x with size 0x%x\n", name, ptr, size);
 
-		sections.emplace_back(SectionHdr_t { std::string(name, strnlen(name, sizeof(name))), ptr, size });
+		sections.emplace_back(SectionHdr_t { std::string(name, strnlen(name, sizeof(name))), rva, ptr, size });
 	}
 
 	return true;
 }
 
-bool CELFExecutableFile::parseElf32Headers(const Elf64_Ehdr& hdr)
+bool CELFExecutableFile::parseElf32Headers(const Elf32_Ehdr& hdr)
 {
 	if (sizeof(Elf32_Shdr) < hdr.e_shentsize)
 	{
@@ -224,13 +232,13 @@ bool CELFExecutableFile::parseElf32Headers(const Elf64_Ehdr& hdr)
 
 	if (fseek(file, strHdr.sh_offset, SEEK_SET) != 0)
 	{
-		LOG_ERROR("Failed to seek to strHdr.sh_addr!\n");
+		LOG_ERROR("Failed to seek to strHdr.sh_offset!\n");
 		return false;
 	}
 
 	if (fread(strSec.data(), sizeof(unsigned char), strSec.size(), file) < strSec.size())
 	{
-		LOG_ERROR("Failed to seek to strHdr.sh_addr!\n");
+		LOG_ERROR("Failed to read strHdr!\n");
 		return false;
 	}
 
@@ -246,7 +254,7 @@ bool CELFExecutableFile::parseElf32Headers(const Elf64_Ehdr& hdr)
 
 		const char* name = &strSec[shdr.sh_name];
 		LOG_DEBUG("Section header name %s, address 0x%x, offset 0x%x\n", name, shdr.sh_addr, shdr.sh_offset);
-		sections.emplace_back(SectionHdr_t { name, shdr.sh_addr, shdr.sh_offset });
+		sections.emplace_back(SectionHdr_t { name, shdr.sh_addr, shdr.sh_offset, shdr.sh_size });
 	}
 
 	return true;
@@ -281,13 +289,13 @@ bool CELFExecutableFile::parseElf64Headers(const Elf64_Ehdr& hdr)
 
 	if (fseek(file, strHdr.sh_offset, SEEK_SET) != 0)
 	{
-		LOG_ERROR("Failed to seek to strHdr.sh_addr!\n");
+		LOG_ERROR("Failed to seek to strHdr.sh_offset!\n");
 		return false;
 	}
 
 	if (fread(strSec.data(), sizeof(unsigned char), strSec.size(), file) < strSec.size())
 	{
-		LOG_ERROR("Failed to seek to strHdr.sh_addr!\n");
+		LOG_ERROR("Failed to read strHdr!\n");
 		return false;
 	}
 
@@ -303,7 +311,7 @@ bool CELFExecutableFile::parseElf64Headers(const Elf64_Ehdr& hdr)
 
 		const char* name = &strSec[shdr.sh_name];
 		LOG_DEBUG("Section header name %s, address 0x%llx, offset 0x%llx\n", name, shdr.sh_addr, shdr.sh_offset);
-		sections.emplace_back(SectionHdr_t { name, shdr.sh_addr, shdr.sh_offset });
+		sections.emplace_back(SectionHdr_t { name, shdr.sh_addr, shdr.sh_offset, shdr.sh_size });
 	}
 
 	return true;
@@ -318,8 +326,8 @@ bool CELFExecutableFile::parseSections()
 		return false;
 	}
 
-	Elf64_Ehdr hdr;
-	if (fread(&hdr, sizeof(hdr), 1, file) < 1)
+	Elf64_Ehdr hdr64;
+	if (fread(&hdr64, sizeof(hdr64), 1, file) < 1)
 	{
 		LOG_ERROR("Failed to read Elf header!\n");
 		return false;
@@ -327,25 +335,35 @@ bool CELFExecutableFile::parseSections()
 
 	if
 	(
-		hdr.e_ident[EI_MAG0] != ELFMAG0
-		|| hdr.e_ident[EI_MAG1] != ELFMAG1
-		|| hdr.e_ident[EI_MAG2] != ELFMAG2
-		|| hdr.e_ident[EI_MAG3] != ELFMAG3
+		hdr64.e_ident[EI_MAG0] != ELFMAG0
+		|| hdr64.e_ident[EI_MAG1] != ELFMAG1
+		|| hdr64.e_ident[EI_MAG2] != ELFMAG2
+		|| hdr64.e_ident[EI_MAG3] != ELFMAG3
 	)
 	{
 		LOG_ERROR("ELF magic unknown!\n");
 		return false;
 	}
 
-	LOG_DEBUG("shsstrndx %u\n", hdr.e_shstrndx);
+	LOG_DEBUG("shsstrndx %u\n", hdr64.e_shstrndx);
 
-	if (hdr.e_machine == ISA_X86)
+	if (hdr64.e_ident[EI_CLASS] == ELFCLASS32)
 	{
-		parseElf32Headers(hdr);
+		LOG_DEBUG("Parsing %s as 32 bit file\n", path.c_str());
+
+		//Headers are the same till e_entry. The 64bit version is longer
+		//so we can just recast it
+		Elf32_Ehdr hdr32 = *reinterpret_cast<Elf32_Ehdr*>(&hdr64);
+		parseElf32Headers(hdr32);
 	}
-	else if (hdr.e_machine == ISA_AMD64)
+	else if (hdr64.e_ident[EI_CLASS] == ELFCLASS64)
 	{
-		parseElf64Headers(hdr);
+		LOG_DEBUG("Parsing %s as 64 bit file\n", path.c_str());
+		parseElf64Headers(hdr64);
+	}
+	else
+	{
+		LOG_ERROR("Unknown ELFCLASS %u!\n", hdr64.e_ident[EI_CLASS]);
 	}
 
 	return true;
