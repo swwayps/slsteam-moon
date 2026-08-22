@@ -4,10 +4,10 @@
 
 #include <elf.h>
 #include <filesystem>
-#include <memory>
 #include <string>
 #include <sys/types.h>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 
@@ -75,6 +75,7 @@ struct Process_t
 {
 	pid_t pid;
 	std::filesystem::path exe;
+	std::vector<std::string> cmdLine;
 	std::string environ;
 
 	AppId_t appId;
@@ -87,9 +88,10 @@ struct Process_t
 	std::string readFile(const char* fileName);
 
 	AppId_t getAppIdFromEnv();
-	std::vector<std::filesystem::path> getOpenFiles();
+	std::unordered_set<std::filesystem::path> getOpenFiles();
 	std::filesystem::path getRealExe();
 
+	bool analyse();
 	bool init(const pid_t pid, const HSteamPipe pipeHandle);
 };
 

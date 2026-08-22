@@ -1,5 +1,7 @@
 #include "process.hpp"
 
+#include "sdk/CSteamEngine.hpp"
+
 #include "config.hpp"
 #include "log.hpp"
 #include "utils.hpp"
@@ -16,6 +18,7 @@
 #include <string_view>
 #include <memory>
 #include <regex>
+#include <unordered_set>
 
 
 IExecutableFile::~IExecutableFile()
@@ -73,13 +76,25 @@ bool IExecutableFile::hasDenuvo()
 	{
 		".xtext",
 		".xcode",
-		".xdata",
+		//".xdata", //Causes a lot of false positives
 		".xpdata",
 		".xtls"
 	};
 
+	static const std::vector<std::string> CODE_SECS =
+	{
+		//Start with potentially smaller sections first
+		".text",
+		".code",
+
+		".xcode",
+		".xtext",
+	};
+
+	constexpr double MIN_ENTROPY = 6.25;
+
 	unsigned secsFound = 0;
-	double textEntropy = 0.0;
+	double codeEntropy = 0.0;
 
 	for (const auto& sec : sections)
 	{
@@ -92,19 +107,35 @@ bool IExecutableFile::hasDenuvo()
 			}
 		}
 
-		if (sec.name == ".text" || sec.name == ".xtext")
+		//Do not waste time reading sections when MIN is already met
+		if (codeEntropy >= MIN_ENTROPY)
 		{
+			continue;
+		}
+
+		for (const auto& csec : CODE_SECS)
+		{
+			if (sec.name != csec)
+			{
+				continue;
+			}
+
 			const auto bytes = readSection(sec);
 			const double entropy = Utils::calculateEntropy(bytes);
-			LOG_DEBUG("%s entropy is %f\n", sec.name.c_str(), entropy);
-			textEntropy = std::max(textEntropy, entropy);
+
+			if (g_config.extendedLogging.get())
+			{
+				LOG_DEBUG("%s entropy is %f\n", sec.name.c_str(), entropy);
+			}
+
+			codeEntropy = std::max(codeEntropy, entropy);
 		}
 	}
 
-	LOG_DEBUG("%u denuvo sections\n", secsFound);
+	LOG_DEBUG("%u Denuvo sections, entropy %f\n", secsFound, codeEntropy);
 
 	//At least one denuvo section & and code has to encrypted/obfuscated
-	return secsFound > 0 && textEntropy > 7.0;
+	return secsFound > 0 && codeEntropy > MIN_ENTROPY;
 }
 
 std::vector<uint8_t> IExecutableFile::readSection(const SectionHdr_t& section)
@@ -267,13 +298,13 @@ bool CELFExecutableFile::parseElf32Headers(const Elf32_Ehdr& hdr)
 		return false;
 	}
 
-	LOG_DEBUG("strHdr name %u address 0x%x\n", strHdr.sh_name, strHdr.sh_offset);
+	//LOG_DEBUG("strHdr name %u address 0x%x\n", strHdr.sh_name, strHdr.sh_offset);
 
 	for (const auto& shdr : shdrs)
 	{
 		if (!shdr.sh_name)
 		{
-			LOG_DEBUG("Skipping nameless section\n");
+			//LOG_DEBUG("Skipping nameless section\n");
 			continue;
 		}
 
@@ -329,13 +360,13 @@ bool CELFExecutableFile::parseElf64Headers(const Elf64_Ehdr& hdr)
 		return false;
 	}
 
-	LOG_DEBUG("strHdr name %u address 0x%llx\n", strHdr.sh_name, strHdr.sh_offset);
+	//LOG_DEBUG("strHdr name %u address 0x%llx\n", strHdr.sh_name, strHdr.sh_offset);
 
 	for (const auto& shdr : shdrs)
 	{
 		if (!shdr.sh_name)
 		{
-			LOG_DEBUG("Skipping nameless section\n");
+			//LOG_DEBUG("Skipping nameless section\n");
 			continue;
 		}
 
@@ -382,7 +413,7 @@ bool CELFExecutableFile::parseSections()
 		return false;
 	}
 
-	LOG_DEBUG("shsstrndx %u\n", hdr64.e_shstrndx);
+	//LOG_DEBUG("shsstrndx %u\n", hdr64.e_shstrndx);
 
 	if (hdr64.e_ident[EI_CLASS] == ELFCLASS32)
 	{
@@ -468,9 +499,10 @@ AppId_t Process_t::getAppIdFromEnv()
 	return appId;
 }
 
-std::vector<std::filesystem::path> Process_t::getOpenFiles()
+std::unordered_set<std::filesystem::path> Process_t::getOpenFiles()
 {
-	auto files = std::vector<std::filesystem::path>();
+	//Using a set because we do not want duplicates
+	auto files = std::unordered_set<std::filesystem::path>();
 
 	const auto maps = getPath("map_files");
 	std::error_code error;
@@ -485,12 +517,12 @@ std::vector<std::filesystem::path> Process_t::getOpenFiles()
 			const auto path = std::filesystem::read_symlink(file->path(), linkError);
 			if (!linkError)
 			{
-				files.emplace_back(path);
+				files.emplace(path);
 			}
 		}
 		else
 		{
-			files.emplace_back(file->path());
+			files.emplace(file->path());
 		}
 
 		file.increment(error);
@@ -529,37 +561,9 @@ std::filesystem::path Process_t::getRealExe()
 	return linkTarget;
 }
 
-bool Process_t::init(const pid_t pid, const HSteamPipe pipeHandle)
+bool Process_t::analyse()
 {
-	this->pid = pid;
-	this->pipeHandle = pipeHandle;
-
-	exe = getRealExe();
-	if (exe.empty())
-	{
-		return false;
-	}
-
-	environ = readFile("environ");
-
-	if (!environ.size())
-	{
-		return false;
-	}
-
-	appId = getAppIdFromEnv();
-	if (!appId) //Will fail on steam process
-	{
-		return false;
-	}
-
-	if (!g_config.smartTickets.get())
-	{
-		return true;
-	}
-
-	const auto startPoint = std::chrono::system_clock::now();
-
+	const auto startTime = std::chrono::system_clock::now();
 	std::unique_ptr<IExecutableFile> exeFile = nullptr;
 
 	//TODO: Dynamically probe file header to check wheter
@@ -604,7 +608,8 @@ bool Process_t::init(const pid_t pid, const HSteamPipe pipeHandle)
 
 		if (!executable->load(file))
 		{
-			return false;
+			//Unlike main executable not fatal. Also will happen (manoghud shim being a prime example)
+			continue;
 		}
 
 		if (!steamDRM)
@@ -628,9 +633,49 @@ bool Process_t::init(const pid_t pid, const HSteamPipe pipeHandle)
 		LOG_DEBUG("Detected Denuvo in %s!\n", exe.filename().c_str());
 	}
 
-	const auto endPoint = std::chrono::system_clock::now();
+	const auto endTime = std::chrono::system_clock::now();
+	LOG_DEBUG("Analysed %s in %llums\n", exe.filename().c_str(), std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count());
+	return true;
+}
 
-	LOG_DEBUG("Analysed %s in %llums\n", exe.c_str(), std::chrono::duration_cast<std::chrono::milliseconds>(endPoint - startPoint).count());
+bool Process_t::init(const pid_t pid, const HSteamPipe pipeHandle)
+{
+	this->pid = pid;
+	this->pipeHandle = pipeHandle;
+
+	const auto serverPipe = g_pSteamEngine->getServerPipe(pipeHandle);
+	if (!serverPipe)
+	{
+		LOG_ERROR("ServerPipe for %p is null!\n", reinterpret_cast<void*>(pipeHandle));
+		return false;
+	}
+
+	exe = getRealExe();
+	if (!exe.string().size())
+	{
+		return false;
+	}
+
+	cmdLine = Utils::strsplit(const_cast<char*>(readFile("cmdline").c_str()), "\0");
+	environ = readFile("environ");
+
+	if (!environ.size())
+	{
+		return false;
+	}
+
+	appId = getAppIdFromEnv();
+	if (!appId) //Will fail on steam process
+	{
+		return false;
+	}
+
+	if (!g_config.smartTickets.get())
+	{
+		return true;
+	}
+
+	analyse();
 
 	return true;
 }
