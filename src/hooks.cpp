@@ -1264,19 +1264,11 @@ static CSteamId hkClientUser_GetSteamId(const CSteamId& steamId)
 		return steamId;
 	}
 
-	if ((g_config.smartTickets.get() & CConfig::k_ESmartTicketsDenuvo) && Ticket::pipesCreated.contains(realAppId))
+	if (g_config.smartTickets.get() & CConfig::k_ESmartTicketsDenuvo)
 	{
-		const unsigned int pipes = Ticket::pipesCreated.at(realAppId);
-		//First pipe steam.exe
-		//Second pipe game.exe -> Denuvo
-		//Third+ pipe game.exe -> Game itself
-		//Counter only increases when protected executable ConnectsPipe
-		//TODO: Investigate native denuvo enabled game (do these exist?)
-		if (pipes == 1)
-		{
-			return ticket.steamId;
-		}
-		else
+		const auto& proc = g_processMap.at(utils->getCurrentSteamPipe());
+
+		if (!proc.denuvo)
 		{
 			return steamId;
 		}

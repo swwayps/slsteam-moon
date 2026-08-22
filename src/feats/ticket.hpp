@@ -39,7 +39,6 @@ public:
 	extern std::unordered_map<AppId_t, CSteamId> oneTimeSteamIdSpoof;
 	extern std::unordered_map<AppId_t, SavedTicket> ticketMap;
 	extern std::unordered_map<AppId_t, SavedTicket> encryptedTicketMap;
-	extern std::unordered_map<AppId_t, unsigned int> pipesCreated;
 	inline std::mutex cacheMutex;
 	inline std::unordered_set<uint32_t> invalidatedApps;
 
