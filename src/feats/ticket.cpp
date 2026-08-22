@@ -210,7 +210,7 @@ Ticket::SavedTicket Ticket::getCachedEncryptedTicket(uint32_t appId)
 
 	if (!(smartTickets & CConfig::k_ESmartTicketsDenuvo) && appId && fakeAppId && fakeAppId != appId)
 	{
-		g_pLog->debug("Returning empty cached encrypted Ticket for %u because it's running as %u\n", appId, fakeAppId);
+		g_pLog->infoOnce("Returning empty cached encrypted Ticket for %u because it's running as %u\n", appId, fakeAppId);
 		return ticket;
 	}
 
