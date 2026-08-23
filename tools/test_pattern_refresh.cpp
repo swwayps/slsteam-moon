@@ -403,8 +403,12 @@ int main()
 		   "linux32/steamclient/" + sha + ".toml",
 		"GitHub raw catalog URL is exact"
 	);
-	expect(github.signature == github.catalog.substr(0, github.catalog.size() - 5) + ".sig",
-	       "GitHub signature URL is adjacent to the TOML");
+	// The producer publishes the detached signature as a sibling of the catalog
+	// file itself (`<sha256>.toml.sig`), not as a `<sha256>.sig` peer.  Fetching
+	// the wrong name 404s and the consumer then fails closed on every build, so
+	// the exact published name is asserted here.
+	expect(github.signature == github.catalog + ".sig",
+	       "GitHub signature URL is the published <sha256>.toml.sig sibling");
 	const auto cdn = makeUrls(Mirror::JsDelivr, "steamui", sha);
 	expect(
 		cdn.catalog
@@ -412,6 +416,8 @@ int main()
 		   "linux32/steamui/" + sha + ".toml",
 		"jsDelivr catalog URL is exact"
 	);
+	expect(cdn.signature == cdn.catalog + ".sig",
+	       "jsDelivr signature URL is the published <sha256>.toml.sig sibling");
 
 	const ResponsePair good = pair(ok("valid-catalog"), ok("valid-signature"));
 	const ResponsePair badBody = pair(ok("invalid-catalog"), ok("valid-signature"));
@@ -669,7 +675,7 @@ int main()
 		);
 		const std::string sha(64, 'a');
 		const std::string catalogPath = "/linux32/steamclient/" + sha + ".toml";
-		const std::string signaturePath = "/linux32/steamclient/" + sha + ".sig";
+		const std::string signaturePath = catalogPath + ".sig";
 		HttpServer server(
 			{
 				{"/github" + catalogPath, {404, {}, {}}},
@@ -754,13 +760,13 @@ int main()
 		HttpServer fast(
 			{
 				{stem + ".toml", {200, catalog, "\"fast-catalog\""}},
-				{stem + ".sig", {200, signatureBody, "\"fast-signature\""}},
+				{stem + ".toml.sig", {200, signatureBody, "\"fast-signature\""}},
 			}
 		);
 		HttpServer stalled(
 			{
 				{stem + ".toml", {200, catalog, {}, 5000}},
-				{stem + ".sig", {200, signatureBody, {}, 5000}},
+				{stem + ".toml.sig", {200, signatureBody, {}, 5000}},
 			}
 		);
 		const MirrorBases mirrors
@@ -862,9 +868,11 @@ int main()
 			HttpServer server(
 				{
 					{"/github" + clientStem + ".toml", {200, clientBody, "\"c1\""}},
-					{"/github" + clientStem + ".sig", {200, binary(clientSignature), "\"c2\""}},
+					{"/github" + clientStem + ".toml.sig",
+					 {200, binary(clientSignature), "\"c2\""}},
 					{"/github" + uiStem + ".toml", {200, uiBody, "\"u1\""}},
-					{"/github" + uiStem + ".sig", {200, binary(uiSignature), "\"u2\""}},
+					{"/github" + uiStem + ".toml.sig",
+					 {200, binary(uiSignature), "\"u2\""}},
 				}
 			);
 			const MirrorBases mirrors
@@ -965,7 +973,8 @@ int main()
 				{
 					const std::string stem = mirror + "/linux32/" + component + "/" + sha;
 					routes.emplace(stem + ".toml", Route{200, "late", {}, 5000});
-					routes.emplace(stem + ".sig", Route{200, std::string(64, 'x'), {}, 5000});
+					routes.emplace(stem + ".toml.sig",
+					               Route{200, std::string(64, 'x'), {}, 5000});
 				}
 			}
 			HttpServer server(std::move(routes));

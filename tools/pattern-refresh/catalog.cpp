@@ -786,9 +786,15 @@ PatternRefresh::UrlPair PatternRefresh::makeUrls(
 	if (!isComponent(component) || !isSha256(sha256)
 	    || base.empty() || base.size() > 512 || !base.ends_with('/'))
 		return {};
+	// The detached signature is published as a sibling of the catalog file
+	// itself: `<sha256>.toml` and `<sha256>.toml.sig`.  Requesting a
+	// `<sha256>.sig` peer instead 404s on both mirrors, which makes the
+	// consumer fail closed on every client build and never activate signed
+	// metadata at all.
 	const std::string stem = std::string(base) + "linux32/" + std::string(component) + "/"
 	                       + std::string(sha256);
-	return {stem + ".toml", stem + ".sig"};
+	const std::string catalog = stem + ".toml";
+	return {catalog, catalog + ".sig"};
 }
 
 PatternRefresh::Selection PatternRefresh::chooseCandidate(
