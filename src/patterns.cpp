@@ -579,6 +579,29 @@ bool Pattern_t::find()
 		);
 		matchAddress = resolved.match;
 		address = resolved.target;
+
+		// The hooked address is usually NOT the matched one: Relative follows a
+		// call/jmp operand and PrologueUpwards walks backwards, so the derived
+		// address carries none of the scan's guarantees.  Prove it lands in this
+		// module's executable memory before anyone detours it.  The cache and
+		// catalog paths already do this on their own inputs; this closes the
+		// embedded resolver, which is the path every unknown client build takes.
+		if (address != LM_ADDRESS_BAD)
+		{
+			lm_segment_t targetSegment {};
+			const bool inside = address >= targetModule.base
+			                 && address < targetModule.base + targetModule.size;
+			const bool executable = LM_FindSegment(address, &targetSegment)
+			                     && (targetSegment.prot & LM_PROT_XR) == LM_PROT_XR;
+			if (!inside || !executable)
+			{
+				g_pLog->warn(
+					"Resolved target for '%s' is not executable module memory; "
+					"refusing to use it\n", name.c_str());
+				address = LM_ADDRESS_BAD;
+				matchAddress = LM_ADDRESS_BAD;
+			}
+		}
 	}
 	const bool resolved = address != LM_ADDRESS_BAD;
 

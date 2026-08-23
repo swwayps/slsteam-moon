@@ -34,7 +34,8 @@ std::vector<int16_t> MemHlp::patternToBytes(const char* pattern)
 	return bytes;
 }
 
-lm_address_t MemHlp::patternScan(const char* pattern, lm_module_t targetModule)
+lm_address_t MemHlp::patternScan(const char* pattern, lm_module_t targetModule,
+	std::size_t* matchesOut)
 {
 	const auto bytes = patternToBytes(pattern);
 
@@ -64,10 +65,10 @@ lm_address_t MemHlp::patternScan(const char* pattern, lm_module_t targetModule)
 		return LM_ADDRESS_BAD;
 	}
 
-	const bool countDuplicates = g_config.extendedLogging.get();
-	lm_address_t address = LM_ADDRESS_BAD;
-	std::size_t matches = 0;
-
+	// Every range is swept, never stopped at the first hit: the count is the
+	// only thing that distinguishes "this signature identifies its target" from
+	// "this signature matches several places and the first one won".
+	PatternScanTotal total;
 	for(const auto& itm : codeSegments)
 	{
 		if (targetModule.base > itm.second)
@@ -79,26 +80,23 @@ lm_address_t MemHlp::patternScan(const char* pattern, lm_module_t targetModule)
 			continue;
 		}
 
-		const auto result = scanPatternRange(bytes, itm.first, itm.second, countDuplicates);
-		if (result.matches == 0)
-		{
-			continue;
-		}
-
-		if (!countDuplicates)
-		{
-			return static_cast<lm_address_t>(result.address);
-		}
-
-		address = static_cast<lm_address_t>(result.address);
-		matches += result.matches;
-		if (matches > 1 && g_pLog)
-		{
-			g_pLog->debug("Pattern %s found %zu times at %p!\n", pattern, matches, address);
-		}
+		accumulateScan(total, scanPatternRange(bytes, itm.first, itm.second, true));
 	}
 
-	return address;
+	if (matchesOut != nullptr)
+	{
+		*matchesOut = total.matches;
+	}
+	if (!total.resolved())
+	{
+		return LM_ADDRESS_BAD;
+	}
+	return static_cast<lm_address_t>(total.address);
+}
+
+lm_address_t MemHlp::patternScan(const char* pattern, lm_module_t targetModule)
+{
+	return patternScan(pattern, targetModule, nullptr);
 }
 
 MemHlp::SignatureSearchResult MemHlp::searchSignatureDetailed(
@@ -114,9 +112,18 @@ MemHlp::SignatureSearchResult MemHlp::searchSignatureDetailed(
 	// prologue resolvers deliberately return a different address, but the
 	// original signature is the proof that a local catalog must re-check.
 	SignatureSearchResult result;
-	result.match = patternScan(signature, module);
+	std::size_t matches = 0;
+	result.match = patternScan(signature, module, &matches);
 	result.target = result.match;
-	if (result.match == LM_ADDRESS_BAD)
+	result.matches = matches;
+	if (matches > 1)
+	{
+		// Named and at warn level: this is a signature that has to be tightened,
+		// not a transient condition, and the dependent feature is now off.
+		g_pLog->warn("Signature for '%s' matched %zu times; refusing to resolve it\n",
+		             name, matches);
+	}
+	else if (result.match == LM_ADDRESS_BAD)
 	{
 		g_pLog->debug("Unable to find signature for %s!\n", name);
 	}

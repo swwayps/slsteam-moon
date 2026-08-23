@@ -156,6 +156,30 @@ int main()
     auto wildcardSweep = MemHlp::scanPatternRange(allWildcards, L.base, L.base + 3, false);
     CHECK(wildcardSweep.address == L.base, "all-wildcard patterns use the safe fallback");
 
+    // A signature is only usable when the whole module yields exactly one
+    // match. The live scanner used to keep the first hit and discard the rest,
+    // which silently hooks whichever site happens to sit at the lower address.
+    printf("[5] module-wide accumulation refuses an ambiguous signature\n");
+    MemHlp::PatternScanTotal none;
+    CHECK(!none.resolved(), "no match does not resolve");
+    MemHlp::PatternScanTotal single;
+    MemHlp::accumulateScan(single, MemHlp::PatternScanRangeResult{L.base + 100, 1});
+    CHECK(single.resolved(), "exactly one match resolves");
+    CHECK(single.address == L.base + 100, "the resolved address is the match");
+    MemHlp::PatternScanTotal twoInOneRange;
+    MemHlp::accumulateScan(twoInOneRange, MemHlp::PatternScanRangeResult{L.base + 200, 2});
+    CHECK(!twoInOneRange.resolved(), "two matches in one range do not resolve");
+    MemHlp::PatternScanTotal acrossRanges;
+    MemHlp::accumulateScan(acrossRanges, MemHlp::PatternScanRangeResult{L.base + 100, 1});
+    MemHlp::accumulateScan(acrossRanges, MemHlp::PatternScanRangeResult{L.base + 900, 1});
+    CHECK(!acrossRanges.resolved(), "one match in each of two ranges does not resolve");
+    CHECK(acrossRanges.matches == 2, "matches accumulate across ranges");
+    MemHlp::PatternScanTotal skipsEmpty;
+    MemHlp::accumulateScan(skipsEmpty, MemHlp::PatternScanRangeResult{});
+    MemHlp::accumulateScan(skipsEmpty, MemHlp::PatternScanRangeResult{L.base + 300, 1});
+    CHECK(skipsEmpty.resolved() && skipsEmpty.address == L.base + 300,
+          "an empty range never contributes an address");
+
     printf(g_fail ? "\nFAILED (%d)\n" : "\nOK\n", g_fail);
     return g_fail ? 1 : 0;
 }

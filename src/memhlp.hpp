@@ -144,11 +144,18 @@ namespace MemHlp
 
 	std::vector<int16_t> patternToBytes(const char* pattern);
 	lm_address_t patternScan(const char* pattern, lm_module_t module);
+	// Reports the module-wide match count and returns LM_ADDRESS_BAD unless it
+	// is exactly 1.
+	lm_address_t patternScan(const char* pattern, lm_module_t module,
+		std::size_t* matchesOut);
 
 	struct SignatureSearchResult
 	{
 		lm_address_t match = LM_ADDRESS_BAD;
 		lm_address_t target = LM_ADDRESS_BAD;
+		// Module-wide match count.  Anything but 1 leaves both addresses bad;
+		// the count is retained so the caller can say why.
+		std::size_t matches = 0;
 	};
 
 	SignatureSearchResult searchSignatureDetailed(

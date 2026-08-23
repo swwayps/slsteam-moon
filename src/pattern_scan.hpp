@@ -14,6 +14,39 @@ namespace MemHlp
 		std::size_t matches = 0;
 	};
 
+	// A signature's verdict over the whole module, accumulated range by range.
+	//
+	// Resolution requires exactly one match everywhere.  Keeping the first hit
+	// out of several silently binds whichever site happens to sit at the lower
+	// address: a locator can then be wildcarded just enough to also match a
+	// neighbouring function or field, and the wrong one gets hooked with no
+	// diagnostic at all.  The offline auditor already refuses that; this is the
+	// same rule inside the client.
+	struct PatternScanTotal
+	{
+		uintptr_t address = std::numeric_limits<uintptr_t>::max();
+		std::size_t matches = 0;
+
+		bool resolved() const noexcept
+		{
+			return matches == 1 && address != std::numeric_limits<uintptr_t>::max();
+		}
+	};
+
+	inline void accumulateScan(PatternScanTotal& total,
+		const PatternScanRangeResult& range) noexcept
+	{
+		if (range.matches == 0)
+		{
+			return;
+		}
+		total.matches += range.matches;
+		if (total.address == std::numeric_limits<uintptr_t>::max())
+		{
+			total.address = range.address;
+		}
+	}
+
 	// Scan one readable range without knowing anything about libmem.  The
 	// normal path stops at the first match; the diagnostic path retains the
 	// historical last-match result while counting every match.
