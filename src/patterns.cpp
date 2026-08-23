@@ -901,12 +901,20 @@ namespace Patterns
 		// FillInAppOverview reads CSteamApp::OwnershipFlags through `mov
 		// eax,[ecx+disp8]` immediately before serializing eAppOwnershipFlags.
 		// Keep the instruction address so LibraryRemoval derives and validates
-		// the Linux field offset (currently 0x18) instead of importing the
-		// unrelated Windows layout constant.
+		// the Linux field offset instead of importing the unrelated Windows
+		// layout constant.
+		//
+		// The displacement is exactly the value being derived, so it must NOT be
+		// pinned here: it went 0x18 -> 0x50 between the 2026-08-03 and
+		// 2026-08-16 clients, which disabled visual removal even though
+		// deriveOwnershipOffset would have decoded the new layout fine.  The
+		// trailing `push [ebp+disp32]` + `call` is what keeps the wildcarded
+		// form unique -- a shorter head also matches a second, unrelated
+		// `mov eax,[ecx+disp8]` site.
 		Pattern_t OwnershipFlagsReference
 		{
 			"CSteamApp::OwnershipFlagsReference",
-			"8B 41 18 8B 9D ? ? ? ? 83 EC 04 50 8D 83 ? ? ? ? 50 FF B5 ? ? ? ? E8 ? ? ? ?",
+			"8B 41 ? 8B 9D ? ? ? ? 83 EC 04 50 8D 83 ? ? ? ? 50 FF B5 ? ? ? ? E8 ? ? ? ?",
 			SigFollowMode::None,
 			&g_modSteamUI,
 			"Patterns::SteamUI::OwnershipFlagsReference"
@@ -1031,7 +1039,15 @@ namespace Patterns
 		Pattern_t ProcessPendingLicenseUpdates
 		{
 			"CUser::ProcessPendingLicenseUpdates",
-			"55 57 56 53 E8 ? ? ? ? 81 C3 ? ? ? ? 83 EC 2C 8B 44 24 40 8B 88 7C 1C 00 00 85 C9 0F 8E ? ? ? ? 05 70 1C 00 00 89 44 24 18 8D 83 14 B3 03 00 8B 30",
+			// The trailing `lea eax,[ebx+disp32]` reaches a data symbol through
+			// the PIC base, so its displacement tracks the GOT layout and moves
+			// on an unrelated client change (0x3B314 -> 0x3B714 between the
+			// 2026-08-03 and 2026-08-16 builds).  Nothing here reads it -- the
+			// hook only calls the resolved entry -- so it is location-only and
+			// stays wildcarded.  The member offsets loaded above (0x1C7C count,
+			// 0x1C70 array base) ARE consumed by the function and remain pinned
+			// as identity; the whole relaxed form still has one module match.
+			"55 57 56 53 E8 ? ? ? ? 81 C3 ? ? ? ? 83 EC 2C 8B 44 24 40 8B 88 7C 1C 00 00 85 C9 0F 8E ? ? ? ? 05 70 1C 00 00 89 44 24 18 8D 83 ? ? ? ? 8B 30",
 			SigFollowMode::None
 		};
 		// CUser::<broadcast LicensesUpdated_t>(CUser* this)
