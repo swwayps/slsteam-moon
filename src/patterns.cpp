@@ -904,17 +904,22 @@ namespace Patterns
 		// the Linux field offset instead of importing the unrelated Windows
 		// layout constant.
 		//
-		// The displacement is exactly the value being derived, so it must NOT be
-		// pinned here: it went 0x18 -> 0x50 between the 2026-08-03 and
-		// 2026-08-16 clients, which disabled visual removal even though
-		// deriveOwnershipOffset would have decoded the new layout fine.  The
-		// trailing `push [ebp+disp32]` + `call` is what keeps the wildcarded
-		// form unique -- a shorter head also matches a second, unrelated
-		// `mov eax,[ecx+disp8]` site.
+		// FillInAppOverview emits a run of fields that all share this shape
+		// (type check -> `mov eax,[app+disp8]` -> push value, push descriptor,
+		// push sink, call emitter), so the field displacement is what tells them
+		// apart and MUST stay pinned: ownership is 0x18 on both the 2026-08-03
+		// and the 2026-08-16 client, and the block right after it reads 0x50
+		// through a different emitter.  What actually drifted is only the
+		// register Steam parked the app pointer in (ecx -> edx), so the modrm
+		// byte is the wildcard.
+		//
+		// Do NOT wildcard the displacement instead.  That also yields exactly
+		// one match on the newer client, but it is the neighbouring field, and
+		// LibraryRemoval would then flip hidden-ownership bits inside it.
 		Pattern_t OwnershipFlagsReference
 		{
 			"CSteamApp::OwnershipFlagsReference",
-			"8B 41 ? 8B 9D ? ? ? ? 83 EC 04 50 8D 83 ? ? ? ? 50 FF B5 ? ? ? ? E8 ? ? ? ?",
+			"8B ? 18 8B 9D ? ? ? ? 83 EC 04 50 8D 83 ? ? ? ? 50 FF B5 ? ? ? ? E8 ? ? ? ?",
 			SigFollowMode::None,
 			&g_modSteamUI,
 			"Patterns::SteamUI::OwnershipFlagsReference"

@@ -24,8 +24,13 @@ inline constexpr std::uint32_t hiddenOwnershipFlags(
 inline std::optional<std::size_t> deriveOwnershipOffset(
 	std::span<const std::uint8_t> instruction) noexcept
 {
+	// `8B /r` with mod=01 (disp8) and reg=eax, i.e. `mov eax,[base+disp8]`.
+	// Steam's own register allocation for the app pointer is not stable across
+	// builds (ecx on 2026-08-03, edx on 2026-08-16), so accept either base while
+	// still refusing any other destination register, a SIB byte (rm=100), and
+	// [ebp+disp8] (rm=101), none of which are this read.
 	if (instruction.size() < 3 || instruction[0] != 0x8B ||
-		instruction[1] != 0x41)
+		(instruction[1] != 0x41 && instruction[1] != 0x42))
 	{
 		return std::nullopt;
 	}

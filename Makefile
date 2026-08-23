@@ -413,10 +413,21 @@ test-manifestpin-patterns:
 
 # The two optional locators whose failure only degrades a feature, so a drift
 # after a client update would otherwise pass unnoticed.
+#
+# Point PREV_STEAMCLIENT/PREV_STEAMUI at the previous client's modules to also
+# gate the transport: a relaxed signature can be unique on the new build and
+# ambiguous (or land on a neighbouring field) on the one users still run, which
+# a single-build check cannot see.
 test-optional-locators:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src \
 		tools/test_optional_locators.cpp -o /tmp/test_optional_locators
 	/tmp/test_optional_locators "$(STEAMCLIENT)" "$(STEAMUI)" src/patterns.cpp
+ifneq ($(strip $(PREV_STEAMCLIENT)$(PREV_STEAMUI)),)
+	@test -n "$(strip $(PREV_STEAMCLIENT))" && test -n "$(strip $(PREV_STEAMUI))" \
+		|| { echo "set both PREV_STEAMCLIENT and PREV_STEAMUI" >&2; exit 2; }
+	@echo "==> previous client transport check"
+	/tmp/test_optional_locators "$(PREV_STEAMCLIENT)" "$(PREV_STEAMUI)" src/patterns.cpp
+endif
 
 release:
 	bash scripts/release.sh

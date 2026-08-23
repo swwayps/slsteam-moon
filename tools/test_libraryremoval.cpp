@@ -23,13 +23,26 @@ void check(bool condition, std::string_view message)
 
 int main()
 {
-	constexpr std::array<std::uint8_t, 3> ownershipRead{0x8B, 0x41, 0x18};
+	// FillInAppOverview reads the field through whichever register the compiler
+	// parked the app pointer in: `mov eax,[ecx+disp8]` on the 2026-08-03 client
+	// and `mov eax,[edx+disp8]` on 2026-08-16. Both are the same read, so both
+	// modrm forms must decode; anything else must still fail closed.
+	constexpr std::array<std::uint8_t, 3> ownershipReadEcx{0x8B, 0x41, 0x18};
+	constexpr std::array<std::uint8_t, 3> ownershipReadEdx{0x8B, 0x42, 0x18};
 	constexpr std::array<std::uint8_t, 3> wrongOpcode{0x89, 0x41, 0x18};
+	constexpr std::array<std::uint8_t, 3> wrongDestination{0x8B, 0x49, 0x18};
+	constexpr std::array<std::uint8_t, 3> indirectBase{0x8B, 0x44, 0x18};
 	constexpr std::array<std::uint8_t, 3> unalignedOffset{0x8B, 0x41, 0x19};
-	check(LibraryRemovalPolicy::deriveOwnershipOffset(ownershipRead) == 0x18,
+	check(LibraryRemovalPolicy::deriveOwnershipOffset(ownershipReadEcx) == 0x18,
 	      "validated Linux instruction derives the ownership offset");
+	check(LibraryRemovalPolicy::deriveOwnershipOffset(ownershipReadEdx) == 0x18,
+	      "the same read through edx derives the same ownership offset");
 	check(!LibraryRemovalPolicy::deriveOwnershipOffset(wrongOpcode),
 	      "wrong ownership-read opcode is rejected");
+	check(!LibraryRemovalPolicy::deriveOwnershipOffset(wrongDestination),
+	      "a read into another register is rejected");
+	check(!LibraryRemovalPolicy::deriveOwnershipOffset(indirectBase),
+	      "a SIB-addressed read is rejected");
 	check(!LibraryRemovalPolicy::deriveOwnershipOffset(unalignedOffset),
 	      "unaligned ownership field is rejected");
 	check(LibraryRemovalPolicy::hiddenOwnershipFlags(0x0803) == 0,

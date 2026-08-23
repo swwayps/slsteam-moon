@@ -155,15 +155,18 @@ int main(int argc, char** argv)
 		"00 00 85 C9 0F 8E ? ? ? ? 05 70 1C 00 00 89 44 24 18 8D 83 ? ? ? ? 8B 30",
 		source);
 
-	// `mov eax,[ecx+disp8]` loads CSteamApp::OwnershipFlags. The displacement is
-	// the field offset LibraryRemoval decodes at runtime (0x18 -> 0x50 between
-	// those same two clients), so pinning it in the signature would defeat the
-	// derivation. The trailing `push [ebp+disp32]` + `call` is what keeps the
-	// relaxed form unique: without it a second `mov eax,[ecx+disp8]` site
-	// matches as well.
+	// FillInAppOverview serializes several fields with this very shape, one
+	// after another, so the discriminator has to be the field offset. The
+	// ownership read stays at 0x18 on both the 2026-08-03 and the 2026-08-16
+	// client, while the block immediately after it reads 0x50. What moved is
+	// only the register holding the app pointer (ecx -> edx), so the modrm byte
+	// is the wildcard and the displacement stays pinned. Wildcarding the
+	// displacement instead also matches exactly once on the newer client, but
+	// it lands on that neighbouring field, and LibraryRemoval would then write
+	// hidden ownership bits into it.
 	const std::size_t ownership = resolveUnique(
 		ui, "CSteamApp::OwnershipFlagsReference",
-		"8B 41 ? 8B 9D ? ? ? ? 83 EC 04 50 8D 83 ? ? ? ? 50 FF B5 ? ? ? ? "
+		"8B ? 18 8B 9D ? ? ? ? 83 EC 04 50 8D 83 ? ? ? ? 50 FF B5 ? ? ? ? "
 		"E8 ? ? ? ?",
 		source);
 	if (ownership != std::string::npos)
