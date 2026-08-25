@@ -7,6 +7,7 @@
 #include "../thread_start.hpp"
 #include "../cainfo.hpp"
 #include "boundedexecutor.hpp"
+#include "contentserverdirectory.hpp"
 
 #include <curl/curl.h>
 
@@ -248,6 +249,8 @@ typedef CURLcode (*curl_easy_perform_t)(CURL *curl);
 typedef void (*curl_easy_cleanup_t)(CURL *curl);
 typedef CURLcode (*curl_easy_getinfo_t)(CURL *curl, CURLINFO info, ...);
 typedef const char* (*curl_easy_strerror_t)(CURLcode);
+typedef curl_slist* (*curl_slist_append_t)(curl_slist*, const char*);
+typedef void (*curl_slist_free_all_t)(curl_slist*);
 
 static curl_easy_init_t p_curl_easy_init = nullptr;
 static curl_easy_setopt_t p_curl_easy_setopt = nullptr;
@@ -255,9 +258,16 @@ static curl_easy_perform_t p_curl_easy_perform = nullptr;
 static curl_easy_cleanup_t p_curl_easy_cleanup = nullptr;
 static curl_easy_getinfo_t p_curl_easy_getinfo = nullptr;
 static curl_easy_strerror_t p_curl_easy_strerror = nullptr;
+static curl_slist_append_t p_curl_slist_append = nullptr;
+static curl_slist_free_all_t p_curl_slist_free_all = nullptr;
 
 static bool load_curl() {
-	if (p_curl_easy_init) return true;
+	if (p_curl_easy_init && p_curl_easy_setopt && p_curl_easy_perform
+	    && p_curl_easy_cleanup && p_curl_slist_append
+	    && p_curl_slist_free_all)
+	{
+		return true;
+	}
 
 	void* handle = dlopen("libcurl.so.4", RTLD_NOLOAD | RTLD_LAZY);
 	if (!handle) handle = dlopen("libcurl.so.4", RTLD_LAZY);
@@ -269,8 +279,12 @@ static bool load_curl() {
 	p_curl_easy_cleanup = (curl_easy_cleanup_t)dlsym(handle, "curl_easy_cleanup");
 	p_curl_easy_getinfo = (curl_easy_getinfo_t)dlsym(handle, "curl_easy_getinfo");
 	p_curl_easy_strerror = (curl_easy_strerror_t)dlsym(handle, "curl_easy_strerror");
+	p_curl_slist_append = (curl_slist_append_t)dlsym(handle, "curl_slist_append");
+	p_curl_slist_free_all = (curl_slist_free_all_t)dlsym(handle, "curl_slist_free_all");
 
-	return p_curl_easy_init && p_curl_easy_setopt && p_curl_easy_perform && p_curl_easy_cleanup;
+	return p_curl_easy_init && p_curl_easy_setopt && p_curl_easy_perform
+	       && p_curl_easy_cleanup && p_curl_slist_append
+	       && p_curl_slist_free_all;
 }
 
 int curlBudgetProgress(void* userdata,
@@ -280,7 +294,8 @@ int curlBudgetProgress(void* userdata,
 	return budget != nullptr && budget->shouldStop() ? 1 : 0;
 }
 
-HttpResponse httpGet(const std::string& url, const JobBudget* budget = nullptr)
+HttpResponse httpGet(const std::string& url, const JobBudget* budget = nullptr,
+                     std::string_view hostHeader = {})
 {
 	HttpResponse r;
 	if (budget != nullptr && budget->shouldStop())
@@ -304,6 +319,20 @@ HttpResponse httpGet(const std::string& url, const JobBudget* budget = nullptr)
 		r.diagnostic = "curl_easy_init failed";
 		return r;
 	}
+	curl_slist* requestHeaders = nullptr;
+	if (!hostHeader.empty())
+	{
+		const std::string host = "Host: " + std::string(hostHeader);
+		requestHeaders = p_curl_slist_append(nullptr, host.c_str());
+		if (!requestHeaders)
+		{
+			p_curl_easy_cleanup(c);
+			r.networkError = true;
+			r.diagnostic = "failed to allocate curl Host header";
+			return r;
+		}
+		p_curl_easy_setopt(c, CURLOPT_HTTPHEADER, requestHeaders);
+	}
 	p_curl_easy_setopt(c, CURLOPT_URL, url.c_str());
 	p_curl_easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1L);
 	p_curl_easy_setopt(c, CURLOPT_WRITEFUNCTION, curlWriteCb);
@@ -318,6 +347,7 @@ HttpResponse httpGet(const std::string& url, const JobBudget* budget = nullptr)
 		long long remainingMs = budget->remaining().count();
 		if (remainingMs <= 0)
 		{
+			if (requestHeaders) p_curl_slist_free_all(requestHeaders);
 			p_curl_easy_cleanup(c);
 			r.networkError = true;
 			r.diagnostic = "manifest job budget expired";
@@ -357,8 +387,62 @@ HttpResponse httpGet(const std::string& url, const JobBudget* budget = nullptr)
 		r.diagnostic = "OK";
 		if (p_curl_easy_getinfo) p_curl_easy_getinfo(c, CURLINFO_RESPONSE_CODE, &r.status);
 	}
+	if (requestHeaders) p_curl_slist_free_all(requestHeaders);
 	p_curl_easy_cleanup(c);
 	return r;
+}
+
+std::mutex g_contentServerLock;
+std::vector<ContentServerDirectory::Server> g_contentServers;
+std::chrono::steady_clock::time_point g_contentServersExpire{};
+
+std::vector<ContentServerDirectory::Server> contentServers(
+    const std::shared_ptr<JobBudget>& budget)
+{
+	static constexpr std::string_view kDirectoryUrl =
+	    "https://api.steampowered.com/"
+	    "IContentServerDirectoryService/GetServersForSteamPipe/v1/"
+	    "?cell_id=0&max_servers=20";
+	static constexpr auto kCacheTtl = std::chrono::minutes(10);
+	static constexpr auto kRetryTtl = std::chrono::minutes(1);
+
+	std::lock_guard<std::mutex> lock(g_contentServerLock);
+	const auto now = std::chrono::steady_clock::now();
+	if (now < g_contentServersExpire)
+	{
+		return g_contentServers;
+	}
+
+	const auto response = httpGet(std::string(kDirectoryUrl), budget.get());
+	if (!response.networkError && response.status == 200)
+	{
+		auto parsed = ContentServerDirectory::parseServerList(response.body);
+		if (!parsed.empty())
+		{
+			g_contentServers = std::move(parsed);
+			g_contentServersExpire = now + kCacheTtl;
+			g_pLog->info(
+			    "ManifestFetch: content directory returned %zu ranked server(s)\n",
+			    g_contentServers.size());
+			return g_contentServers;
+		}
+	}
+
+	if (!g_contentServers.empty())
+	{
+		g_contentServersExpire = now + kRetryTtl;
+		g_pLog->info(
+		    "ManifestFetch: content directory refresh failed (HTTP=%ld err='%s'); "
+		    "reusing %zu cached server(s)\n",
+		    response.status, response.diagnostic.c_str(), g_contentServers.size());
+		return g_contentServers;
+	}
+
+	g_pLog->info(
+	    "ManifestFetch: content directory unavailable (HTTP=%ld err='%s')\n",
+	    response.status, response.diagnostic.c_str());
+	g_contentServersExpire = now + kRetryTtl;
+	return {};
 }
 
 std::optional<uint64_t> runOnce(uint64_t gid, uint32_t appId, uint32_t depotId,
@@ -651,31 +735,25 @@ bool fetchManifestBlob(uint64_t gid, uint32_t depotId,
 	}
 	uint64_t code = *codeOpt;
 
-	// Steam's manifest CDN occasionally answers 503 (overloaded edge)
-	// for a given host.  Try a handful of CDN hosts before giving up so
-	// a transient 503 doesn't surface as "NO INTERNET CONNECTION".
-	static const char* kCdnHosts[] = {
-		"cache1-gru1.steamcontent.com",
-		"cache2-gru1.steamcontent.com",
-		"cache4-gru1.steamcontent.com",
-		"cache8-gru1.steamcontent.com",
-		"cache11-gru1.steamcontent.com",
-		"fastly.cdn.steampipe.steamcontent.com",
-	};
+	// Ask Valve's content directory for a region/load-ranked list.  cell_id=0
+	// lets the service choose for the requester's public IP, matching Steam's
+	// normal content path without pinning users to one geographic cell.
+	const auto servers = contentServers(budget);
+	if (servers.empty()) return false;
 
 	bool retriedWithFreshCode = false;
 retry_cdn:
 	HttpResponse zipResp;
 	bool gotZip = false;
 	std::vector<CdnOutcome> outcomes;
-	outcomes.reserve(sizeof(kCdnHosts) / sizeof(kCdnHosts[0]));
-	for (const char* host : kCdnHosts)
+	outcomes.reserve(servers.size());
+	for (const auto& server : servers)
 	{
-		const std::string cdnUrl = std::string("http://") + host + "/depot/"
-		                           + std::to_string(depotId) + "/manifest/"
-		                           + std::to_string(gid) + "/5/"
-		                           + std::to_string(code);
-		zipResp = httpGet(cdnUrl, budget.get());
+		if (budget && budget->shouldStop()) break;
+		const std::string cdnUrl = ContentServerDirectory::manifestUrl(
+		    server, depotId, gid, code);
+		const std::string vhost = ContentServerDirectory::hostHeader(server);
+		zipResp = httpGet(cdnUrl, budget.get(), vhost);
 		if (!zipResp.networkError && zipResp.status == 200 && !zipResp.body.empty())
 		{
 			gotZip = true;
@@ -686,7 +764,7 @@ retry_cdn:
 		// returning 503 (or an expired code returning 401) is expected and
 		// we just try the next host.
 		g_pLog->info("ManifestFetch: blob depot=%u gid=%llu host=%s HTTP=%ld err='%s', trying next CDN\n",
-		             depotId, static_cast<unsigned long long>(gid), host,
+		             depotId, static_cast<unsigned long long>(gid), server.host.c_str(),
 		             zipResp.status, zipResp.diagnostic.c_str());
 	}
 	if (!gotZip)

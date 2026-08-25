@@ -48,7 +48,7 @@ ifeq ($(shell type mold &> /dev/null && echo "found"),found)
 	LDFLAGS += -fuse-ld=mold
 endif
 
-.PHONY: all build rebuild clean install release test-cmwire test-cmclient-loader test-dlcids test-dlc-scope test-dlc-metadata test-config-path test-config-discovery test-synthmark test-pattern-catalog test-pattern-cache test-pattern-refresh test-process-lock test-atomic-file test-cache-pair test-appinfo-transaction test-appinfo-reload test-audit-symbols test-audit-policy test-memhlp-target test-memhlp-prologue test-memhlp-pic test-utils-sha test-provision-cache test-provision-refresh test-provision-result test-provision-terminal test-pending-proton test-provision-schedule test-provision-pass test-runtime-dependencies test-thread-start test-steamstub-warmup test-boundedexecutor test-steamless-prewarm test-depotkey-scope test-curl-timeout test-manifest-index test-manifestselection test-manifeststore-io test-hotreload-inputs test-hotreload-package test-ownerqueue test-hotreload-capabilities test-libraryremoval test-pics test-prewarm-backoff test-yaml-runtime test-manifestpin-patterns test-optional-locators test-patternscan
+.PHONY: all build rebuild clean install release test-cmwire test-cmclient-loader test-dlcids test-dlc-scope test-dlc-metadata test-config-path test-config-discovery test-synthmark test-pattern-catalog test-pattern-cache test-pattern-refresh test-process-lock test-atomic-file test-cache-pair test-appinfo-transaction test-appinfo-reload test-audit-symbols test-audit-policy test-memhlp-target test-memhlp-prologue test-memhlp-pic test-utils-sha test-provision-cache test-provision-refresh test-provision-result test-provision-terminal test-pending-proton test-provision-schedule test-provision-pass test-runtime-dependencies test-thread-start test-steamstub-warmup test-boundedexecutor test-steamless-prewarm test-depotkey-scope test-curl-timeout test-contentserverdirectory test-manifest-index test-manifestselection test-manifeststore-io test-hotreload-inputs test-hotreload-package test-ownerqueue test-hotreload-capabilities test-libraryremoval test-pics test-prewarm-backoff test-yaml-runtime test-manifestpin-patterns test-optional-locators test-patternscan
 .NOTPARALLEL: clean rebuild
 
 all: build
@@ -290,6 +290,13 @@ test-curl-timeout:
 		tools/test_curl_timeout.cpp src/curl.cpp -ldl -pthread \
 		-o /tmp/test_curl_timeout
 	/tmp/test_curl_timeout
+
+test-contentserverdirectory:
+	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
+		-Wall -Wextra -Wpedantic -Werror -I include -I src \
+		tools/test_contentserverdirectory.cpp src/utils/contentserverdirectory.cpp \
+		lib/libyaml-cpp.a -o /tmp/test_contentserverdirectory
+	/tmp/test_contentserverdirectory
 
 test-manifest-index:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src \
