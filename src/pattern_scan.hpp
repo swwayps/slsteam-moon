@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstring>
 #include <limits>
+#include <optional>
 #include <vector>
 
 namespace MemHlp
@@ -47,11 +48,41 @@ namespace MemHlp
 		}
 	}
 
+	// Beyond this many raw matches a signature is not worth proving convergent:
+	// the list is capped so a pathological pattern cannot make the resolver walk
+	// an unbounded number of call sites during load.
+	inline constexpr std::size_t kMaxConvergenceCandidates = 256;
+
+	// Several raw matches are acceptable in exactly one shape: every match is a
+	// relative call/jmp and all of them land on the same target.  That is one
+	// function reached through many call sites, not an under-specified
+	// signature.  Anything else -- a differing target, nothing to follow -- is
+	// ambiguity and must not resolve.  Mirrors the producer's
+	// `relative-convergence` verdict so the client never accepts a locator the
+	// offline audit rejects, nor rejects one it accepts.
+	inline std::optional<uintptr_t> convergedTarget(
+		const std::vector<uintptr_t>& targets) noexcept
+	{
+		if (targets.empty())
+		{
+			return std::nullopt;
+		}
+		for (const uintptr_t target : targets)
+		{
+			if (target != targets.front())
+			{
+				return std::nullopt;
+			}
+		}
+		return targets.front();
+	}
+
 	// Scan one readable range without knowing anything about libmem.  The
 	// normal path stops at the first match; the diagnostic path retains the
 	// historical last-match result while counting every match.
 	inline PatternScanRangeResult scanPatternRange(const std::vector<int16_t>& bytes,
-		uintptr_t begin, uintptr_t end, bool countDuplicates)
+		uintptr_t begin, uintptr_t end, bool countDuplicates,
+		std::vector<uintptr_t>* addresses = nullptr, std::size_t addressCap = 0)
 	{
 		PatternScanRangeResult result;
 		const std::size_t patternSize = bytes.size();
@@ -86,6 +117,10 @@ namespace MemHlp
 			if (result.matches == 1 || countDuplicates)
 			{
 				result.address = reinterpret_cast<uintptr_t>(candidate);
+			}
+			if (addresses != nullptr && addresses->size() < addressCap)
+			{
+				addresses->push_back(reinterpret_cast<uintptr_t>(candidate));
 			}
 		};
 

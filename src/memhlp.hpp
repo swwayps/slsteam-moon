@@ -144,10 +144,12 @@ namespace MemHlp
 
 	std::vector<int16_t> patternToBytes(const char* pattern);
 	lm_address_t patternScan(const char* pattern, lm_module_t module);
-	// Reports the module-wide match count and returns LM_ADDRESS_BAD unless it
-	// is exactly 1.
+	// Reports the module-wide match count, optionally every match address (up
+	// to MemHlp::kMaxConvergenceCandidates), and returns LM_ADDRESS_BAD unless
+	// exactly one match was found.  A caller that can prove convergence uses
+	// the address list instead of the return value.
 	lm_address_t patternScan(const char* pattern, lm_module_t module,
-		std::size_t* matchesOut);
+		std::size_t* matchesOut, std::vector<uintptr_t>* allMatches);
 
 	struct SignatureSearchResult
 	{

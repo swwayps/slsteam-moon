@@ -8,6 +8,7 @@
 #include "libmem/libmem.h"
 
 #include <map>
+#include <optional>
 #include <vector>
 
 std::vector<int16_t> MemHlp::patternToBytes(const char* pattern)
@@ -35,7 +36,7 @@ std::vector<int16_t> MemHlp::patternToBytes(const char* pattern)
 }
 
 lm_address_t MemHlp::patternScan(const char* pattern, lm_module_t targetModule,
-	std::size_t* matchesOut)
+	std::size_t* matchesOut, std::vector<uintptr_t>* allMatches)
 {
 	const auto bytes = patternToBytes(pattern);
 
@@ -80,7 +81,11 @@ lm_address_t MemHlp::patternScan(const char* pattern, lm_module_t targetModule,
 			continue;
 		}
 
-		accumulateScan(total, scanPatternRange(bytes, itm.first, itm.second, true));
+		// Every match address is retained (up to the cap) so a caller with a
+		// relative follow mode can prove convergence instead of guessing.
+		accumulateScan(total,
+			scanPatternRange(bytes, itm.first, itm.second, true,
+				allMatches, kMaxConvergenceCandidates));
 	}
 
 	if (matchesOut != nullptr)
@@ -96,7 +101,7 @@ lm_address_t MemHlp::patternScan(const char* pattern, lm_module_t targetModule,
 
 lm_address_t MemHlp::patternScan(const char* pattern, lm_module_t targetModule)
 {
-	return patternScan(pattern, targetModule, nullptr);
+	return patternScan(pattern, targetModule, nullptr, nullptr);
 }
 
 MemHlp::SignatureSearchResult MemHlp::searchSignatureDetailed(
@@ -113,17 +118,59 @@ MemHlp::SignatureSearchResult MemHlp::searchSignatureDetailed(
 	// original signature is the proof that a local catalog must re-check.
 	SignatureSearchResult result;
 	std::size_t matches = 0;
-	result.match = patternScan(signature, module, &matches);
+	std::vector<uintptr_t> allMatches;
+	result.match = patternScan(signature, module, &matches, &allMatches);
 	result.target = result.match;
 	result.matches = matches;
 	if (matches > 1)
 	{
+		// Several matches are only usable when they are call sites of one
+		// function: follow each and require a single shared target.  This is the
+		// producer's `relative-convergence` verdict, reproduced here so the
+		// client's policy is identical to the audit's.
+		std::optional<lm_address_t> converged;
+		if (mode == SigFollowMode::Relative && matches <= kMaxConvergenceCandidates
+		    && allMatches.size() == matches)
+		{
+			std::vector<uintptr_t> targets;
+			targets.reserve(allMatches.size());
+			for (const uintptr_t candidate : allMatches)
+			{
+				const lm_address_t followed =
+					MemHlp::getJmpTarget(static_cast<lm_address_t>(candidate));
+				if (followed == LM_ADDRESS_BAD)
+				{
+					targets.clear();
+					break;
+				}
+				targets.push_back(static_cast<uintptr_t>(followed));
+			}
+			if (const auto single = convergedTarget(targets))
+			{
+				converged = static_cast<lm_address_t>(*single);
+			}
+		}
+
+		if (converged)
+		{
+			// Report the site that reaches it, so the local cache records a
+			// match whose signature bytes still prove this resolution.
+			result.match = static_cast<lm_address_t>(allMatches.front());
+			result.target = *converged;
+			g_pLog->info("Signature for '%s' matched %zu call sites converging on %p\n",
+			             name, matches, result.target);
+			return result;
+		}
+
 		// Named and at warn level: this is a signature that has to be tightened,
 		// not a transient condition, and the dependent feature is now off.
-		g_pLog->warn("Signature for '%s' matched %zu times; refusing to resolve it\n",
-		             name, matches);
+		g_pLog->warn("Signature for '%s' matched %zu times without converging; "
+		             "refusing to resolve it\n", name, matches);
+		result.match = LM_ADDRESS_BAD;
+		result.target = LM_ADDRESS_BAD;
+		return result;
 	}
-	else if (result.match == LM_ADDRESS_BAD)
+	if (result.match == LM_ADDRESS_BAD)
 	{
 		g_pLog->debug("Unable to find signature for %s!\n", name);
 	}

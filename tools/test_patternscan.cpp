@@ -180,6 +180,22 @@ int main()
     CHECK(skipsEmpty.resolved() && skipsEmpty.address == L.base + 300,
           "an empty range never contributes an address");
 
+    // Many raw matches are legitimate when they are call sites of one function.
+    // IClientUser::GetSteamID has 20 on the 2026-08-03 client, all reaching the
+    // same target, and refusing that would abort the load over a healthy
+    // locator.
+    printf("[6] convergent relative call sites are not ambiguity\n");
+    CHECK(!MemHlp::convergedTarget({}).has_value(), "no target does not converge");
+    CHECK(MemHlp::convergedTarget({0x1404160}).value_or(0) == 0x1404160,
+          "a single target converges on itself");
+    CHECK(MemHlp::convergedTarget({0x1404160, 0x1404160, 0x1404160}).value_or(0)
+              == 0x1404160,
+          "repeated identical targets converge");
+    CHECK(!MemHlp::convergedTarget({0x1404160, 0x1404160, 0x1404170}).has_value(),
+          "one differing target defeats convergence");
+    CHECK(MemHlp::kMaxConvergenceCandidates >= 20,
+          "the candidate cap admits the known 20-call-site locator");
+
     printf(g_fail ? "\nFAILED (%d)\n" : "\nOK\n", g_fail);
     return g_fail ? 1 : 0;
 }
