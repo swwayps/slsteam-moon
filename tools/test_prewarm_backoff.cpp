@@ -37,6 +37,8 @@ int main()
 		backoff.recordPass(true);
 	}
 	check(backoff.interval() == slow, "repeated all-blacklisted passes back off");
+	check(slow <= std::chrono::minutes(1),
+	      "a waiting install retries within one minute, not forever");
 
 	check(backoff.observeTargets(second), "new target is detected");
 	backoff.recordPass(false);

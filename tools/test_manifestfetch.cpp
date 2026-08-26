@@ -33,9 +33,56 @@ static int g_failures = 0;
 
 using ManifestFetch::CdnOutcome;
 using ManifestFetch::isExpiredCodeSignature;
+using ManifestFetch::RequestCodeCircuit;
+using ManifestFetch::ProviderOutcome;
+using ManifestFetch::isDefinitiveNotFound;
 
 int main()
 {
+	// Request-code provider circuit: 429 opens immediately, the cooldown does
+	// not generate a synthetic gid=0 probe, and recovery is proven only by a
+	// real successful request admitted after the deadline.
+	{
+		RequestCodeCircuit circuit(/*failureThreshold=*/2, /*cooldownMs=*/30000);
+		CHECK(circuit.beginAttempt(1000), "closed circuit admits the first real gid");
+		circuit.finishAttempt(1000, /*success=*/false,
+		                     /*rateLimited=*/true, /*transportFailure=*/false);
+		CHECK(circuit.open(), "HTTP 429 opens the request-code circuit immediately");
+		CHECK(!circuit.beginAttempt(30999), "cooldown rejects requests without a probe");
+		CHECK(circuit.beginAttempt(31000), "cooldown admits one real half-open request");
+		CHECK(!circuit.beginAttempt(31000), "only one half-open request runs at a time");
+		circuit.finishAttempt(31000, /*success=*/true,
+		                     /*rateLimited=*/false, /*transportFailure=*/false);
+		CHECK(!circuit.open() && circuit.beginAttempt(31001),
+		      "a numeric real-gid success closes the circuit");
+	}
+
+	{
+		RequestCodeCircuit circuit(2, 30000);
+		CHECK(circuit.beginAttempt(0), "first transport attempt admitted");
+		circuit.finishAttempt(0, false, false, true);
+		CHECK(!circuit.open(), "one transport failure does not open the circuit");
+		CHECK(circuit.beginAttempt(1), "second transport attempt admitted");
+		circuit.finishAttempt(1, false, false, true);
+		CHECK(circuit.open(), "two consecutive transport failures open the circuit");
+	}
+
+	{
+		RequestCodeCircuit circuit(2, 30000);
+		CHECK(circuit.beginAttempt(0), "404-only attempt admitted");
+		circuit.finishAttempt(0, false, false, false);
+		CHECK(!circuit.open(), "HTTP 404 alone is not a provider outage");
+	}
+
+	CHECK(isDefinitiveNotFound({{false, 404}}),
+	      "a provider chain made entirely of 404 is definitive");
+	CHECK(!isDefinitiveNotFound({{false, 429}, {false, 404}}),
+	      "a rate limit followed by 404 is not a definitive gid miss");
+	CHECK(!isDefinitiveNotFound({{true, 0}, {false, 404}}),
+	      "a transport error followed by 404 is not a definitive gid miss");
+	CHECK(!isDefinitiveNotFound({}),
+	      "an empty provider chain cannot prove a gid is missing");
+
 	// No attempts at all is not the expired-code signature (nothing tried).
 	CHECK(!isExpiredCodeSignature({}),
 	      "empty outcome set is not an expired-code signature");

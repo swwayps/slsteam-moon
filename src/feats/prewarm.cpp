@@ -5,6 +5,7 @@
 #include "appinfo_provision.hpp"
 
 #include "depotkey.hpp"
+#include "installreadiness.hpp"
 #include "manifeststore.hpp"
 
 #include "../config.hpp"
@@ -21,6 +22,7 @@
 #include <fstream>
 #include <ios>
 #include <mutex>
+#include <set>
 #include <string>
 #include <system_error>
 #include <thread>
@@ -120,9 +122,9 @@ void runLoop()
 	// .log; the synchronous install path (a different thread) keeps popups.
 	t_suppressNotify = true;
 
-	// Persist across passes: a depot that stays inaccessible even after a
-	// fresh request-code is dropped for the session after kMaxFails passes,
-	// so we stop re-fetching (and re-logging) it every 30s forever.
+	// Persist across passes: a depot that stays inaccessible cools down after
+	// kMaxFails passes. It is re-admitted after the bounded slow interval so a
+	// provider recovery can unblock a waiting install without a tight loop.
 	constexpr int kMaxFails = 3;
 	FailureTracker failures(kMaxFails);
 	PassBackoff backoff;
@@ -132,26 +134,61 @@ void runLoop()
 		if (g_stopRequested.load(std::memory_order_acquire))
 			return;
 		std::vector<DepotGid> targets;
+		std::vector<InstallReadiness::Observation> observations;
 		bool newTarget = false;
 		bool hasEligibleTarget = false;
+		bool providersOfflineNow = ManifestFetch::areProvidersOffline();
 		const auto added = g_config.addedAppIds.get();
 		if (!added.empty())
 		{
-			std::vector<std::string> buffers;
-			buffers.reserve(added.size());
-			for (uint32_t appId : added)
+			struct AppTargets
 			{
-				std::string buf = readBuffer(appId);
-				if (!buf.empty())
-				{
-					buffers.push_back(std::move(buf));
-				}
-			}
+				uint32_t appId = 0;
+				std::vector<DepotGid> manifests;
+				bool exactPins = false;
+			};
+			std::vector<AppTargets> appTargets;
+			appTargets.reserve(added.size());
+			std::set<DepotGid> seenTargets;
+			auto appendTarget = [&targets, &seenTargets](const DepotGid& target)
+			{
+				const auto [depotId, gid] = target;
+				if (depotId && gid && seenTargets.insert(target).second)
+					targets.push_back(target);
+			};
 
 			const auto hasKey = [](uint32_t depotId) {
 				return !DepotKey::getCachedKey(depotId).key.empty();
 			};
-			targets = planStageTargets(buffers, hasKey);
+			for (uint32_t appId : added)
+			{
+				AppTargets app;
+				app.appId = appId;
+				const auto pins = g_config.getAppPinnedDepots(appId);
+				std::string buf = readBuffer(appId);
+				if (!pins.empty())
+				{
+					app.exactPins = true;
+					// A partially pinned Lua still installs its other depots at the
+					// public gid. Include those exact public targets too; otherwise a
+					// locally-ready pin could hide a missing sibling manifest.
+					const auto publicTargets = buf.empty()
+					    ? std::vector<DepotGid>{}
+					    : planStageTargets({buf}, hasKey);
+					app.manifests = planPinnedStageTargets(publicTargets, pins);
+					for (const auto& target : app.manifests) appendTarget(target);
+				}
+				else
+				{
+					if (!buf.empty())
+					{
+						app.manifests = planStageTargets({buf}, hasKey);
+						for (const auto& target : app.manifests)
+							appendTarget(target);
+					}
+				}
+				appTargets.push_back(std::move(app));
+			}
 
 			// Workshop depots are NOT in the provisioned picsbuffer's
 			// `depots` block (the appid only appears as the value of
@@ -179,8 +216,9 @@ void runLoop()
 				if (!hasKey(appId)) continue;
 				for (const auto& wm : extractWorkshopManifests(acf, appId))
 				{
-					targets.push_back(wm);
-					++workshopCount;
+					const auto before = targets.size();
+					appendTarget(wm);
+					if (targets.size() != before) ++workshopCount;
 				}
 			}
 
@@ -194,9 +232,8 @@ void runLoop()
 
 			for (const auto& [depotId, gid] : targets)
 			{
-				// Genuinely-inaccessible depot (delisted / region-locked /
-				// gone from the CDN even with a fresh code): stop retrying it
-				// for the rest of the session.
+				// A repeatedly inaccessible target waits for the bounded cooldown
+				// below before it is admitted for another real attempt.
 				if (failures.isBlacklisted(depotId, gid)) continue;
 				hasEligibleTarget = true;
 
@@ -231,7 +268,7 @@ void runLoop()
 					{
 						g_pLog->debug(
 						    "Prewarm: depot=%u gid=%llu blacklisted after %d "
-						    "failed passes (skipping for this session)\n",
+						    "failed passes (cooling down)\n",
 						    depotId, static_cast<unsigned long long>(gid),
 						    kMaxFails);
 					}
@@ -239,14 +276,54 @@ void runLoop()
 				if (waitOrStop(kPerDepotGap))
 					return;
 			}
+
+			// Build the UI decision only after this pass has had a chance to
+			// materialize its targets. Workshop manifests are deliberately not
+			// install prerequisites and therefore do not participate here.
+			providersOfflineNow = ManifestFetch::areProvidersOffline();
+			ManifestStore::ArchivedGidIndex archived;
+			if (providersOfflineNow)
+				archived = ManifestStore::archivedGidIndex();
+			observations.reserve(appTargets.size());
+			for (const auto& app : appTargets)
+			{
+				InstallReadiness::Observation observation;
+				observation.appId = app.appId;
+				observation.targetCount = app.manifests.size();
+				observation.exactPins = app.exactPins;
+				for (const auto& [depotId, gid] : app.manifests)
+				{
+					if (!providersOfflineNow)
+						break;
+					if (app.exactPins)
+					{
+						if (ManifestStore::isArchived(depotId, gid)
+						    || ManifestStore::isInDepotcache(depotId, gid))
+							++observation.localCount;
+					}
+					else if (archived.count(depotId)
+					         || ManifestStore::isInDepotcache(depotId, gid))
+					{
+						++observation.localCount;
+					}
+				}
+				observations.push_back(observation);
+			}
 		}
+
+		// This heartbeat is advisory and fail-open. Publishing from the
+		// background worker keeps the install click path entirely in memory.
+		(void)InstallReadiness::publish(
+		    observations, providersOfflineNow);
 
 		newTarget = backoff.observeTargets(targets);
 		const bool noOpPass = !targets.empty() && !hasEligibleTarget && !newTarget;
 		backoff.recordPass(noOpPass);
 		if (noOpPass && backoff.noOpPasses() == PassBackoff::kNoOpPassesBeforeBackoff)
 		{
-			g_pLog->debug("Prewarm: all targets blacklisted; backing off to 5 minutes\n");
+			g_pLog->debug(
+			    "Prewarm: all targets cooling down; retrying within 1 minute\n");
+			failures.resetAll();
 		}
 		if (waitOrStop(backoff.interval()))
 			return;

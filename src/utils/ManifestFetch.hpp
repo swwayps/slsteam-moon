@@ -15,6 +15,98 @@
 
 namespace ManifestFetch
 {
+	// Pure request-code circuit policy. Time is supplied by the caller in
+	// monotonic milliseconds, keeping provider cooldown behavior deterministic
+	// in host tests. An open circuit admits exactly one REAL gid after cooldown;
+	// there is no synthetic gid=0 health probe whose 404 could look healthy.
+	class RequestCodeCircuit
+	{
+	public:
+		RequestCodeCircuit(int failureThreshold, std::int64_t cooldownMs)
+			: m_threshold(failureThreshold > 0 ? failureThreshold : 1),
+			  m_cooldownMs(cooldownMs > 0 ? cooldownMs : 1) {}
+
+		bool beginAttempt(std::int64_t nowMs)
+		{
+			if (!m_open) return true;
+			if (nowMs < m_retryAtMs || m_halfOpenInFlight) return false;
+			m_halfOpenInFlight = true;
+			return true;
+		}
+
+		void finishAttempt(std::int64_t nowMs, bool success,
+		                   bool rateLimited, bool transportFailure)
+		{
+			if (success)
+			{
+				m_open = false;
+				m_halfOpenInFlight = false;
+				m_consecutiveTransportFailures = 0;
+				m_retryAtMs = 0;
+				return;
+			}
+
+			if (m_open && m_halfOpenInFlight)
+			{
+				m_halfOpenInFlight = false;
+				m_retryAtMs = nowMs + m_cooldownMs;
+				return;
+			}
+
+			if (rateLimited)
+			{
+				openAt(nowMs);
+				return;
+			}
+			if (transportFailure)
+			{
+				if (++m_consecutiveTransportFailures >= m_threshold)
+					openAt(nowMs);
+			}
+			else
+			{
+				m_consecutiveTransportFailures = 0;
+			}
+		}
+
+		bool open() const noexcept { return m_open; }
+
+	private:
+		void openAt(std::int64_t nowMs)
+		{
+			m_open = true;
+			m_halfOpenInFlight = false;
+			m_retryAtMs = nowMs + m_cooldownMs;
+		}
+
+		int m_threshold;
+		std::int64_t m_cooldownMs;
+		int m_consecutiveTransportFailures = 0;
+		std::int64_t m_retryAtMs = 0;
+		bool m_open = false;
+		bool m_halfOpenInFlight = false;
+	};
+
+	struct ProviderOutcome
+	{
+		bool networkError = false;
+		long httpStatus = 0;
+	};
+
+	// A gid is absent only when every provider we actually reached answered
+	// 404. A 429, transport error, server error, or invalid 200 leaves the
+	// result unknown and must not poison the session-wide not-found cache.
+	inline bool isDefinitiveNotFound(
+	    const std::vector<ProviderOutcome>& outcomes)
+	{
+		if (outcomes.empty()) return false;
+		for (const auto& outcome : outcomes)
+		{
+			if (outcome.networkError || outcome.httpStatus != 404) return false;
+		}
+		return true;
+	}
+
 	namespace detail
 	{
 		// Kill the whole helper process group and always reap the child.  This

@@ -215,6 +215,23 @@ int main()
 		      "plan: empty buffer -> empty");
 	}
 
+	// Partial pins replace only their own public depot; unpinned siblings remain
+	// required so readiness cannot hide a missing base/DLC manifest.
+	{
+		const std::vector<Prewarm::DepotGid> publicTargets{
+			{100, 1000}, {101, 1001},
+		};
+		const std::unordered_map<uint32_t, uint64_t> pins{
+			{100, 900}, {102, 902},
+		};
+		const auto targets = Prewarm::planPinnedStageTargets(publicTargets, pins);
+		CHECK(targets.size() == 3, "pins: exact pins plus public siblings are required");
+		CHECK(hasDepot(targets, 100, 900) && !hasDepot(targets, 100, 1000),
+		      "pins: exact pin replaces that depot's public gid");
+		CHECK(hasDepot(targets, 101, 1001) && hasDepot(targets, 102, 902),
+		      "pins: unpinned public and pin-only depots are both retained");
+	}
+
 	// --- Workshop manifests -------------------------------------------------
 	//
 	// The workshop depot has depotId == appId (e.g. 250900) and a DYNAMIC
@@ -305,6 +322,9 @@ int main()
 		CHECK(!ft.isBlacklisted(100, 9), "tracker: below threshold, still allowed");
 		CHECK(ft.recordFailure(100, 9), "tracker: 3rd failure crosses threshold");
 		CHECK(ft.isBlacklisted(100, 9), "tracker: blacklisted after kMax failures");
+		ft.resetAll();
+		CHECK(!ft.isBlacklisted(100, 9),
+		      "tracker: a cooled-down pass re-admits the real manifest target");
 	}
 
 	// 14) FailureTracker: a success resets the consecutive-failure count, so a

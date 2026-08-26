@@ -4,7 +4,6 @@
 #include "../config.hpp"
 #include "../feats/manifeststore.hpp"
 #include "../log.hpp"
-#include "../thread_start.hpp"
 #include "../cainfo.hpp"
 #include "boundedexecutor.hpp"
 #include "contentserverdirectory.hpp"
@@ -106,16 +105,52 @@ struct OfflineCleaner
 };
 static OfflineCleaner g_offlineCleaner;
 
-std::atomic<int> g_consecutiveNetworkErrors{0};
-std::mutex g_checkerLock;
-std::chrono::steady_clock::time_point g_lastCheckTime{};
-bool g_checkingOffline{false};
+std::mutex g_circuitLock;
+RequestCodeCircuit g_requestCodeCircuit(
+	/*failureThreshold=*/2, /*cooldownMs=*/30000);
+
+std::int64_t steadyNowMs()
+{
+	return std::chrono::duration_cast<std::chrono::milliseconds>(
+	    std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
+bool beginProviderAttempt()
+{
+	std::lock_guard<std::mutex> lock(g_circuitLock);
+	return g_requestCodeCircuit.beginAttempt(steadyNowMs());
+}
+
+void finishProviderAttempt(bool success, bool rateLimited,
+	                         bool transportFailure)
+{
+	bool wasOffline = false;
+	bool nowOffline = false;
+	{
+		std::lock_guard<std::mutex> lock(g_circuitLock);
+		wasOffline = g_requestCodeCircuit.open();
+		g_requestCodeCircuit.finishAttempt(
+		    steadyNowMs(), success, rateLimited, transportFailure);
+		nowOffline = g_requestCodeCircuit.open();
+	}
+	g_providersOffline.store(nowOffline, std::memory_order_release);
+	setOfflineStatus(nowOffline);
+	if (!wasOffline && nowOffline)
+	{
+		g_pLog->info(
+		    "ManifestFetch: request-code circuit opened; retrying a real gid after cooldown\n");
+	}
+	else if (wasOffline && !nowOffline)
+	{
+		g_pLog->info(
+		    "ManifestFetch: real-gid request succeeded; request-code circuit closed\n");
+	}
+}
 
 const std::vector<std::string>& providerChain()
 {
 	static const std::vector<std::string> chain = {
 		"http://gmrc.wudrm.com/manifest/{gid}",
-		"https://manifest.steam.run/api/manifest/{gid}",
 	};
 	return chain;
 }
@@ -449,86 +484,6 @@ std::optional<uint64_t> runOnce(uint64_t gid, uint32_t appId, uint32_t depotId,
                                 const std::shared_ptr<JobBudget>& budget = {})
 {
 	if (budget && budget->shouldStop()) return std::nullopt;
-	if (g_providersOffline.load())
-	{
-		bool shouldCheck = false;
-		{
-			std::lock_guard<std::mutex> lk(g_checkerLock);
-			auto now = std::chrono::steady_clock::now();
-			if (!g_checkingOffline && (g_lastCheckTime == std::chrono::steady_clock::time_point{} || 
-			    std::chrono::duration_cast<std::chrono::minutes>(now - g_lastCheckTime).count() >= 10))
-			{
-				g_checkingOffline = true;
-				g_lastCheckTime = now;
-				shouldCheck = true;
-			}
-		}
-
-		if (shouldCheck)
-		{
-			const bool started = ThreadStart::startDetached(
-				[]
-				{
-					ThreadStart::runGuarded(
-						[]
-						{
-							g_pLog->info("ManifestFetch: checking in background if manifest providers returned online...\n");
-							const auto& chain = providerChain();
-							bool online = false;
-							for (const auto& tmpl : chain)
-							{
-								if (tmpl.empty()) continue;
-								const auto testUrl = expandTemplate(tmpl, 0, 0, 0);
-								const auto resp = httpGet(testUrl);
-								if (!resp.networkError && resp.status > 0 && resp.status < 500 && resp.status != 403 && resp.status != 429)
-								{
-									online = true;
-									break;
-								}
-							}
-
-							if (online)
-							{
-								g_pLog->info("ManifestFetch: manifest providers are back online! Resetting circuit breaker.\n");
-								g_providersOffline.store(false);
-								setOfflineStatus(false);
-								g_consecutiveNetworkErrors.store(0);
-							}
-							else
-							{
-								g_pLog->info("ManifestFetch: manifest providers still offline.\n");
-							}
-						},
-						[]
-						{
-							g_pLog->warn("ManifestFetch: offline probe worker failed unexpectedly; will retry\n");
-						},
-						[]
-						{
-							std::lock_guard<std::mutex> lk(g_checkerLock);
-							g_checkingOffline = false;
-						});
-				},
-				[]
-				{
-					std::lock_guard<std::mutex> lk(g_checkerLock);
-					g_checkingOffline = false;
-					g_lastCheckTime = {};
-				},
-				[]
-				{
-					g_pLog->warn("ManifestFetch: offline probe detach failed; joining worker\n");
-				});
-			if (!started)
-			{
-				g_pLog->warn("ManifestFetch: unable to start offline probe; will retry\n");
-			}
-		}
-
-		g_pLog->debug("ManifestFetch: gid=%llu skipped, circuit breaker active (providers marked offline)\n",
-		              static_cast<unsigned long long>(gid));
-		return std::nullopt;
-	}
 
 	// Fast path: a previous resolve (e.g. the blob fetch in
 	// BYldRequestDepotManifest) already learned this gid's request
@@ -537,6 +492,17 @@ std::optional<uint64_t> runOnce(uint64_t gid, uint32_t appId, uint32_t depotId,
 	if (auto c = cachedCode(gid))
 	{
 		return c;
+	}
+
+	// An open circuit admits one actual queued gid after the cooldown. This is
+	// both the recovery probe and useful work; a dead provider's gid=0 404 can
+	// never reset health falsely.
+	if (!beginProviderAttempt())
+	{
+		g_pLog->debug(
+		    "ManifestFetch: gid=%llu skipped during request-code cooldown\n",
+		    static_cast<unsigned long long>(gid));
+		return std::nullopt;
 	}
 
 	const auto& chain = providerChain();
@@ -548,6 +514,9 @@ std::optional<uint64_t> runOnce(uint64_t gid, uint32_t appId, uint32_t depotId,
 	}
 
 	bool hasNetworkOrServerError = false;
+	bool hasRateLimit = false;
+	std::vector<ProviderOutcome> outcomes;
+	outcomes.reserve(chain.size());
 	for (std::size_t i = 0; i < chain.size(); ++i)
 	{
 		const auto& tmpl = chain[i];
@@ -560,6 +529,7 @@ std::optional<uint64_t> runOnce(uint64_t gid, uint32_t appId, uint32_t depotId,
 		const auto resp = httpGet(url, budget.get());
 		if (resp.networkError)
 		{
+			outcomes.push_back({true, 0});
 			g_pLog->info("ManifestFetch: gid=%llu provider %zu net err '%s', trying next\n",
 			             static_cast<unsigned long long>(gid),
 			             i + 1, resp.diagnostic.c_str());
@@ -568,12 +538,13 @@ std::optional<uint64_t> runOnce(uint64_t gid, uint32_t appId, uint32_t depotId,
 		}
 		if (resp.status != 200)
 		{
+			outcomes.push_back({false, resp.status});
 			g_pLog->info("ManifestFetch: gid=%llu provider %zu HTTP=%ld body_bytes=%zu, trying next\n",
 			             static_cast<unsigned long long>(gid),
 			             i + 1, resp.status, resp.body.size());
-			if (resp.status == 404)
+			if (resp.status == 429)
 			{
-				markGidNotFoundInternal(gid);
+				hasRateLimit = true;
 			}
 			else if (resp.status >= 500)
 			{
@@ -581,6 +552,7 @@ std::optional<uint64_t> runOnce(uint64_t gid, uint32_t appId, uint32_t depotId,
 			}
 			continue;
 		}
+		outcomes.push_back({false, 200});
 		uint64_t code = 0;
 		if (parseDigitsOnly(resp.body, &code) || parseJsonDigitField(resp.body, &code))
 		{
@@ -589,7 +561,9 @@ std::optional<uint64_t> runOnce(uint64_t gid, uint32_t appId, uint32_t depotId,
 			             static_cast<unsigned long long>(code),
 			             i + 1);
 			cacheCode(gid, code);
-			g_consecutiveNetworkErrors.store(0);
+			finishProviderAttempt(
+			    /*success=*/true, /*rateLimited=*/false,
+			    /*transportFailure=*/false);
 			return code;
 		}
 		g_pLog->info("ManifestFetch: gid=%llu provider %zu body unparseable (first 64: '%.*s'), trying next\n",
@@ -601,21 +575,11 @@ std::optional<uint64_t> runOnce(uint64_t gid, uint32_t appId, uint32_t depotId,
 
 	g_pLog->info("ManifestFetch: gid=%llu all %zu providers exhausted\n",
 	             static_cast<unsigned long long>(gid), chain.size());
+	if (isDefinitiveNotFound(outcomes))
+		markGidNotFoundInternal(gid);
 
-	if (hasNetworkOrServerError)
-	{
-		int currentErrors = g_consecutiveNetworkErrors.fetch_add(1) + 1;
-		if (currentErrors >= 2)
-		{
-			{
-				std::lock_guard<std::mutex> lk(g_checkerLock);
-				g_lastCheckTime = std::chrono::steady_clock::now();
-			}
-			g_providersOffline.store(true);
-			setOfflineStatus(true);
-			g_pLog->info("ManifestFetch: circuit breaker triggered, manifest providers marked offline\n");
-		}
-	}
+	finishProviderAttempt(
+	    /*success=*/false, hasRateLimit, hasNetworkOrServerError);
 
 	// No user notification here: when the request-code providers are down the
 	// manifest resilience fallback (feats/manifestbind.cpp) installs from a

@@ -38,6 +38,7 @@
 #include <chrono>
 #include <cstdint>
 #include <functional>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -54,9 +55,9 @@ using DepotGid = std::pair<uint32_t, uint64_t>;
 // passes.  The worker re-stages purged manifests every ~30s; a depot that
 // stays inaccessible even after a fresh request-code (delisted, region-
 // locked, no longer on the CDN) would otherwise be retried — and warn-
-// logged — forever.  After kMax consecutive failures the depot is dropped
-// for the rest of the session; a single success clears the streak so a
-// transient miss never permanently drops a depot.  Pure (no I/O), so the
+// logged — continuously. After kMax consecutive failures the depot cools
+// down until the runner clears the tracker; a single success clears the
+// streak immediately. Pure (no I/O), so the
 // runner in prewarm.cpp stays a thin loop and this stays unit-testable.
 class FailureTracker
 {
@@ -85,6 +86,14 @@ public:
 		return it != m_fails.end() && it->second >= m_max;
 	}
 
+	// Re-admit cooled-down targets for a real retry. The runner calls this
+	// only after a bounded quiet interval, so a provider recovery can unblock
+	// an install without turning a dead target into a tight retry loop.
+	void resetAll()
+	{
+		m_fails.clear();
+	}
+
 private:
 	static uint64_t pack(uint32_t depotId, uint64_t gid)
 	{
@@ -100,7 +109,7 @@ class PassBackoff
 public:
 	static constexpr int kNoOpPassesBeforeBackoff = 3;
 	static constexpr auto kBaseInterval = std::chrono::seconds(30);
-	static constexpr auto kBackoffInterval = std::chrono::minutes(5);
+	static constexpr auto kBackoffInterval = std::chrono::minutes(1);
 
 	// Returns true when this pass contains a depot/gid that was not present in
 	// the previous pass. A new target must immediately restore the fast poll.
@@ -342,7 +351,7 @@ inline std::vector<DepotGid> planStageTargets(
     const std::function<bool(uint32_t depotId)>& hasKey)
 {
 	std::vector<DepotGid> out;
-	std::unordered_set<uint64_t> seen;
+	std::set<DepotGid> seen;
 
 	for (const std::string& buf : provisionedBuffers)
 	{
@@ -352,17 +361,34 @@ inline std::vector<DepotGid> planStageTargets(
 			if (hasKey && !hasKey(d.depotId)) continue;
 			if (detail::isMacOnly(d.oslist)) continue;
 
-			// Pack (depotId, gid) into one key via a cheap mix so identical
-			// depot/gid pairs across buffers dedup.  A collision only costs
-			// a missed dedup (never a wrong stage), and the runtime layer
-			// re-dedups by (gid,depotId) anyway.
-			const uint64_t key =
-			    d.gid ^ (static_cast<uint64_t>(d.depotId) * 0x9E3779B97F4A7C15ULL);
-			if (seen.insert(key).second)
+			const DepotGid target{d.depotId, d.gid};
+			if (seen.insert(target).second)
 			{
-				out.push_back({d.depotId, d.gid});
+				out.push_back(target);
 			}
 		}
+	}
+	return out;
+}
+
+// Exact pins replace the public target for the same depot, while public
+// siblings that are not pinned remain required. This models partially pinned
+// Lua files without letting one ready pin hide a missing base/DLC manifest.
+inline std::vector<DepotGid> planPinnedStageTargets(
+    const std::vector<DepotGid>& publicTargets,
+    const std::unordered_map<uint32_t, uint64_t>& pins)
+{
+	std::vector<DepotGid> out;
+	std::set<DepotGid> seen;
+	for (const auto& [depotId, gid] : pins)
+	{
+		const DepotGid target{depotId, gid};
+		if (depotId && gid && seen.insert(target).second) out.push_back(target);
+	}
+	for (const auto& target : publicTargets)
+	{
+		if (!target.first || !target.second || pins.count(target.first)) continue;
+		if (seen.insert(target).second) out.push_back(target);
 	}
 	return out;
 }
