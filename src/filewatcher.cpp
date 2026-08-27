@@ -1,5 +1,7 @@
 #include "filewatcher.hpp"
 
+#include "filewatcher_burst.hpp"
+
 #include "log.hpp"
 #include "ownerwork.hpp"
 
@@ -70,6 +72,8 @@ void* watchLoop(void* args)
 		{
 			continue;
 		}
+		size += static_cast<ssize_t>(
+			FileWatcherBurst::drainAdditionalReadable(watcher->notifyFd));
 
 		g_pLog->debug("inotify batch bytes=%zd\n", size);
 
