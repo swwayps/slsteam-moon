@@ -93,6 +93,11 @@ public:
 	// missing buffer still takes the synchronous PICS fallback.
 	MTVariable<bool> asyncProvision;
 	MTVariable<bool> extendedLogging;
+	// Safety valve for pathological bulk copies into stplug-in (see
+	// config_discovery.hpp). This is NOT a library-size limit: it sits far above
+	// any realistic library and only keeps a tens-of-thousands-of-scripts drop
+	// from stalling the client. 0 disables the cap entirely.
+	MTVariable<std::size_t> maxManagedApps;
 
 	//Using incomplete class to avoid runtime linking errors
 	CFileWatcher* watcher;

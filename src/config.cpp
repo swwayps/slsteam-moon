@@ -149,7 +149,7 @@ std::unordered_set<uint32_t> CConfig::discoverStPluginAppIds()
 		const uint32_t appIdStem =
 		    ConfigDiscovery::appIdFromScriptName(path.filename().string());
 		if (ConfigDiscovery::keepDiscoveredMainApp(
-		        appIdStem, DepotKey::isManagedDepot(appIdStem)))
+		        appIdStem, /*idIsAlsoManagedDepot=*/false))
 		{
 			result.insert(appIdStem);
 		}
@@ -180,7 +180,7 @@ std::unordered_set<uint32_t> CConfig::loadLuaAppIdsYaml()
 				{
 					const uint32_t val = subNode.as<uint32_t>();
 					if (ConfigDiscovery::keepDiscoveredMainApp(
-					        val, DepotKey::isManagedDepot(val)))
+					        val, /*idIsAlsoManagedDepot=*/false))
 					{
 						result.insert(val);
 					}
@@ -431,6 +431,11 @@ bool CConfig::loadSettings()
 	patternCache = getSetting<bool>(node, "PatternCache", true);
 	asyncProvision = getSetting<bool>(node, "AsyncProvision", true);
 	logLevel = getSetting<unsigned int>(node, "LogLevel", 2);
+	// Safety valve only (see config_discovery.hpp). Sits far above any realistic
+	// library; 0 disables it for users who deliberately manage huge sets.
+	maxManagedApps = static_cast<std::size_t>(getSetting<uint64_t>(
+		node, "MaxManagedApps",
+		static_cast<uint64_t>(ConfigDiscovery::kMaxManagedSourceApps)));
 
 	//TODO: Create smart logging function to log them automatically via getSetting
 	g_pLog->info(
@@ -466,19 +471,40 @@ bool CConfig::loadSettings()
 			installed = ConfigDiscovery::scanInstalledApps(
 			    ConfigDiscovery::steamAppsRootsFor(steamRoot));
 		}
+		// A cap of 0 means "no safety valve": pass the full discovered size so
+		// nothing is deferred. Installed apps are handed in so titles with
+		// content on disk are never displaced by an unrelated bulk copy.
+		const std::size_t configuredCap = maxManagedApps.get();
+		const std::size_t effectiveCap = configuredCap != 0
+			? configuredCap
+			: stplugApps.size() + luaYamlApps.size();
+		const auto selected = ConfigDiscovery::selectManagedSources(
+			stplugApps, luaYamlApps, managedAppIds.get(), effectiveCap,
+			installed.all);
 		const auto ids = ConfigDiscovery::classifyAppIds(
-		    stplugApps, luaYamlApps, legacyApps, installed.all, installed.accela);
+		    selected.active, {}, legacyApps, installed.all, installed.accela);
 
 		std::size_t installedLegacy = 0;
 		for (uint32_t appId : legacyApps)
 			if (installed.all.contains(appId)) ++installedLegacy;
 
 		g_pLog->info("App sources: stplug-in=%zu luaappids.yaml=%zu managed=%zu "
+		             "ignored-over-limit=%zu limit=%zu "
 		             "Accela-installed=%zu legacy-installed=%zu legacy-stale=%zu "
 		             "-> active=%zu\n",
 		             stplugApps.size(), luaYamlApps.size(), ids.managed.size(),
+		             selected.ignored, effectiveCap,
 		             installed.accela.size(), installedLegacy,
 		             legacyApps.size() - installedLegacy, ids.active.size());
+		if (selected.ignored != 0)
+		{
+			g_pLog->notify(
+			    "%zu script(s) exceed the MaxManagedApps safety limit (%zu) and "
+			    "are inactive this session; the files are untouched on disk. "
+			    "Raise MaxManagedApps in config.yaml (0 disables the limit) if "
+			    "this is intentional.\n",
+			    selected.ignored, effectiveCap);
+		}
 
 		managedAppIds = ids.managed;
 		addedAppIds = ids.active;
@@ -686,7 +712,7 @@ bool CConfig::loadSettings()
 
 bool CConfig::isAddedAppId(uint32_t appId)
 {
-	return addedAppIds.get().contains(appId);
+	return addedAppIds.contains(appId);
 }
 
 uint64_t CConfig::getManifestPin(uint32_t depotId)

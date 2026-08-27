@@ -39,6 +39,77 @@
 namespace ConfigDiscovery
 {
 
+// Safety valve, NOT a library-size limit.
+//
+// Steam's package-0 vector and its license/appinfo reconciliation are not
+// designed for an effectively unbounded managed set: a bulk copy of tens of
+// thousands of scripts (the Skyapi corpus is ~67k) makes the client stall in
+// "Loading user data" for minutes. The cap exists only to keep that
+// pathological case bootable.
+//
+// It must stay far above any realistic library. Measured on the Fedora VM with
+// the 67k corpus: 1024 managed apps produced an AppIdVec of 1220 and a
+// DepotIdVec of 6042, and the UI needed ~174s to settle; 4096 is still an
+// order of magnitude below the corpus while leaving normal libraries (even a
+// few thousand titles) completely untouched. Users who genuinely exceed it can
+// raise `MaxManagedApps` in config.yaml.
+//
+// Scripts beyond the cap are never deleted: they stay on disk, are reported as
+// `ignored-over-limit`, and become eligible as soon as the active set shrinks
+// or the limit is raised.
+inline constexpr std::size_t kMaxManagedSourceApps = 4096;
+
+struct ManagedSourceSelection
+{
+	std::unordered_set<uint32_t> active;
+	std::size_t discovered = 0;
+	std::size_t ignored = 0;
+};
+
+inline ManagedSourceSelection selectManagedSources(
+	const std::unordered_set<uint32_t>& stplugApps,
+	const std::unordered_set<uint32_t>& luaYamlApps,
+	const std::unordered_set<uint32_t>& previouslyActive = {},
+	std::size_t maxApps = kMaxManagedSourceApps,
+	const std::unordered_set<uint32_t>& installedApps = {})
+{
+	ManagedSourceSelection result;
+	std::unordered_set<uint32_t> discovered = stplugApps;
+	discovered.insert(luaYamlApps.begin(), luaYamlApps.end());
+	result.discovered = discovered.size();
+	result.active.reserve(std::min(maxApps, result.discovered));
+
+	const auto addSorted = [&](const std::unordered_set<uint32_t>& candidates,
+	                           bool requireDiscovered) {
+		std::vector<uint32_t> sorted(candidates.begin(), candidates.end());
+		std::sort(sorted.begin(), sorted.end());
+		for (const uint32_t appId : sorted)
+		{
+			if (result.active.size() >= maxApps) break;
+			if (appId == 0 ||
+			    (requireDiscovered && !discovered.contains(appId))) continue;
+			result.active.insert(appId);
+		}
+	};
+
+	// Priority order, highest first. Everything here is user intent or already
+	// working state, so a bulk copy can never evict it:
+	//   1. luaappids.yaml  - explicit manual/plugin overrides
+	//   2. installed apps  - the titles that actually have content on disk
+	//   3. previously active - keeps a working session stable across a reload
+	// Only after those does the remaining budget get filled from the scripts.
+	// Installed apps must outrank the generic fill: sorting the leftovers by
+	// AppID alone favors the oldest low-numbered Valve entries (10, 20, 1290 in
+	// the Skyapi corpus), which are large and are almost never what the user
+	// added.
+	addSorted(luaYamlApps, false);
+	addSorted(installedApps, true);
+	addSorted(previouslyActive, true);
+	addSorted(stplugApps, false);
+	result.ignored = result.discovered - result.active.size();
+	return result;
+}
+
 // Parse the app id a stplug-in script encodes through its FILENAME.
 // Returns 0 unless `filename` is a purely-numeric "<digits>.lua" name that
 // fits in uint32_t (rejects "keys.lua", "275850_backup.lua", ".lua", etc.).

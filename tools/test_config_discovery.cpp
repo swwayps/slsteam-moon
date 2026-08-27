@@ -38,6 +38,7 @@ int main()
 	using ConfigDiscovery::classifyReloadRemovals;
 	using ConfigDiscovery::keepDiscoveredMainApp;
 	using ConfigDiscovery::scanInstalledApps;
+	using ConfigDiscovery::selectManagedSources;
 	using ConfigDiscovery::steamAppsRootsFor;
 
 	// --- Filename -> app id parsing ---------------------------------------
@@ -73,6 +74,81 @@ int main()
 	      "zero id rejected");
 	CHECK(!keepDiscoveredMainApp(0, true),
 	      "zero id rejected regardless of managed flag");
+
+	// A source burst must not be allowed to expand package 0 without bound.
+	// Manual entries win, existing active entries stay stable across a reload,
+	// and the remaining slots are filled deterministically by AppID.
+	{
+		const std::unordered_set<uint32_t> scripts{10, 20, 30, 40, 50};
+		const std::unordered_set<uint32_t> manual{90};
+		const std::unordered_set<uint32_t> existing{40};
+		const auto selected = selectManagedSources(
+			scripts, manual, existing, /*maxApps=*/3);
+		CHECK(selected.active == std::unordered_set<uint32_t>({10, 40, 90}),
+		      "bounded source selection prioritizes manual and existing apps");
+		CHECK(selected.discovered == 6 && selected.ignored == 3,
+		      "bounded source selection reports the complete overflow");
+	}
+	{
+		const std::unordered_set<uint32_t> scripts{50, 20, 40, 10, 30};
+		const auto selected = selectManagedSources(
+			scripts, {}, {}, /*maxApps=*/3);
+		CHECK(selected.active == std::unordered_set<uint32_t>({10, 20, 30}),
+		      "cold source overflow selects the lowest AppIDs deterministically");
+	}
+	{
+		std::unordered_set<uint32_t> scripts;
+		for (uint32_t appId = 1; appId <= 67395; ++appId)
+			scripts.insert(appId);
+		const auto selected = selectManagedSources(scripts, {}, {});
+		CHECK(selected.active.size() ==
+		          ConfigDiscovery::kMaxManagedSourceApps,
+		      "Skyapi-sized source burst stays within the session budget");
+		CHECK(selected.discovered == 67395 &&
+		          selected.ignored ==
+		              67395 - ConfigDiscovery::kMaxManagedSourceApps,
+		      "Skyapi-sized source burst reports every deferred script");
+		const auto boundary = static_cast<uint32_t>(
+			ConfigDiscovery::kMaxManagedSourceApps);
+		CHECK(selected.active.contains(1) &&
+		          selected.active.contains(boundary) &&
+		          !selected.active.contains(boundary + 1),
+		      "Skyapi-sized cold selection is deterministic at the boundary");
+	}
+	// The cap is a safety valve, not a library-size limit: a realistic library
+	// (even a very large one) must never be truncated by the default.
+	{
+		std::unordered_set<uint32_t> scripts;
+		for (uint32_t appId = 1; appId <= 3000; ++appId)
+			scripts.insert(400000 + appId);
+		const auto selected = selectManagedSources(scripts, {}, {});
+		CHECK(selected.active.size() == 3000 && selected.ignored == 0,
+		      "a realistic large library is never truncated by the default cap");
+	}
+	// Installed titles outrank the generic AppID fill. The Skyapi corpus starts
+	// at AppID 10, so an AppID-only order would activate ancient Valve entries
+	// and defer the games the user actually has on disk.
+	{
+		const std::unordered_set<uint32_t> scripts{10, 20, 30, 2050650};
+		const std::unordered_set<uint32_t> installed{2050650};
+		const auto selected = selectManagedSources(
+			scripts, {}, {}, /*maxApps=*/2, installed);
+		CHECK(selected.active.contains(2050650),
+		      "an installed game outranks lower AppIDs under the cap");
+		CHECK(selected.active == std::unordered_set<uint32_t>({10, 2050650}),
+		      "remaining budget still fills deterministically by AppID");
+	}
+	// An installed app that has no script must not be invented as a source.
+	{
+		const std::unordered_set<uint32_t> scripts{10, 20};
+		const std::unordered_set<uint32_t> installed{999999};
+		const auto selected = selectManagedSources(
+			scripts, {}, {}, /*maxApps=*/2, installed);
+		CHECK(!selected.active.contains(999999),
+		      "an installed app without a script is not a managed source");
+		CHECK(selected.active == std::unordered_set<uint32_t>({10, 20}),
+		      "installed-app priority cannot fabricate managed sources");
+	}
 
 	// --- Managed vs compatibility-only ids -------------------------------
 	// Only script/yaml ids are eligible for appinfo fetching.  Installed
