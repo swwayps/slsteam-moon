@@ -7,6 +7,7 @@
 #include "appinfo_provision.hpp"
 
 #include "../config.hpp"
+#include "../config_discovery.hpp"
 #include "../globals.hpp"
 #include "../utils/atomic_file.hpp"
 #include "../utils/process_lock.hpp"
@@ -39,6 +40,8 @@ namespace
 
 std::mutex g_cacheMu;
 DepotKey::LazyIndex<uint32_t, SavedKey> g_keyIndex;
+DepotKey::ManagedDepotIndex g_managedDepotIndex;
+bool g_managedDepotIndexReady = false;
 
 std::mutex g_pendingMu;
 std::map<uint32_t /*depotId*/, uint32_t /*appId*/> g_pendingReqs;
@@ -138,6 +141,11 @@ void loadKeyIndexLocked()
 				entries[key.depotId] = std::move(key);
 		}
 	});
+	if (!g_managedDepotIndexReady)
+	{
+		g_managedDepotIndex.rebuild(g_keyIndex.entries());
+		g_managedDepotIndexReady = true;
+	}
 }
 
 } // namespace
@@ -225,6 +233,9 @@ bool saveKeyToCache(uint32_t appId, uint32_t depotId, const std::string& key, bo
 	saved.depotId = depotId;
 	saved.key = key;
 	saved.managed = finalManaged;
+	g_managedDepotIndex.replace(
+		depotId, existing.appId, existing.managed,
+		saved.appId, saved.managed);
 	g_keyIndex.upsert(depotId, std::move(saved));
 	return true;
 }
@@ -243,14 +254,9 @@ std::vector<uint32_t> managedDepotsForApp(uint32_t appId)
 
 	std::lock_guard<std::mutex> lk(g_cacheMu);
 	loadKeyIndexLocked();
-	for (const auto& [depotId, key] : g_keyIndex.entries())
-	{
-		if (key.appId != appId || !key.managed || depotId == 0) continue;
-		// Only MANAGED (Lua-injected) depots: an observed owned-game /
-		// runtime key must never be synthesized into an app's appinfo.
-		out.push_back(depotId);
-	}
-	return out;
+	// Only MANAGED (Lua-injected) depots: an observed owned-game / runtime
+	// key must never be synthesized into an app's appinfo.
+	return g_managedDepotIndex.forApp(appId);
 }
 
 
@@ -271,6 +277,7 @@ void importLuaScriptsFrom(const std::string& stplug)
 		"addappid\\s*\\(\\s*(\\d+)\\s*,\\s*\\d+\\s*,\\s*\"([0-9A-Fa-f]{64})\"\\s*\\)"
 	);
 
+	const auto managedApps = g_config.managedAppIds.get();
 	int imported = 0;
 	for (const auto& entry : std::filesystem::directory_iterator(stplug))
 	{
@@ -278,12 +285,12 @@ void importLuaScriptsFrom(const std::string& stplug)
 		const auto& path = entry.path();
 		if (path.extension() != ".lua") continue;
 
+		const uint32_t appIdGuess = ConfigDiscovery::appIdFromScriptName(
+			path.filename().string());
+		if (appIdGuess == 0 || !managedApps.contains(appIdGuess)) continue;
+
 		std::ifstream ifs(path);
 		if (!ifs.is_open()) continue;
-
-		uint32_t appIdGuess = 0;
-		try { appIdGuess = static_cast<uint32_t>(std::stoul(path.stem().string())); }
-		catch (...) {}
 
 		// Line-by-line so we can strip Lua comments (`-- ...`); a
 		// commented-out `--addappid(d,1,"key")` must NOT be imported.
@@ -304,7 +311,7 @@ void importLuaScriptsFrom(const std::string& stplug)
 				const std::string keyHex = (*it)[2].str();
 				const std::string keyBin = hexToBytes(keyHex);
 				if (keyBin.size() != 32) continue;
-				if (saveKeyToCache(appIdGuess ? appIdGuess : depotId, depotId, keyBin, /*managed=*/true))
+				if (saveKeyToCache(appIdGuess, depotId, keyBin, /*managed=*/true))
 				{
 					++imported;
 				}

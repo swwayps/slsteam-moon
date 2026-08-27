@@ -98,13 +98,20 @@ int main()
 	          metadata) &&
 	      metadata.appId == 3405340 && metadata.changeNumber == 1 &&
 	      metadata.wireSize == 8192 &&
+	      metadata.hasNormalized && metadata.normalized &&
 	      metadata.hasSynthetic && !metadata.synthetic,
 	      "generated cache metadata is parsed without yaml-cpp");
 	CHECK(parseCacheMetadata(
+	          "appid: 3405340\nchange_number: 2\nwire_size: 4096\n"
+	          "sha_b64: AAAAAAAAAAAAAAAAAAAAAAAAAAA=\nnormalized: false\n"
+	          "synthetic: false\n",
+	          metadata) && metadata.hasNormalized && !metadata.normalized,
+	      "explicit raw cache provenance is retained by the no-throw parser");
+	CHECK(parseCacheMetadata(
 	          "appid: 3405340\nchange_number: 1\nwire_size: 8192\n"
-	          "sha_b64: AAAAAAAAAAAAAAAAAAAAAAAAAAA=\nnormalized: true\n",
-	          metadata) && !metadata.hasSynthetic,
-	      "legacy cache metadata without explicit provenance remains readable");
+	          "sha_b64: AAAAAAAAAAAAAAAAAAAAAAAAAAA=\n",
+	          metadata) && !metadata.hasNormalized && !metadata.hasSynthetic,
+	      "legacy cache metadata without provenance markers remains readable");
 
 	const CacheValidationKey fileIdentity{
 	    .appId = 420530,

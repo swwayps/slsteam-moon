@@ -51,6 +51,8 @@ struct CacheMetadataView
 	std::uint32_t changeNumber = 0;
 	std::uint64_t wireSize = 0;
 	std::string_view shaBase64;
+	bool hasNormalized = false;
+	bool normalized = false;
 	bool hasSynthetic = false;
 	bool synthetic = false;
 };
@@ -155,10 +157,10 @@ inline bool parseCacheMetadata(
 		}
 		else if (key == "normalized")
 		{
-			bool ignored = false;
-			if (normalizedSeen || !parseBool(value, ignored))
+			if (normalizedSeen || !parseBool(value, parsed.normalized))
 				return false;
 			normalizedSeen = true;
+			parsed.hasNormalized = true;
 		}
 		else if (key == "synthetic")
 		{

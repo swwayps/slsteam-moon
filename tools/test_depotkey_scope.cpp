@@ -181,6 +181,27 @@ int main()
 	CHECK(index.find(701u) && *index.find(701u),
 	      "depot-key index preserves managed after passive re-observation");
 
+	DepotKey::ManagedDepotIndex appIndex;
+	appIndex.replace(/*depotId=*/501u, /*oldAppId=*/0u, /*oldManaged=*/false,
+	                 /*newAppId=*/100u, /*newManaged=*/true);
+	appIndex.replace(/*depotId=*/502u, /*oldAppId=*/0u, /*oldManaged=*/false,
+	                 /*newAppId=*/100u, /*newManaged=*/true);
+	appIndex.replace(/*depotId=*/601u, /*oldAppId=*/0u, /*oldManaged=*/false,
+	                 /*newAppId=*/200u, /*newManaged=*/true);
+	CHECK(appIndex.forApp(100u) == std::vector<unsigned int>({501u, 502u}),
+	      "app depot index returns only the managed depots for one app");
+	CHECK(appIndex.forApp(999u).empty(),
+	      "app depot index misses do not scan or leak another app's depots");
+	appIndex.replace(/*depotId=*/502u, /*oldAppId=*/100u, /*oldManaged=*/true,
+	                 /*newAppId=*/200u, /*newManaged=*/true);
+	CHECK(appIndex.forApp(100u) == std::vector<unsigned int>({501u}) &&
+	      appIndex.forApp(200u) == std::vector<unsigned int>({502u, 601u}),
+	      "app depot index moves a rewritten depot between app ids");
+	appIndex.replace(/*depotId=*/501u, /*oldAppId=*/100u, /*oldManaged=*/true,
+	                 /*newAppId=*/100u, /*newManaged=*/false);
+	CHECK(appIndex.forApp(100u).empty(),
+	      "app depot index removes a depot that is no longer managed");
+
 	if (g_failures == 0) std::printf("\nall depotkey-scope checks passed\n");
 	else                 std::printf("\n%d depotkey-scope check(s) FAILED\n", g_failures);
 	return g_failures == 0 ? 0 : 1;

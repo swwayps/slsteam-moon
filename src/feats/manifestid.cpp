@@ -272,6 +272,7 @@ void importLuaScripts()
 	);
 
 	int imported = 0;
+	const auto managedApps = g_config.managedAppIds.get();
 	for (const auto& entry : std::filesystem::directory_iterator(stplug))
 	{
 		if (!entry.is_regular_file()) continue;
@@ -279,6 +280,7 @@ void importLuaScripts()
 		if (path.extension() != ".lua") continue;
 		const uint32_t appId = ConfigDiscovery::appIdFromScriptName(
 			path.filename().string());
+		if (appId == 0 || !managedApps.contains(appId)) continue;
 
 		std::ifstream ifs(path);
 		if (!ifs.is_open()) continue;

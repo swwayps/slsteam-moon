@@ -85,22 +85,33 @@ bool hasNormalizedCache(uint32_t appId)
 {
 	try
 	{
-		const auto metadata = YAML::LoadFile(getMetaPath(appId));
-		if (metadata["appid"].as<uint32_t>() != appId)
+		// This runs on the detached raw-cache worker. Do not invoke yaml-cpp
+		// here: its LoadFile error path cannot reliably unwind through the
+		// optimized portable build and a concurrently replaced metadata file
+		// can therefore abort Steam. The emitted cache format is deliberately
+		// small and already has a bounded, no-throw parser.
+		std::ifstream metadataInput(getMetaPath(appId),
+		                           std::ios::binary | std::ios::ate);
+		if (!metadataInput.is_open()) return false;
+		const std::streamsize metadataSize = metadataInput.tellg();
+		constexpr std::streamsize kMaxMetadataSize = 64 << 10;
+		if (metadataSize <= 0 || metadataSize > kMaxMetadataSize) return false;
+		std::string metadataText(static_cast<std::size_t>(metadataSize), '\0');
+		metadataInput.seekg(0, std::ios::beg);
+		if (!metadataInput.read(metadataText.data(), metadataSize) ||
+		    metadataInput.gcount() != metadataSize) return false;
+		AppInfoProvision::cache::CacheMetadataView metadata;
+		if (!AppInfoProvision::cache::parseCacheMetadata(metadataText, metadata) ||
+		    metadata.appId != appId)
 			return false;
 		if (!AppInfoProvision::cacheMarkerAllowsRead(appId))
 			return false;
-		const auto normalizedField = metadata["normalized"];
-		const bool hasNormalizedMarker = normalizedField.IsDefined();
-		const bool normalized = hasNormalizedMarker &&
-		                        normalizedField.as<bool>();
 		if (!AppInfoProvision::cache::shouldPreserveCacheFromRawPics(
-		        hasNormalizedMarker, normalized))
+		        metadata.hasNormalized, metadata.normalized))
 			return false;
 
-		const auto declaredSize = metadata["wire_size"].as<std::size_t>();
 		const auto declaredSha = std::string(
-			base64::from_base64(metadata["sha_b64"].as<std::string>()));
+			base64::from_base64(std::string(metadata.shaBase64)));
 		constexpr std::size_t kSha1Size = 20;
 		if (declaredSha.size() != kSha1Size)
 			return false;
@@ -110,7 +121,7 @@ bool hasNormalizedCache(uint32_t appId)
 		if (!ifs.is_open()) return false;
 		const std::streamsize rawSize = ifs.tellg();
 		if (rawSize <= 0 || rawSize > (16LL << 20) ||
-		    declaredSize != static_cast<std::size_t>(rawSize))
+		    metadata.wireSize != static_cast<std::size_t>(rawSize))
 			return false;
 		std::string wire(static_cast<std::size_t>(rawSize), '\0');
 		ifs.seekg(0, std::ios::beg);

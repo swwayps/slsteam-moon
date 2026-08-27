@@ -25,6 +25,13 @@ public:
 		return T(instance);
 	}
 
+	template<typename Key>
+	bool contains(const Key& key)
+	{
+		const auto lock = std::shared_lock(mutex);
+		return instance.contains(key);
+	}
+
 	void set(T value)
 	{
 		const auto lock = std::unique_lock(mutex);
