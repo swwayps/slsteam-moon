@@ -1,6 +1,7 @@
 #include <dlfcn.h>
 #include "afftrace.hpp"
 #include "api.hpp"
+#include "runtimedir.hpp"
 #include "audit_log.hpp"
 #include "audit_policy.hpp"
 #include "audit_symbols.hpp"
@@ -449,24 +450,45 @@ static void load()
 	// genuine "the other module isn't mapped yet" retry on the next objopen
 	// still works) and BEFORE the heavy work.
 	{
-		char lockPath[64];
-		std::snprintf(lockPath, sizeof(lockPath), "/tmp/.slssteam.load.%d", getpid());
-		const int lockFd = open(lockPath, O_CREAT | O_RDWR | O_CLOEXEC, 0600);
-		if (lockFd >= 0)
+		// The lock used to be /tmp/.slssteam.load.<pid>, opened without O_EXCL or
+		// O_NOFOLLOW. Any local process could pre-create that path and hold an
+		// exclusive flock on it; our flock(LOCK_NB) then failed and we SKIPPED
+		// the hooking pass — a lock file that doubled as an injection kill
+		// switch. It now lives in the user's private 0700 runtime directory, is
+		// opened with O_NOFOLLOW, and is only honoured when the descriptor really
+		// is a private regular file we own. Anything else is treated as "no
+		// usable lock" and hooking proceeds: failing OPEN here is the safe
+		// direction, because the only cost is a redundant pass.
+		const std::string lockDir =
+			RuntimeDir::resolveBase(getenv("XDG_RUNTIME_DIR"), getenv("HOME"));
+		if (!lockDir.empty() && RuntimeDir::ensureDir(lockDir))
 		{
-			if (flock(lockFd, LOCK_EX | LOCK_NB) != 0)
+			const std::string lockPath =
+				lockDir + "/load." + std::to_string(getpid());
+			const int lockFd = open(lockPath.c_str(),
+			                        O_CREAT | O_RDWR | O_NOFOLLOW | O_CLOEXEC, 0600);
+			if (lockFd >= 0 && RuntimeDir::descriptorIsPrivate(lockFd))
 			{
-				// Another SLSsteam.so instance in this process already claimed
-				// the hooking pass. Bail before re-scanning the hooked code.
-				g_pLog->info("load: another instance already claimed the hooking pass (guard %p) -> skipping\n",
-				             static_cast<void*>(&loadDone));
-				close(lockFd);
-				return;
+				if (flock(lockFd, LOCK_EX | LOCK_NB) != 0)
+				{
+					// Another SLSsteam.so instance in this process already
+					// claimed the hooking pass. Bail before re-scanning the
+					// hooked code.
+					g_pLog->info("load: another instance already claimed the hooking pass (guard %p) -> skipping\n",
+					             static_cast<void*>(&loadDone));
+					close(lockFd);
+					return;
+				}
+				// We won the lock; deliberately keep lockFd open for the lifetime
+				// of the process so the lock is held (released only on exit).
 			}
-			// We won the lock; deliberately keep lockFd open for the lifetime
-			// of the process so the lock is held (released only on exit).
+			else if (lockFd >= 0)
+			{
+				g_pLog->info("load: load lock is not a private file -> proceeding without it\n");
+				close(lockFd);
+			}
 		}
-		// open() failure falls through: never block hooking on a broken /tmp.
+		// A missing or unusable lock falls through: never block hooking on it.
 	}
 	g_pLog->info("load: claimed hooking pass (guard %p, pid %d)\n",
 	             static_cast<void*>(&loadDone), getpid());

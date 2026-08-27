@@ -6,28 +6,65 @@
 #include <iomanip>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #ifndef SHA256_DIGEST_LENGTH
 #define SHA256_DIGEST_LENGTH 32
 #endif
 
-std::vector<std::string> Utils::strsplit(char *str, const char *delimeter)
+// Split `str` on any character of `delimeter`, collapsing runs of delimiters and
+// ignoring leading/trailing ones — the same field sequence strtok produced, which
+// is what the callers index by position.
+//
+// This used to be a strtok loop, which had three problems:
+//   * strtok returns nullptr for an empty string or one made only of delimiters,
+//     and the first field was passed straight to std::string(nullptr) — undefined
+//     behaviour, and in practice a crash of the whole Steam client. SLSAPI reaches
+//     that case with a single empty line in its command file.
+//   * strtok writes NUL bytes into the buffer it is handed. cleanEnvVar passes
+//     getenv()'s pointer, which points into environ, so splitting $LD_AUDIT
+//     rewrote the process' own environment block.
+//   * strtok keeps its cursor in global state, so two concurrent splits corrupt
+//     each other. This is called from the API watcher thread and from the
+//     pattern-scan path.
+// Nothing below writes to the input or keeps state between calls.
+std::vector<std::string> Utils::strsplit(const char* str, const char* delimeter)
 {
 	auto splits = std::vector<std::string>();
 
-	char* split = strtok(str, delimeter);
-	splits.emplace(splits.end(), std::string(split));
-
-	while(split)
+	if (str == nullptr || *str == '\0')
 	{
-		split = strtok(nullptr, delimeter);
-		if (!split)
+		return splits;
+	}
+
+	if (delimeter == nullptr || *delimeter == '\0')
+	{
+		// Nothing to split on: the whole input is a single field.
+		splits.emplace_back(str);
+		return splits;
+	}
+
+	const std::string_view input(str);
+	const std::string_view delims(delimeter);
+	std::size_t pos = 0;
+
+	while (pos < input.size())
+	{
+		const std::size_t start = input.find_first_not_of(delims, pos);
+		if (start == std::string_view::npos)
 		{
 			break;
 		}
 
-		splits.emplace(splits.end(), std::string(split));
+		std::size_t end = input.find_first_of(delims, start);
+		if (end == std::string_view::npos)
+		{
+			end = input.size();
+		}
+
+		splits.emplace_back(input.substr(start, end - start));
+		pos = end;
 	}
 
 	return splits;

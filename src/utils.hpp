@@ -6,7 +6,7 @@
 
 namespace Utils
 {
-	std::vector<std::string> strsplit(char* str, const char* delimeter);
+	std::vector<std::string> strsplit(const char* str, const char* delimeter);
 	std::string getFileSHA256(const char* filePath);
 
 	// Reads the GNU build-id (NT_GNU_BUILD_ID note) from an ELF file and

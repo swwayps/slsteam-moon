@@ -229,14 +229,63 @@ ls_shim_content() {
 #!/bin/sh
 $LS_TAG
 # Managed by slsteam-moon. Run the uninstaller to restore the package launcher.
-SLSM_WRAPPER="\${HOME}/.local/share/SLSsteam/path/steam"
+#
+# TRUST NOTE. This script is root-owned and sits on the system PATH, but the
+# wrapper it delegates to lives in a user's home directory and is writable by
+# that user. That inversion is only safe while the two identities agree, so the
+# wrapper must be a plain file (not a symlink) OWNED BY THE EFFECTIVE ACCOUNT
+# with no group or other write bit before it is executed. An invocation that
+# arrives elevated while \$HOME still names an unprivileged user's directory
+# (sudo -E, sudoers env_keep += HOME, a helper that inherits the environment)
+# therefore finds a wrapper owned by someone else, refuses it, and falls through
+# to the packaged launcher instead of running a user-writable script as root.
+# The account's home is resolved from the password database when the invocation
+# carries no usable \$HOME of its own.
+SLSM_USER="\$(id -un 2>/dev/null || true)"
+SLSM_EUID="\$(id -u 2>/dev/null || true)"
+SLSM_PW_HOME=""
+if [ -n "\$SLSM_USER" ]; then
+	SLSM_PW_HOME="\$(getent passwd "\$SLSM_USER" 2>/dev/null | cut -d: -f6)"
+fi
+SLSM_ENV_HOME=""
+case "\${HOME:-}" in
+	/*) SLSM_ENV_HOME="\$HOME" ;;
+esac
+slsm_wrapper_trusted() {
+	[ -n "\$1" ] || return 1
+	[ -L "\$1" ] && return 1
+	[ -f "\$1" ] || return 1
+	[ -x "\$1" ] || return 1
+	_slsm_owner="\$(stat -c '%u' "\$1" 2>/dev/null || true)"
+	[ -n "\$_slsm_owner" ] || return 1
+	[ -n "\$SLSM_EUID" ] || return 1
+	[ "\$_slsm_owner" = "\$SLSM_EUID" ] || return 1
+	_slsm_perm="\$(stat -c '%A' "\$1" 2>/dev/null || true)"
+	[ -n "\$_slsm_perm" ] || return 1
+	# -rwxrwxrwx: character 6 is the group write bit, character 9 the other one.
+	[ "\$(printf '%s' "\$_slsm_perm" | cut -c6)" = "w" ] && return 1
+	[ "\$(printf '%s' "\$_slsm_perm" | cut -c9)" = "w" ] && return 1
+	return 0
+}
+# \$HOME is what every ordinary launch carries; the password-database home is only
+# consulted when the invocation arrives without one. WHICH directory is used is
+# not the safety property — slsm_wrapper_trusted is. Under an elevated invocation
+# the wrapper found in an unprivileged user's home is owned by that user rather
+# than by the effective account, so it is refused and the packaged launcher runs.
+SLSM_HOME="\$SLSM_ENV_HOME"
+[ -n "\$SLSM_HOME" ] || SLSM_HOME="\$SLSM_PW_HOME"
+SLSM_WRAPPER=""
+if [ -n "\$SLSM_HOME" ] \\
+   && slsm_wrapper_trusted "\$SLSM_HOME/.local/share/SLSsteam/path/steam"; then
+	SLSM_WRAPPER="\$SLSM_HOME/.local/share/SLSsteam/path/steam"
+fi
 SLSM_ORIG="$backup"
 SLSM_ORIG_EXEC="$alias"
 SLSM_TAG="$LS_TAG"
 SLSM_BOOTSTRAP_ROOT=""
 SLSM_BOOTSTRAPPED=0
-if [ -L "\${HOME}/.steam/steam" ]; then
-	SLSM_BOOTSTRAP_ROOT="\$(readlink -e "\${HOME}/.steam/steam" 2>/dev/null || true)"
+if [ -n "\$SLSM_HOME" ] && [ -L "\$SLSM_HOME/.steam/steam" ]; then
+	SLSM_BOOTSTRAP_ROOT="\$(readlink -e "\$SLSM_HOME/.steam/steam" 2>/dev/null || true)"
 	if [ -n "\$SLSM_BOOTSTRAP_ROOT" ] && \
 	   [ -f "\$SLSM_BOOTSTRAP_ROOT/steam.sh" ] && \
 	   [ -x "\$SLSM_BOOTSTRAP_ROOT/steam.sh" ]; then
@@ -280,7 +329,7 @@ if [ "\$SLSM_ORIG_USABLE" = 1 ]; then
 		esac
 	fi
 fi
-if [ -x "\$SLSM_WRAPPER" ] && [ "\$SLSM_BOOTSTRAPPED" = 1 ]; then
+if [ -n "\$SLSM_WRAPPER" ] && [ "\$SLSM_BOOTSTRAPPED" = 1 ]; then
 	if [ -n "\$SLSM_LAUNCH" ]; then
 		export SLSM_STEAM_BIN="\$SLSM_LAUNCH"
 	fi
@@ -289,9 +338,9 @@ fi
 if [ -n "\$SLSM_LAUNCH" ]; then
 	exec "\$SLSM_LAUNCH" "\$@"
 fi
-for _s in "\${HOME}/.local/share/Steam/steam.sh" \
-          "\${HOME}/.steam/steam/steam.sh" \
-          "\${HOME}/.steam/debian-installation/steam.sh"; do
+for _s in "\$SLSM_HOME/.local/share/Steam/steam.sh" \
+          "\$SLSM_HOME/.steam/steam/steam.sh" \
+          "\$SLSM_HOME/.steam/debian-installation/steam.sh"; do
 	[ -f "\$_s" ] && [ -x "\$_s" ] && exec "\$_s" "\$@"
 done
 echo "steam: no usable launcher found (slsteam-moon shim)" >&2

@@ -281,26 +281,41 @@ cd "$STEAMLESS_HOME"
 # 90s timeout is generous; Skyrim's 37 MB exe takes ~3s on a warm prefix.
 # Steamless CLI exit codes: 0 = unpacked OK, 1 = no SteamStub DRM present
 # (benign — treat as "nothing to do"), >1 = real failure.
+# The log used to be redirected to /tmp/steamless-bypass.$$.log. A shell
+# redirect FOLLOWS symlinks, so a local process that guessed the pid and
+# pre-created that path as a symlink had an arbitrary file of the user's
+# truncated and overwritten — and the `cat` below would then have printed
+# whatever it pointed at. mktemp creates the file itself, refusing an existing
+# name, inside a private directory.
+SL_LOG_DIR="${XDG_RUNTIME_DIR:-$HOME/.cache}/SLSsteam"
+mkdir -p "$SL_LOG_DIR" 2>/dev/null || true
+chmod 700 "$SL_LOG_DIR" 2>/dev/null || true
+SL_LOG="$(mktemp "$SL_LOG_DIR/steamless-bypass.XXXXXX.log" 2>/dev/null)" \
+    || SL_LOG="$(mktemp 2>/dev/null)" \
+    || die "could not create a private log file" 4
+chmod 600 "$SL_LOG" 2>/dev/null || true
+trap 'rm -f "$SL_LOG"' EXIT
+
 set +e
 "$TIMEOUT_BIN" 90 "$WINE_BIN" Steamless.CLI.exe \
         --quiet --realign --recalcchecksum -f "$WIN_PATH" \
-        > /tmp/steamless-bypass.$$.log 2>&1
+        > "$SL_LOG" 2>&1
 sl_rc=$?
 set -e
 
 if [ "$sl_rc" -eq 1 ] && [ ! -f "$EXE_PATH.unpacked.exe" ]; then
     log "Steamless reports no SteamStub DRM; nothing to do"
-    rm -f /tmp/steamless-bypass.$$.log
+    rm -f "$SL_LOG"
     exit 2
 fi
 if [ "$sl_rc" -ne 0 ]; then
     warn "Steamless invocation failed (rc=$sl_rc); log follows:"
-    sed 's/^/  /' /tmp/steamless-bypass.$$.log >&2
-    rm -f /tmp/steamless-bypass.$$.log
+    sed 's/^/  /' "$SL_LOG" >&2
+    rm -f "$SL_LOG"
     die "Steamless failed" 4
 fi
-[ -z "${QUIET:-}" ] && cat /tmp/steamless-bypass.$$.log
-rm -f /tmp/steamless-bypass.$$.log
+[ -z "${QUIET:-}" ] && cat "$SL_LOG"
+rm -f "$SL_LOG"
 
 UNPACKED="$EXE_PATH.unpacked.exe"
 [ -f "$UNPACKED" ] || die "no unpacked output at $UNPACKED" 5
