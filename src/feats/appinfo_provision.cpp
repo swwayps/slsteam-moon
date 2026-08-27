@@ -2840,13 +2840,28 @@ int provisionAppsPass(const std::string& appinfoVdfPath,
 		}
 		else if (notice == ProvisionNotice::ReviewGameData)
 		{
-			g_pLog->notifyUser(UserMsg::GamePreparationFailed,
-			                   std::to_string(appId));
+			// Report the first offender by AppID (the ordinary single-game
+			// case) and aggregate the rest into one message after the pass, so
+			// a bulk copy cannot produce hundreds of identical popups.
+			if (pass.takePreparationNotice(appId))
+				g_pLog->notifyUser(UserMsg::GamePreparationFailed,
+				                   std::to_string(appId));
 		}
 		else if (notice == ProvisionNotice::LocalStorage)
 		{
 			g_pLog->notifyUser(UserMsg::LocalStorageError);
 		}
+	}
+	// One summary for every app that was suppressed above.
+	if (const std::size_t suppressed = pass.pendingPreparationSummary())
+	{
+		g_pLog->notifyUser(UserMsg::GamePreparationFailedBatch,
+		                   std::to_string(pass.preparationFailureCount()));
+		g_pLog->info(
+		    "AppInfoProvision: %zu app(s) without installable content "
+		    "(first=%u); %zu notification(s) aggregated\n",
+		    pass.preparationFailureCount(), pass.firstPreparationFailure(),
+		    suppressed);
 	}
 	if (provisioned > 0 && summary.terminal == 0)
 	{

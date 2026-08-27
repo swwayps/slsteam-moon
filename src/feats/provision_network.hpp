@@ -11,6 +11,8 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstddef>
+#include <cstdint>
 #include <functional>
 
 namespace AppInfoProvision
@@ -134,6 +136,32 @@ public:
 		return true;
 	}
 
+	// Incomplete-metadata notices are aggregated instead of raised per app.
+	// A bulk copy into stplug-in routinely contains hundreds of storefront-only,
+	// DLC, demo or delisted entries with no content depots; one popup each is
+	// unactionable and buries the single message that does matter. The first app
+	// is still reported individually (the common "I just added one game" case),
+	// and the rest are summarized once when the pass finishes.
+	bool takePreparationNotice(uint32_t appId)
+	{
+		++m_preparationFailures;
+		if (m_preparationNoticeTaken) return false;
+		m_preparationNoticeTaken = true;
+		m_firstPreparationFailure = appId;
+		return true;
+	}
+
+	std::size_t preparationFailureCount() const { return m_preparationFailures; }
+
+	// Number of apps that failed WITHOUT getting their own notification, i.e.
+	// what the aggregated message must account for.
+	std::size_t pendingPreparationSummary() const
+	{
+		return m_preparationFailures > 1 ? m_preparationFailures - 1 : 0;
+	}
+
+	uint32_t firstPreparationFailure() const { return m_firstPreparationFailure; }
+
 private:
 	using Clock = std::chrono::steady_clock;
 
@@ -159,6 +187,9 @@ private:
 	bool m_recoveryPending = false;
 	bool m_recoveryAttempted = false;
 	bool m_connectivityNoticeTaken = false;
+	bool m_preparationNoticeTaken = false;
+	std::size_t m_preparationFailures = 0;
+	uint32_t m_firstPreparationFailure = 0;
 	bool m_providerBudgetStarted = false;
 	Clock::time_point m_providerStarted{};
 };

@@ -43,6 +43,11 @@ enum class UserMsg
 	DownloadTimedOut,          // timed out waiting on Steam's servers
 	GameMetadataUnavailable,  // no network and no local metadata; {detail}=appid
 	GamePreparationFailed,     // could not assemble a title's metadata
+	// Same condition as GamePreparationFailed, but for a whole pass: a bulk copy
+	// into stplug-in can hit hundreds of storefront/DLC/removed entries that have
+	// no installable content. One notification per app is unactionable spam, so a
+	// pass reports the count once. {detail} = number of affected apps.
+	GamePreparationFailedBatch,
 	DrmRemovalFailed,          // SteamStub unpack failed; title may not launch
 	LocalStorageError,         // local write/extract failed (disk full / perms)
 	RuntimeDependencyMissing,   // required unzip/gzip helper is unavailable
@@ -211,6 +216,13 @@ inline UiMessage messageFor(UserMsg m, Lang lang)
 			            : "AppID {detail} has incomplete install data. Re-add the game "
 			              "through LuaTools before installing.",
 			         Severity::Error };
+
+		case UserMsg::GamePreparationFailedBatch:
+			return { pt ? "{detail} jogos não têm conteúdo instalável e foram "
+			              "ignorados. Os demais continuam funcionando normalmente."
+			            : "{detail} games have no installable content and were "
+			              "skipped. The rest continue to work normally.",
+			         Severity::Warning };
 
 		case UserMsg::DrmRemovalFailed:
 			return { pt ? "Não foi possível remover o DRM de um jogo, então ele pode "
