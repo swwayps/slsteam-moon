@@ -106,6 +106,47 @@ EOF
 		'(cd "$TMP" && ./compile | cut -d" " -f1 | grep -qx 28)'
 fi
 
+# ---------------------------------------------------------------------------
+# The terminator check must hold for an input LARGER than a pipe buffer. When it
+# was written as `printf '%s' "$CONFIG" | grep -qF ...` under `set -o pipefail`,
+# grep exited on the match, printf died on SIGPIPE, the pipeline reported 141 and
+# the `if` read a found terminator as not-found. Past ~64 KiB the guard silently
+# stopped firing, which is the one case where a config is most likely to be
+# machine-generated and least likely to be eyeballed.
+# ---------------------------------------------------------------------------
+{
+	printf ')SLSCFG"\n'
+	# 200 KB of filler, comfortably past every pipe-buffer size.
+	for _ in $(seq 1 2000); do
+		printf 'x%.0s' $(seq 1 100)
+		printf '\n'
+	done
+} > "$TMP/res/config.yaml"
+rm -f "$TMP/src/config_default.hpp"
+(cd "$TMP" && bash embed-config.sh >/dev/null 2>&1)
+rc=$?
+check "C6 a large config carrying the terminator is refused" '[ "$rc" -ne 0 ]'
+check "C6b no header is written for the large refused config" \
+	'[ ! -f "$TMP/src/config_default.hpp" ]'
+
+# ...and a large BENIGN config is still embedded, so the guard is not just
+# refusing everything big.
+{
+	printf 'AdditionalApps:\n'
+	for _ in $(seq 1 2000); do
+		printf '  - 480 # '
+		printf 'y%.0s' $(seq 1 100)
+		printf '\n'
+	done
+} > "$TMP/res/config.yaml"
+rm -f "$TMP/src/config_default.hpp"
+(cd "$TMP" && bash embed-config.sh >/dev/null 2>&1)
+rc=$?
+check "C7 a large benign config is still embedded" '[ "$rc" -eq 0 ]'
+check "C7b the large header is written" '[ -f "$TMP/src/config_default.hpp" ]'
+check "C7c the large header is not truncated" \
+	'[ "$(wc -c < "$TMP/src/config_default.hpp")" -gt 200000 ]'
+
 echo
 echo "$checks check(s), $fails failure(s)"
 [ "$fails" -eq 0 ] || exit 1

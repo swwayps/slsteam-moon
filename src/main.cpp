@@ -201,13 +201,23 @@ static void setup()
 	g_auditPolicyReady.store(true, std::memory_order_release);
 
 	g_setupLock = std::make_unique<ProcessLock::FileLock>(
-		ProcessLock::perProcessPath(".slssteam.setup"));
+		ProcessLock::perProcessPath("setup"));
 	if (!g_setupLock->acquired())
 	{
-		g_pLog->info("setup: another auditor namespace already initialized this process -> skipping\n");
+		// Only skip when the lock is genuinely ours and held by another auditor
+		// namespace. An unusable lock (no private runtime directory, or a file at
+		// that path we cannot vouch for) must NOT stop setup: this lock used to
+		// live in /tmp, where pre-creating it and holding an flock was enough for
+		// any local process to switch injection off entirely.
+		if (g_setupLock->usable())
+		{
+			g_pLog->info("setup: another auditor namespace already initialized this process -> skipping\n");
+			g_setupLock.reset();
+			unload();
+			return;
+		}
+		g_pLog->info("setup: no usable setup lock -> continuing without it\n");
 		g_setupLock.reset();
-		unload();
-		return;
 	}
 
 	g_pLog->debug("SLSsteam loading in %s\n", proc.name);

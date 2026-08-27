@@ -287,7 +287,11 @@ cd "$STEAMLESS_HOME"
 # truncated and overwritten — and the `cat` below would then have printed
 # whatever it pointed at. mktemp creates the file itself, refusing an existing
 # name, inside a private directory.
-SL_LOG_DIR="${XDG_RUNTIME_DIR:-$HOME/.cache}/SLSsteam"
+# Own subdirectory, deliberately NOT the SLSsteam directory the injected library
+# manages. Two owners chmod'ing one directory with their results discarded means a
+# failure here would make the C++ side refuse that directory and silently lose
+# both the API contract and the load lock.
+SL_LOG_DIR="${XDG_RUNTIME_DIR:-$HOME/.cache}/slsteam-steamless"
 mkdir -p "$SL_LOG_DIR" 2>/dev/null || true
 chmod 700 "$SL_LOG_DIR" 2>/dev/null || true
 SL_LOG="$(mktemp "$SL_LOG_DIR/steamless-bypass.XXXXXX.log" 2>/dev/null)" \

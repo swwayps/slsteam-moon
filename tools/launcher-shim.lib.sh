@@ -338,11 +338,20 @@ fi
 if [ -n "\$SLSM_LAUNCH" ]; then
 	exec "\$SLSM_LAUNCH" "\$@"
 fi
-for _s in "\$SLSM_HOME/.local/share/Steam/steam.sh" \
-          "\$SLSM_HOME/.steam/steam/steam.sh" \
-          "\$SLSM_HOME/.steam/debian-installation/steam.sh"; do
-	[ -f "\$_s" ] && [ -x "\$_s" ] && exec "\$_s" "\$@"
-done
+# Last resort: Valve's own steam.sh inside the account's Steam installation.
+# This is under \$HOME too, so it gets the SAME ownership and mode check as the
+# wrapper. Without it the guard above would be pointless: refusing a wrapper the
+# effective account does not own and then executing a steam.sh from the same
+# directory tree is the identical escalation by a different path.
+if [ -n "\$SLSM_HOME" ]; then
+	for _s in "\$SLSM_HOME/.local/share/Steam/steam.sh" \\
+	          "\$SLSM_HOME/.steam/steam/steam.sh" \\
+	          "\$SLSM_HOME/.steam/debian-installation/steam.sh"; do
+		if slsm_wrapper_trusted "\$_s"; then
+			exec "\$_s" "\$@"
+		fi
+	done
+fi
 echo "steam: no usable launcher found (slsteam-moon shim)" >&2
 exit 127
 EOF

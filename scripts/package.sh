@@ -150,12 +150,12 @@ cp -r tools/steamless-bin "$PKG_DIR/tools/"
 
 echo "==> zipping $ZIP_PATH"
 ( cd dist && zip -qr -9 "slsteam-moon-linux-${VERSION}.zip" "slsteam-moon-${VERSION}" )
-# Publish a sha256 sidecar next to the asset. install.sh fetches
-# "<asset>.sha256" and refuses an asset that does not match it, so an archive
-# that was truncated or altered in transit is caught before it is unpacked and
-# executed. (A sidecar from the same release does not defend against a
-# compromised publishing account; detached signatures would, and need a project
-# signing key.)
+# Publish a sha256 sidecar next to the asset. The installer on the paired
+# luatools-moon branch fetches "<asset>.sha256" and refuses an asset that does
+# not match it, so a truncated or altered archive is caught before it is unpacked
+# and executed; an installer that predates that change ignores the sidecar. This
+# detects transport and mirror damage, NOT a compromised publishing account —
+# that needs a detached signature and a project signing key.
 ( cd dist && sha256sum "slsteam-moon-linux-${VERSION}.zip" \
     > "slsteam-moon-linux-${VERSION}.zip.sha256" )
 

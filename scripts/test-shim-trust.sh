@@ -187,6 +187,43 @@ OUT="$(run_shim "$REAL_HOME")"
 check "T8 with no wrapper and no original, the bootstrapped steam.sh is used" \
 	'[ "$OUT" = "REAL_STEAM_SH" ]'
 
+# ---------------------------------------------------------------------------
+# T9: the LAST-RESORT steam.sh fallback lives under $HOME too, so it needs the
+#     same ownership check as the wrapper. Refusing the wrapper and then
+#     executing a steam.sh out of the same tree would be the identical
+#     escalation by another path. Reproduces as euid 0 with no wrapper and no
+#     captured original left to fall back to.
+# ---------------------------------------------------------------------------
+VICTIM_STEAM="$REAL_HOME/.local/share/Steam"
+mkdir -p "$VICTIM_STEAM"
+cat > "$VICTIM_STEAM/steam.sh" <<'EOF'
+#!/bin/sh
+echo "PWNED_STEAMSH"
+EOF
+chmod 0777 "$VICTIM_STEAM/steam.sh"
+# Nothing else must be usable, so the fallback loop is the only path left.
+rm -f "$REAL_HOME/.local/share/SLSsteam/path/steam"
+rm -f "$STEAM_ROOT/steam.sh"
+make_stubs 0 "root" "$ROOT_HOME"
+OUT="$(run_shim "$REAL_HOME")"
+check "T9 an elevated shim does not exec a user-writable steam.sh" \
+	'[ "$OUT" != "PWNED_STEAMSH" ]'
+check "T9b it reports that nothing usable was found instead" \
+	'printf "%s" "$OUT" | grep -q "no usable launcher"'
+
+# Owned by the effective account and not writable by anyone else: allowed.
+chmod 0755 "$VICTIM_STEAM/steam.sh"
+make_stubs "$MY_UID" "real" "$REAL_HOME"
+OUT="$(run_shim "$REAL_HOME")"
+check "T10 a properly owned steam.sh is still used as the last resort" \
+	'[ "$OUT" = "PWNED_STEAMSH" ]'
+
+# World-writable, right owner: still refused.
+chmod 0777 "$VICTIM_STEAM/steam.sh"
+OUT="$(run_shim "$REAL_HOME")"
+check "T11 a world-writable steam.sh is refused even for its owner" \
+	'[ "$OUT" != "PWNED_STEAMSH" ]'
+
 echo
 echo "$checks check(s), $fails failure(s)"
 [ "$fails" -eq 0 ] || exit 1

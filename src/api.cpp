@@ -46,8 +46,34 @@ void SLSAPI::onFileChange()
 	}
 
 	//Shitty way to reopen the stream. We have to do this, otherwise the fstream gets invalidated when running echo >
+	//
+	// Revalidate on EVERY reopen, not just at init(): the check init() performs is
+	// a snapshot, and this is the point where the file is re-derived from a path
+	// rather than from a descriptor anyone ever vouched for. A symlink or a
+	// replaced file at the contract path abandons the channel instead of being
+	// read as a command.
 	fstream.close();
+	{
+		const int probe = open(path, O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
+		if (probe < 0)
+		{
+			g_pLog->info("API contract file could not be reopened -> channel closed\n");
+			return;
+		}
+		const bool ok = RuntimeDir::descriptorIsPrivate(probe);
+		close(probe);
+		if (!ok)
+		{
+			g_pLog->info("API contract file is no longer private -> channel closed\n");
+			return;
+		}
+	}
 	fstream.open(path);
+	if (!fstream.is_open())
+	{
+		g_pLog->info("API contract file could not be reopened for IO -> channel closed\n");
+		return;
+	}
 
 	char cmd[128];
 	fstream.getline(cmd, sizeof(cmd));
@@ -88,15 +114,14 @@ void SLSAPI::onFileChange()
 
 void SLSAPI::init()
 {
-	// Only prepare the channel when the user asked for it. It is off by default,
-	// so in the default configuration there is nothing to open and nothing to
-	// attack.
-	if (!g_config.api.get())
-	{
-		g_pLog->debug("SLSsteam API disabled by configuration\n");
-		return;
-	}
-
+	// The contract file is prepared regardless of the current API setting, so a
+	// config hot-reload from "no" to "yes" still has a watcher to notice a
+	// command. isEnabled() is what gates acting on one, and it re-reads the
+	// config every time. (An earlier revision returned here when the API was
+	// off, which silently made enabling it require a Steam restart.)
+	//
+	// Preparing it costs one 0600 file in a 0700 per-user directory and no
+	// thread beyond the watcher this function already created before.
 	const std::string dir = RuntimeDir::resolveBase(getenv("XDG_RUNTIME_DIR"),
 	                                                getenv("HOME"));
 	if (dir.empty() || !RuntimeDir::ensureDir(dir))
