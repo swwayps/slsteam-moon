@@ -7,6 +7,7 @@
 #include "../cainfo.hpp"
 #include "boundedexecutor.hpp"
 #include "contentserverdirectory.hpp"
+#include "manifest_zip.hpp"
 
 #include <curl/curl.h>
 
@@ -614,54 +615,25 @@ std::string findSteamRootForBlob()
 	return {};
 }
 
-bool runUnzipToFile(const std::string& zipPath, const std::string& outputPath,
-                    const std::shared_ptr<JobBudget>& budget)
+bool writeManifestFile(const std::string& path,
+                       const std::vector<unsigned char>& bytes)
 {
-	if (budget && budget->shouldStop()) return false;
-	const pid_t pid = fork();
-	if (pid < 0) return false;
-	if (pid == 0)
+	const int fd = open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0600);
+	if (fd < 0) return false;
+	std::size_t offset = 0;
+	while (offset < bytes.size())
 	{
-		setpgid(0, 0);
-		const int out = open(outputPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0600);
-		if (out < 0) _exit(126);
-		if (dup2(out, STDOUT_FILENO) < 0) _exit(126);
-		close(out);
-		const int err = open("/dev/null", O_WRONLY);
-		if (err >= 0)
+		const ssize_t written = write(fd, bytes.data() + offset, bytes.size() - offset);
+		if (written < 0 && errno == EINTR) continue;
+		if (written <= 0)
 		{
-			(void)dup2(err, STDERR_FILENO);
-			close(err);
-		}
-		execlp("unzip", "unzip", "-p", zipPath.c_str(), nullptr);
-		_exit(127);
-	}
-	(void)setpgid(pid, pid);
-
-	const auto localDeadline = std::chrono::steady_clock::now()
-	                          + std::chrono::seconds(10);
-	int status = 0;
-	for (;;)
-	{
-		const pid_t waited = waitpid(pid, &status, WNOHANG);
-		if (waited == pid)
-		{
-			return WIFEXITED(status) && WEXITSTATUS(status) == 0;
-		}
-		if (waited < 0 && errno != EINTR)
-		{
-			detail::killAndReap(pid, status);
+			close(fd);
+			unlink(path.c_str());
 			return false;
 		}
-
-		const bool budgetExpired = budget && budget->shouldStop();
-		if (budgetExpired || std::chrono::steady_clock::now() >= localDeadline)
-		{
-			detail::killAndReap(pid, status);
-			return false;
-		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(20));
+		offset += static_cast<std::size_t>(written);
 	}
+	return close(fd) == 0;
 }
 
 bool fetchManifestBlob(uint64_t gid, uint32_t depotId,
@@ -759,49 +731,33 @@ retry_cdn:
 		return false;
 	}
 
-	char tmpZip[]  = "/tmp/slsteam_mfetch_zip_XXXXXX";
-	int tmpZipFd = mkstemp(tmpZip);
-	if (tmpZipFd < 0)
+	std::vector<unsigned char> manifest;
+	std::string extractDiagnostic;
+	if (!ManifestZip::extractSingleFile(zipResp.body, manifest, &extractDiagnostic))
 	{
-		g_pLog->warn("ManifestFetch: blob depot=%u gid=%llu mkstemp failed\n",
-		             depotId, static_cast<unsigned long long>(gid));
-		g_pLog->notifyUser(UserMsg::LocalStorageError);
-		return false;
-	}
-	const ssize_t written =
-	    write(tmpZipFd, zipResp.body.data(), zipResp.body.size());
-	close(tmpZipFd);
-	if (written != static_cast<ssize_t>(zipResp.body.size()))
-	{
-		unlink(tmpZip);
-		g_pLog->warn("ManifestFetch: blob depot=%u gid=%llu zip write short\n",
-		             depotId, static_cast<unsigned long long>(gid));
-		g_pLog->notifyUser(UserMsg::LocalStorageError);
+		g_pLog->warn(
+			"ManifestFetch: blob depot=%u gid=%llu archive rejected: %s\n",
+			depotId, static_cast<unsigned long long>(gid),
+			extractDiagnostic.c_str());
 		return false;
 	}
 
 	const std::string tmpOutPath = targetPath + ".slsteam_tmp." +
 	                               std::to_string(static_cast<unsigned long>(getpid())) + "." +
 	                               std::to_string(reinterpret_cast<uintptr_t>(&zipResp));
-	if (!runUnzipToFile(tmpZip, tmpOutPath, budget))
+	if (manifest.size() < sizeof(std::uint32_t)
+	    || manifest[0] != 0xd0 || manifest[1] != 0x17
+	    || manifest[2] != 0xf6 || manifest[3] != 0x71)
 	{
-		unlink(tmpZip);
-		unlink(tmpOutPath.c_str());
-		g_pLog->warn("ManifestFetch: blob depot=%u gid=%llu unzip failed or timed out\n",
+		g_pLog->warn("ManifestFetch: blob depot=%u gid=%llu bad manifest magic\n",
 		             depotId, static_cast<unsigned long long>(gid));
 		return false;
 	}
-	unlink(tmpZip);
-
-	std::ifstream verify(tmpOutPath, std::ios::binary);
-	uint32_t magic = 0;
-	verify.read(reinterpret_cast<char*>(&magic), sizeof(magic));
-	verify.close();
-	if (magic != 0x71F617D0u)
+	if (!writeManifestFile(tmpOutPath, manifest))
 	{
-		unlink(tmpOutPath.c_str());
-		g_pLog->warn("ManifestFetch: blob depot=%u gid=%llu bad magic 0x%x\n",
-		             depotId, static_cast<unsigned long long>(gid), magic);
+		g_pLog->warn("ManifestFetch: blob depot=%u gid=%llu manifest write failed\n",
+		             depotId, static_cast<unsigned long long>(gid));
+		g_pLog->notifyUser(UserMsg::LocalStorageError);
 		return false;
 	}
 
