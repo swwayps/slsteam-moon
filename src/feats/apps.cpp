@@ -324,6 +324,14 @@ bool Apps::checkAppOwnership(uint32_t appId, CAppOwnershipInfo* pInfo)
 	{
 		pInfo->purchaseTime = times.at(appId);
 	}
+	else if (manualUnlock && (pInfo->subId == 0 ||
+	         (pInfo->subId == -1 && !pInfo->ownsLicense)))
+	{
+		// Package 0 contributes its license date to every appended app. That
+		// date is unrelated to library inclusion and breaks "recently added".
+		// Preserve real package dates; 0 means unknown if discovery has not run.
+		pInfo->purchaseTime = g_config.libraryDates.get(appId);
+	}
 
 	unlockApp(appId, pInfo);
 

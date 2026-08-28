@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <ctime>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -506,6 +507,15 @@ bool CConfig::loadSettings()
 			    selected.ignored, effectiveCap);
 		}
 
+		// Publish stable local dates before the new app set becomes visible to
+		// ownership queries. Keep these out of the user-authored override map.
+		std::string dateError;
+		if (!libraryDates.refresh(getDir(),
+		        steamRoot.empty() ? "" : steamRoot + "/config/stplug-in",
+		        ids.active, static_cast<uint32_t>(std::time(nullptr)), dateError))
+		{
+			g_pLog->infoOnce("Library dates: using session dates (%s)\n", dateError.c_str());
+		}
 		managedAppIds = ids.managed;
 		addedAppIds = ids.active;
 	}

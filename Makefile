@@ -50,6 +50,7 @@ endif
 
 .PHONY: all build rebuild clean install release test-cmwire test-cmclient-loader test-dlcids test-dlc-scope test-dlc-metadata test-config-path test-config-discovery test-filewatcher-burst test-provision-notice test-mtvar-contains test-synthmark test-pattern-catalog test-pattern-cache test-pattern-refresh test-process-lock test-atomic-file test-cache-pair test-appinfo-transaction test-appinfo-reload test-audit-symbols test-audit-policy test-memhlp-target test-memhlp-prologue test-memhlp-pic test-utils-sha test-provision-cache test-provision-refresh test-provision-result test-provision-terminal test-pending-proton test-provision-schedule test-provision-pass test-runtime-dependencies test-thread-start test-steamstub-warmup test-boundedexecutor test-steamless-prewarm test-depotkey-scope test-curl-timeout test-contentserverdirectory test-manifest-index test-manifestselection test-manifeststore-io test-hotreload-inputs test-hotreload-package test-ownerqueue test-hotreload-capabilities test-libraryremoval test-pics test-prewarm-backoff test-yaml-runtime test-manifestpin-patterns test-optional-locators test-patternscan
 .NOTPARALLEL: clean rebuild
+.PHONY: test-library-dates test-library-dates-hook
 
 all: build
 build: bin/SLSsteam.so bin/library-inject.so bin/pattern-refresh
@@ -358,6 +359,20 @@ test-libraryremoval: obj/feats/libraryremoval.o
 		exit 1; \
 	fi
 
+test-library-dates:
+	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror -I src \
+		tools/test_library_dates.cpp src/feats/librarydates.cpp -pthread \
+		-o /tmp/test_library_dates
+	/tmp/test_library_dates
+
+test-library-dates-hook:
+	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
+		-fno-reorder-blocks-and-partition -ffunction-sections -fdata-sections \
+		-Wall -Wextra -Wpedantic -isystem include -I src \
+		tools/test_library_dates_hook.cpp src/feats/apps.cpp src/feats/librarydates.cpp \
+		-Wl,--gc-sections -pthread -o /tmp/test_library_dates_hook
+	/tmp/test_library_dates_hook
+
 test-pics:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I include -I src \
 		tools/test_pics.cpp src/feats/provision_terminal.cpp -o /tmp/test_pics
@@ -400,7 +415,7 @@ obj/feats/appinfo_vdf_test.o: src/feats/appinfo_vdf.cpp $(deps_early)
 
 test-appinfo-transaction: obj/feats/appinfo_vdf_test.o obj/log.o obj/config.o \
 		obj/globals.o obj/filewatcher.o obj/update.o obj/api.o \
-		obj/feats/depotkey.o obj/feats/manifestid.o \
+		obj/feats/depotkey.o obj/feats/manifestid.o obj/feats/librarydates.o \
 		obj/ownerwork.o obj/sdk/protobufs/steammessages_clientserver_appinfo.pb.o \
 		obj/sdk/protobufs/steammessages_base.pb.o
 	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -DAPPINFO_VDF_TESTING \
@@ -417,6 +432,7 @@ test-cmclient-live: build
 	$(CXX) $(CXXFLAGS) -DCMWIRE_PROTOBUF \
 		-I include -isysteminclude tools/test_cmclient_live.cpp \
 		obj/feats/cmclient.o obj/log.o obj/config.o obj/globals.o obj/update.o obj/filewatcher.o \
+		obj/feats/librarydates.o \
 		obj/sdk/protobufs/steammessages_base.pb.o \
 		obj/sdk/protobufs/steammessages_clientserver_appinfo.pb.o \
 		obj/sdk/protobufs/steammessages_clientserver_login.pb.o \

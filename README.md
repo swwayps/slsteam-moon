@@ -10,6 +10,20 @@ see [`docs/DIAGNOSTICS.md`](docs/DIAGNOSTICS.md).
 
 [wiki]: https://github.com/swwayps/slsteam-moon/wiki
 
+## Library dates
+
+"Recently added" uses a persistent per-game inclusion date for locally added
+games, instead of the shared package's license date. Existing script dates seed
+the initial migration; entries without a script use their first observation.
+Later script updates and Steam restarts do not change an existing date. Removing
+and re-adding a game while Steam observes the changes records a new inclusion.
+
+Dates are stored in `library-added-times.txt` in the SLSsteam configuration
+directory, outside the disposable cache. Real license purchase dates remain
+unchanged, and explicit `SubscriptionTimestamps` overrides (including `0`)
+still take precedence. If the store is unavailable, dates remain stable for
+the current session and persistence is retried on the next source reload.
+
 ## Credits
 
 Upstream:

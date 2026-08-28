@@ -3,6 +3,7 @@
 #include "mtvar.hpp"
 #include "log.hpp"
 #include "feats/manifestpins.hpp"
+#include "feats/librarydates.hpp"
 
 #include "yaml-cpp/exceptions.h"
 #include "yaml-cpp/node/node.h"
@@ -56,6 +57,7 @@ public:
 	MTVariable<FakeGame_t> idleStatus;
 	MTVariable<std::unordered_map<uint32_t, std::string>> gameTitles;
 	MTVariable<std::unordered_map<uint32_t, uint32_t>> subscriptionTimestamps;
+	LibraryDates::Store libraryDates;
 
 	// Manifest pinning.  manifestPins is the flattened, unambiguous
 	// depot->gid redirect index used only by legacy hooks without app context;
