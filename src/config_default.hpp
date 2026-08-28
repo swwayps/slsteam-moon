@@ -115,6 +115,18 @@ PatternCache: yes
 # Apps without a complete cache still use the synchronous PICS fallback.
 AsyncProvision: yes
 
+# Safety valve for accidental bulk copies into config/stplug-in, NOT a limit on
+# how many games you can have. Steam's own license and appinfo reconciliation
+# stalls for minutes when tens of thousands of scripts are dropped in at once,
+# so only this many scripts are activated per session.
+#
+# The default sits far above any realistic library, and priority always goes to
+# luaappids.yaml entries, games already installed on disk, and games already
+# active in the session. Scripts beyond the limit are NEVER deleted: they stay
+# on disk and activate as soon as the set shrinks or you raise this value.
+# Set to 0 to disable the limit entirely.
+MaxManagedApps: 4096
+
 #Changes your account's E-Mail clientsided. Leave blank to disable
 FakeEmail: ""
 
