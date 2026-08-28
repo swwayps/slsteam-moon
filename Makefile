@@ -14,6 +14,7 @@
 
 # Force g++; clang miscompiles a few hooks.
 CXX := g++
+.DEFAULT_GOAL := all
 STEAMCLIENT ?= $(HOME)/.local/share/Steam/ubuntu12_32/steamclient.so
 STEAMUI ?= $(HOME)/.local/share/Steam/ubuntu12_32/steamui.so
 
@@ -51,6 +52,29 @@ endif
 .PHONY: all build rebuild clean install release test-cmwire test-cmclient-loader test-dlcids test-dlc-scope test-dlc-metadata test-config-path test-config-discovery test-filewatcher-burst test-provision-notice test-mtvar-contains test-synthmark test-pattern-catalog test-pattern-cache test-pattern-refresh test-process-lock test-atomic-file test-cache-pair test-appinfo-transaction test-appinfo-reload test-audit-symbols test-audit-policy test-memhlp-target test-memhlp-prologue test-memhlp-pic test-utils-sha test-provision-cache test-provision-refresh test-provision-result test-provision-terminal test-pending-proton test-provision-schedule test-provision-pass test-runtime-dependencies test-thread-start test-steamstub-warmup test-boundedexecutor test-steamless-prewarm test-depotkey-scope test-curl-timeout test-contentserverdirectory test-manifest-index test-manifestselection test-manifeststore-io test-hotreload-inputs test-hotreload-package test-ownerqueue test-hotreload-capabilities test-libraryremoval test-pics test-prewarm-backoff test-yaml-runtime test-manifestpin-patterns test-optional-locators test-patternscan
 .NOTPARALLEL: clean rebuild
 .PHONY: test-library-dates test-library-dates-hook
+.PHONY: test-achievements test-achievement-scope test-stats-audit
+.PHONY: test-stats-provenance
+
+test-stats-provenance:
+	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem include -I src \
+		-ffunction-sections -fdata-sections tools/test_stats_provenance.cpp \
+		-Wl,--gc-sections -pthread -o /tmp/test_stats_provenance
+	/tmp/test_stats_provenance
+
+test-achievements:
+	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror -pthread tools/test_achievements.cpp -o /tmp/test_achievements
+	/tmp/test_achievements
+
+test-achievement-scope: obj/sdk/protobufs/steammessages_clientserver_userstats.pb.o obj/sdk/protobufs/steammessages_base.pb.o
+	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem include -I src \
+		tools/test_achievement_scope.cpp src/feats/achievements.cpp src/feats/stats_policy.cpp \
+		$^ lib/libprotobuf-lite.a -pthread -o /tmp/test_achievement_scope
+	/tmp/test_achievement_scope
+
+test-stats-audit: bin/SLSsteam.so
+	$(CXX) -m32 -std=c++20 -rdynamic tools/test_stats_audit.cpp -ldl -o /tmp/test_stats_audit
+	/tmp/test_stats_audit
+	LD_AUDIT=$(CURDIR)/bin/SLSsteam.so /tmp/test_stats_audit audit
 
 all: build
 build: bin/SLSsteam.so bin/library-inject.so bin/pattern-refresh

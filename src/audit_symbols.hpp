@@ -14,10 +14,11 @@ namespace AuditBinding
 		Execvpe,
 		PosixSpawn,
 		PosixSpawnp,
+		LocalStatsEpoch,
 	};
 
 	// Keep the hot-path classifier deliberately small: only names beginning with
-	// the two relevant initials pay for strlen/strcmp. Exact lengths prevent a
+	// the relevant initials pay for strlen/strcmp. Exact matches prevent a
 	// near-miss from entering the wrapper dispatch.
 	inline Symbol classify(const char* name) noexcept
 	{
@@ -26,6 +27,9 @@ namespace AuditBinding
 
 		switch (name[0])
 		{
+			case 's':
+				return std::strcmp(name, "slsteam_local_stats_epoch_v1") == 0
+					? Symbol::LocalStatsEpoch : Symbol::None;
 			case 'e':
 			{
 				const std::size_t length = std::strlen(name);

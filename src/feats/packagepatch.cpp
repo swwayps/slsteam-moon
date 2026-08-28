@@ -618,20 +618,18 @@ namespace
 	                           std::unordered_set<uint32_t>& seenSet,
 	                           const char* vecLabel)
 	{
-		if (!g_pCUtlMemoryGrow || ids.empty())
+		if (!g_pCUtlMemoryGrow || ids.empty() || !validLiveVector(vec))
 		{
 			return 0;
 		}
 
-		std::vector<uint32_t> fresh;
-		fresh.reserve(ids.size());
-		for (uint32_t id : ids)
-		{
-			if (id && !seenSet.count(id))
-			{
-				fresh.push_back(id);
-			}
-		}
+		// The live vector, not the previous injected set, is authoritative.
+		// Otherwise native package-0 apps acquire false injected provenance,
+		// and previously injected IDs cannot be restored after a package reload.
+		auto missing = HotReloadPackage::missingFromVector(
+			vec.m_Memory.m_pMemory, vec.m_Size, ids);
+		missing.erase(0);
+		const std::vector<uint32_t> fresh(missing.begin(), missing.end());
 		if (fresh.empty())
 		{
 			return 0;
@@ -639,6 +637,8 @@ namespace
 
 		const uint32_t oldSize = vec.m_Size;
 		const uint32_t toAdd = static_cast<uint32_t>(fresh.size());
+		if (toAdd > static_cast<uint32_t>(std::numeric_limits<int>::max()) ||
+		    toAdd > UINT32_MAX - oldSize) return 0;
 		{
 			// Exact Steam-owned call site (see afftrace.hpp): resolved
 			// CUtlMemoryGrow against a live Steam vector.
@@ -898,6 +898,11 @@ namespace
 
 namespace PackagePatch
 {
+	bool isInjectedAppId(uint32_t appId)
+	{
+		std::lock_guard<std::mutex> lock(g_seededMutex);
+		return g_seededAppIds.count(appId) != 0;
+	}
 	bool setup()
 	{
 		// Both patterns are required.  If either fails to resolve we

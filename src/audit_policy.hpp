@@ -31,13 +31,15 @@ namespace AuditBinding
 			|| hasSuffix(objectName, "/libvideo.so")
 			|| hasSuffix(objectName, "/gameoverlayrenderer.so")
 			|| hasSuffix(objectName, "/steam_monitor")
-			|| hasSuffix(objectName, "/steamui.so");
+			|| hasSuffix(objectName, "/steamui.so")
+			|| hasSuffix(objectName, "/cloud_redirect.so");
 	}
 
 	inline bool isBindingTarget(const char* objectName) noexcept
 	{
 		return hasSuffix(objectName, "/libc.so.6")
-			|| hasSuffix(objectName, "/libpthread.so.0");
+			|| hasSuffix(objectName, "/libpthread.so.0")
+			|| hasSuffix(objectName, "/cloud_redirect.so");
 	}
 
 	inline bool bindAllValueEnabled(const char* value) noexcept

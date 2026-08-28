@@ -28,6 +28,8 @@ int main()
 {
 	using AuditBinding::flagsForObject;
 	const unsigned int both = LA_FLG_BINDFROM | LA_FLG_BINDTO;
+	check(flagsForObject("/plugins/cloud_redirect.so", false) == both,
+	      "stats bridge is visible in narrowed audit mode");
 
 	check(flagsForObject("/lib/i386-linux-gnu/libc.so.6", false) == LA_FLG_BINDTO,
 	      "libc is a binding target");

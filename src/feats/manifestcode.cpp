@@ -12,6 +12,7 @@
 #include "../log.hpp"
 
 #include "../sdk/EResult.hpp"
+#include "../sdk/CProtoBufMsgBase.hpp"
 #include "../sdk/protobufs/steammessages_base.pb.h"
 #include "../sdk/protobufs/steammessages_contentserverdirectory.pb.h"
 
@@ -33,6 +34,8 @@ namespace
 
 constexpr uint32_t kMaxBodySize    = 262144;
 constexpr uint32_t kMaxHdrSize     = 1024;
+static_assert(kMaxBodySize >= Achievements::maxReplyBytes);
+static_assert(kMaxHdrSize >= Achievements::maxHeaderBytes);
 constexpr uint32_t kMaxPacketSize  = sizeof(MsgHdr) + kMaxHdrSize + kMaxBodySize;
 constexpr int      kPacketPoolSize = 8;
 
@@ -90,6 +93,7 @@ inline bool decodeFrame(const uint8_t* data, uint32_t size,
 	}
 	eMsg  = hdr->eMsg & ~kMsgHdrProtoFlag;
 	cbHdr = hdr->headerLength;
+	if (cbHdr > size - sizeof(MsgHdr)) return false;
 	const uint32_t off = sizeof(MsgHdr) + cbHdr;
 	if (off > size)
 	{
@@ -108,7 +112,7 @@ inline void patchRecvFrame(CNetPacket* p,
 	const uint32_t newSize = sizeof(MsgHdr) + cbNewHdr + cbNewBody;
 	if (newSize > sizeof(g_RxPool[0])) return;
 
-	std::lock_guard<std::mutex> lk(g_RxLock);
+	// Caller holds g_RxLock across dispatch and copy, including scratch flags.
 	uint8_t* buf = g_RxPool[g_RxPoolIdx];
 	const auto* orig = reinterpret_cast<const MsgHdr*>(p->m_pubData);
 	auto* out = reinterpret_cast<MsgHdr*>(buf);
@@ -158,27 +162,13 @@ void handleSend_PlayerGetUserStats(const uint8_t* pBody, uint32_t cbBody,
                                    const uint8_t* pHdr, uint32_t cbHdr,
                                    uint32_t eMsg)
 {
-	if (!g_config.achievements.get())
-	{
-		return;
-	}
-
-	const auto appId = PlayerStats::parseRequestAppId(pBody, cbBody);
-	if (!appId || !g_config.isAddedAppId(*appId))
-	{
-		return;
-	}
-
-	const uint64_t owner = Achievements::resolveOwnerSteamId(
-	    *appId,
-	    g_config.achievementOwners.get(),
-	    g_config.achievementOwnerId.get());
-
-	const auto newBody = PlayerStats::buildSpoofedRequest(owner, *appId);
+	if (cbHdr > kMaxHdrSize) return;
+	CMsgProtoBufHeader hdr;
+	if (!hdr.ParseFromArray(pHdr, cbHdr)) return;
+	const auto newBody = Achievements::rewriteRequest(true, pBody, cbBody, hdr);
+	if (newBody.empty()) return;
 	buildReplacementFrame(eMsg | kMsgHdrProtoFlag, pHdr, cbHdr,
 	                      newBody.data(), static_cast<uint32_t>(newBody.size()));
-
-	g_pLog->debug("Achievements: spoofing Player.GetUserStats owner for %u\n", *appId);
 }
 
 
@@ -287,6 +277,16 @@ void dispatchSend(uint32_t eMsg,
                   const uint8_t* pBody, uint32_t cbBody,
                   const uint8_t* pHdr,  uint32_t cbHdr)
 {
+	if (eMsg == EMSG_REQUEST_USERSTATS)
+	{
+		if (cbHdr > kMaxHdrSize) return;
+		CMsgProtoBufHeader hdr;
+		if (!hdr.ParseFromArray(pHdr, cbHdr)) return;
+		const auto body = Achievements::rewriteRequest(false, pBody, cbBody, hdr);
+		if (!body.empty()) buildReplacementFrame(eMsg | kMsgHdrProtoFlag,
+			pHdr, cbHdr, body.data(), static_cast<uint32_t>(body.size()));
+		return;
+	}
 	if (eMsg != kEMsgServiceMethodCallFromClient)
 	{
 		return;
@@ -315,6 +315,22 @@ void dispatchRecv(uint32_t eMsg,
                   const uint8_t* pBody, uint32_t cbBody,
                   const uint8_t* pHdr,  uint32_t cbHdr)
 {
+	if (eMsg == EMSG_REQUEST_USERSTATS_RESPONSE || eMsg == kEMsgServiceMethodResponse)
+	{
+		CMsgProtoBufHeader header;
+		if (!header.ParseFromArray(pHdr, cbHdr)) return;
+		const auto body = Achievements::rewriteResponse(eMsg == kEMsgServiceMethodResponse,
+			pBody, cbBody, header);
+		if (body && body->size() <= sizeof(g_RxBody) &&
+		    header.ByteSizeLong() <= sizeof(g_RxHdr))
+		{
+			if (!body->empty()) std::memcpy(g_RxBody, body->data(), body->size());
+			g_RxBodyLen = static_cast<uint32_t>(body->size());
+			g_RxHdrLen = static_cast<uint32_t>(header.ByteSizeLong());
+			g_PatchRxHdr = header.SerializeToArray(g_RxHdr, g_RxHdrLen);
+			g_PatchRx = true;
+		}
+	}
 	if (eMsg != kEMsgServiceMethodResponse)
 	{
 		return;
@@ -362,6 +378,7 @@ void* hkRecvPkt(void* pManager, CNetPacket* pPacket)
 {
 	if (pPacket && pPacket->m_pubData && pPacket->m_cubData)
 	{
+		std::lock_guard<std::mutex> lock(g_RxLock);
 		uint32_t eMsg = 0;
 		const uint8_t* pHdr  = nullptr;
 		const uint8_t* pBody = nullptr;

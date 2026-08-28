@@ -35,6 +35,7 @@ int main()
 		{"execvpe", Symbol::Execvpe},
 		{"posix_spawn", Symbol::PosixSpawn},
 		{"posix_spawnp", Symbol::PosixSpawnp},
+		{"slsteam_local_stats_epoch_v1", Symbol::LocalStatsEpoch},
 	};
 
 	for (const auto& [name, expected] : supported)
@@ -52,6 +53,8 @@ int main()
 		"posix_spawnx",
 		"spawn",
 		"eexecv",
+		"slsteam_local_stats_epoch_v2",
+		"slsteam_local_stats_epoch_v1_extra",
 	};
 	for (const char* name : rejected)
 	{

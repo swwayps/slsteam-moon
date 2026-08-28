@@ -18,6 +18,7 @@
 #include "sdk/IClientUtils.hpp"
 
 #include "feats/achievements.hpp"
+#include "feats/stats_policy.hpp"
 #include "feats/appinfostate.hpp"
 #include "feats/appticket.hpp"
 #include "feats/apps.hpp"
@@ -296,7 +297,6 @@ static void hkProtoBufMsgBase_InitFromPacket(CProtoBufMsgBase* pMsg, void* pSrc)
 
 static uint32_t hkProtoBufMsgBase_Send(CProtoBufMsgBase* pMsg)
 {
-	Achievements::sendMessage(pMsg);
 	Apps::sendMsg(pMsg);
 	DepotKey::sendMsg(pMsg);
 	FakeAppIds::sendMsg(pMsg);
@@ -395,7 +395,9 @@ static uint32_t hkUser_CheckAppOwnership(void* pClientUser, uint32_t appId, CApp
 		g_pLocalUser = reinterpret_cast<CUser*>(pClientUser);
 	}
 
+	const auto statsContext = StatsPolicy::context();
 	const uint32_t ret = Hooks::CUser_CheckAppOwnership.tramp.fn(pClientUser, appId, pOwnershipInfo);
+	StatsPolicy::observe(statsContext, appId, ret != 0, pOwnershipInfo);
 
 	g_pLog->debugOnce
 	(
@@ -1000,10 +1002,8 @@ static uint8_t hkClientUser_IsUserSubscribedAppInTicket(void* pClientUser, uint3
 __attribute__((stdcall))
 static uint32_t hkClientUser_GetSteamId(uint32_t steamId)
 {
-	if (!g_currentSteamId)
-	{
-		g_currentSteamId = steamId;
-	}
+	g_currentSteamId = steamId;
+	StatsPolicy::setAccount(steamId);
 
 	Ticket::SavedTicket ticket = Ticket::getCachedEncryptedTicket(FakeAppIds::getRealAppIdForCurrentPipe());
 

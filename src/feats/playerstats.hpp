@@ -42,6 +42,7 @@ inline bool readVarint(const uint8_t* d, std::size_t len, std::size_t& pos, uint
 	while (pos < len && shift <= 63)
 	{
 		const uint8_t b = d[pos++];
+		if (shift == 63 && b > 1) return false;
 		result |= static_cast<uint64_t>(b & 0x7F) << shift;
 		if (!(b & 0x80))
 		{
@@ -105,7 +106,7 @@ inline bool walk(const uint8_t* d, std::size_t len, Fn&& fn)
 		{
 			uint64_t l = 0;
 			if (!readVarint(d, len, pos, l)) return false;
-			if (pos + l > len) return false;
+			if (l > len - pos) return false;
 			valueOff = pos; valueLen = static_cast<std::size_t>(l); pos += valueLen;
 			break;
 		}

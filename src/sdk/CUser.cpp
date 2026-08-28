@@ -9,7 +9,8 @@
 
 bool CUser::checkAppOwnership(uint32_t appId, CAppOwnershipInfo* pInfo)
 {
-	return Hooks::CUser_CheckAppOwnership.tramp.fn(this, appId, pInfo);
+	const auto original = Hooks::CUser_CheckAppOwnership.tramp.fn;
+	return original && original(this, appId, pInfo);
 }
 
 bool CUser::isSubscribed(uint32_t appId)

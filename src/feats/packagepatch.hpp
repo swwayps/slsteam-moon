@@ -25,6 +25,8 @@
 
 namespace PackagePatch
 {
+	// True only for IDs appended by this process (not native package-0 IDs).
+	bool isInjectedAppId(uint32_t appId);
 	// Set up the LoadPackage detour and resolve CUtlMemoryGrow.  Returns
 	// false if either pattern failed to resolve; in that case the hook
 	// is not installed and the feature is a no-op.

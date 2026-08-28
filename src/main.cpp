@@ -28,6 +28,7 @@
 #include "feats/hotreload.hpp"
 #include "feats/manifestid.hpp"
 #include "feats/steamstub.hpp"
+#include "feats/stats_policy.hpp"
 
 #include "libmem/libmem.h"
 
@@ -94,6 +95,9 @@ static bool cleanEnvVar(const char* varName, const char* endsWith)
 //__attribute__((noreturn))
 static void unload()
 {
+	// An audited non-Steam process returns from setup before logging/hooks
+	// exist. Hooks::remove logs, so this early no-op must precede teardown.
+	if (!g_pLog) return;
 	HotReload::shutdown();
 	Hooks::remove();
 
@@ -806,6 +810,7 @@ namespace
 			case AuditBinding::Symbol::Execvpe: return "execvpe";
 			case AuditBinding::Symbol::PosixSpawn: return "posix_spawn";
 			case AuditBinding::Symbol::PosixSpawnp: return "posix_spawnp";
+			case AuditBinding::Symbol::LocalStatsEpoch: return "slsteam_local_stats_epoch_v1";
 			default: return "<unknown>";
 		}
 	}
@@ -1015,6 +1020,8 @@ extern "C" uintptr_t la_symbind32(Elf32_Sym* sym,
 	const auto orig = static_cast<uintptr_t>(sym->st_value);
 	switch (symbol)
 	{
+		case AuditBinding::Symbol::LocalStatsEpoch:
+			return reinterpret_cast<uintptr_t>(&slsteam_local_stats_epoch_v1);
 		case AuditBinding::Symbol::Execv:
 			if (!g_realExecv) g_realExecv = reinterpret_cast<execv_t>(orig);
 			return reinterpret_cast<uintptr_t>(&cefExecv);
