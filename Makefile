@@ -174,7 +174,8 @@ test-dlcids:
 
 test-dlc-scope:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src -I include \
-		tools/test_dlc_scope.cpp src/feats/dlc.cpp -pthread \
+		tools/test_dlc_scope.cpp src/feats/dlc.cpp \
+		src/feats/managed_dlc_scope.cpp -pthread \
 		-o /tmp/test_dlc_scope
 	/tmp/test_dlc_scope
 

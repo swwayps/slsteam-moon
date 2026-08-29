@@ -9,6 +9,7 @@
 #include "yaml-cpp/yaml.h"
 
 #include "feats/appinfo_provision.hpp"
+#include "feats/apps.hpp"
 #include "feats/depotkey.hpp"
 #include "config_discovery.hpp"
 #include "feats/hotreload.hpp"
@@ -402,6 +403,11 @@ bool CConfig::loadSettings()
 	}
 
 	__loadErrors = ELoadError::None;
+	// Configuration-authored DLC scope is a replace-only snapshot. Revoke the
+	// previous one before parsing so a removed or malformed block cannot retain
+	// stale local entitlements during a hot reload.
+	dlcData = dlcData.empty();
+	Apps::setConfiguredAppDlcIds({});
 	
 	disableFamilyLock = getSetting<bool>(node, "DisableFamilyShareLock", true);
 	disableParentalRestrictions = getSetting<bool>(node, "DisableParentalRestrictions", false);
@@ -587,7 +593,16 @@ bool CConfig::loadSettings()
 			}
 		}
 
+		auto configuredDlcIds = selectConfiguredDlcIds(
+			managedAppIds.get(), _dlcData);
 		dlcData = _dlcData;
+		Apps::setConfiguredAppDlcIds(configuredDlcIds);
+		if (!configuredDlcIds.empty())
+		{
+			g_pLog->info(
+				"Config: authorized %zu explicit DLC id(s) for managed parents\n",
+				configuredDlcIds.size());
+		}
 	}
 	else
 	{

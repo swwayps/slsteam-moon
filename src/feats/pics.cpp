@@ -286,7 +286,7 @@ void refreshDlcInjectionAfterCachePublication()
 	const auto dlcIds = AppInfoProvision::collectDlcAppIdsForAddedApps(&complete);
 	if (!complete) return;
 	PackagePatch::setExtraAppIds(dlcIds.package0);
-	Apps::setAddedAppDlcIds(dlcIds.appDlc);
+	Apps::setDiscoveredAppDlcIds(dlcIds.appDlc);
 	const auto ids = AppInfoProvision::mergePackage0AppIds(
 		g_config.addedAppIds.get(), dlcIds.package0);
 	if (!ids.empty()) (void)OwnerWork::submitHotAdd(ids);

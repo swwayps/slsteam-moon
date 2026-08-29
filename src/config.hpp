@@ -9,12 +9,14 @@
 #include "yaml-cpp/node/node.h"
 #include "yaml-cpp/yaml.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <cstdio>
 #include <pthread.h>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 
 class CFileWatcher;
@@ -35,6 +37,25 @@ public:
 		//No default constructor, otherwise dlcData will complain that no matching one was found
 		//without implementing it ourself anyway
 	};
+
+	static std::vector<std::uint32_t> selectConfiguredDlcIds(
+		const std::unordered_set<std::uint32_t>& managedParents,
+		const std::unordered_map<std::uint32_t, CDlcData>& configured)
+	{
+		std::vector<std::uint32_t> selected;
+		for (const auto& [parentId, data] : configured)
+		{
+			if (parentId == 0 || !managedParents.contains(parentId)) continue;
+			for (const auto& [dlcId, name] : data.dlcIds)
+			{
+				(void)name;
+				if (dlcId != 0) selected.push_back(dlcId);
+			}
+		}
+		std::sort(selected.begin(), selected.end());
+		selected.erase(std::unique(selected.begin(), selected.end()), selected.end());
+		return selected;
+	}
 
 	enum class ELoadError : uint32_t
 	{

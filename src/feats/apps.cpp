@@ -319,29 +319,6 @@ void Apps::getSubscribedApps(uint32_t* appList, size_t size, uint32_t& count)
 	applistRequested = true;
 }
 
-namespace
-{
-	// DLC appids belonging to AdditionalApps, registered once from setup()
-	// (main.cpp) after collectDlcAppIdsForAddedApps().  Read from Steam
-	// worker threads via shouldDisableCDKey, so guard with a mutex.  Set
-	// once before any app launch; the lock is uncontended in practice.
-	std::mutex g_addedAppDlcMutex;
-	std::unordered_set<uint32_t> g_addedAppDlcIds;
-}
-
-void Apps::setAddedAppDlcIds(const std::vector<uint32_t>& dlcIds)
-{
-	std::lock_guard<std::mutex> lk(g_addedAppDlcMutex);
-	g_addedAppDlcIds.clear();
-	g_addedAppDlcIds.insert(dlcIds.begin(), dlcIds.end());
-}
-
-bool Apps::isAddedAppDlcId(uint32_t appId)
-{
-	std::lock_guard<std::mutex> lk(g_addedAppDlcMutex);
-	return g_addedAppDlcIds.count(appId) != 0;
-}
-
 bool Apps::shouldDisableCloud(uint32_t appId)
 {
 	const bool enabled = g_config.disableCloud.get();

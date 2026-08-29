@@ -3641,7 +3641,7 @@ void enrichAndPublishDlcMetadata(
 		std::lock_guard<std::mutex> passLock(g_provisionPassMu);
 		allDlc = collectDlcAppIdsForAddedApps(&complete);
 	}
-	if (complete) Apps::setAddedAppDlcIds(allDlc.appDlc);
+	if (complete) Apps::setDiscoveredAppDlcIds(allDlc.appDlc);
 	g_pLog->info(
 		"AppInfoProvision: published %zu validated DLC metadata record(s) for %zu base app(s)\n",
 		liveApps.size(), publishedBasesCount);

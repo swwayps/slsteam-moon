@@ -21,11 +21,11 @@ namespace
 {
 constexpr std::uint32_t kBaseApp = 250900;
 constexpr std::uint32_t kManagedDlc = 1426300;
+constexpr std::uint32_t kManualDlc = 1118010;
 constexpr std::uint32_t kUnmanagedDlc = 401920;
 
 int failures = 0;
 std::uint32_t activeApp = kBaseApp;
-std::unordered_set<std::uint32_t> managedDlcIds{kManagedDlc};
 std::unordered_set<std::uint32_t> subscribedAppIds{kBaseApp};
 std::unordered_set<std::uint32_t> excludedAppIds;
 bool localUserAvailable = true;
@@ -67,11 +67,6 @@ bool CUser::isSubscribed(std::uint32_t appId)
 	return subscribedAppIds.contains(appId);
 }
 
-bool Apps::isAddedAppDlcId(std::uint32_t appId)
-{
-	return managedDlcIds.contains(appId);
-}
-
 bool Apps::unlockApp(std::uint32_t, CAppOwnershipInfo*)
 {
 	return true;
@@ -79,6 +74,7 @@ bool Apps::unlockApp(std::uint32_t, CAppOwnershipInfo*)
 
 int main()
 {
+	Apps::setDiscoveredAppDlcIds({kManagedDlc});
 	CHECK(Apps::ownershipOverrideAllowed(
 	          true, false, false, false, false, false, false),
 	      "a LuaTools-managed app remains eligible before type discovery");
@@ -121,11 +117,17 @@ int main()
 
 	CConfig::CDlcData manualDlcData;
 	manualDlcData.parentId = kBaseApp;
-	manualDlcData.dlcIds.emplace(kManagedDlc, "Managed DLC");
+	manualDlcData.dlcIds.emplace(kManualDlc, "Iceborne");
 	g_config.dlcData.set({{kBaseApp, manualDlcData}});
+	Apps::setConfiguredAppDlcIds(CConfig::selectConfiguredDlcIds(
+		g_config.managedAppIds.get(), g_config.dlcData.get()));
 	CHECK(DLC::getDlcCount(kBaseApp) == 0,
 	      "DlcData cannot replace the list for an unmanaged base app");
+	CHECK(!DLC::shouldUnlockDlc(kManualDlc),
+	      "DlcData cannot authorize a DLC under an unmanaged parent");
 	g_config.managedAppIds.set({kBaseApp});
+	Apps::setConfiguredAppDlcIds(CConfig::selectConfiguredDlcIds(
+		g_config.managedAppIds.get(), g_config.dlcData.get()));
 	CHECK(DLC::getDlcCount(kBaseApp) == 1,
 	      "DlcData remains available for a LuaTools-managed base app");
 	std::uint32_t manualDlc = 0;
@@ -135,9 +137,28 @@ int main()
 	CHECK(DLC::getDlcDataByIndex(
 	          kBaseApp, 0, &manualDlc, &manualAvailable,
 	          manualName, manualNameLen)
-	      && manualDlc == kManagedDlc && manualAvailable,
+	      && manualDlc == kManualDlc && manualAvailable,
 	      "managed DlcData can still publish its configured DLC");
+	CHECK(DLC::shouldUnlockDlc(kManualDlc),
+	      "managed DlcData authorizes an ID absent from discovered appinfo");
+	manualAvailable = false;
+	DLC::makeDlcAvailable(kManualDlc, &manualAvailable);
+	CHECK(manualAvailable,
+	      "configured DLC availability uses the same managed scope");
+	excludedAppIds.insert(kManualDlc);
+	manualAvailable = true;
+	CHECK(DLC::getDlcDataByIndex(
+	          kBaseApp, 0, &manualDlc, &manualAvailable,
+	          manualName, manualNameLen) && !manualAvailable,
+	      "explicit exclusion wins over configured enumeration availability");
+	excludedAppIds.erase(kManualDlc);
 	g_config.managedAppIds.set({});
+	Apps::setConfiguredAppDlcIds(CConfig::selectConfiguredDlcIds(
+		g_config.managedAppIds.get(), g_config.dlcData.get()));
+	CHECK(!DLC::shouldUnlockDlc(kManualDlc),
+	      "removing the managed parent revokes configured DLC scope");
+	CHECK(DLC::shouldUnlockDlc(kManagedDlc),
+	      "configured replacement does not erase discovered DLC scope");
 	g_config.dlcData.set({});
 
 	subscribedAppIds.insert(kManagedDlc);

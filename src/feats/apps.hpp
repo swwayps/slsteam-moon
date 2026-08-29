@@ -45,13 +45,11 @@ namespace Apps
 	bool checkAppOwnership(uint32_t appId, CAppOwnershipInfo* info);
 	void getSubscribedApps(uint32_t* appList, uint32_t size, uint32_t& count);
 
-	// Register the DLC appids that belong to AdditionalApps (discovered
-	// from provisioned appinfo at setup).  Used by shouldDisableCDKey so
-	// the launch-time legacy-key gate is suppressed for a base app AND
-	// its DLC — Steam queries RequiresLegacyCDKey across the whole
-	// app+DLC set, and a single DLC that still requires a key drags the
-	// base app's launch into a failing GettingLegacyKey.
-	void setAddedAppDlcIds(const std::vector<uint32_t>& dlcIds);
+	// Publish the two independent sources behind the managed-DLC membership
+	// query. Appinfo refreshes replace only discoveries; config reloads replace
+	// only explicit DlcData entries.
+	void setDiscoveredAppDlcIds(const std::vector<uint32_t>& dlcIds);
+	void setConfiguredAppDlcIds(const std::vector<uint32_t>& dlcIds);
 	bool isAddedAppDlcId(uint32_t appId);
 
 	bool shouldDisableCloud(uint32_t appId);

@@ -682,7 +682,7 @@ static void load()
 		    &dlcCollectionComplete);
 		if (dlcCollectionComplete)
 		{
-			Apps::setAddedAppDlcIds(dlcIds.appDlc);
+			Apps::setDiscoveredAppDlcIds(dlcIds.appDlc);
 		}
 	}
 

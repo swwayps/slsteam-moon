@@ -21,7 +21,8 @@ bool DLC::shouldUnlockDlc(uint32_t appId)
 	// every DLC queried while any game was active.  With the default empty
 	// blacklist that made DLC from ordinary, genuinely-owned games eligible
 	// for the local ownership override.  Scope the override to DLC ids
-	// discovered from LuaTools-managed base apps instead.  This deliberately
+	// discovered from LuaTools-managed base apps or explicitly declared under
+	// a managed parent's DlcData instead.  This deliberately
 	// does not depend on ownership of the base app: adding an already-owned
 	// game through LuaTools must still enable its managed DLC set.
 	if (!Apps::isAddedAppDlcId(appId))
@@ -104,7 +105,8 @@ bool DLC::getDlcDataByIndex(uint32_t appId, int index, uint32_t* dlcId, bool* av
 		auto dlc = std::next(data.dlcIds.begin(), index);
 
 		*dlcId = dlc->first;
-		*available = true;
+		*available = Apps::isAddedAppDlcId(*dlcId) &&
+			!g_config.shouldExcludeAppId(*dlcId);
 
 		//No clue if we have to check for errors during printf since the devs hopefully didn't fuck
 		//up the dlcNameLen. Who knows though
