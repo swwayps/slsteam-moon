@@ -49,7 +49,7 @@ ifeq ($(shell type mold &> /dev/null && echo "found"),found)
 	LDFLAGS += -fuse-ld=mold
 endif
 
-.PHONY: all build rebuild clean install release test-cmwire test-cmclient-loader test-clientcompat test-dlcids test-dlc-scope test-dlc-metadata test-config-path test-config-discovery test-filewatcher-burst test-provision-notice test-mtvar-contains test-synthmark test-appinfostate test-pattern-catalog test-pattern-cache test-pattern-refresh test-process-lock test-atomic-file test-cache-pair test-appinfo-transaction test-appinfo-reload test-audit-symbols test-audit-policy test-memhlp-target test-memhlp-prologue test-memhlp-pic test-utils-sha test-provision-cache test-provision-refresh test-provision-result test-provision-terminal test-pending-proton test-provision-schedule test-provision-pass test-runtime-dependencies test-thread-start test-steamstub-warmup test-boundedexecutor test-steamless-prewarm test-depotkey-scope test-curl-timeout test-contentserverdirectory test-manifest-index test-manifestselection test-manifeststore-io test-hotreload-inputs test-hotreload-package test-ownerqueue test-hotreload-capabilities test-libraryremoval test-pics test-prewarm-backoff test-yaml-runtime test-manifestpin-patterns test-optional-locators test-patternscan test-manifest-zip
+.PHONY: all build rebuild clean install release test-cmwire test-cmclient-loader test-clientcompat test-dlcids test-dlc-scope test-dlc-metadata test-config-path test-config-discovery test-filewatcher-burst test-provision-notice test-mtvar-contains test-synthmark test-appinfostate test-pattern-catalog test-pattern-cache test-pattern-refresh test-process-lock test-atomic-file test-cache-pair test-appinfo-transaction test-appinfo-reload test-audit-symbols test-audit-policy test-memhlp-target test-memhlp-prologue test-memhlp-pic test-utils-sha test-provision-cache test-provision-refresh test-provision-result test-provision-terminal test-pending-proton test-provision-schedule test-provision-pass test-runtime-dependencies test-thread-start test-steamstub-warmup test-boundedexecutor test-steamless-prewarm test-depotkey-scope test-curl-timeout test-contentserverdirectory test-manifest-index test-manifestselection test-manifeststore-io test-hotreload-inputs test-hotreload-package test-ownerqueue test-hotreload-capabilities test-libraryremoval test-pics test-prewarm-backoff test-yaml-runtime test-manifestpin-patterns test-optional-locators test-patternscan test-manifest-zip test-fakeappid-presence
 .NOTPARALLEL: clean rebuild
 .PHONY: test-library-dates test-library-dates-hook
 .PHONY: test-achievements test-achievement-scope test-stats-audit
@@ -76,6 +76,16 @@ test-achievement-scope: obj/sdk/protobufs/steammessages_clientserver_userstats.p
 		tools/test_achievement_scope.cpp src/feats/achievements.cpp src/feats/stats_policy.cpp \
 		$^ lib/libprotobuf-lite.a -pthread -o /tmp/test_achievement_scope
 	/tmp/test_achievement_scope
+
+test-fakeappid-presence: obj/sdk/protobufs/encrypted_app_ticket.pb.o \
+                          obj/sdk/protobufs/steammessages_base.pb.o \
+                          obj/sdk/protobufs/steammessages_clientserver.pb.o \
+                          obj/sdk/protobufs/steammessages_clientserver_2.pb.o
+	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem include -I src \
+		-ffunction-sections -fdata-sections tools/test_fakeappid_presence.cpp \
+		src/feats/fakeappid.cpp $^ lib/libprotobuf-lite.a \
+		-Wl,--gc-sections -pthread -o /tmp/test_fakeappid_presence
+	/tmp/test_fakeappid_presence
 
 test-stats-audit: bin/SLSsteam.so
 	$(CXX) -m32 -std=c++20 -rdynamic tools/test_stats_audit.cpp -ldl -o /tmp/test_stats_audit
