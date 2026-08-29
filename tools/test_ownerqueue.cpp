@@ -246,13 +246,13 @@ static void test_idempotent_enqueue()
 	CHECK(q.depth() == 3, "one injection + two installs pending");
 	CHECK(q.stats().duplicates == 3, "duplicate pushes counted");
 
-	CHECK(q.push(Command::ensureCompat(582010, 17, 0), kT0) ==
+	CHECK(q.push(Command::ensureCompat(582010, 0, 0), kT0) ==
 	          PushResult::Queued,
-	      "compatibility readiness queues as owner-thread work");
-	CHECK(q.push(Command::ensureCompat(582010, 17, 1), kT0 + 1) ==
+	      "first-generation compatibility readiness queues as owner-thread work");
+	CHECK(q.push(Command::ensureCompat(582010, 0, 1), kT0 + 1) ==
 	          PushResult::Duplicate,
 	      "poll attempts for the same managed generation coalesce");
-	CHECK(q.push(Command::ensureCompat(582010, 18, 0), kT0 + 2) ==
+	CHECK(q.push(Command::ensureCompat(582010, 1, 0), kT0 + 2) ==
 	          PushResult::Queued,
 	      "a remove/re-add generation is distinct compatibility work");
 	std::vector<Command> compat;
@@ -261,8 +261,8 @@ static void test_idempotent_enqueue()
 		if (cmd.kind() == Kind::EnsureCompat) compat.push_back(cmd);
 	});
 	CHECK(compat.size() == 2 && compat[0].appId() == 582010 &&
-	          compat[0].managedGeneration() == 17 && compat[0].attempt() == 0 &&
-	          compat[1].managedGeneration() == 18,
+	          compat[0].managedGeneration() == 0 && compat[0].attempt() == 0 &&
+	          compat[1].managedGeneration() == 1,
 	      "compatibility commands retain app, generation, and poll attempt");
 }
 
@@ -659,6 +659,12 @@ static void test_owner_affinity_gate()
 	      "compatibility mapping may run on the owner thread");
 	CHECK(!OwnerWork::compatExecutionAllowed(false),
 	      "compatibility mapping never uses an off-owner fallback");
+	CHECK(OwnerWork::compatReadinessRequestValid(805550, 0),
+	      "a first managed generation may queue compatibility readiness");
+	CHECK(OwnerWork::compatReadinessRequestValid(805550, 17),
+	      "a later managed generation may queue compatibility readiness");
+	CHECK(!OwnerWork::compatReadinessRequestValid(0, 0),
+	      "an invalid app id cannot queue compatibility readiness");
 }
 
 static void test_policy_parsing()

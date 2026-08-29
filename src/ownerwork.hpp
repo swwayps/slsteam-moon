@@ -169,6 +169,17 @@ namespace OwnerWork
 		return onOwner;
 	}
 
+	// Generation zero is the valid first managed epoch: the publication map
+	// starts there and increments only when an app is forgotten. The app id is
+	// the only sentinel in a compatibility-readiness request; the generation is
+	// still carried unchanged so publishPreparedBase can reject stale work.
+	inline constexpr bool compatReadinessRequestValid(
+		std::uint32_t appId,
+		std::uint64_t /*managedGeneration*/) noexcept
+	{
+		return appId != 0;
+	}
+
 	// Drain point. Cheap enough to call from every hooked RunIPCFrame: it
 	// returns immediately unless this thread is the latched owner AND work is
 	// pending. Never re-enters itself.

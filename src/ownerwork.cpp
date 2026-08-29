@@ -401,7 +401,7 @@ namespace OwnerWork
 		std::uint32_t appId,
 		std::uint64_t managedGeneration)
 	{
-		if (appId == 0 || managedGeneration == 0)
+		if (!compatReadinessRequestValid(appId, managedGeneration))
 			return Mode::Abandoned;
 		return submitBatch({ OwnerQueue::Command::ensureCompat(
 			appId, managedGeneration, 0) });
