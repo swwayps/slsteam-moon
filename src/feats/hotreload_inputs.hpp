@@ -26,6 +26,7 @@ struct AppInput
 	bool childMetadataPending = false;
 	bool childMetadataMissing = false;
 	std::int64_t cacheMtimeSecs = 0;
+	bool publishReady = true;
 };
 
 struct BuildResult
@@ -52,26 +53,29 @@ inline BuildResult build(std::uint64_t generation,
 
 	for (const AppInput& input : inputs)
 	{
-		if (input.baseAppId != 0)
+		if (input.publishReady && input.baseAppId != 0)
 			appIds.insert(input.baseAppId);
-		else
+		else if (input.publishReady)
 			out.snapshot.metadataComplete = false;
 
 		if (input.cacheValid)
 		{
-			for (const std::uint32_t appId : input.plannerAppIds)
-				if (appId != 0) appIds.insert(appId);
+			if (input.publishReady)
+				for (const std::uint32_t appId : input.plannerAppIds)
+					if (appId != 0) appIds.insert(appId);
 		}
 		else
 		{
-			out.snapshot.metadataComplete = false;
+			if (input.publishReady)
+				out.snapshot.metadataComplete = false;
 			if (input.baseAppId != 0)
 				out.cacheMissingBaseIds.push_back(input.baseAppId);
 		}
 
-		for (const std::uint32_t depotId : input.depotIds)
-			if (depotId != 0) depotIds.insert(depotId);
-		if (input.childMetadataPending)
+		if (input.publishReady)
+			for (const std::uint32_t depotId : input.depotIds)
+				if (depotId != 0) depotIds.insert(depotId);
+		if (input.publishReady && input.childMetadataPending)
 			out.snapshot.metadataComplete = false;
 		if (input.childMetadataMissing && input.baseAppId != 0)
 			out.metadataMissingBaseIds.push_back(input.baseAppId);
@@ -101,7 +105,8 @@ inline BuildResult build(std::uint64_t generation,
 
 BuildResult buildFromCaches(std::uint64_t generation,
 	const std::unordered_set<std::uint32_t>& managedAppIds,
-	const std::unordered_set<std::uint32_t>& metadataPendingBaseIds = {},
-	const std::unordered_set<std::uint32_t>& metadataDeferredBaseIds = {});
+	const std::unordered_set<std::uint32_t>& metadataPendingBaseIds,
+	const std::unordered_set<std::uint32_t>& metadataDeferredBaseIds,
+	const std::unordered_set<std::uint32_t>& readyBaseIds);
 
 } // namespace HotReloadInputs

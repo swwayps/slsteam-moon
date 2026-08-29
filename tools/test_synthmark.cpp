@@ -143,65 +143,17 @@ int main()
 	CHECK(!SynthMark::installStateAllowsStrip(true, true, true, true),
 	      "fully-installed synthetic app is not strip-eligible");
 
-	// --- strip budget (stateful session controller) ------------------------
-
-	SynthMark::StripBudget sessionBudget;
-	const auto sessionFirst = sessionBudget.reserve(
-	    7, SynthMark::StripLimits{2, 60}, 100);
-	const auto sessionSecond = sessionBudget.reserve(
-	    7, SynthMark::StripLimits{2, 60}, 110);
-	const auto sessionCapped = sessionBudget.reserve(
-	    7, SynthMark::StripLimits{2, 60}, 120);
-	const auto otherApp = sessionBudget.reserve(
-	    8, SynthMark::StripLimits{2, 60}, 120);
-	CHECK(sessionFirst.decision == SynthMark::StripDecision::Allow &&
-	      sessionSecond.decision == SynthMark::StripDecision::Allow,
-	      "session budget allows an app up to its count cap");
-	CHECK(sessionCapped.decision == SynthMark::StripDecision::CountLimit,
-	      "session budget caps one app independently");
-	CHECK(otherApp.decision == SynthMark::StripDecision::Allow,
-	      "session budget keeps separate app state");
-
-	// --- strip budget (pure) -----------------------------------------------
-
-	const SynthMark::StripLimits limits{2, 60};
-	const SynthMark::StripState emptyState{};
-	const auto first = SynthMark::evaluateStrip(emptyState, limits, 100);
-	CHECK(first.decision == SynthMark::StripDecision::Allow,
-	      "first strip is allowed");
-	CHECK(first.nextState.count == 1 && first.nextState.firstStripAt == 100,
-	      "first strip records count and timestamp");
-
-	const auto second = SynthMark::evaluateStrip(first.nextState, limits, 120);
-	CHECK(second.decision == SynthMark::StripDecision::Allow,
-	      "second strip is allowed before the count cap");
-	CHECK(second.nextState.count == 2 && second.nextState.firstStripAt == 100,
-	      "second strip preserves the first-strip timestamp");
-
-	const auto countCapped = SynthMark::evaluateStrip(second.nextState, limits, 121);
-	CHECK(countCapped.decision == SynthMark::StripDecision::CountLimit,
-	      "count cap stops further strips");
-	CHECK(countCapped.nextState.count == second.nextState.count,
-	      "count-capped evaluation does not consume a strip");
-
-	const auto timeCapped = SynthMark::evaluateStrip(
-		first.nextState, SynthMark::StripLimits{8, 60}, 160);
-	CHECK(timeCapped.decision == SynthMark::StripDecision::TimeLimit,
-	      "time cap stops a strip once the budget expires");
-
-	const auto disabled = SynthMark::evaluateStrip(
-		emptyState, SynthMark::StripLimits{0, 60}, 100);
-	CHECK(disabled.decision == SynthMark::StripDecision::Disabled,
-	      "zero max strips is a kill-switch");
-	CHECK(disabled.nextState.count == 0 && disabled.nextState.firstStripAt == 0,
-	      "kill-switch leaves strip state unchanged");
-
-	const auto overridden = SynthMark::parseStripLimits("3", "9");
-	CHECK(overridden.maxStrips == 3 && overridden.maxSeconds == 9,
-	      "environment values override the default strip budget");
-	const auto defaults = SynthMark::parseStripLimits("invalid", "-1");
-	CHECK(defaults.maxStrips == 8 && defaults.maxSeconds == 60,
-	      "invalid environment values keep the default strip budget");
+	// Runtime protection must never expire into a destructive empty response.
+	// The AppInfoState skip bit prevents the updater retry loop; this outgoing
+	// filter remains the final authority boundary if Steam asks anyway.
+	std::ifstream appsSource("src/feats/apps.cpp");
+	const std::string appsText(
+		(std::istreambuf_iterator<char>(appsSource)),
+		std::istreambuf_iterator<char>());
+	CHECK(appsText.find("g_synthStripBudget") == std::string::npos,
+	      "runtime synthetic protection has no expiring strip budget");
+	CHECK(appsText.find("strip cap tripped") == std::string::npos,
+	      "runtime can never fall through to clobber after a cap event");
 
 	// --- app/depot relation tracking ---------------------------------------
 

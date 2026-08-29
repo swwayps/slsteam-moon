@@ -22,6 +22,12 @@ namespace HotReload
 		const std::unordered_set<std::uint32_t>& managedAppIds,
 		bool forceSourceRefresh = false) noexcept;
 
+	// Publish a base into package ownership only after its local appinfo has
+	// completed the live splice/reload boundary.
+	bool publishPreparedBase(
+		std::uint32_t baseAppId,
+		std::uint64_t expectedManagedGeneration) noexcept;
+
 	// The async base refresh has made a newer metadata topology durable. Rebuild
 	// one generation even when managed membership and manifest fingerprints are
 	// unchanged. Returns false for stale remove/re-add work or an identical

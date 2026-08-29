@@ -89,6 +89,19 @@ int main()
 		420530, 7, 2, reasonMask(RefreshReason::PicsProductInfo), false, false};
 	CHECK(!requestNeedsFetch(sameChange, CacheReadiness::ValidStale, 7),
 	      "TTL expiry alone does not force a runtime fetch");
+	RefreshRequest cachedHotAdd = sameChange;
+	cachedHotAdd.reasons = reasonMask(RefreshReason::HotAdd);
+	cachedHotAdd.publishRuntime = true;
+	CHECK(cachedRuntimePublicationAllowed(
+	          cachedHotAdd, CacheReadiness::ValidStale) &&
+	      cachedRuntimePublicationAllowed(
+	          cachedHotAdd, CacheReadiness::Fresh),
+	      "a validated cached hot-add still reaches live publication");
+	CHECK(!cachedRuntimePublicationAllowed(
+	          cachedHotAdd, CacheReadiness::Missing) &&
+	      !cachedRuntimePublicationAllowed(
+	          sameChange, CacheReadiness::Fresh),
+	      "missing or unauthorized cache state remains hidden");
 
 	const RefreshRequest localChange{
 		420530, 0, 2, reasonMask(RefreshReason::LocalInputs), true, false};

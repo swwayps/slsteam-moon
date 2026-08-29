@@ -100,6 +100,7 @@ namespace AffTrace
 		Package0Sync,           // complete desired-state package reconciliation
 		LicenseReconcile,       // license broadcast unit of work
 		InstallApp,             // app-manager install unit of work
+		CompatMapping,          // live compatibility mapping unit of work
 		CutlMemoryGrow,         // resolved Steam CUtlMemoryGrow
 		MarkLicenseChanged,     // resolved CUser package-change marker
 		ProcessLicenseUpdates,  // resolved CUser pending-update processor
@@ -197,6 +198,7 @@ namespace AffTrace
 			case Call::Package0Sync:          return "package0_sync";
 			case Call::LicenseReconcile:      return "license_reconcile";
 			case Call::InstallApp:            return "install_app";
+			case Call::CompatMapping:         return "compat_mapping";
 			case Call::CutlMemoryGrow:        return "cutlmemory_grow";
 			case Call::MarkLicenseChanged:    return "mark_license_changed";
 			case Call::ProcessLicenseUpdates: return "process_license_updates";

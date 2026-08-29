@@ -24,7 +24,8 @@ BuildResult buildFromCaches(
 	std::uint64_t generation,
 	const std::unordered_set<std::uint32_t>& managedAppIds,
 	const std::unordered_set<std::uint32_t>& metadataPendingBaseIds,
-	const std::unordered_set<std::uint32_t>& metadataDeferredBaseIds)
+	const std::unordered_set<std::uint32_t>& metadataDeferredBaseIds,
+	const std::unordered_set<std::uint32_t>& readyBaseIds)
 {
 	std::vector<std::uint32_t> sortedBases(
 		managedAppIds.begin(), managedAppIds.end());
@@ -36,6 +37,7 @@ BuildResult buildFromCaches(
 	{
 		AppInput input;
 		input.baseAppId = baseAppId;
+		input.publishReady = readyBaseIds.count(baseAppId) != 0;
 
 		try
 		{

@@ -143,6 +143,18 @@ inline bool requestNeedsFetch(const RefreshRequest& request,
 	return request.minimumChangeNumber > cachedChangeNumber;
 }
 
+inline bool cachedRuntimePublicationAllowed(
+	const RefreshRequest& request,
+	CacheReadiness readiness) noexcept
+{
+	if (!request.publishRuntime || request.appId == 0) return false;
+	const std::uint8_t nonMetadataReasons = static_cast<std::uint8_t>(
+		request.reasons & ~reasonMask(RefreshReason::DlcMetadata));
+	if (nonMetadataReasons == 0) return false;
+	return readiness == CacheReadiness::Fresh ||
+		readiness == CacheReadiness::ValidStale;
+}
+
 enum class ColdStartMode { StartupRequireUsablePair, RuntimeMissingOnly };
 
 inline bool coldStartPrimesTerminalMemo(ColdStartMode mode) noexcept
@@ -255,6 +267,10 @@ ProvisionPassSummary provisionRequestedApps(
 // Apply Proton mappings deferred by runtime provisioning. This is called from
 // setup() before Steam starts its live ConfigStore writers.
 void flushPendingProtonMappings();
+
+// True when the validated local topology has no native Linux depot and must
+// receive a live compatibility mapping before package publication.
+bool requiresProton(std::uint32_t appId) noexcept;
 
 // Provision managed apps whose cache pair is not ready for the current PICS
 // response. This synchronous fallback runs on the PICS recv thread when

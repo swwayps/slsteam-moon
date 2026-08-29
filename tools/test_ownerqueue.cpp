@@ -245,6 +245,25 @@ static void test_idempotent_enqueue()
 	      "install into a different library is distinct work");
 	CHECK(q.depth() == 3, "one injection + two installs pending");
 	CHECK(q.stats().duplicates == 3, "duplicate pushes counted");
+
+	CHECK(q.push(Command::ensureCompat(582010, 17, 0), kT0) ==
+	          PushResult::Queued,
+	      "compatibility readiness queues as owner-thread work");
+	CHECK(q.push(Command::ensureCompat(582010, 17, 1), kT0 + 1) ==
+	          PushResult::Duplicate,
+	      "poll attempts for the same managed generation coalesce");
+	CHECK(q.push(Command::ensureCompat(582010, 18, 0), kT0 + 2) ==
+	          PushResult::Queued,
+	      "a remove/re-add generation is distinct compatibility work");
+	std::vector<Command> compat;
+	q.drain([&](const Command& cmd)
+	{
+		if (cmd.kind() == Kind::EnsureCompat) compat.push_back(cmd);
+	});
+	CHECK(compat.size() == 2 && compat[0].appId() == 582010 &&
+	          compat[0].managedGeneration() == 17 && compat[0].attempt() == 0 &&
+	          compat[1].managedGeneration() == 18,
+	      "compatibility commands retain app, generation, and poll attempt");
 }
 
 static void test_bounded()
@@ -636,6 +655,10 @@ static void test_owner_affinity_gate()
 	CHECK(!OwnerQueue::shouldDrain(101, 100, false, 1), "non-owner thread never drains");
 	CHECK(!OwnerQueue::shouldDrain(100, 0, false, 1), "no owner latched -> no drain");
 	CHECK(!OwnerQueue::shouldDrain(100, 100, true, 1), "already draining -> no nested drain");
+	CHECK(OwnerWork::compatExecutionAllowed(true),
+	      "compatibility mapping may run on the owner thread");
+	CHECK(!OwnerWork::compatExecutionAllowed(false),
+	      "compatibility mapping never uses an off-owner fallback");
 }
 
 static void test_policy_parsing()

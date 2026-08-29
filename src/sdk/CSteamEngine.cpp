@@ -1,9 +1,27 @@
 #include "CSteamEngine.hpp"
 
+#include "IClientCompat.hpp"
+
 #include "../hooks.hpp"
 #include "../patterns.hpp"
+#include "../vftableinfo.hpp"
+#include "../feats/compatlive.hpp"
 
 #include "libmem/libmem.h"
+
+#include <array>
+
+namespace
+{
+bool executableAddress(lm_address_t address)
+{
+	lm_segment_t segment{};
+	return address != 0 && address != LM_ADDRESS_BAD &&
+		LM_FindSegment(address, &segment) &&
+		(segment.prot & LM_PROT_XR) == LM_PROT_XR &&
+		address >= segment.base && address < segment.end;
+}
+}
 
 
 CUser* CSteamEngine::getUser(uint32_t index)
@@ -51,4 +69,46 @@ CUser* getLocalUser()
 	}
 
 	return g_pLocalUser;
+}
+
+IClientCompat* getLocalClientCompat()
+{
+	CUser* const user = getLocalUser();
+	const lm_address_t instruction =
+		Patterns::CUser::Offset_CompatManager.address;
+	if (user == nullptr || instruction == 0 || instruction == LM_ADDRESS_BAD)
+		return nullptr;
+
+	std::array<std::uint8_t, 6> bytes{};
+	if (LM_ReadMemory(instruction, bytes.data(), bytes.size()) != bytes.size())
+		return nullptr;
+	const auto offset = CompatLive::decodeManagerOffset(bytes);
+	if (!offset.has_value()) return nullptr;
+
+	auto* const compat = reinterpret_cast<IClientCompat*>(
+		reinterpret_cast<std::uint8_t*>(user) + *offset);
+	lm_address_t vtable = 0;
+	if (LM_ReadMemory(
+		reinterpret_cast<lm_address_t>(compat),
+		reinterpret_cast<lm_byte_t*>(&vtable), sizeof(vtable)) !=
+		sizeof(vtable) || vtable == 0 || vtable == LM_ADDRESS_BAD)
+	{
+		return nullptr;
+	}
+
+	for (const int index : {
+		VFTIndexes::IClientCompat::SpecifyCompatTool,
+		VFTIndexes::IClientCompat::GetCompatToolName})
+	{
+		lm_address_t target = 0;
+		const lm_address_t slot = vtable +
+			static_cast<lm_address_t>(index) * sizeof(lm_address_t);
+		if (LM_ReadMemory(slot, reinterpret_cast<lm_byte_t*>(&target),
+			sizeof(target)) != sizeof(target) ||
+			!executableAddress(target))
+		{
+			return nullptr;
+		}
+	}
+	return compat;
 }

@@ -32,6 +32,7 @@
 #include "../config.hpp"
 #include "../globals.hpp"
 #include "../log.hpp"
+#include "../ownerwork.hpp"
 #include "../bootprof.hpp"
 #include "../thread_start.hpp"
 #include "../cainfo.hpp"
@@ -2014,6 +2015,19 @@ bool isSynthesizedAppLocked(uint32_t appId)
 
 } // namespace
 
+bool requiresProton(std::uint32_t appId) noexcept
+{
+	try
+	{
+		std::lock_guard<std::mutex> passLock(g_provisionPassMu);
+		return appId != 0 && g_needProton.count(appId) != 0;
+	}
+	catch (...)
+	{
+		return false;
+	}
+}
+
 CacheProbe probeCache(uint32_t appId, CacheProbeMode mode)
 {
 	return probeCacheImpl(appId, mode);
@@ -2678,7 +2692,7 @@ bool provisionApp(uint32_t appId, const std::string& appinfoVdfPath)
 		appId, appinfoVdfPath, pass, context));
 }
 
-bool publishRuntimeAppInfo(
+std::vector<std::uint32_t> publishRuntimeAppInfo(
 	const std::string& appinfoVdfPath,
 	const std::vector<RefreshRequest>& requested);
 
@@ -2955,7 +2969,9 @@ ProvisionPassSummary provisionRequestedApps(
 	summary.requested = accepted.size();
 
 	std::vector<RefreshRequest> fetch;
+	std::vector<RefreshRequest> cachedPublish;
 	fetch.reserve(accepted.size());
+	cachedPublish.reserve(accepted.size());
 	std::size_t busy = 0;
 	for (const RefreshRequest& request : accepted)
 	{
@@ -2965,6 +2981,8 @@ ProvisionPassSummary provisionRequestedApps(
 		if (!requestNeedsFetch(request, probe.readiness, probe.changeNumber))
 		{
 			++summary.ready;
+			if (cachedRuntimePublicationAllowed(request, probe.readiness))
+				cachedPublish.push_back(request);
 			continue;
 		}
 		if (terminalProvisionResultKnown(
@@ -3012,7 +3030,7 @@ ProvisionPassSummary provisionRequestedApps(
 		}
 	}
 
-	std::vector<RefreshRequest> publish;
+	std::vector<RefreshRequest> publish = std::move(cachedPublish);
 	for (const RefreshRequest& request : fetch)
 	{
 		ProvisionOutcome outcome = ProvisionOutcome::IncompleteContent;
@@ -3039,7 +3057,7 @@ ProvisionPassSummary provisionRequestedApps(
 			publish.push_back(request);
 	}
 
-	bool runtimePublished = false;
+	std::vector<RefreshRequest> runtimePublished;
 	coordinator.commit([&] {
 		if (allowConfigWrite)
 		{
@@ -3053,13 +3071,34 @@ ProvisionPassSummary provisionRequestedApps(
 				basePublish.push_back(request);
 		}
 		if (!basePublish.empty())
-			runtimePublished = publishRuntimeAppInfo(appinfoVdfPath, basePublish);
+		{
+			const auto publishedIds =
+				publishRuntimeAppInfo(appinfoVdfPath, basePublish);
+			const std::unordered_set<std::uint32_t> published(
+				publishedIds.begin(), publishedIds.end());
+			for (const auto& request : basePublish)
+				if (published.count(request.appId) != 0)
+					runtimePublished.push_back(request);
+		}
 	});
+	for (const auto& request : runtimePublished)
+	{
+		if (requiresProton(request.appId))
+		{
+			(void)OwnerWork::submitCompatReadiness(
+				request.appId, request.managedGeneration);
+		}
+		else
+		{
+			(void)HotReload::publishPreparedBase(
+				request.appId, request.managedGeneration);
+		}
+	}
 	const bool metadataOnly = std::any_of(
 		publish.begin(), publish.end(), [](const RefreshRequest& request) {
 			return (request.reasons & reasonMask(RefreshReason::DlcMetadata)) != 0;
 		});
-	if (runtimePublished || metadataOnly)
+	if (!runtimePublished.empty() || metadataOnly)
 		enrichAndPublishDlcMetadata(appinfoVdfPath, publish);
 	g_pLog->info(
 		"AppInfoProvision: pass origin=targeted requested=%zu fetched=%zu "
@@ -3249,7 +3288,7 @@ enum class RefreshWorkerStartResult
 	Uncertain,
 };
 
-bool publishRuntimeAppInfo(
+std::vector<std::uint32_t> publishRuntimeAppInfo(
     const std::string& appinfoVdfPath,
     const std::vector<RefreshRequest>& requested)
 {
@@ -3264,7 +3303,7 @@ bool publishRuntimeAppInfo(
 		requested, g_config.managedAppIds.get(), SynthMark::loadAll(getCacheDir()),
 		generations);
 	if (selected.empty())
-		return false;
+		return {};
 
 	const std::unordered_set<std::uint32_t> scoped(
 		selected.begin(), selected.end());
@@ -3274,8 +3313,18 @@ bool publishRuntimeAppInfo(
 			"AppInfoProvision: live appinfo splice failed for %zu app(s); "
 			"restart remains available\n",
 			selected.size());
-		return false;
+		return {};
 	}
+
+	// A synthetic cache pair is the complete product-info authority for its
+	// token-locked app. Publish the full managed intersection before Steam
+	// reads the just-spliced record so the derived CAppData skip byte persists.
+	std::unordered_set<std::uint32_t> authoritative;
+	const auto synthetic = SynthMark::loadAll(getCacheDir());
+	const auto managed = g_config.managedAppIds.get();
+	for (const std::uint32_t appId : synthetic)
+		if (managed.count(appId) != 0) authoritative.insert(appId);
+	AppInfoState::publishAuthoritative(authoritative);
 
 	const AppInfoReload::Result reloaded =
 		AppInfoState::reloadFromDisk(selected);
@@ -3286,13 +3335,13 @@ bool publishRuntimeAppInfo(
 				"AppInfoProvision: live appinfo disk reload unavailable for %zu "
 				"app(s); restart remains available\n",
 				selected.size());
-			return false;
+			return {};
 		case AppInfoReload::Status::ReadFailed:
 			g_pLog->warn(
 				"AppInfoProvision: Steam rejected live appinfo disk reload for %zu "
 				"app(s); restart remains available\n",
 				selected.size());
-			return false;
+			return {};
 		case AppInfoReload::Status::Loaded:
 			if (!AppInfoReload::allRequestedPresent(reloaded, selected.size()))
 			{
@@ -3300,7 +3349,7 @@ bool publishRuntimeAppInfo(
 					"AppInfoProvision: live appinfo reload found %zu/%zu current "
 					"app(s); restart remains available\n",
 					reloaded.present, selected.size());
-				return false;
+				return {};
 			}
 			else
 			{
@@ -3309,9 +3358,9 @@ bool publishRuntimeAppInfo(
 					"appinfo cache\n",
 					reloaded.present);
 			}
-			return true;
+			return selected;
 	}
-	return false;
+	return {};
 }
 
 struct DlcMetadataWork

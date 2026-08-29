@@ -48,13 +48,38 @@ int main()
 		"cold publication requests only bases whose cache is unusable");
 	check(HotReloadPublishPolicy::membershipAppInfoRequestIds(
 		/*initialPublication=*/false, {30}, built.cacheMissingBaseIds) ==
-		std::vector<std::uint32_t>({30}),
-		"runtime publication requests every newly added base");
+		std::vector<std::uint32_t>{},
+		"runtime addition never requests network appinfo before local readiness");
+	check(HotReloadPublishPolicy::readyBaseIds(
+		{420530, 582010}, {582010}) == std::vector<std::uint32_t>({582010}),
+		"only prepared additions become generation-visible ownership work");
 
 	const auto empty = HotReloadInputs::build(8, {});
 	check(empty.valid && empty.snapshot.metadataComplete &&
 		empty.snapshot.appIds.empty() && empty.snapshot.depotIds.empty(),
 		"an empty managed source is a complete empty snapshot");
+
+	AppInput hiddenPending;
+	hiddenPending.baseAppId = 420530;
+	hiddenPending.cacheValid = true;
+	hiddenPending.plannerAppIds = {420530};
+	hiddenPending.depotIds = {420531, 420534};
+	hiddenPending.publishReady = false;
+	const auto hidden = HotReloadInputs::build(81, {hiddenPending});
+	check(hidden.valid && hidden.snapshot.metadataComplete &&
+		hidden.snapshot.appIds.empty() && hidden.snapshot.depotIds.empty(),
+		"a desired but unready base contributes no package or depot state");
+	check(hidden.cacheMissingBaseIds.empty(),
+		"a hidden validated cache is not misclassified as missing");
+	hiddenPending.cacheValid = false;
+	const auto hiddenMissing = HotReloadInputs::build(82, {hiddenPending});
+	check(hiddenMissing.valid && hiddenMissing.snapshot.metadataComplete &&
+		hiddenMissing.snapshot.appIds.empty() &&
+		hiddenMissing.snapshot.depotIds.empty(),
+		"a hidden missing cache does not make the visible package incomplete");
+	check(hiddenMissing.cacheMissingBaseIds ==
+		std::vector<std::uint32_t>({420530}),
+		"a hidden missing cache remains scheduled for preparation");
 
 	const auto bounded = HotReloadInputs::build(9, inputs, 2);
 	check(!bounded.valid && !bounded.snapshot.metadataComplete &&

@@ -164,6 +164,11 @@ namespace OwnerWork
 	bool ownerLatched();
 	bool onOwnerThread();
 
+	inline bool compatExecutionAllowed(bool onOwner) noexcept
+	{
+		return onOwner;
+	}
+
 	// Drain point. Cheap enough to call from every hooked RunIPCFrame: it
 	// returns immediately unless this thread is the latched owner AND work is
 	// pending. Never re-enters itself.
@@ -178,6 +183,12 @@ namespace OwnerWork
 	// generation in the owner queue; the older hot-add API remains available
 	// until the watcher switches over in a later task.
 	Mode submitManagedState(const PackageSnapshot& snapshot);
+
+	// Apply and confirm a per-app compatibility mapping on the owner IPC
+	// thread. Package ownership is published only after confirmation.
+	Mode submitCompatReadiness(
+		std::uint32_t appId,
+		std::uint64_t managedGeneration);
 
 	// API-watcher install request. Also non-blocking.
 	Mode submitInstallApp(std::uint32_t appId, std::uint32_t library);

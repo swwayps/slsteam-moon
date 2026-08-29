@@ -49,7 +49,7 @@ ifeq ($(shell type mold &> /dev/null && echo "found"),found)
 	LDFLAGS += -fuse-ld=mold
 endif
 
-.PHONY: all build rebuild clean install release test-cmwire test-cmclient-loader test-dlcids test-dlc-scope test-dlc-metadata test-config-path test-config-discovery test-filewatcher-burst test-provision-notice test-mtvar-contains test-synthmark test-pattern-catalog test-pattern-cache test-pattern-refresh test-process-lock test-atomic-file test-cache-pair test-appinfo-transaction test-appinfo-reload test-audit-symbols test-audit-policy test-memhlp-target test-memhlp-prologue test-memhlp-pic test-utils-sha test-provision-cache test-provision-refresh test-provision-result test-provision-terminal test-pending-proton test-provision-schedule test-provision-pass test-runtime-dependencies test-thread-start test-steamstub-warmup test-boundedexecutor test-steamless-prewarm test-depotkey-scope test-curl-timeout test-contentserverdirectory test-manifest-index test-manifestselection test-manifeststore-io test-hotreload-inputs test-hotreload-package test-ownerqueue test-hotreload-capabilities test-libraryremoval test-pics test-prewarm-backoff test-yaml-runtime test-manifestpin-patterns test-optional-locators test-patternscan test-manifest-zip
+.PHONY: all build rebuild clean install release test-cmwire test-cmclient-loader test-clientcompat test-dlcids test-dlc-scope test-dlc-metadata test-config-path test-config-discovery test-filewatcher-burst test-provision-notice test-mtvar-contains test-synthmark test-appinfostate test-pattern-catalog test-pattern-cache test-pattern-refresh test-process-lock test-atomic-file test-cache-pair test-appinfo-transaction test-appinfo-reload test-audit-symbols test-audit-policy test-memhlp-target test-memhlp-prologue test-memhlp-pic test-utils-sha test-provision-cache test-provision-refresh test-provision-result test-provision-terminal test-pending-proton test-provision-schedule test-provision-pass test-runtime-dependencies test-thread-start test-steamstub-warmup test-boundedexecutor test-steamless-prewarm test-depotkey-scope test-curl-timeout test-contentserverdirectory test-manifest-index test-manifestselection test-manifeststore-io test-hotreload-inputs test-hotreload-package test-ownerqueue test-hotreload-capabilities test-libraryremoval test-pics test-prewarm-backoff test-yaml-runtime test-manifestpin-patterns test-optional-locators test-patternscan test-manifest-zip
 .NOTPARALLEL: clean rebuild
 .PHONY: test-library-dates test-library-dates-hook
 .PHONY: test-achievements test-achievement-scope test-stats-audit
@@ -161,6 +161,12 @@ test-cmclient-loader:
 		-Wl,--gc-sections -ldl -pthread -o /tmp/test_cmclient_loader
 	/tmp/test_cmclient_loader
 
+test-clientcompat:
+	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src -I include \
+		tools/test_clientcompat.cpp src/sdk/IClientCompat.cpp \
+		-o /tmp/test_clientcompat
+	/tmp/test_clientcompat
+
 test-dlcids:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I include \
 		tools/test_dlcids.cpp -o /tmp/test_dlcids
@@ -208,6 +214,11 @@ test-synthmark:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src -I include \
 		tools/test_synthmark.cpp -o /tmp/test_synthmark
 	/tmp/test_synthmark
+
+test-appinfostate:
+	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -pthread -I src -I include \
+		tools/test_appinfostate.cpp -o /tmp/test_appinfostate
+	/tmp/test_appinfostate
 
 test-pattern-catalog:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src \

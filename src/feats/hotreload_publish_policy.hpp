@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <iterator>
 #include <limits>
+#include <unordered_set>
 #include <vector>
 
 namespace HotReloadPublishPolicy
@@ -36,14 +37,30 @@ inline constexpr bool shouldAwaitDlcMetadata(
 
 inline std::vector<std::uint32_t> membershipAppInfoRequestIds(
 	bool initialPublication,
-	const std::vector<std::uint32_t>& addedBaseIds,
+	const std::vector<std::uint32_t>& /*addedBaseIds*/,
 	const std::vector<std::uint32_t>& cacheMissingBaseIds)
 {
+	// Runtime bases are prepared from the local normalized cache and reloaded
+	// before ownership is published. Asking Steam for them here reopens the
+	// synthetic clobber race and is redundant for ordinary appinfo too.
 	std::vector<std::uint32_t> out = initialPublication
-		? cacheMissingBaseIds : addedBaseIds;
+		? cacheMissingBaseIds : std::vector<std::uint32_t>{};
 	std::sort(out.begin(), out.end());
 	out.erase(std::unique(out.begin(), out.end()), out.end());
 	out.erase(std::remove(out.begin(), out.end(), 0), out.end());
+	return out;
+}
+
+inline std::vector<std::uint32_t> readyBaseIds(
+	const std::vector<std::uint32_t>& candidates,
+	const std::unordered_set<std::uint32_t>& ready)
+{
+	std::vector<std::uint32_t> out;
+	out.reserve(candidates.size());
+	for (const std::uint32_t appId : candidates)
+		if (appId != 0 && ready.count(appId) != 0) out.push_back(appId);
+	std::sort(out.begin(), out.end());
+	out.erase(std::unique(out.begin(), out.end()), out.end());
 	return out;
 }
 

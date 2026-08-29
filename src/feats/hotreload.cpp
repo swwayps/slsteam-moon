@@ -31,6 +31,7 @@ struct CoordinatorState
 	bool initialized = false;
 	std::uint64_t generation = 0;
 	std::unordered_set<std::uint32_t> managedAppIds;
+	std::unordered_set<std::uint32_t> readyBaseIds;
 	std::unordered_map<std::uint32_t, std::string> contentFingerprints;
 	std::unordered_map<std::uint32_t, std::uint64_t> managedGenerations;
 	std::unordered_map<std::uint32_t, std::int64_t> cacheMtimeSecs;
@@ -113,6 +114,11 @@ bool publishLocked(
 	for (const auto& [appId, fingerprint] : nextFingerprints)
 		AppInfoProvision::primeTerminalMemo(appId, fingerprint);
 	auto metadataPendingBaseIds = state.metadataPendingBaseIds;
+	auto readyBaseIds = state.readyBaseIds;
+	if (initialPublication)
+		readyBaseIds = managedAppIds;
+	for (const std::uint32_t appId : removed)
+		readyBaseIds.erase(appId);
 	for (const std::uint32_t appId : removed)
 		metadataPendingBaseIds.erase(appId);
 	for (const std::uint32_t appId : removed)
@@ -122,7 +128,7 @@ bool publishLocked(
 		metadataPendingBaseIds.insert(added.begin(), added.end());
 	auto built = HotReloadInputs::buildFromCaches(
 		nextGeneration, managedAppIds, metadataPendingBaseIds,
-		state.metadataDeferredBaseIds);
+		state.metadataDeferredBaseIds, readyBaseIds);
 	if (!built.valid)
 	{
 		if (g_pLog != nullptr)
@@ -134,7 +140,8 @@ bool publishLocked(
 		}
 		return false;
 	}
-	built.snapshot.addedAppIds = added;
+	built.snapshot.addedAppIds =
+		HotReloadPublishPolicy::readyBaseIds(added, readyBaseIds);
 	built.snapshot.appInfoRequestIds =
 		HotReloadPublishPolicy::membershipAppInfoRequestIds(
 			initialPublication, added, built.cacheMissingBaseIds);
@@ -158,9 +165,18 @@ bool publishLocked(
 			cacheRepairBaseIds.end());
 	}
 
+	// Guard desired bases immediately, but keep them outside package ownership
+	// until their authoritative local appinfo is live.
 	std::unordered_set<std::uint32_t> guardedAppIds(
+		managedAppIds.begin(), managedAppIds.end());
+	guardedAppIds.insert(
 		built.snapshot.appIds.begin(), built.snapshot.appIds.end());
 	(void)membershipStore().publish(guardedAppIds);
+	std::unordered_set<std::uint32_t> authoritativeAppIds;
+	for (const std::uint32_t appId : managedAppIds)
+		if (AppInfoProvision::isSynthesizedApp(appId))
+			authoritativeAppIds.insert(appId);
+	AppInfoState::publishAuthoritative(authoritativeAppIds);
 	for (const std::uint32_t appId : added)
 		LibraryRemoval::cancel(appId);
 
@@ -174,6 +190,7 @@ bool publishLocked(
 	}
 
 	state.managedAppIds = managedAppIds;
+	state.readyBaseIds = std::move(readyBaseIds);
 	state.generation = nextGeneration;
 	state.contentFingerprints = std::move(nextFingerprints);
 	state.metadataPendingBaseIds = std::move(metadataPendingBaseIds);
@@ -311,6 +328,91 @@ void publish(
 	{
 		if (g_pLog != nullptr)
 			g_pLog->warn("HotReload: watcher publication failed; previous state retained\n");
+	}
+}
+
+bool publishPreparedBase(
+	std::uint32_t baseAppId,
+	std::uint64_t expectedManagedGeneration) noexcept
+{
+	try
+	{
+		if (baseAppId == 0) return false;
+		CoordinatorState& state = coordinator();
+		std::lock_guard<std::mutex> coordinatorLock(state.mutex);
+		if (!state.initialized ||
+			state.managedAppIds.count(baseAppId) == 0 ||
+			state.readyBaseIds.count(baseAppId) != 0) return false;
+
+		// Lock order matches the other completion path. It rejects stale work if
+		// the app was removed/re-added while its cache was being prepared.
+		std::lock_guard<std::mutex> passLock(
+			AppInfoProvision::provisioningPassMutex());
+		const auto managed = g_config.managedAppIds.get();
+		if (managed != state.managedAppIds ||
+			managed.count(baseAppId) == 0) return false;
+		{
+			std::lock_guard<std::mutex> publicationLock(
+				AppInfoProvision::cachePublicationMutex());
+			if (AppInfoProvision::cachePublicationGenerationLocked(baseAppId) !=
+				expectedManagedGeneration) return false;
+		}
+
+		auto readyBaseIds = state.readyBaseIds;
+		readyBaseIds.insert(baseAppId);
+		const std::uint64_t nextGeneration = state.generation + 1;
+		auto built = HotReloadInputs::buildFromCaches(
+			nextGeneration, managed, state.metadataPendingBaseIds,
+			state.metadataDeferredBaseIds, readyBaseIds);
+		if (!built.valid ||
+			std::find(built.snapshot.appIds.begin(),
+				built.snapshot.appIds.end(), baseAppId) ==
+			built.snapshot.appIds.end()) return false;
+
+		built.snapshot.addedAppIds = {baseAppId};
+		// This record was just loaded from the normalized local cache. A public
+		// request here is redundant and can replace it with an empty record.
+		built.snapshot.appInfoRequestIds.clear();
+
+		std::unordered_set<std::uint32_t> guardedAppIds(
+			managed.begin(), managed.end());
+		guardedAppIds.insert(
+			built.snapshot.appIds.begin(), built.snapshot.appIds.end());
+		(void)membershipStore().publish(guardedAppIds);
+		LibraryRemoval::cancel(baseAppId);
+
+		const OwnerWork::Mode mode =
+			OwnerWork::submitManagedState(built.snapshot);
+		if (mode == OwnerWork::Mode::Abandoned) return false;
+
+		state.readyBaseIds = std::move(readyBaseIds);
+		state.generation = nextGeneration;
+		state.cacheRepairBaseIds.erase(
+			std::remove(state.cacheRepairBaseIds.begin(),
+				state.cacheRepairBaseIds.end(), baseAppId),
+			state.cacheRepairBaseIds.end());
+		if (state.cacheRepairBaseIds.empty()) state.cacheRepairAfter = {};
+		state.metadataRepairBaseIds = built.metadataMissingBaseIds;
+		state.cacheMtimeSecs = built.cacheMtimeSecs;
+		state.lastSnapshot = built.snapshot;
+		state.hasLastSnapshot = true;
+		if (g_pLog != nullptr)
+		{
+			g_pLog->info(
+				"HotReload: generation %llu published prepared base=%u via %s "
+				"(planner_apps=%zu depots=%zu)\n",
+				static_cast<unsigned long long>(nextGeneration), baseAppId,
+				OwnerWork::modeName(mode), built.snapshot.appIds.size(),
+				built.snapshot.depotIds.size());
+		}
+		return true;
+	}
+	catch (...)
+	{
+		if (g_pLog != nullptr)
+			g_pLog->warn(
+				"HotReload: prepared base publication failed; previous state retained\n");
+		return false;
 	}
 }
 
@@ -503,7 +605,7 @@ bool publishMetadataCompletion(
 		state.metadataDeferredBaseIds.erase(baseAppId);
 		auto built = HotReloadInputs::buildFromCaches(
 			nextGeneration, managed, remainingPending,
-			state.metadataDeferredBaseIds);
+			state.metadataDeferredBaseIds, state.readyBaseIds);
 		if (!built.valid)
 		{
 			return false;
@@ -538,6 +640,8 @@ bool publishMetadataCompletion(
 		}
 
 		std::unordered_set<std::uint32_t> guardedAppIds(
+			managed.begin(), managed.end());
+		guardedAppIds.insert(
 			built.snapshot.appIds.begin(), built.snapshot.appIds.end());
 		(void)membershipStore().publish(guardedAppIds);
 		const OwnerWork::Mode mode = OwnerWork::submitManagedState(built.snapshot);
@@ -584,6 +688,7 @@ void shutdown() noexcept
 			return;
 		state.initialized = false;
 		state.managedAppIds.clear();
+		state.readyBaseIds.clear();
 		state.contentFingerprints.clear();
 		state.managedGenerations.clear();
 		state.cacheMtimeSecs.clear();

@@ -92,6 +92,7 @@ namespace Patterns
 
 	namespace CUser
 	{
+		extern Pattern_t Offset_CompatManager;
 		extern Pattern_t CheckAppOwnership;
 		extern Pattern_t GetSubscribedApps;
 		extern Pattern_t PostCallback;

@@ -11,8 +11,11 @@
 #include "utils/ownerqueue.hpp"
 
 #include "feats/appinfostate.hpp"
+#include "feats/compatlive.hpp"
+#include "feats/hotreload.hpp"
 #include "feats/packagepatch.hpp"
 #include "sdk/IClientAppManager.hpp"
+#include "sdk/CSteamEngine.hpp"
 
 #include <atomic>
 #include <cstdlib>
@@ -72,6 +75,7 @@ namespace
 			case OwnerQueue::Kind::ReconcileLicenses: return AffTrace::Call::LicenseReconcile;
 			case OwnerQueue::Kind::InstallApp:        return AffTrace::Call::InstallApp;
 			case OwnerQueue::Kind::SyncPackage0:     return AffTrace::Call::Package0Sync;
+			case OwnerQueue::Kind::EnsureCompat:     return AffTrace::Call::CompatMapping;
 		}
 		return AffTrace::Call::None;
 	}
@@ -117,6 +121,44 @@ namespace
 				}
 				g_pClientAppManager->installApp(cmd.appId(), cmd.library());
 				break;
+			case OwnerQueue::Kind::EnsureCompat:
+			{
+				// This internal ConfigStore mutation is owner-only. If a generic
+				// fallback reaches it, put it back unchanged for a later IPC frame.
+				if (!OwnerWork::compatExecutionAllowed(
+					OwnerWork::onOwnerThread()))
+				{
+					(void)queue().push(
+						OwnerQueue::Command::ensureCompat(
+							cmd.appId(), cmd.managedGeneration(), cmd.attempt()),
+						OwnerQueue::monotonicUs());
+					break;
+				}
+
+				const auto result = CompatLive::step(
+					getLocalClientCompat(), cmd.appId(), cmd.attempt() != 0);
+				if (result.status == CompatLive::StepStatus::Ready)
+				{
+					(void)HotReload::publishPreparedBase(
+						cmd.appId(), cmd.managedGeneration());
+					break;
+				}
+
+				const std::uint32_t nextAttempt = cmd.attempt() + 1;
+				if (nextAttempt >= CompatLive::kMaxPollAttempts)
+				{
+					g_pLog->warn(
+						"OwnerWork: live compatibility mapping did not settle for app=%u; "
+						"keeping it hidden until restart\n",
+						cmd.appId());
+					break;
+				}
+				(void)queue().push(
+					OwnerQueue::Command::ensureCompat(
+						cmd.appId(), cmd.managedGeneration(), nextAttempt),
+					OwnerQueue::monotonicUs());
+				break;
+			}
 		}
 	}
 
@@ -353,6 +395,16 @@ namespace OwnerWork
 	Mode submitManagedState(const PackageSnapshot& snapshot)
 	{
 		return submitBatch({ OwnerQueue::Command::syncPackage0(snapshot) });
+	}
+
+	Mode submitCompatReadiness(
+		std::uint32_t appId,
+		std::uint64_t managedGeneration)
+	{
+		if (appId == 0 || managedGeneration == 0)
+			return Mode::Abandoned;
+		return submitBatch({ OwnerQueue::Command::ensureCompat(
+			appId, managedGeneration, 0) });
 	}
 
 	Mode submitInstallApp(std::uint32_t appId, std::uint32_t library)

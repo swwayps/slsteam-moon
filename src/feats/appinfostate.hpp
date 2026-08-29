@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <mutex>
 #include <span>
+#include <unordered_set>
 #include <utility>
 
 namespace AppInfoState
@@ -508,6 +509,7 @@ inline void* guard(
 	std::uint32_t appId,
 	bool create,
 	HotReloadState::Store::ReadHandle& read,
+	HotReloadState::Store::ReadHandle& authoritativeRead,
 	const AppDataLayout::Layout& layout
 ) noexcept
 {
@@ -527,12 +529,18 @@ inline void* guard(
 	}
 
 	const bool skipSet = bytes[layout.skipOffset] != 0;
-	switch (AppInfoStatePolicy::decide(true, false, shaEmpty, skipSet))
+	const bool authoritative = authoritativeRead.contains(appId);
+	switch (AppInfoStatePolicy::decide(
+		true, authoritative, false, shaEmpty, skipSet))
 	{
 		case AppInfoStatePolicy::Action::MarkSkip:
 			static_cast<std::uint8_t*>(data)[layout.skipOffset] = 1;
 			break;
 		case AppInfoStatePolicy::Action::SignalResolved:
+			read.noteResolved();
+			break;
+		case AppInfoStatePolicy::Action::MarkSkipAndSignalResolved:
+			static_cast<std::uint8_t*>(data)[layout.skipOffset] = 1;
 			read.noteResolved();
 			break;
 		case AppInfoStatePolicy::Action::None:
@@ -541,12 +549,28 @@ inline void* guard(
 	return data;
 }
 
+inline void* guard(
+	void* data,
+	std::uint32_t appId,
+	bool create,
+	HotReloadState::Store::ReadHandle& read,
+	const AppDataLayout::Layout& layout
+) noexcept
+{
+	HotReloadState::Store empty;
+	auto authoritativeRead = empty.readHandle();
+	return guard(data, appId, create, read, authoritativeRead, layout);
+}
+
 bool setup(HotReloadState::Store& store) noexcept;
 void remove() noexcept;
 bool ready() noexcept;
 bool catastrophic() noexcept;
 bool resolvedDirtyHint() noexcept;
 bool takeResolvedDirty() noexcept;
+
+void publishAuthoritative(
+	const std::unordered_set<std::uint32_t>& appIds) noexcept;
 
 // Re-read Steam's appinfo.vdf through the captured CAppInfoCache instance and
 // signal managed apps whose CAppData now carries a real SHA.  This is called

@@ -41,7 +41,9 @@ bool test_guard_with_real_store()
 {
 	bool ok = true;
 	HotReloadState::Store store;
+	HotReloadState::Store authoritative;
 	store.publish({101});
+	authoritative.publish({});
 	constexpr AppDataLayout::Layout layout{0x10, 0x1C};
 	std::array<std::uint8_t, 64> data{};
 
@@ -86,6 +88,27 @@ bool test_guard_with_real_store()
 		"resolved metadata raises the generation dirty signal");
 	ok &= check(!store.takeResolvedDirty(),
 		"resolved dirty signal is idempotently consumed");
+
+	// A synthetic record is locally authoritative even after its live reload
+	// has installed a real SHA. Steam's update state must retain the skip byte
+	// while still notifying the hot-reload coordinator that metadata resolved.
+	store.publish({});
+	store.publish({202});
+	authoritative.publish({202});
+	data.fill(0);
+	data[layout.shaOffset] = 0x5a;
+	{
+		auto managedRead = store.readHandle();
+		auto authoritativeRead = authoritative.readHandle();
+		ok &= check(AppInfoState::guard(
+			data.data(), 202, false, managedRead, authoritativeRead, layout) ==
+			data.data(),
+			"resolved authoritative result is returned after policy");
+	}
+	ok &= check(data[layout.skipOffset] == 1,
+		"resolved authoritative appinfo retains the derived skip byte");
+	ok &= check(store.takeResolvedDirty(),
+		"resolved authoritative appinfo also signals its generation");
 
 	store.publish({});
 	store.publish({101});
@@ -465,6 +488,7 @@ int main()
 	struct PolicyCase
 	{
 		bool managed;
+		bool authoritative;
 		bool create;
 		bool shaEmpty;
 		bool skipSet;
@@ -474,56 +498,58 @@ int main()
 
 	// Mutation check: every row is a literal requirement, not a second
 	// implementation of decide().
-	constexpr std::array<PolicyCase, 16> cases{{
-		{false, false, false, false, Action::None, "unmanaged/noncreate/nonempty/clear"},
-		{false, false, false, true,  Action::None, "unmanaged/noncreate/nonempty/set"},
-		{false, false, true,  false, Action::None, "unmanaged/noncreate/empty/clear"},
-		{false, false, true,  true,  Action::None, "unmanaged/noncreate/empty/set"},
-		{false, true,  false, false, Action::None, "unmanaged/create/nonempty/clear"},
-		{false, true,  false, true,  Action::None, "unmanaged/create/nonempty/set"},
-		{false, true,  true,  false, Action::None, "unmanaged/create/empty/clear"},
-		{false, true,  true,  true,  Action::None, "unmanaged/create/empty/set"},
-		{true,  true,  false, false, Action::None, "managed/create/nonempty/clear"},
-		{true,  true,  false, true,  Action::None, "managed/create/nonempty/set"},
-		{true,  true,  true,  false, Action::None, "managed/create/empty/clear"},
-		{true,  true,  true,  true,  Action::None, "managed/create/empty/set"},
-		{true,  false, false, false, Action::SignalResolved, "managed/noncreate/nonempty/clear"},
-		{true,  false, false, true,  Action::SignalResolved, "managed/noncreate/nonempty/set"},
-		{true,  false, true,  false, Action::MarkSkip, "managed/noncreate/empty/clear"},
-		{true,  false, true,  true,  Action::None, "managed/noncreate/empty/set"},
+	constexpr std::array<PolicyCase, 17> cases{{
+		{false, false, false, false, false, Action::None, "unmanaged/noncreate/nonempty/clear"},
+		{false, false, false, false, true,  Action::None, "unmanaged/noncreate/nonempty/set"},
+		{false, false, false, true,  false, Action::None, "unmanaged/noncreate/empty/clear"},
+		{false, false, false, true,  true,  Action::None, "unmanaged/noncreate/empty/set"},
+		{false, false, true,  false, false, Action::None, "unmanaged/create/nonempty/clear"},
+		{false, false, true,  false, true,  Action::None, "unmanaged/create/nonempty/set"},
+		{false, false, true,  true,  false, Action::None, "unmanaged/create/empty/clear"},
+		{false, false, true,  true,  true,  Action::None, "unmanaged/create/empty/set"},
+		{true,  false, true,  false, false, Action::None, "managed/create/nonempty/clear"},
+		{true,  false, true,  false, true,  Action::None, "managed/create/nonempty/set"},
+		{true,  false, true,  true,  false, Action::None, "managed/create/empty/clear"},
+		{true,  false, true,  true,  true,  Action::None, "managed/create/empty/set"},
+		{true,  false, false, false, false, Action::SignalResolved, "managed/noncreate/nonempty/clear"},
+		{true,  false, false, false, true,  Action::SignalResolved, "managed/noncreate/nonempty/set"},
+		{true,  false, false, true,  false, Action::MarkSkip, "managed/noncreate/empty/clear"},
+		{true,  false, false, true,  true,  Action::None, "managed/noncreate/empty/set"},
+		{true,  true,  false, false, false, Action::MarkSkipAndSignalResolved, "authoritative/noncreate/nonempty/clear"},
 	}};
 
 	for (const auto& test : cases)
 	{
 		check(
-			decide(test.managed, test.create, test.shaEmpty, test.skipSet) ==
+			decide(test.managed, test.authoritative, test.create,
+			       test.shaEmpty, test.skipSet) ==
 				test.expected,
 			test.message
 		);
 	}
 
 	check(
-		decide(false, false, true, false) == Action::None,
+		decide(false, false, false, true, false) == Action::None,
 		"non-managed app is untouched"
 	);
 	check(
-		decide(true, true, true, false) == Action::None,
+		decide(true, false, true, true, false) == Action::None,
 		"creating lookup is untouched"
 	);
 	check(
-		decide(true, false, true, false) == Action::MarkSkip,
+		decide(true, false, false, true, false) == Action::MarkSkip,
 		"managed unresolved lookup becomes non-blocking"
 	);
 	check(
-		decide(true, false, true, true) == Action::None,
+		decide(true, false, false, true, true) == Action::None,
 		"already-marked lookup is idempotent"
 	);
 	check(
-		decide(true, false, false, false) == Action::SignalResolved,
+		decide(true, false, false, false, false) == Action::SignalResolved,
 		"non-empty SHA signals current generation"
 	);
 	check(
-		decide(true, false, false, true) == Action::SignalResolved,
+		decide(true, false, false, false, true) == Action::SignalResolved,
 		"non-empty SHA signals even when skip is already set"
 	);
 

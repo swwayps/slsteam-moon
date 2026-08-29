@@ -86,10 +86,10 @@ int main()
 	      "a requested live publication accepts a newly published cache pair");
 	CHECK(!runtimePublicationAllowed(false, ProvisionOutcome::Updated),
 	      "an ordinary update remains disk-only");
-	CHECK(!runtimePublicationAllowed(true, ProvisionOutcome::FreshCache),
-	      "same-boot cache reuse cannot trigger a live reload");
-	CHECK(!runtimePublicationAllowed(true, ProvisionOutcome::FallbackCache),
-	      "offline fallback cannot replace live topology");
+	CHECK(runtimePublicationAllowed(true, ProvisionOutcome::FreshCache),
+	      "a validated warm cache can complete a live hot-add");
+	CHECK(runtimePublicationAllowed(true, ProvisionOutcome::FallbackCache),
+	      "a validated offline fallback can complete a live hot-add");
 	CHECK(!runtimePublicationAllowed(true, ProvisionOutcome::LocalFailure),
 	      "a failed publication cannot trigger a live reload");
 

@@ -131,6 +131,7 @@ namespace OwnerQueue
 		ReconcileLicenses = 1,  // NotifyLicensesUpdated broadcast
 		InstallApp = 2,         // IClientAppManager::InstallApp
 		SyncPackage0 = 3,       // complete managed package-0 snapshot
+		EnsureCompat = 4,       // apply/poll a live compatibility mapping
 	};
 
 	// Immutable command record. Construct through the factories; every
@@ -154,12 +155,22 @@ namespace OwnerQueue
 		{
 			return Command(Kind::SyncPackage0, {}, 0, 0, std::move(snapshot));
 		}
+		static Command ensureCompat(
+			std::uint32_t appId,
+			std::uint64_t managedGeneration,
+			std::uint32_t attempt)
+		{
+			return Command(Kind::EnsureCompat, {}, appId, 0, {},
+				managedGeneration, attempt);
+		}
 
 		Kind kind() const { return m_kind; }
 		const std::vector<std::uint32_t>& appIds() const { return m_appIds; }
 		const PackageSnapshot& packageSnapshot() const { return m_packageSnapshot; }
 		std::uint32_t appId() const { return m_appId; }
 		std::uint32_t library() const { return m_library; }
+		std::uint64_t managedGeneration() const { return m_managedGeneration; }
+		std::uint32_t attempt() const { return m_attempt; }
 
 		// Idempotency key: two commands describe the same work when they are
 		// the same kind and address the same target.
@@ -177,6 +188,9 @@ namespace OwnerQueue
 					return m_appId == other.m_appId && m_library == other.m_library;
 				case Kind::SyncPackage0:
 					return m_packageSnapshot == other.m_packageSnapshot;
+				case Kind::EnsureCompat:
+					return m_appId == other.m_appId &&
+						m_managedGeneration == other.m_managedGeneration;
 			}
 			return false;
 		}
@@ -184,10 +198,13 @@ namespace OwnerQueue
 	private:
 		Command(Kind kind, std::vector<std::uint32_t> appIds,
 		        std::uint32_t appId, std::uint32_t library,
-		        PackageSnapshot packageSnapshot)
+		        PackageSnapshot packageSnapshot,
+		        std::uint64_t managedGeneration = 0,
+		        std::uint32_t attempt = 0)
 			: m_kind(kind), m_appIds(std::move(appIds)),
 			  m_packageSnapshot(std::move(packageSnapshot)),
-			  m_appId(appId), m_library(library)
+			  m_appId(appId), m_library(library),
+			  m_managedGeneration(managedGeneration), m_attempt(attempt)
 		{
 		}
 
@@ -196,6 +213,8 @@ namespace OwnerQueue
 		PackageSnapshot            m_packageSnapshot;
 		std::uint32_t              m_appId;
 		std::uint32_t              m_library;
+		std::uint64_t              m_managedGeneration;
+		std::uint32_t              m_attempt;
 	};
 
 	enum class PushResult : std::uint8_t

@@ -47,13 +47,13 @@ inline bool isTerminalOutcome(ProvisionOutcome outcome)
 }
 
 // Reloading Steam's live appinfo map is a recovery action for a newly added
-// app or a response we deliberately suppressed. It is safe only after this
-// pass published a new, validated pair; cache reuse and offline fallback must
-// remain disk-only.
+// app or a response we deliberately suppressed. The guarded injection path
+// validates the pair again, so a fresh/stale local pair and an offline fallback
+// are equally valid readiness inputs.
 inline bool runtimePublicationAllowed(bool requested,
                                       ProvisionOutcome outcome) noexcept
 {
-	return requested && outcome == ProvisionOutcome::Updated;
+	return requested && isProvisioned(outcome);
 }
 
 inline ProvisionNotice noticeForOutcome(ProvisionOutcome outcome)

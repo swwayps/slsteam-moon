@@ -3,6 +3,7 @@
 #include <cstdint>
 
 class CUser;
+class IClientCompat;
 
 class CSteamEngine
 {
@@ -25,3 +26,8 @@ extern CUser* g_pLocalUser;
 // falling back to the cached CheckAppOwnership user.  May return nullptr if
 // neither source has been observed yet; callers MUST null-check.
 CUser* getLocalUser();
+
+// Resolve CCompatManager, which implements IClientCompat and is embedded in
+// the local CUser. Returns null when the optional member locator drifted or
+// the local user has not been observed yet.
+IClientCompat* getLocalClientCompat();

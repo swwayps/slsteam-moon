@@ -778,6 +778,7 @@ bool Patterns::init()
 	CUser::MarkLicenseAsChanged.optional = true;
 	CUser::ProcessPendingLicenseUpdates.optional = true;
 	CUser::NotifyLicensesUpdated.optional = true;
+	CUser::Offset_CompatManager.optional = true;
 	CAppInfoCache::GetOrAddAppData.optional = true;
 	CAppInfoCache::ThreadedReadFromDisk.optional = true;
 	CAppInfoCache::SkipFlagReference.optional = true;
@@ -1019,6 +1020,18 @@ namespace Patterns
 
 	namespace CUser
 	{
+		// CCompatManager is an embedded member of the local CUser. Locate the
+		// constructor call and retain the LEA so CSteamEngine can decode its
+		// displacement instead of pinning a build-specific class offset.
+		Pattern_t Offset_CompatManager
+		{
+			"CUser::m_CompatManager",
+			"8D 9E ? ? ? ? 89 9D ? ? ? ? 53 89 FB E8 ? ? ? ? 58 5A "
+			"C7 86 ? ? ? ? FF FF FF FF",
+			SigFollowMode::None,
+			nullptr,
+			"Patterns::CUser::Offset_CompatManager"
+		};
 		Pattern_t CheckAppOwnership
 		{
 			"CUser::CheckAppOwnership",

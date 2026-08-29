@@ -35,6 +35,7 @@ constexpr std::size_t kTrampolineBytes = kDetourBytes * 2;
 constexpr unsigned int kMemoryRetryCount = 3;
 
 std::atomic<Store*> g_store{nullptr};
+Store g_authoritativeStore;
 std::atomic<std::uint32_t> g_skipOffset{0};
 std::atomic<std::uint32_t> g_shaOffset{0};
 std::atomic<GetOrAddAppDataPtr> g_original{nullptr};
@@ -465,7 +466,9 @@ void* __attribute__((cdecl)) hkGetOrAddAppData(
 		g_skipOffset.load(std::memory_order_acquire),
 		g_shaOffset.load(std::memory_order_acquire)};
 	auto read = store->readHandle();
-	return AppInfoState::guard(data, appId, create, read, layout);
+	auto authoritativeRead = g_authoritativeStore.readHandle();
+	return AppInfoState::guard(
+		data, appId, create, read, authoritativeRead, layout);
 }
 
 // Deliberately not noexcept: PIC repair may allocate through libmem helpers.
@@ -751,6 +754,19 @@ bool takeResolvedDirty() noexcept
 	catch (...)
 	{
 		return false;
+	}
+}
+
+void publishAuthoritative(
+	const std::unordered_set<std::uint32_t>& appIds) noexcept
+{
+	try
+	{
+		(void)g_authoritativeStore.publish(appIds);
+	}
+	catch (...)
+	{
+		// Keep the previous complete authority set on allocation failure.
 	}
 }
 

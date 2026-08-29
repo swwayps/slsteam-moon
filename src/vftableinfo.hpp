@@ -17,6 +17,14 @@ namespace VFTIndexes
 		constexpr int GetAppType = 10;
 	}
 
+	namespace IClientCompat
+	{
+		// Verified from CCompatManager's Linux i386 vtable and call sites across
+		// three cached Steam client builds.
+		constexpr int SpecifyCompatTool = 4;
+		constexpr int GetCompatToolName = 7;
+	}
+
 	namespace IClientAppManager
 	{
 		constexpr int InstallApp = 0;
