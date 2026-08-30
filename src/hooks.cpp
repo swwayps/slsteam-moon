@@ -1325,6 +1325,8 @@ bool Hooks::setup()
 		&& CUser_GetSubscribedApps.setup(Patterns::CUser::GetSubscribedApps, &hkUser_GetSubscribedApps)
 		&& CUser_PostCallbackToAppId.setup(Patterns::CUser::PostCallbackToAppId, &hkUser_PostCallbackToAppId)
 
+		&& IClientFriends_GetFriendGamePlayed.setup(Patterns::IClientFriends::GetFriendGamePlayed, &hkClientFriends_GetFriendGamePlayed)
+
 		&& CSteamEngine_Init.setup(Patterns::CSteamEngine::Init, &hkSteamEngine_Init)
 		&& CSteamEngine_SetAppIdForCurrentPipe.setup(Patterns::CSteamEngine::SetAppIdForCurrentPipe, &hkSteamEngine_SetAppIdForCurrentPipe)
 
@@ -1413,6 +1415,8 @@ void Hooks::place()
 	CUser_GetSubscribedApps.place();
 	CUser_PostCallbackToAppId.place();
 
+	IClientFriends_GetFriendGamePlayed.place();
+
 	IClientAppManager_BCanRemotePlayTogether.place();
 
 	IClientApps_RunIPCFrame.place();
@@ -1482,6 +1486,8 @@ void Hooks::remove()
 	CUser_CheckAppOwnership.remove();
 	CUser_GetSubscribedApps.remove();
 	CUser_PostCallbackToAppId.remove();
+
+	IClientFriends_GetFriendGamePlayed.remove();
 
 	IClientAppManager_BCanRemotePlayTogether.remove();
 

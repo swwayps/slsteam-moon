@@ -169,6 +169,11 @@ namespace Patterns
 		extern Pattern_t OnChunkUnpackedReg;
 	}
 
+	namespace IClientFriends
+	{
+		extern Pattern_t GetFriendGamePlayed;
+	}
+
 	namespace IClientUtils
 	{
 		extern Pattern_t RunIPCFrame;

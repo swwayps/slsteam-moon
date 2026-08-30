@@ -1439,6 +1439,17 @@ namespace Patterns
 		};
 	}
 
+	namespace IClientFriends
+	{
+		Pattern_t GetFriendGamePlayed
+		{
+			"IClientFriends::GetFriendGamePlayed",
+			"C7 45 ? A2 F1 5B 33 6A 04 50 57 E8 ? ? ? ?",
+			SigFollowMode::PrologueUpwards,
+			std::vector<uint8_t> { 0x56, 0x57, 0xE5, 0x89, 0x55 }
+		};
+	}
+
 	namespace IClientUtils
 	{
 		Pattern_t RunIPCFrame
