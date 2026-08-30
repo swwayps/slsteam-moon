@@ -183,6 +183,11 @@ namespace Patterns
 		extern Pattern_t BBuildAndAsyncSendFrame;
 	}
 
+	namespace CCMInterface
+	{
+		extern Pattern_t RecvPkt;
+	}
+
 	namespace CRemoteClientManager
 	{
 		extern Pattern_t RecvPkt;

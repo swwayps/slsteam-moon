@@ -15,6 +15,7 @@ struct GamePlayed_t;
 struct Pattern_t;
 
 struct CNetPacket;
+struct CCMNetPacket;
 enum EWebSocketOpCode : uint32_t;
 
 template<typename T>
@@ -108,6 +109,7 @@ namespace Hooks
 	typedef bool(*IClientUtils_GetOfflineMode_t)(void*);
 
 	typedef bool(*CWebSocketConnection_BBuildAndAsyncSendFrame_t)(void*, EWebSocketOpCode, uint8_t*, uint32_t);
+	typedef void(*CCMInterface_RecvPkt_t)(void*, CCMNetPacket*);
 	typedef void*(*CRemoteClientManager_RecvPkt_t)(void*, CNetPacket*);
 
 	typedef bool(*CJobMgr_BRouteMsgToJob_t)(void*, void*, void*, void*);
@@ -122,6 +124,7 @@ namespace Hooks
 	extern DetourHook<CProtoBufMsgBase_Send_t> CProtoBufMsgBase_Send;
 
 	extern DetourHook<CWebSocketConnection_BBuildAndAsyncSendFrame_t> CWebSocketConnection_BBuildAndAsyncSendFrame;
+	extern DetourHook<CCMInterface_RecvPkt_t> CCMInterface_RecvPkt;
 	extern DetourHook<CRemoteClientManager_RecvPkt_t> CRemoteClientManager_RecvPkt;
 	extern DetourHook<CJobMgr_BRouteMsgToJob_t> CJobMgr_BRouteMsgToJob;
 	extern DetourHook<CDepotDownloadMgr_BYldRequestDepotManifest_t> CDepotDownloadMgr_BYldRequestDepotManifest;
