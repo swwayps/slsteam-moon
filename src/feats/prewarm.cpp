@@ -5,7 +5,6 @@
 #include "appinfo_provision.hpp"
 
 #include "depotkey.hpp"
-#include "installreadiness.hpp"
 #include "manifeststore.hpp"
 
 #include "../config.hpp"
@@ -134,21 +133,11 @@ void runLoop()
 		if (g_stopRequested.load(std::memory_order_acquire))
 			return;
 		std::vector<DepotGid> targets;
-		std::vector<InstallReadiness::Observation> observations;
 		bool newTarget = false;
 		bool hasEligibleTarget = false;
-		bool providersOfflineNow = ManifestFetch::areProvidersOffline();
 		const auto added = g_config.addedAppIds.get();
 		if (!added.empty())
 		{
-			struct AppTargets
-			{
-				uint32_t appId = 0;
-				std::vector<DepotGid> manifests;
-				bool exactPins = false;
-			};
-			std::vector<AppTargets> appTargets;
-			appTargets.reserve(added.size());
 			std::set<DepotGid> seenTargets;
 			auto appendTarget = [&targets, &seenTargets](const DepotGid& target)
 			{
@@ -162,32 +151,24 @@ void runLoop()
 			};
 			for (uint32_t appId : added)
 			{
-				AppTargets app;
-				app.appId = appId;
 				const auto pins = g_config.getAppPinnedDepots(appId);
 				std::string buf = readBuffer(appId);
 				if (!pins.empty())
 				{
-					app.exactPins = true;
 					// A partially pinned Lua still installs its other depots at the
 					// public gid. Include those exact public targets too; otherwise a
 					// locally-ready pin could hide a missing sibling manifest.
 					const auto publicTargets = buf.empty()
 					    ? std::vector<DepotGid>{}
 					    : planStageTargets({buf}, hasKey);
-					app.manifests = planPinnedStageTargets(publicTargets, pins);
-					for (const auto& target : app.manifests) appendTarget(target);
+					for (const auto& target : planPinnedStageTargets(publicTargets, pins))
+						appendTarget(target);
 				}
-				else
+				else if (!buf.empty())
 				{
-					if (!buf.empty())
-					{
-						app.manifests = planStageTargets({buf}, hasKey);
-						for (const auto& target : app.manifests)
-							appendTarget(target);
-					}
+					for (const auto& target : planStageTargets({buf}, hasKey))
+						appendTarget(target);
 				}
-				appTargets.push_back(std::move(app));
 			}
 
 			// Workshop depots are NOT in the provisioned picsbuffer's
@@ -277,44 +258,7 @@ void runLoop()
 					return;
 			}
 
-			// Build the UI decision only after this pass has had a chance to
-			// materialize its targets. Workshop manifests are deliberately not
-			// install prerequisites and therefore do not participate here.
-			providersOfflineNow = ManifestFetch::areProvidersOffline();
-			ManifestStore::ArchivedGidIndex archived;
-			if (providersOfflineNow)
-				archived = ManifestStore::archivedGidIndex();
-			observations.reserve(appTargets.size());
-			for (const auto& app : appTargets)
-			{
-				InstallReadiness::Observation observation;
-				observation.appId = app.appId;
-				observation.targetCount = app.manifests.size();
-				observation.exactPins = app.exactPins;
-				for (const auto& [depotId, gid] : app.manifests)
-				{
-					if (!providersOfflineNow)
-						break;
-					if (app.exactPins)
-					{
-						if (ManifestStore::isArchived(depotId, gid)
-						    || ManifestStore::isInDepotcache(depotId, gid))
-							++observation.localCount;
-					}
-					else if (archived.count(depotId)
-					         || ManifestStore::isInDepotcache(depotId, gid))
-					{
-						++observation.localCount;
-					}
-				}
-				observations.push_back(observation);
-			}
 		}
-
-		// This heartbeat is advisory and fail-open. Publishing from the
-		// background worker keeps the install click path entirely in memory.
-		(void)InstallReadiness::publish(
-		    observations, providersOfflineNow);
 
 		newTarget = backoff.observeTargets(targets);
 		const bool noOpPass = !targets.empty() && !hasEligibleTarget && !newTarget;
