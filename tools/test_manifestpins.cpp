@@ -50,6 +50,10 @@ int main()
 		unique[700].depots[701] = 9001ULL;
 		CHECK(getPinForUniqueOwner(unique, 701) == 9001ULL,
 		      "planner: depot-only fallback requires one owner");
+		PinMap invalidOwner;
+		invalidOwner[0].depots[701] = 9001ULL;
+		CHECK(getPinForUniqueOwner(invalidOwner, 701) == 0,
+		      "planner: zero app owner cannot supply a fallback pin");
 		unique[701].depots[701] = 9001ULL;
 		CHECK(getPinForUniqueOwner(unique, 701) == 0,
 		      "planner: multiple owners disable depot-only fallback");
@@ -67,6 +71,26 @@ int main()
 		CHECK(locked.count(1054490) == 1, "locked: includes locked app");
 		CHECK(locked.count(285900) == 0, "locked: excludes unlocked app");
 		CHECK(locked.size() == 1, "locked: exactly one");
+
+		PinMap malformed;
+		malformed[1].locked = true;
+		malformed[2].locked = true;
+		malformed[2].depots[20] = 0;
+		malformed[3].locked = true;
+		malformed[3].depots[0] = 30;
+		malformed[4].locked = true;
+		malformed[4].depots[40] = 400;
+		CHECK(lockedAppSet(malformed).count(1) == 0,
+		      "locked: empty legacy entry is inert");
+		CHECK(lockedAppSet(malformed).count(2) == 0,
+		      "locked: zero gid entry is inert");
+		CHECK(lockedAppSet(malformed).count(3) == 0,
+		      "locked: zero depot entry is inert");
+		CHECK(lockedAppSet(malformed).count(4) == 1,
+		      "locked: valid entry remains locked");
+		auto flat = flattenDepots(malformed);
+		CHECK(flat.size() == 1 && flat[40] == 400,
+		      "flatten: invalid entries omitted and valid sibling kept");
 	}
 
 	// 3) getPin: hit returns gid, miss returns 0.

@@ -35,8 +35,10 @@ namespace ManifestPins
 		std::unordered_set<uint32_t> ambiguous;
 		for (const auto& [appId, app] : pins)
 		{
+			if (!appId) continue;
 			for (const auto& [depotId, gid] : app.depots)
 			{
+				if (!depotId || !gid) continue;
 				if (ambiguous.contains(depotId)) continue;
 
 				auto [it, inserted] = flat.emplace(depotId, gid);
@@ -55,7 +57,15 @@ namespace ManifestPins
 		std::unordered_set<uint32_t> locked;
 		for (const auto& [appId, app] : pins)
 		{
-			if (app.locked) locked.insert(appId);
+			if (!appId || !app.locked) continue;
+			for (const auto& [depotId, gid] : app.depots)
+			{
+				if (depotId && gid)
+				{
+					locked.insert(appId);
+					break;
+				}
+			}
 		}
 		return locked;
 	}
@@ -65,6 +75,7 @@ namespace ManifestPins
 	// flattened fallback and therefore cannot cross-inherit another app's pin.
 	inline uint64_t getPin(const PinMap& pins, uint32_t appId, uint32_t depotId)
 	{
+		if (!appId || !depotId) return 0ULL;
 		const auto appIt = pins.find(appId);
 		if (appIt == pins.end()) return 0ULL;
 		const auto depotIt = appIt->second.depots.find(depotId);
@@ -85,6 +96,7 @@ namespace ManifestPins
 		bool found = false;
 		for (const auto& [appId, app] : pins)
 		{
+			if (!appId) continue;
 			const auto depotIt = app.depots.find(depotId);
 			if (depotIt == app.depots.end() || depotIt->second == 0ULL) continue;
 			if (found) return 0ULL;
@@ -109,6 +121,7 @@ namespace ManifestPins
 	inline uint64_t getPin(const std::unordered_map<uint32_t, uint64_t>& flat,
 	                       uint32_t depotId)
 	{
+		if (!depotId) return 0ULL;
 		const auto it = flat.find(depotId);
 		return it == flat.end() ? 0ULL : it->second;
 	}
