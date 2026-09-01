@@ -1480,17 +1480,6 @@ namespace Patterns
 		};
 	}
 
-	namespace CCMInterface
-	{
-		Pattern_t RecvPkt
-		{
-			"CCMInterface::RecvPkt",
-			"8B 8D 54 FB FF FF 83 EC ? 8B 01 51 FF 50 ? 83 C4 ?",
-			SigFollowMode::PrologueUpwards,
-			std::vector<uint8_t> { 0x56, 0x57, 0xe5, 0x89, 0x55 }
-		};
-	}
-
 	namespace CRemoteClientManager
 	{
 		Pattern_t RecvPkt

@@ -8,7 +8,6 @@
 #include "vftableinfo.hpp"
 
 #include "sdk/CAppOwnershipInfo.hpp"
-#include "sdk/CCMNetPacket.hpp"
 #include "sdk/CProtoBufMsgBase.hpp"
 #include "sdk/CSteamEngine.hpp"
 #include "sdk/CSteamMatchmakingServers.hpp"
@@ -31,7 +30,6 @@
 #include "feats/manifestbind.hpp"
 #include "feats/misc.hpp"
 #include "feats/fakeappid.hpp"
-#include "feats/familyshare.hpp"
 #include "feats/libraryremoval.hpp"
 #include "feats/packagepatch.hpp"
 #include "feats/parental.hpp"
@@ -1123,40 +1121,29 @@ static void hkClientUserStats_RunIPCFrame(void* pClientUserStats, void* a1, void
 	FakeAppIds::runIPCFrame(true);
 }
 
-static void hkCMInterface_RecvPkt(void* pCMInterface, CCMNetPacket* pPacket)
-{
-	const bool enabled = g_config.disableFamilyLock.get();
-	if (enabled && pPacket && pPacket->isProtoBuf())
-	{
-		const uint32_t type = pPacket->getProtoBufType();
-		std::string_view targetJob;
-		CMsgProtoBufHeader header;
-
-		if (type == FamilyShare::SERVICE_METHOD
-			&& pPacket->deserializeHeader(header)
-			&& header.has_target_job_name())
-		{
-			targetJob = header.target_job_name();
-		}
-
-		if (FamilyShare::shouldChokeIncoming(enabled, type, targetJob))
-		{
-			g_pLog->debug("FamilyShare: choking incoming message %u%s%s\n",
-				type,
-				targetJob.empty() ? "" : " -> ",
-				targetJob.empty() ? "" : header.target_job_name().c_str());
-			pPacket->release();
-			return;
-		}
-	}
-
-	Hooks::CCMInterface_RecvPkt.tramp.fn(pCMInterface, pPacket);
-}
-
 static void hkSteamMatchmakingPingResponse_ServerResponded(void* pSteamMatchingPingResponse, gameserverdetails_t* details)
 {
 	FakeAppIds::pingResponse(details);
 	Hooks::ISteamMatchmakingPingResponse_ServerResponded.tramp.fn(pSteamMatchingPingResponse, details);
+}
+
+static void patchRetn(lm_address_t address)
+{
+	// Defense-in-depth: never write to a null or unresolved address.
+	// If a pattern fails to resolve, its address is 0 (or
+	// LM_ADDRESS_BAD); patching it would segfault.  Skip instead.
+	if (address == 0 || address == LM_ADDRESS_BAD)
+	{
+		g_pLog->warn("patchRetn called with invalid address %p; skipping\n", reinterpret_cast<void*>(address));
+		return;
+	}
+
+	constexpr lm_byte_t retn = 0xC3;
+
+	lm_prot_t oldProt;
+	LM_ProtMemory(address, 1, LM_PROT_XRW, &oldProt); //LM_PROT_W Should be enough, but just in case something tries to execute it inbetween us setting the prot and writing to it
+	LM_WriteMemory(address, &retn, 1);
+	LM_ProtMemory(address, 1, oldProt, LM_NULL);
 }
 
 static lm_address_t hkNakedGetSteamId;
@@ -1267,7 +1254,6 @@ namespace Hooks
 	DetourHook<CProtoBufMsgBase_Send_t> CProtoBufMsgBase_Send;
 
 	DetourHook<CWebSocketConnection_BBuildAndAsyncSendFrame_t> CWebSocketConnection_BBuildAndAsyncSendFrame;
-	DetourHook<CCMInterface_RecvPkt_t> CCMInterface_RecvPkt;
 	DetourHook<CRemoteClientManager_RecvPkt_t> CRemoteClientManager_RecvPkt;
 	DetourHook<CJobMgr_BRouteMsgToJob_t> CJobMgr_BRouteMsgToJob;
 	DetourHook<CDepotDownloadMgr_BYldRequestDepotManifest_t> CDepotDownloadMgr_BYldRequestDepotManifest;
@@ -1328,7 +1314,6 @@ bool Hooks::setup()
 		&& CProtoBufMsgBase_Send.setup(Patterns::CProtoBufMsgBase::Send, &hkProtoBufMsgBase_Send)
 
 		&& CWebSocketConnection_BBuildAndAsyncSendFrame.setup(Patterns::CWebSocketConnection::BBuildAndAsyncSendFrame, &ManifestCode::hkBBuildAndAsyncSendFrame)
-		&& CCMInterface_RecvPkt.setup(Patterns::CCMInterface::RecvPkt, &hkCMInterface_RecvPkt)
 		&& CRemoteClientManager_RecvPkt.setup(Patterns::CRemoteClientManager::RecvPkt, &ManifestCode::hkRecvPkt)
 		&& CJobMgr_BRouteMsgToJob.setup(Patterns::CJobMgr::BRouteMsgToJob, &ManifestCode::hkBRouteMsgToJob)
 		&& CDepotDownloadMgr_BYldRequestDepotManifest.setup(Patterns::CDepotDownloadMgr::BYldRequestDepotManifest, &ManifestCode::hkCDepotDownloadMgr_BYldRequestDepotManifest)
@@ -1409,7 +1394,6 @@ void Hooks::place()
 	CProtoBufMsgBase_Send.place();
 
 	CWebSocketConnection_BBuildAndAsyncSendFrame.place();
-	CCMInterface_RecvPkt.place();
 	CRemoteClientManager_RecvPkt.place();
 	CJobMgr_BRouteMsgToJob.place();
 	CDepotDownloadMgr_BYldRequestDepotManifest.place();
@@ -1482,7 +1466,6 @@ void Hooks::remove()
 	CProtoBufMsgBase_Send.remove();
 
 	CWebSocketConnection_BBuildAndAsyncSendFrame.remove();
-	CCMInterface_RecvPkt.remove();
 	CRemoteClientManager_RecvPkt.remove();
 	CJobMgr_BRouteMsgToJob.remove();
 	CDepotDownloadMgr_BYldRequestDepotManifest.remove();
