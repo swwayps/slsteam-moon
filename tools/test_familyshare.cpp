@@ -3,9 +3,13 @@
 #include "sdk/CNetPacket.hpp"
 #include "sdk/steam.hpp"
 
+#include <cstring>
 #include <cstdint>
 #include <cstdio>
+#include <limits>
+#include <string>
 #include <string_view>
+#include <vector>
 
 namespace
 {
@@ -96,6 +100,66 @@ int main()
 	}
 	expect(repeatedBlock, "repeated SharedLibraryStopPlaying decisions remain blocked");
 	expect(repeatedForward, "repeated unrelated decisions remain forwarded");
+
+	CMsgProtoBufHeader sourceHeader;
+	sourceHeader.set_target_job_name(std::string(kNotifyRunningApps));
+	std::string serializedHeader;
+	expect(
+		sourceHeader.SerializeToString(&serializedHeader),
+		"test header serializes");
+	std::vector<std::uint8_t> validStorage(
+		sizeof(CNetPacketBody) + serializedHeader.size());
+	auto* validBody = reinterpret_cast<CNetPacketBody*>(validStorage.data());
+	validBody->type = CNetPacket::PROTOBUF_TYPE_MASK | kServiceMethod;
+	validBody->headerSize = serializedHeader.size();
+	std::memcpy(
+		validStorage.data() + sizeof(CNetPacketBody),
+		serializedHeader.data(),
+		serializedHeader.size());
+	CNetPacket validPacket{};
+	validPacket.body = validBody;
+	validPacket.size = validStorage.size();
+	CMsgProtoBufHeader parsedHeader;
+	expect(
+		validPacket.deserializeHeader(parsedHeader)
+			&& parsedHeader.has_target_job_name()
+			&& parsedHeader.target_job_name() == kNotifyRunningApps,
+		"valid packet header parses within bounds");
+
+	CNetPacket nullPacket{};
+	expect(
+		!nullPacket.deserializeHeader(parsedHeader),
+		"null packet header is rejected");
+
+	std::uint8_t invalidStorage[sizeof(CNetPacketBody) + 1]{};
+	auto* invalidBody = reinterpret_cast<CNetPacketBody*>(invalidStorage);
+	invalidBody->type = CNetPacket::PROTOBUF_TYPE_MASK | kServiceMethod;
+	CNetPacket invalidPacket{};
+	invalidPacket.body = invalidBody;
+	invalidPacket.size = sizeof(CNetPacketBody) - 1;
+	expect(
+		!invalidPacket.deserializeHeader(parsedHeader),
+		"undersized packet header is rejected");
+
+	invalidPacket.size = sizeof(invalidStorage);
+	invalidBody->headerSize = 2;
+	expect(
+		!invalidPacket.deserializeHeader(parsedHeader),
+		"header larger than packet payload is rejected");
+
+	invalidPacket.size = std::numeric_limits<std::uint32_t>::max();
+	invalidBody->headerSize =
+		static_cast<std::uint32_t>(std::numeric_limits<int>::max()) + 1u;
+	expect(
+		!invalidPacket.deserializeHeader(parsedHeader),
+		"header larger than protobuf parser range is rejected");
+
+	invalidPacket.size = sizeof(invalidStorage);
+	invalidBody->headerSize = 1;
+	invalidStorage[sizeof(CNetPacketBody)] = 0x80;
+	expect(
+		!invalidPacket.deserializeHeader(parsedHeader),
+		"truncated protobuf header is rejected");
 
 	static_assert(sizeof(CNetPacket) == 0x20);
 	CNetPacket packet{};
