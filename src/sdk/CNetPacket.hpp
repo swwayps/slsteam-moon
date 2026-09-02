@@ -34,14 +34,12 @@ public:
 
 	constexpr bool isValid() const
 	{
-		return body
-		    && size >= sizeof(CNetPacketBody)
-		    && body->type != INVALID_MESSAGE_TYPE;
+		return getType() != INVALID_MESSAGE_TYPE;
 	}
 
 	constexpr EMsg getType() const
 	{
-		if (!body)
+		if (!body || size < sizeof(CNetPacketBody))
 		{
 			return INVALID_MESSAGE_TYPE;
 		}

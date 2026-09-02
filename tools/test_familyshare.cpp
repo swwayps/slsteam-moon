@@ -138,6 +138,9 @@ int main()
 	invalidPacket.body = invalidBody;
 	invalidPacket.size = sizeof(CNetPacketBody) - 1;
 	expect(
+		invalidPacket.getType() == CNetPacket::INVALID_MESSAGE_TYPE,
+		"undersized packet type is not read");
+	expect(
 		!invalidPacket.deserializeHeader(parsedHeader),
 		"undersized packet header is rejected");
 
