@@ -12,14 +12,14 @@ struct MsgHdr
 	uint32_t headerLength;  // length of the CMsgProtoBufHeader that follows
 };
 
-struct CNetPacket
+struct CRemoteClientPacket
 {
 	uint32_t   m_hConnection;        // HCONNECTION
 	uint8_t*   m_pubData;
 	uint32_t   m_cubData;
 	int32_t    m_cRef;
 	uint8_t*   m_pubNetworkBuffer;
-	CNetPacket* m_pNext;
+	CRemoteClientPacket* m_pNext;
 };
 
 enum EWebSocketOpCode : uint32_t

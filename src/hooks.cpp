@@ -31,6 +31,7 @@
 #include "feats/manifestbind.hpp"
 #include "feats/misc.hpp"
 #include "feats/fakeappid.hpp"
+#include "feats/familyshare.hpp"
 #include "feats/libraryremoval.hpp"
 #include "feats/packagepatch.hpp"
 #include "feats/parental.hpp"
@@ -299,33 +300,30 @@ static void hkProtoBufMsgBase_InitFromPacket(CProtoBufMsgBase* pMsg, void* pSrc)
 
 static void hkCMInterface_RecvPkt(void* pCMInterface, CNetPacket* pNetPacket)
 {
-	g_pLog->debug("RecvPkt %p\n", pNetPacket->getType());
+	g_pLog->debug(
+		"RecvPkt %u\n",
+		pNetPacket ? pNetPacket->getType() : CNetPacket::INVALID_MESSAGE_TYPE);
 
-	if (pNetPacket->isValid() && pNetPacket->isProtoBuf())
+	if (pNetPacket && pNetPacket->isProtoBuf())
 	{
 		const uint32_t type = pNetPacket->getProtoBufType();
-		const auto header = pNetPacket->deserializeHeader();
-
-		const bool disableFamilyShareLock = g_config.disableFamilyLock.get();
-
-		if (disableFamilyShareLock && type == EMSG_SHARED_LIBRARY_STOP_PLAYING)
+		CMsgProtoBufHeader header;
+		if (pNetPacket->deserializeHeader(header))
 		{
-			g_pLog->debug("Choking EMSG_SHARED_LIBRARY_STOP_PLAYING\n");
-			pNetPacket->free();
-			return;
-		}
-
-		if
-		(
-			disableFamilyShareLock
-			&& type == EMSG_SERVICE_METHOD
-			&& header.has_target_job_name() //Do not modify header by blindly requesting the target_job_name
-			&& header.target_job_name() == "FamilyGroupsClient.NotifyRunningApps#1"
-		)
-		{
-			g_pLog->debug("Choking FamilyGroupsClient.NotifyRunningApps#1\n");
-			pNetPacket->free();
-			return;
+			const bool hasTargetJobName = header.has_target_job_name();
+			const std::string_view targetJobName = hasTargetJobName
+			    ? std::string_view(header.target_job_name())
+			    : std::string_view{};
+			if (FamilyShare::shouldBlock(
+				g_config.disableFamilyLock.get(),
+				type,
+				hasTargetJobName,
+				targetJobName))
+			{
+				g_pLog->debug("Choking Family Share message %u\n", type);
+				pNetPacket->free();
+				return;
+			}
 		}
 	}
 
@@ -1274,6 +1272,8 @@ static bool createAndPlaceSteamIdHook()
 
 namespace Hooks
 {
+	static bool familyShareHookReady = false;
+
 	DetourHook<TraceIPC_t> TraceIPC;
 
 	DetourHook<IClientAppManager_RunIPCFrame_t> IClientAppManager_RunIPCFrame;
@@ -1348,7 +1348,6 @@ bool Hooks::setup()
 		&& CAPIJob_GetPlayerStats.setup(Patterns::CAPIJob::GetPlayerStats, &hkCAPIJob_GetPlayerStats)
 
 		&& CProtoBufMsgBase_InitFromPacket.setup(Patterns::CProtoBufMsgBase::InitFromPacket, &hkProtoBufMsgBase_InitFromPacket)
-		&& CCMInterface_RecvPkt.setup(Patterns::CCMInterface::RecvPkt, &hkCMInterface_RecvPkt)
 		&& CProtoBufMsgBase_Send.setup(Patterns::CProtoBufMsgBase::Send, &hkProtoBufMsgBase_Send)
 
 		&& CWebSocketConnection_BBuildAndAsyncSendFrame.setup(Patterns::CWebSocketConnection::BBuildAndAsyncSendFrame, &ManifestCode::hkBBuildAndAsyncSendFrame)
@@ -1385,6 +1384,14 @@ bool Hooks::setup()
 		&& IClientUser_RequiresLegacyCDKey.setup(Patterns::IClientUser::RequiresLegacyCDKey, hkClientUser_RequiresLegacyCDKey)
 
 		&& ISteamMatchmakingPingResponse_ServerResponded.setup(Patterns::ISteamMatchmakingPingResponse::ServerResponded, hkSteamMatchmakingPingResponse_ServerResponded);
+
+	familyShareHookReady = CCMInterface_RecvPkt.setup(
+		Patterns::CCMInterface::RecvPkt, &hkCMInterface_RecvPkt);
+	if (!familyShareHookReady)
+	{
+		g_pLog->warn(
+			"Family Share receive hook unavailable; message filtering disabled\n");
+	}
 
 	Hooks::place();
 
@@ -1429,7 +1436,10 @@ void Hooks::place()
 	CAPIJob_GetPlayerStats.place();
 
 	CProtoBufMsgBase_InitFromPacket.place();
-	CCMInterface_RecvPkt.place();
+	if (familyShareHookReady)
+	{
+		CCMInterface_RecvPkt.place();
+	}
 	CProtoBufMsgBase_Send.place();
 
 	CWebSocketConnection_BBuildAndAsyncSendFrame.place();
@@ -1502,7 +1512,11 @@ void Hooks::remove()
 	CAPIJob_GetPlayerStats.remove();
 
 	CProtoBufMsgBase_InitFromPacket.remove();
-	CCMInterface_RecvPkt.remove();
+	if (familyShareHookReady)
+	{
+		CCMInterface_RecvPkt.remove();
+		familyShareHookReady = false;
+	}
 	CProtoBufMsgBase_Send.remove();
 
 	CWebSocketConnection_BBuildAndAsyncSendFrame.remove();

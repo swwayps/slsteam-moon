@@ -15,6 +15,7 @@ struct GamePlayed_t;
 struct Pattern_t;
 
 struct CNetPacket;
+struct CRemoteClientPacket;
 enum EWebSocketOpCode : uint32_t;
 
 template<typename T>
@@ -109,7 +110,7 @@ namespace Hooks
 	typedef bool(*IClientUtils_GetOfflineMode_t)(void*);
 
 	typedef bool(*CWebSocketConnection_BBuildAndAsyncSendFrame_t)(void*, EWebSocketOpCode, uint8_t*, uint32_t);
-	typedef void*(*CRemoteClientManager_RecvPkt_t)(void*, CNetPacket*);
+	typedef void*(*CRemoteClientManager_RecvPkt_t)(void*, CRemoteClientPacket*);
 
 	typedef bool(*CJobMgr_BRouteMsgToJob_t)(void*, void*, void*, void*);
 

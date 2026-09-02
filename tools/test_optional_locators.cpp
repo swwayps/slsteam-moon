@@ -1,13 +1,15 @@
 // Validate the optional runtime-capability locators against the installed
 // 32-bit Steam client.
 //
-// These two are the only compiled locators whose failure silently degrades a
+// These are the compiled locators whose failure silently degrades a
 // feature instead of failing the load, so a signature that stops matching after
 // a client update is easy to miss:
 //
 //   CUser::ProcessPendingLicenseUpdates  PackagePatch loses the runtime license
 //                                        refresh, so adding a game needs a
 //                                        Steam restart again.
+//   CCMInterface::RecvPkt                Family Share message filtering turns
+//                                        off.
 //   CSteamApp::OwnershipFlagsReference    LibraryRemoval cannot derive the
 //                                        ownership-flags field offset, so
 //                                        visual library removal turns off.
@@ -153,6 +155,12 @@ int main(int argc, char** argv)
 		client, "CUser::ProcessPendingLicenseUpdates",
 		"55 57 56 53 E8 ? ? ? ? 81 C3 ? ? ? ? 83 EC 2C 8B 44 24 40 8B 88 7C 1C "
 		"00 00 85 C9 0F 8E ? ? ? ? 05 70 1C 00 00 89 44 24 18 8D 83 ? ? ? ? 8B 30",
+		source);
+
+	(void)resolveUnique(
+		client, "CCMInterface::RecvPkt",
+		"55 89 E5 57 56 E8 ? ? ? ? 81 C6 ? ? ? ? 53 81 EC CC 04 00 00 8B 45 08 "
+		"8B 7D 0C 89 85 50 FB FF FF 65 A1 14 00 00 00 89 45 E4 31 C0 8B 86",
 		source);
 
 	// FillInAppOverview serializes several fields with this very shape, one

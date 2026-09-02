@@ -779,6 +779,7 @@ bool Patterns::init()
 	CUser::ProcessPendingLicenseUpdates.optional = true;
 	CUser::NotifyLicensesUpdated.optional = true;
 	CUser::Offset_CompatManager.optional = true;
+	CCMInterface::RecvPkt.optional = true;
 	CAppInfoCache::GetOrAddAppData.optional = true;
 	CAppInfoCache::ThreadedReadFromDisk.optional = true;
 	CAppInfoCache::SkipFlagReference.optional = true;
@@ -952,9 +953,10 @@ namespace Patterns
 		Pattern_t RecvPkt
 		{
 			"CCMInterface::RecvPkt",
-			"8B 8D 54 FB FF FF 83 EC ? 8B 01 51 FF 50 ? 83 C4 ?",
-			SigFollowMode::PrologueUpwards,
-			std::vector<uint8_t> { 0x56, 0x57, 0xE5, 0x89, 0x55 }
+			"55 89 E5 57 56 E8 ? ? ? ? 81 C6 ? ? ? ? 53 81 EC CC 04 00 00 8B 45 08 8B 7D 0C 89 85 50 FB FF FF 65 A1 14 00 00 00 89 45 E4 31 C0 8B 86",
+			SigFollowMode::None,
+			nullptr,
+			"Patterns::CCMInterface::RecvPkt"
 		};
 	}
 

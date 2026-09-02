@@ -1,23 +1,27 @@
 #include "CNetPacket.hpp"
 
+#include <limits>
 
-CMsgProtoBufHeader CNetPacket::deserializeHeader() const
+bool CNetPacket::deserializeHeader(CMsgProtoBufHeader& header) const
 {
-	const uintptr_t headerOffset = sizeof(CNetPacketBody);
-	uint8_t* mem = reinterpret_cast<uint8_t*>(body) + headerOffset;
+	header.Clear();
+	if (!isValid())
+		return false;
 
-	CMsgProtoBufHeader header;
-	if (!header.ParseFromArray(mem, body->headerSize))
-	{
-		g_pLog->debug("Failed to parse header!\n");
-	}
+	const uint32_t available = size - sizeof(CNetPacketBody);
+	if (body->headerSize > available
+	    || body->headerSize > static_cast<uint32_t>(std::numeric_limits<int>::max()))
+		return false;
 
-	return header;
+	const auto* memory =
+		reinterpret_cast<const uint8_t*>(body) + sizeof(CNetPacketBody);
+	return header.ParseFromArray(memory, static_cast<int>(body->headerSize));
 }
 
 void CNetPacket::free()
 {
-	Steam::Plat_Free(body);
+	if (body)
+		Steam::Plat_Free(body);
 
 	size = 0;
 	body = nullptr;

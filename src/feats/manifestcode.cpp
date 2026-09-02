@@ -105,7 +105,7 @@ inline bool decodeFrame(const uint8_t* data, uint32_t size,
 	return true;
 }
 
-inline void patchRecvFrame(CNetPacket* p,
+inline void patchRecvFrame(CRemoteClientPacket* p,
                            const uint8_t* pNewHdr, uint32_t cbNewHdr,
                            const uint8_t* pNewBody, uint32_t cbNewBody)
 {
@@ -374,7 +374,7 @@ bool hkBBuildAndAsyncSendFrame(void* pConnection,
 	    pConnection, eOpCode, pubData, cubData);
 }
 
-void* hkRecvPkt(void* pManager, CNetPacket* pPacket)
+void* hkRecvPkt(void* pManager, CRemoteClientPacket* pPacket)
 {
 	if (pPacket && pPacket->m_pubData && pPacket->m_cubData)
 	{
