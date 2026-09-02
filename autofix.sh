@@ -23,8 +23,9 @@ REPO="swwayps/slsteam-moon"
 # so it uses '.*'; the grep fallback scans raw JSON, so it uses '[^"]*' to avoid
 # crossing a quote. Both use '[.]' for a literal dot (a bare '\.' is not a valid
 # jq string escape and a raw '"' inside a jq "..." string breaks the parse).
-ASSET_RE_JQ='slsteam-moon-linux-.*-lumen[.]zip'
-ASSET_RE_GREP='slsteam-moon-linux-[^"]*-lumen[.]zip'
+ASSET_RE_JQ='^slsteam-moon-linux-.*-lumen[.]zip$'
+ASSET_RE_GREP='slsteam-moon-linux-[^"]*-lumen[.]zip"'
+MIRROR_MANIFEST="https://cdn.jsdelivr.net/gh/swwayps/jsdelivr@main/manifest.json"
 SLSDIR="$HOME/.local/share/SLSsteam"
 WRAPPER="$SLSDIR/path/steam"
 
@@ -42,6 +43,66 @@ err()   { echo -e "${RED}✗${NC} $1" >&2; }
 pause() { read -rp "Press Enter to close this window… " _ 2>/dev/null || true; }
 die()   { err "$1"; pause; exit 1; }
 
+resolve_github_asset() {
+	local body="$1"
+	if command -v jq >/dev/null 2>&1; then
+		printf '%s' "$body" | jq -r \
+			'[.[] | select(.draft==false and .prerelease==false) | .assets[]?
+			  | select(.name|test("'"$ASSET_RE_JQ"'")) | .browser_download_url] | .[0] // empty'
+	elif command -v python3 >/dev/null 2>&1; then
+		printf '%s' "$body" | python3 -c '
+import json, re, sys
+pattern = re.compile(sys.argv[1])
+for release in json.load(sys.stdin):
+    if release.get("draft") or release.get("prerelease"):
+        continue
+    for asset in release.get("assets") or []:
+        if pattern.fullmatch(asset.get("name", "")):
+            print(asset.get("browser_download_url", ""))
+            raise SystemExit
+' "$ASSET_RE_JQ"
+	else
+		printf '%s' "$body" \
+			| grep -oE '"browser_download_url":[[:space:]]*"[^"]*'"$ASSET_RE_GREP" \
+			| sed -E 's/.*"(https[^"]+)"$/\1/' | head -n1
+	fi
+}
+
+resolve_mirror_entry() {
+	local body="$1"
+	if command -v jq >/dev/null 2>&1; then
+		printf '%s' "$body" | jq -r \
+			'if .schema == 1 then .components["slsteam-moon"] // {} else {} end
+			 | [.url // "", .sha256 // ""] | @tsv'
+	elif command -v python3 >/dev/null 2>&1; then
+		printf '%s' "$body" | python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+entry = data.get("components", {}).get("slsteam-moon", {}) if data.get("schema") == 1 else {}
+print("{}\t{}".format(entry.get("url", ""), entry.get("sha256", "")))
+'
+	else
+		local compact object url sha
+		compact="$(printf '%s' "$body" | tr -d '\r\n')"
+		object="$(printf '%s' "$compact" | sed -nE \
+			's/.*"slsteam-moon"[[:space:]]*:[[:space:]]*\{([^{}]*)\}.*/\1/p')"
+		url="$(printf '%s' "$object" | sed -nE \
+			's/.*"url"[[:space:]]*:[[:space:]]*"([^"]*)".*/\1/p')"
+		sha="$(printf '%s' "$object" | sed -nE \
+			's/.*"sha256"[[:space:]]*:[[:space:]]*"([^"]*)".*/\1/p')"
+		printf '%s\t%s\n' "$url" "$sha"
+	fi
+}
+
+valid_mirror_entry() {
+	[[ "$1" =~ ^https://cdn\.jsdelivr\.net/gh/swwayps/jsdelivr@[0-9a-f]{40}/releases/slsteam-moon/.+[.]zip$ ]] \
+		&& [[ "$2" =~ ^[0-9a-f]{64}$ ]]
+}
+
+if [ "${AUTOFIX_LIB_ONLY:-0}" = 1 ]; then
+	return 0 2>/dev/null || exit 0
+fi
+
 echo -e "${BOLD}${BLUE}◯  slsteam-moon auto-fix${NC}"
 echo
 
@@ -51,21 +112,24 @@ command -v curl >/dev/null 2>&1 || die "curl is required but not installed."
 info "Finding the latest slsteam-moon release"
 API="https://api.github.com/repos/${REPO}/releases?per_page=50"
 RELEASES_JSON="$(curl -fsSL --connect-timeout 15 --retry 3 --retry-delay 2 \
-	-H 'Accept: application/vnd.github+json' "$API")" \
-	|| die "Could not reach GitHub. Check your internet connection and try again."
+	-H 'Accept: application/vnd.github+json' "$API" 2>/dev/null || true)"
+URL="$(resolve_github_asset "$RELEASES_JSON" 2>/dev/null || true)"
 
-# /releases lists newest first, so the first matching asset is the latest one.
-# jq if present (exact), else a grep/sed fallback (no hard jq dependency).
-if command -v jq >/dev/null 2>&1; then
-	URL="$(printf '%s' "$RELEASES_JSON" | jq -r \
-		'[.[] | select(.draft==false) | .assets[]?
-		  | select(.name|test("'"$ASSET_RE_JQ"'")) | .browser_download_url] | .[0] // empty')"
-else
-	URL="$(printf '%s' "$RELEASES_JSON" \
-		| grep -oE '"browser_download_url":[[:space:]]*"[^"]*'"$ASSET_RE_GREP"'"' \
-		| sed -E 's/.*"(https[^"]+)"$/\1/' | head -n1)"
+MIRROR_JSON="$(curl -fsSL --connect-timeout 15 --retry 3 --retry-delay 2 \
+	-H 'Accept: application/json' "$MIRROR_MANIFEST" 2>/dev/null || true)"
+MIRROR_ENTRY="$(resolve_mirror_entry "$MIRROR_JSON" 2>/dev/null || true)"
+IFS=$'\t' read -r MIRROR_URL MIRROR_SHA <<< "$MIRROR_ENTRY"
+if ! valid_mirror_entry "${MIRROR_URL:-}" "${MIRROR_SHA:-}"; then
+	MIRROR_URL=""
+	MIRROR_SHA=""
 fi
-[ -n "${URL:-}" ] || die "Could not find a slsteam-moon (Lumen) release asset."
+
+EXPECTED_SHA=""
+if [ -z "${URL:-}" ] && [ -n "$MIRROR_URL" ]; then
+	URL="$MIRROR_URL"
+	EXPECTED_SHA="$MIRROR_SHA"
+fi
+[ -n "${URL:-}" ] || die "Could not reach GitHub or the jsDelivr release mirror."
 ok "Found: $URL"
 
 # ── 2. download + extract ───────────────────────────────────────────────────
@@ -74,8 +138,21 @@ trap 'rm -rf "${TMP:-}"' EXIT
 ZIP="$TMP/slsteam-moon.zip"
 
 info "Downloading"
-curl -fL --connect-timeout 15 --retry 3 --retry-delay 2 "$URL" -o "$ZIP" \
-	|| die "Download failed."
+if ! curl -fL --connect-timeout 15 --retry 3 --retry-delay 2 "$URL" -o "$ZIP"; then
+	if [ -z "$MIRROR_URL" ] || [ "$URL" = "$MIRROR_URL" ]; then
+		die "Download failed on GitHub and the jsDelivr mirror."
+	fi
+	warn "GitHub download failed; trying jsDelivr"
+	rm -f "$ZIP"
+	curl -fL --connect-timeout 15 --retry 3 --retry-delay 2 \
+		"$MIRROR_URL" -o "$ZIP" || die "Download failed on GitHub and the jsDelivr mirror."
+	URL="$MIRROR_URL"
+	EXPECTED_SHA="$MIRROR_SHA"
+fi
+if [ -n "$EXPECTED_SHA" ]; then
+	printf '%s  %s\n' "$EXPECTED_SHA" "$ZIP" | sha256sum -c - >/dev/null \
+		|| die "The mirrored archive failed its integrity check."
+fi
 
 info "Extracting"
 if command -v unzip >/dev/null 2>&1; then
