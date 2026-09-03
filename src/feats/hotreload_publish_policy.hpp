@@ -64,6 +64,34 @@ inline std::vector<std::uint32_t> readyBaseIds(
 	return out;
 }
 
+inline std::unordered_set<std::uint32_t> guardedAppInfoIds(
+	const std::unordered_set<std::uint32_t>& managed,
+	const std::vector<std::uint32_t>& planner,
+	const std::unordered_set<std::uint32_t>& authoritative)
+{
+	std::unordered_set<std::uint32_t> guarded(managed.begin(), managed.end());
+	for (const std::uint32_t appId : planner)
+		if (appId != 0) guarded.insert(appId);
+	for (const std::uint32_t appId : authoritative)
+		if (appId != 0) guarded.insert(appId);
+	return guarded;
+}
+
+inline std::vector<std::uint32_t> nonAuthoritativeAppInfoRequestIds(
+	std::vector<std::uint32_t> requested,
+	const std::unordered_set<std::uint32_t>& authoritative)
+{
+	requested.erase(
+		std::remove_if(requested.begin(), requested.end(),
+			[&authoritative](std::uint32_t appId) {
+				return appId == 0 || authoritative.count(appId) != 0;
+			}),
+		requested.end());
+	std::sort(requested.begin(), requested.end());
+	requested.erase(std::unique(requested.begin(), requested.end()), requested.end());
+	return requested;
+}
+
 inline std::vector<std::uint32_t> newTopologyAppInfoRequestIds(
 	const PackageSnapshot& previous,
 	const PackageSnapshot& next)

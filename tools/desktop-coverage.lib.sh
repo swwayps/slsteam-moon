@@ -638,6 +638,16 @@ dc_patch_one() {
 # symlinked .desktop as the raw filename + an untrusted link emblem). Steam may
 # restore a vanilla copy on a re-bootstrap; the per-launch/Lumen re-assert
 # re-patches it then.
+dc_activate_shortcut() {
+	local shortcut="$1"
+	chmod 0755 "$shortcut" 2>/dev/null || return 1
+	command -v gio >/dev/null 2>&1 \
+		&& gio set "$shortcut" metadata::trusted true >/dev/null 2>&1 || true
+	command -v xfdesktop >/dev/null 2>&1 \
+		&& xfdesktop --reload >/dev/null 2>&1 || true
+	return 0
+}
+
 dc_patch_shortcut() {
 	local sc="$1" bak
 	[ -e "$sc" ] || return 0          # never create a shortcut the user lacked
@@ -666,14 +676,12 @@ dc_patch_shortcut() {
 	case "$(dc_classify "$sc")" in
 		launcher|patched)
 			dc_patch_one "$sc"
-			chmod 0755 "$sc" 2>/dev/null || true
-			command -v gio >/dev/null 2>&1 && gio set "$sc" metadata::trusted true >/dev/null 2>&1 || true
+			dc_activate_shortcut "$sc" || true
 			;;
 		stub)
 			[ "${DC_STEAM_INSTALLED:-0}" = 1 ] || return 0
 			dc_patch_one "$sc"
-			chmod 0755 "$sc" 2>/dev/null || true
-			command -v gio >/dev/null 2>&1 && gio set "$sc" metadata::trusted true >/dev/null 2>&1 || true
+			dc_activate_shortcut "$sc" || true
 			;;
 	esac
 }
@@ -801,6 +809,14 @@ _dc_application_source() {
 	case "$name" in *.desktop) return 0 ;; *) return 1 ;; esac
 }
 
+# A dangling same-ID link still shadows a valid system desktop entry, but has
+# no readable metadata to preserve or patch. Discard it so the normal seeded
+# shadow path can publish a regular, working entry.
+_dc_discard_dangling_application_shadow() {
+	[ -L "$1" ] && [ ! -e "$1" ] || return 0
+	rm -f -- "$1"
+}
+
 # _dc_publish_application_shadow <source> <target> <launcher|stub> — prepare the
 # complete shadow in its destination directory, mark ownership before rewrite,
 # validate through dc_patch_one, then publish by same-directory atomic rename.
@@ -902,6 +918,7 @@ dc_seed_application_shadows() {
 			   dc_is_prebootstrap_seed "$target"; then
 				continue
 			fi
+			_dc_discard_dangling_application_shadow "$target" || continue
 			if [ -e "$target" ] || [ -L "$target" ]; then
 				[ -r "$target" ] || chmod 0644 "$target" 2>/dev/null || true
 				dc_patch_one "$target" 2>/dev/null || true
@@ -1076,6 +1093,7 @@ dc_guardian_seed_application_shadows() {
 			seen="${seen}${seen:+
 }$id"
 			target="$user_dir/$id"
+			_dc_discard_dangling_application_shadow "$target" || continue
 			[ -e "$target" ] || [ -L "$target" ] && continue
 			if _dc_publish_application_shadow "$source" "$target" "$kind" \
 			   && _dc_file_has_primary_wrapper_exec "$target"; then
@@ -1143,9 +1161,8 @@ dc_guardian_patch_shortcut() {
 	esac
 	before="$(dc_guardian_fingerprint "$shortcut")"
 	if dc_patch_one "$shortcut" && _dc_file_has_primary_wrapper_exec "$shortcut"; then
-		chmod 0755 "$shortcut" 2>/dev/null || { dc_guardian_record_result other 2; return 0; }
-		command -v gio >/dev/null 2>&1 \
-			&& gio set "$shortcut" metadata::trusted true >/dev/null 2>&1 || true
+		dc_activate_shortcut "$shortcut" \
+			|| { dc_guardian_record_result other 2; return 0; }
 		after="$(dc_guardian_fingerprint "$shortcut")"
 		if [ "$before" = "$after" ]; then result=1; else result=0; fi
 	else
@@ -1274,7 +1291,7 @@ dc_forget_policy() {
 #     full pass even on an unchanged desktop.
 # Callers that must never take the fast path (the installer, an explicit repair)
 # set DC_FORCE=1 / pass --force to the CLI.
-DC_FINGERPRINT_VERSION=2
+DC_FINGERPRINT_VERSION=3
 
 # Where the last successful pass' digest lives. One file per scope: the guardian
 # (mandatory, user-only), the legacy best-effort --user pass and the optional
@@ -1413,7 +1430,7 @@ dc_guardian_write_cached_note() {
 # dc_guardian_run — serialized, mandatory user-only reconciliation. Lock
 # contention is a successful no-op. No system mutation or sudo path is reachable.
 dc_guardian_run() {
-	local runtime uid lock result status=0
+	local runtime uid lock result shortcut status=0
 	runtime="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}"
 	uid="${UID:-$(id -u)}"
 	lock="${runtime%/}/slsteam-desktop-guardian-${uid}.lock"
@@ -1430,6 +1447,15 @@ dc_guardian_run() {
 	# guardian is kicked by the wrapper at every launch, and on an unchanged
 	# desktop the full pass costs seconds of CPU to change nothing.
 	if dc_coverage_unchanged guardian --user; then
+		# GIO trust lives outside the file metadata covered by the cheap digest
+		# and desktop environments may clear it independently. Reassert it for
+		# the one existing shortcut without paying for a full reconciliation.
+		shortcut="$(dc_desktop_dir)/steam.desktop"
+		if [ -f "$shortcut" ] && [ ! -L "$shortcut" ] \
+		   && _dc_file_has_primary_wrapper_exec "$shortcut"; then
+			command -v gio >/dev/null 2>&1 \
+				&& gio set "$shortcut" metadata::trusted true >/dev/null 2>&1 || true
+		fi
 		dc_guardian_write_cached_note || true
 		dc_guardian_write_summary || true
 		"$DC_FLOCK" -u 9 >/dev/null 2>&1 || true

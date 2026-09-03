@@ -244,6 +244,25 @@ inline bool shouldPreserveCacheFromRawPics(bool hasNormalizedMarker,
 	return !hasNormalizedMarker || normalized;
 }
 
+struct LocalAuthorityFacts
+{
+	bool managed = false;
+	bool active = false;
+	bool synthetic = false;
+	bool cacheValid = false;
+	bool hasNormalizedMarker = false;
+	bool normalized = false;
+};
+
+inline bool locallyAuthoritative(const LocalAuthorityFacts& facts) noexcept
+{
+	if (!facts.active) return false;
+	if (facts.synthetic) return true;
+	return facts.managed && facts.cacheValid &&
+		shouldPreserveCacheFromRawPics(
+			facts.hasNormalizedMarker, facts.normalized);
+}
+
 // Permit a cache publication only when the caller still represents the
 // managed app generation that started the work. A matching generation is
 // required even when the app is managed again after a removal.

@@ -371,14 +371,14 @@ namespace SynthMark
 
 	// Install-state gate for the outgoing-PICS protection. Until the app
 	// manager interface is resolved, preserve the early-boot behavior and
-	// strip eligible synthetic apps. Once resolved, a fully installed app no
-	// longer needs protection from an empty refresh.
-	inline bool installStateAllowsStrip(bool isSynthetic,
+	// strip every locally authoritative app. Once resolved, a fully installed
+	// app no longer needs protection from an empty refresh.
+	inline bool installStateAllowsStrip(bool locallyAuthoritative,
 	                                    bool isManaged,
 	                                    bool appManagerResolved,
 	                                    bool fullyInstalled)
 	{
-		if (!isSynthetic || !isManaged) return false;
+		if (!locallyAuthoritative || !isManaged) return false;
 		return !appManagerResolved || !fullyInstalled;
 	}
 

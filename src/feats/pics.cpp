@@ -2,6 +2,7 @@
 #include "pics.hpp"
 
 #include "appinfo_provision.hpp"
+#include "appinfostate.hpp"
 #include "provision_cache.hpp"
 #include "appinfo_vdf.hpp"
 #include "depotkey.hpp"
@@ -752,7 +753,7 @@ void recvChangesSinceResponse(CMsgClientPICSChangesSinceResponse* resp)
 
 	const auto managed = g_config.managedAppIds.get();
 	std::vector<AppInfoProvision::ObservedAppState> managedChanges;
-	std::unordered_set<uint32_t> suppressedSyntheticApps;
+	std::unordered_set<uint32_t> suppressedManagedApps;
 	managedChanges.reserve(static_cast<std::size_t>(resp->app_changes_size()));
 	for (int i = 0; i < resp->app_changes_size(); ++i)
 	{
@@ -774,13 +775,14 @@ void recvChangesSinceResponse(CMsgClientPICSChangesSinceResponse* resp)
 	for (int i = resp->app_changes_size() - 1; i >= 0; --i)
 	{
 		const uint32_t appId = resp->app_changes(i).appid();
-		// Unmanaged changelist rows can never carry one of our synthetic pairs.
-		// Avoid publication-lock and marker/metadata I/O for Steam's library.
-		if (managed.count(appId) != 0 &&
-			AppInfoProvision::isSynthesizedApp(appId))
+		// A retained synthetic compatibility row can be authoritative without
+		// remaining provider-managed. The published store keeps this callback
+		// free of cache I/O; only managed rows are queued for provider refresh.
+		if (AppInfoState::isAuthoritative(appId))
 		{
-			suppressedSyntheticApps.insert(appId);
-			g_pLog->debug("PICS: stripping synthetic app %u from changelist\n",
+			if (managed.count(appId) != 0)
+				suppressedManagedApps.insert(appId);
+			g_pLog->debug("PICS: stripping locally authoritative app %u from changelist\n",
 			              appId);
 			resp->mutable_app_changes()->DeleteSubrange(i, 1);
 			++stripped;
@@ -788,15 +790,15 @@ void recvChangesSinceResponse(CMsgClientPICSChangesSinceResponse* resp)
 	}
 	if (stripped > 0)
 	{
-		g_pLog->info("PICS: filtered %d synthetic app(s) from changelist (%d remaining)\n",
+		g_pLog->info("PICS: filtered %d locally authoritative app(s) from changelist (%d remaining)\n",
 		             stripped, resp->app_changes_size());
 	}
 
 	std::vector<AppInfoProvision::RefreshRequest> refreshRequests;
 	if (resp->force_full_app_update())
 	{
-		refreshRequests.reserve(suppressedSyntheticApps.size());
-		for (const uint32_t appId : suppressedSyntheticApps)
+		refreshRequests.reserve(suppressedManagedApps.size());
+		for (const uint32_t appId : suppressedManagedApps)
 		{
 			const auto publication =
 				AppInfoProvision::snapshotCachePublication(appId);
@@ -812,7 +814,7 @@ void recvChangesSinceResponse(CMsgClientPICSChangesSinceResponse* resp)
 		refreshRequests = markRuntimePublicationForSuppressedApps(
 			AppInfoProvision::selectRefreshRequests(
 				managedChanges, AppInfoProvision::RefreshReason::PicsChanges).requests,
-			suppressedSyntheticApps);
+			suppressedManagedApps);
 	}
 	auto startupCacheRepairs = HotReload::takeMissingCacheRepairRequests();
 	refreshRequests.insert(

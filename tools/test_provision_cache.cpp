@@ -57,6 +57,7 @@ int main()
 	using AppInfoProvision::cache::retainedSyntheticMarkerProtectionAllowed;
 	using AppInfoProvision::cache::isBufferReusable;
 	using AppInfoProvision::cache::isCacheRecordValid;
+	using AppInfoProvision::cache::locallyAuthoritative;
 	using AppInfoProvision::cache::shouldValidateCache;
 	using AppInfoProvision::cache::shouldPreserveCacheFromRawPics;
 	using AppInfoProvision::cache::shouldPreserveSyntheticMarker;
@@ -269,6 +270,32 @@ int main()
 	CHECK(!shouldPreserveCacheFromRawPics(/*hasMarker=*/true,
 	                                      /*normalized=*/false),
 	      "explicit raw cache remains replaceable by a newer PICS response");
+	CHECK(locallyAuthoritative({
+	          .managed = true, .active = true, .cacheValid = true,
+	          .hasNormalizedMarker = true, .normalized = true}),
+	      "validated normalized managed cache is locally authoritative");
+	CHECK(locallyAuthoritative({
+	          .managed = true, .active = true, .cacheValid = true,
+	          .hasNormalizedMarker = false}),
+	      "validated legacy managed cache remains locally authoritative");
+	CHECK(!locallyAuthoritative({
+	          .managed = true, .active = true, .cacheValid = true,
+	          .hasNormalizedMarker = true, .normalized = false}),
+	      "explicit raw PICS cache remains refreshable");
+	CHECK(!locallyAuthoritative({
+	          .managed = true, .active = true, .cacheValid = false,
+	          .hasNormalizedMarker = true, .normalized = true}),
+	      "invalid normalized cache cannot become authoritative");
+	CHECK(locallyAuthoritative({
+	          .managed = false, .active = true, .synthetic = true}),
+	      "active marker-only synthetic app remains authoritative after source removal");
+	CHECK(!locallyAuthoritative({
+	          .managed = false, .active = false, .synthetic = true}),
+	      "full active removal revokes retained synthetic authority");
+	CHECK(!locallyAuthoritative({
+	          .managed = true, .active = true, .synthetic = false,
+	          .cacheValid = false}),
+	      "re-added app cannot inherit stale authority without current evidence");
 	CHECK(cachePublicationAllowed(/*managed=*/true,
 	                              /*expectedGeneration=*/7,
 	                              /*currentGeneration=*/7),

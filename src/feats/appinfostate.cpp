@@ -770,6 +770,19 @@ void publishAuthoritative(
 	}
 }
 
+bool isAuthoritative(std::uint32_t appId) noexcept
+{
+	try
+	{
+		auto read = g_authoritativeStore.readHandle();
+		return read.contains(appId);
+	}
+	catch (...)
+	{
+		return false;
+	}
+}
+
 AppInfoReload::Result reloadFromDisk(
 	std::span<const std::uint32_t> appIds) noexcept
 {

@@ -60,6 +60,21 @@ HotReloadState::Store& membershipStore()
 	return state;
 }
 
+std::unordered_set<std::uint32_t> publishAppInfoScopes(
+	const std::unordered_set<std::uint32_t>& managedAppIds,
+	const std::vector<std::uint32_t>& plannerAppIds)
+{
+	const auto authoritative = AppInfoProvision::locallyAuthoritativeApps(
+		managedAppIds, g_config.addedAppIds.get());
+	const auto guardedAppIds = HotReloadPublishPolicy::guardedAppInfoIds(
+		managedAppIds, plannerAppIds, authoritative);
+	// Publish authority first: a newly guarded record must never be observable
+	// with a real SHA during the gap before its skip policy becomes active.
+	AppInfoState::publishAuthoritative(authoritative);
+	(void)membershipStore().publish(guardedAppIds);
+	return authoritative;
+}
+
 std::vector<std::uint32_t> difference(
 	const std::unordered_set<std::uint32_t>& left,
 	const std::unordered_set<std::uint32_t>& right)
@@ -167,16 +182,11 @@ bool publishLocked(
 
 	// Guard desired bases immediately, but keep them outside package ownership
 	// until their authoritative local appinfo is live.
-	std::unordered_set<std::uint32_t> guardedAppIds(
-		managedAppIds.begin(), managedAppIds.end());
-	guardedAppIds.insert(
-		built.snapshot.appIds.begin(), built.snapshot.appIds.end());
-	(void)membershipStore().publish(guardedAppIds);
-	std::unordered_set<std::uint32_t> authoritativeAppIds;
-	for (const std::uint32_t appId : managedAppIds)
-		if (AppInfoProvision::isSynthesizedApp(appId))
-			authoritativeAppIds.insert(appId);
-	AppInfoState::publishAuthoritative(authoritativeAppIds);
+	const auto authoritative =
+		publishAppInfoScopes(managedAppIds, built.snapshot.appIds);
+	built.snapshot.appInfoRequestIds =
+		HotReloadPublishPolicy::nonAuthoritativeAppInfoRequestIds(
+			std::move(built.snapshot.appInfoRequestIds), authoritative);
 	for (const std::uint32_t appId : added)
 		LibraryRemoval::cancel(appId);
 
@@ -374,11 +384,11 @@ bool publishPreparedBase(
 		// request here is redundant and can replace it with an empty record.
 		built.snapshot.appInfoRequestIds.clear();
 
-		std::unordered_set<std::uint32_t> guardedAppIds(
-			managed.begin(), managed.end());
-		guardedAppIds.insert(
-			built.snapshot.appIds.begin(), built.snapshot.appIds.end());
-		(void)membershipStore().publish(guardedAppIds);
+		const auto authoritative =
+			publishAppInfoScopes(managed, built.snapshot.appIds);
+		built.snapshot.appInfoRequestIds =
+			HotReloadPublishPolicy::nonAuthoritativeAppInfoRequestIds(
+				std::move(built.snapshot.appInfoRequestIds), authoritative);
 		LibraryRemoval::cancel(baseAppId);
 
 		const OwnerWork::Mode mode =
@@ -639,11 +649,11 @@ bool publishMetadataCompletion(
 			return true;
 		}
 
-		std::unordered_set<std::uint32_t> guardedAppIds(
-			managed.begin(), managed.end());
-		guardedAppIds.insert(
-			built.snapshot.appIds.begin(), built.snapshot.appIds.end());
-		(void)membershipStore().publish(guardedAppIds);
+		const auto authoritative =
+			publishAppInfoScopes(managed, built.snapshot.appIds);
+		built.snapshot.appInfoRequestIds =
+			HotReloadPublishPolicy::nonAuthoritativeAppInfoRequestIds(
+				std::move(built.snapshot.appInfoRequestIds), authoritative);
 		const OwnerWork::Mode mode = OwnerWork::submitManagedState(built.snapshot);
 		if (mode == OwnerWork::Mode::Abandoned) return false;
 

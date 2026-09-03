@@ -1,12 +1,12 @@
 #pragma once
 
+#include "ascii.hpp"
 #include "libmem/libmem.h"
 #include "log.hpp"
 #include <charconv>
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
-#include <cctype>
 #include <limits>
 #include <string_view>
 #include <system_error>
@@ -49,7 +49,7 @@ namespace MemHlp
 
 		for (const char c : text)
 		{
-			if (!std::isxdigit(static_cast<unsigned char>(c)))
+			if (!Ascii::isHexDigit(static_cast<unsigned char>(c)))
 				return LM_ADDRESS_BAD;
 		}
 

@@ -248,6 +248,24 @@ check "user run patches autostart" "patched" "$(dc_classify "$H/.config/autostar
 check "user run leaves stub alone" "stub" "$(dc_classify "$SYS/steam.desktop")"
 check "user run leaves no adjacent autostart backup" "no" "$([ -e "$H/.config/autostart/steam.desktop.slssteam-backup" ] && echo yes || echo no)"
 
+# Valve's Debian bootstrap may leave the user menu entry as a dangling symlink
+# into deb-installer/. It still shadows the valid system desktop ID, so coverage
+# must replace it with a regular seeded entry after Steam is bootstrapped.
+HD="$TMP/home-dangling"; SD="$TMP/system-dangling/applications"
+mkdir -p "$HD/.local/share/applications" "$SD"
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/bin/steam %%U\nIcon=steam\n' > "$SD/steam.desktop"
+ln -s "$HD/.steam/debian-installation/deb-installer/steam.desktop" \
+  "$HD/.local/share/applications/steam.desktop"
+XDG_DATA_DIRS="${SD%/applications}" DC_HOME="$HD" \
+  DC_BACKUP_ROOT="$HD/.local/share/SLSsteam/backup" \
+  DC_SYS_APPS="$SD" DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" \
+  DC_STEAM_INSTALLED=1 dc_run --user
+check "dangling menu shadow becomes a regular file" "yes" \
+  "$([ -f "$HD/.local/share/applications/steam.desktop" ] && \
+      [ ! -L "$HD/.local/share/applications/steam.desktop" ] && echo yes || echo no)"
+check "dangling menu shadow is replaced by injected coverage" "patched" \
+  "$(dc_classify "$HD/.local/share/applications/steam.desktop")"
+
 # MIGRATION: a legacy already-tagged entry left 0711 with a Valve shebang must be
 # normalized to 0644 + clean first line on a re-run (the Cinnamon-bug fix path).
 H5="$TMP/home5"; mkdir -p "$H5/.local/share/applications"
@@ -1021,13 +1039,35 @@ check "forget drops the recorded digest" "no" \
 # says so in its log), while a hand-broken entry is still repaired.
 GHOME="$TMP/home-fpg"
 mkdir -p "$GHOME/data/applications" "$GHOME/conf/autostart" "$GHOME/state" \
-  "$GHOME/runtime" "$TMP/empty-fpg/applications"
+  "$GHOME/runtime" "$GHOME/Desktop" "$TMP/empty-fpg/applications" "$TMP/gio-shim"
 printf '[Desktop Entry]\nName=Steam\nExec=/usr/bin/steam %%U\n' \
   > "$GHOME/data/applications/steam.desktop"
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/bin/steam %%U\n' \
+  > "$GHOME/Desktop/steam.desktop"
+cat > "$TMP/gio-shim/gio" <<'SH'
+#!/bin/sh
+if [ "${1:-}" = set ] && [ -n "${DC_TEST_TRUST_MARKER:-}" ]; then
+  : > "$DC_TEST_TRUST_MARKER"
+fi
+exit 0
+SH
+chmod +x "$TMP/gio-shim/gio"
+cat > "$TMP/gio-shim/xfdesktop" <<'SH'
+#!/bin/sh
+if [ "${1:-}" = --reload ] && [ -n "${DC_TEST_XFDESKTOP_MARKER:-}" ]; then
+  : > "$DC_TEST_XFDESKTOP_MARKER"
+fi
+exit 0
+SH
+chmod +x "$TMP/gio-shim/xfdesktop"
+TRUST_MARKER="$TMP/shortcut-trusted"
+XFDESKTOP_MARKER="$TMP/xfdesktop-reloaded"
 gstate="$GHOME/state/slsteam-moon/guardian.log"
 guardian_fp() {
   : > "$GUARDIAN_EVENTS"
-  XDG_DATA_HOME="$GHOME/data" XDG_DATA_DIRS="$TMP/empty-fpg" XDG_CONFIG_HOME="$GHOME/conf" \
+  PATH="$TMP/gio-shim:$PATH" DC_TEST_TRUST_MARKER="$TRUST_MARKER" \
+    DC_TEST_XFDESKTOP_MARKER="$XFDESKTOP_MARKER" \
+    XDG_DATA_HOME="$GHOME/data" XDG_DATA_DIRS="$TMP/empty-fpg" XDG_CONFIG_HOME="$GHOME/conf" \
     XDG_STATE_HOME="$GHOME/state" XDG_RUNTIME_DIR="$GHOME/runtime" DC_HOME="$GHOME" \
     DC_BACKUP_ROOT="$GHOME/backup" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" \
     DC_SUDO="" DC_FLOCK="$FLOCK_SHIM" DC_UPDATE_DESKTOP_DATABASE="$UPDATE_SHIM" \
@@ -1040,9 +1080,16 @@ check "guardian first pass patches the entry" "patched" \
   "$(dc_classify "$GHOME/data/applications/steam.desktop")"
 check "guardian first pass logs real counters" "yes" \
   "$(tail -n 1 "$gstate" | grep -Eq '^[^ ]+ examined=[1-9]' && echo yes || echo no)"
+check "guardian first pass trusts the desktop shortcut" "yes" \
+  "$([ -e "$TRUST_MARKER" ] && echo yes || echo no)"
+check "guardian first pass reloads xfdesktop after repairing its shortcut" "yes" \
+  "$([ -e "$XFDESKTOP_MARKER" ] && echo yes || echo no)"
+rm -f "$TRUST_MARKER"
 guardian_fp; check "guardian repeat pass succeeds" "0" "$?"
 check "guardian repeat pass records the skip" "yes" \
   "$(grep -q 'unchanged: desktop launch sources match' "$gstate" && echo yes || echo no)"
+check "guardian fast path re-trusts the desktop shortcut" "yes" \
+  "$([ -e "$TRUST_MARKER" ] && echo yes || echo no)"
 check "guardian repeat pass still ends with the six counters" "yes" \
   "$(tail -n 1 "$gstate" | grep -Eq '^[^ ]+ examined=0 changed=0 app_changed=0 autostart_changed=0 skipped=0 failed=0$' && echo yes || echo no)"
 check "guardian repeat pass runs no cache command" "0" \

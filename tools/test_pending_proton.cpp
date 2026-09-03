@@ -6,6 +6,8 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <fstream>
+#include <iterator>
 #include <string_view>
 
 static int g_failures = 0;
@@ -23,6 +25,32 @@ static bool has(const std::set<uint32_t>& ids, uint32_t id)
 
 int main()
 {
+	CHECK(AppInfoProvision::requiresProtonMapping(
+	          /*keptDepots=*/1, {}, "windows"),
+	      "windows-only common metadata covers depots without an oslist");
+	CHECK(!AppInfoProvision::requiresProtonMapping(
+	          /*keptDepots=*/1, {}, "windows,linux"),
+	      "common metadata with native Linux support does not force Proton");
+	CHECK(!AppInfoProvision::requiresProtonMapping(
+	          /*keptDepots=*/1, {}, ""),
+	      "unknown platform metadata does not alter synthetic app behavior");
+	CHECK(!AppInfoProvision::requiresProtonMapping(
+	          /*keptDepots=*/0, {}, "windows"),
+	      "an app without usable content is not made installable by Proton alone");
+	CHECK(!AppInfoProvision::requiresProtonMapping(
+	          /*keptDepots=*/1, {"linux"}, "windows"),
+	      "depot-specific Linux metadata takes precedence over common metadata");
+	std::ifstream provisionSource("src/feats/appinfo_provision.cpp");
+	const std::string provisionText(
+		(std::istreambuf_iterator<char>(provisionSource)),
+		std::istreambuf_iterator<char>());
+	CHECK(provisionText.find("requiresProtonMapping(") != std::string::npos &&
+	          provisionText.find("keptContent") != std::string::npos,
+	      "depot pruning uses the platform fallback only for retained content");
+	CHECK(provisionText.find("cachedWireRequiresProton(wire)") !=
+	          std::string::npos,
+	      "startup migrates validated caches created before the platform fix");
+
 	{
 		const auto parsed = AppInfoProvision::parsePendingProtonText(
 		    "  123\n4294967295\n123\t\n");

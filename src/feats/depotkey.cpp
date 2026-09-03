@@ -20,7 +20,6 @@
 #include "yaml-cpp/emittermanip.h"
 #include "yaml-cpp/yaml.h"
 
-#include <cctype>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>

@@ -4,6 +4,7 @@
 
 #include "steamstub.hpp"
 
+#include "../ascii.hpp"
 #include "../config.hpp"
 #include "../globals.hpp"
 #include "../log.hpp"
@@ -484,7 +485,7 @@ void onLaunchApp(uint32_t appId)
 		// Cheap extension filter before opening the file.
 		auto ext = p.extension().string();
 		std::transform(ext.begin(), ext.end(), ext.begin(),
-			[](unsigned char c){ return std::tolower(c); });
+			[](unsigned char c){ return Ascii::toLower(c); });
 		if (ext != ".exe") continue;
 
 		const auto pathStr = p.string();

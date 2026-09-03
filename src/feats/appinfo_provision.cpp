@@ -30,6 +30,7 @@
 #include "usabledepot.hpp"
 
 #include "../config.hpp"
+#include "../ascii.hpp"
 #include "../globals.hpp"
 #include "../log.hpp"
 #include "../ownerwork.hpp"
@@ -53,7 +54,6 @@
 #include <algorithm>
 #include <chrono>
 #include <atomic>
-#include <cctype>
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
@@ -463,6 +463,7 @@ void pruneUnsupportedDepots(YAML::Node& body, uint32_t appId,
 	YAML::Node newDepots(YAML::NodeType::Map);
 	std::set<std::string> survivingOs;
 	int kept = 0;
+	int keptContent = 0;
 	int dropped = 0;
 	int totalNumeric = 0;
 	std::unordered_set<uint32_t> contentDlcAppIds;
@@ -533,6 +534,7 @@ void pruneUnsupportedDepots(YAML::Node& body, uint32_t appId,
 			continue;  // omit from newDepots
 		}
 		++kept;
+		if (!isVirtualDlc) ++keptContent;
 		newDepots[key] = YAML::Clone(depotNode);
 		if (dlcAppId != 0)
 		{
@@ -547,17 +549,19 @@ void pruneUnsupportedDepots(YAML::Node& body, uint32_t appId,
 			std::string osStr;
 			try { osStr = depotNode["config"]["oslist"].as<std::string>(); }
 			catch (...) {}
-			std::size_t i = 0;
-			while (i < osStr.size())
-			{
-				std::size_t j = osStr.find(',', i);
-				if (j == std::string::npos) j = osStr.size();
-				const auto piece = osStr.substr(i, j - i);
-				if (!piece.empty()) survivingOs.insert(piece);
-				i = j + 1;
-			}
+			const auto parsed = parsePlatformOsList(osStr);
+			survivingOs.insert(parsed.begin(), parsed.end());
 		}
 	}
+	std::string commonOsList;
+	try
+	{
+		if (body["common"] && body["common"]["oslist"])
+			commonOsList = body["common"]["oslist"].as<std::string>();
+	}
+	catch (...) {}
+	const bool protonNeeded = requiresProtonMapping(
+		static_cast<std::size_t>(keptContent), survivingOs, commonOsList);
 
 	// Keep PackagePatch's synthetic ownership list aligned with the depots
 	// above.  A DLC is unsupported only when it had content entries and none
@@ -603,7 +607,7 @@ void pruneUnsupportedDepots(YAML::Node& body, uint32_t appId,
 		// Even when we drop nothing, the app may be natively
 		// non-Linux (e.g. the user added a windows-only title).  Mark
 		// it for Proton when no surviving depot targets Linux.
-		if (!survivingOs.empty() && !survivingOs.count("linux"))
+		if (protonNeeded)
 		{
 			markProtonNeeded(appId, publication);
 		}
@@ -619,7 +623,7 @@ void pruneUnsupportedDepots(YAML::Node& body, uint32_t appId,
 	// so Steam downloads + runs the windows depot on Linux instead of
 	// skipping it as "no applicable platform".  (Covers windows-only
 	// and windows+macos apps.)
-	if (!survivingOs.empty() && !survivingOs.count("linux"))
+	if (protonNeeded)
 	{
 		markProtonNeeded(appId, publication);
 	}
@@ -776,7 +780,8 @@ bool isDlcApp(const YAML::Node& body)
 	if (!type || !type.IsScalar()) return false;
 	std::string value = type.as<std::string>("");
 	for (char& ch : value)
-		ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+		ch = static_cast<char>(
+			Ascii::toLower(static_cast<unsigned char>(ch)));
 	return value == "dlc";
 }
 
@@ -1541,6 +1546,48 @@ private:
 	const char* end_;
 };
 
+bool cachedWireRequiresProton(const std::string& wire) noexcept
+{
+	try
+	{
+		if (wire.empty()) return false;
+		CmVdfReader reader(wire.data(), wire.data() + wire.size());
+		const YAML::Node body = reader.parseAppinfo();
+		const YAML::Node depots =
+			body && body.IsMap() ? body["depots"] : YAML::Node();
+		if (!depots || !depots.IsMap()) return false;
+
+		std::size_t contentDepots = 0;
+		std::set<std::string> depotOs;
+		for (auto it = depots.begin(); it != depots.end(); ++it)
+		{
+			const std::string key = it->first.as<std::string>("");
+			if (key.empty() || std::any_of(key.begin(), key.end(),
+				[](char ch) { return ch < '0' || ch > '9'; })) continue;
+			const YAML::Node depot = it->second;
+			if (!depot || !depot.IsMap()) continue;
+			const bool virtualDlc = depot["dlcappid"] && !depot["manifests"];
+			if (virtualDlc) continue;
+			++contentDepots;
+			if (depot["config"] && depot["config"]["oslist"])
+			{
+				const auto parsed = parsePlatformOsList(
+					depot["config"]["oslist"].as<std::string>(""));
+				depotOs.insert(parsed.begin(), parsed.end());
+			}
+		}
+
+		std::string commonOsList;
+		if (body["common"] && body["common"]["oslist"])
+			commonOsList = body["common"]["oslist"].as<std::string>("");
+		return requiresProtonMapping(contentDepots, depotOs, commonOsList);
+	}
+	catch (...)
+	{
+		return false;
+	}
+}
+
 bool readCacheMetadataFile(
 	uint32_t appId,
 	std::string& storage,
@@ -2139,6 +2186,58 @@ bool readValidatedCacheBuffer(uint32_t appId, std::string& buffer)
 	if (!cacheLock.acquired()) return false;
 	std::string diag;
 	return readValidatedCacheBufferLocked(appId, buffer, diag);
+}
+
+std::unordered_set<std::uint32_t> locallyAuthoritativeApps(
+	const std::unordered_set<std::uint32_t>& managedCandidates,
+	const std::unordered_set<std::uint32_t>& activeCandidates)
+{
+	std::unordered_set<std::uint32_t> authoritative;
+	authoritative.reserve(activeCandidates.size());
+	for (const std::uint32_t appId : activeCandidates)
+	{
+		// Preserve the existing marker-only compatibility behavior even after
+		// managed-source cleanup moved the readable cache pair aside.
+		const bool managed = managedCandidates.count(appId) != 0;
+		const bool synthetic = isSynthesizedApp(appId);
+		if (cache::locallyAuthoritative({
+				.managed = managed, .active = true, .synthetic = synthetic}))
+		{
+			authoritative.insert(appId);
+			continue;
+		}
+		if (!managed) continue;
+
+		ProcessLock::FileLock cacheLock(cacheLockPath(), false);
+		if (!cacheLock.acquired()) continue;
+		std::string wire;
+		std::string validationDiag;
+		if (!readValidatedCacheBufferLocked(appId, wire, validationDiag))
+			continue;
+
+		std::string metadataText;
+		cache::CacheMetadataView metadata;
+		if (readCacheMetadataFile(appId, metadataText, metadata) &&
+			metadata.appId == appId && cache::locallyAuthoritative({
+				.managed = true,
+				.active = true,
+				.cacheValid = true,
+				.hasNormalizedMarker = metadata.hasNormalized,
+				.normalized = metadata.normalized}))
+		{
+			authoritative.insert(appId);
+		}
+	}
+	const std::vector<std::uint32_t> authoritativeBases(
+		authoritative.begin(), authoritative.end());
+	for (const std::uint32_t baseAppId : authoritativeBases)
+	{
+		if (managedCandidates.count(baseAppId) == 0) continue;
+		DlcMetadata::CacheRecord metadata;
+		if (readValidatedDlcMetadataCache(baseAppId, 0, metadata))
+			DlcMetadata::appendChildAppIds(metadata, authoritative);
+	}
+	return authoritative;
 }
 
 bool readValidatedDlcMetadataCache(
@@ -3260,23 +3359,39 @@ bool asyncProvisioningEnabled()
 void flushPendingProtonMappings()
 {
 	std::lock_guard<std::mutex> passLock(g_provisionPassMu);
+	// Reconstruct this process-local set from validated normalized caches as
+	// well as the pending sidecar. This migrates caches produced by older builds
+	// whose platform fallback missed content depots without config.oslist.
+	for (const std::uint32_t appId : g_config.managedAppIds.get())
+	{
+		std::string wire;
+		if (readValidatedCacheBuffer(appId, wire) &&
+			cachedWireRequiresProton(wire))
+		{
+			g_needProton.insert(appId);
+		}
+	}
 	const auto loaded = loadPendingProtonMappings();
 	if (!loaded.lockAcquired || loaded.status == PendingProtonFileStatus::Invalid)
 	{
 		// A lock/read/parse failure is not evidence that the file is empty.
 		// Leave both the on-disk mappings and any in-memory retry state intact.
+		if (!g_needProton.empty()) (void)injectProtonMappings();
 		return;
 	}
 	if (loaded.status == PendingProtonFileStatus::Missing)
+	{
+		if (!g_needProton.empty()) (void)injectProtonMappings();
 		return;
-	if (loaded.ids.empty())
+	}
+	g_needProton.insert(loaded.ids.begin(), loaded.ids.end());
+	if (g_needProton.empty())
 	{
 		// This also removes entries left behind by a previous config removal;
 		// the valid file was filtered against current management above.
 		(void)clearPendingProtonMappingsIfUnchanged(loaded.fileIds);
 		return;
 	}
-	g_needProton.insert(loaded.ids.begin(), loaded.ids.end());
 	if (injectProtonMappings())
 		(void)clearPendingProtonMappingsIfUnchanged(loaded.fileIds);
 }
@@ -3316,15 +3431,13 @@ std::vector<std::uint32_t> publishRuntimeAppInfo(
 		return {};
 	}
 
-	// A synthetic cache pair is the complete product-info authority for its
-	// token-locked app. Publish the full managed intersection before Steam
-	// reads the just-spliced record so the derived CAppData skip byte persists.
-	std::unordered_set<std::uint32_t> authoritative;
-	const auto synthetic = SynthMark::loadAll(getCacheDir());
+	// Publish the full managed authority set before Steam reads the just-spliced
+	// record so the derived CAppData skip byte persists. This includes complete
+	// provider-normalized entries: Steam may deny their account access token
+	// even though the anonymous CM source returned complete public metadata.
 	const auto managed = g_config.managedAppIds.get();
-	for (const std::uint32_t appId : synthetic)
-		if (managed.count(appId) != 0) authoritative.insert(appId);
-	AppInfoState::publishAuthoritative(authoritative);
+	AppInfoState::publishAuthoritative(locallyAuthoritativeApps(
+		managed, g_config.addedAppIds.get()));
 
 	const AppInfoReload::Result reloaded =
 		AppInfoState::reloadFromDisk(selected);

@@ -1,7 +1,10 @@
 #include "feats/dlc_metadata.hpp"
 
+#include <fstream>
 #include <iostream>
+#include <iterator>
 #include <string>
+#include <unordered_set>
 
 namespace
 {
@@ -121,6 +124,25 @@ int main()
 		.apps = {{2778580, 55, std::string(20, 's'), normalized}},
 		.rejectedAppIds = {3655690},
 	};
+	std::unordered_set<std::uint32_t> authoritative{1245620};
+	DlcMetadata::appendChildAppIds(record, authoritative);
+	check(authoritative ==
+		std::unordered_set<std::uint32_t>({1245620, 2778580}),
+		"validated metadata children join the local appinfo authority set");
+	DlcMetadata::CacheRecord duplicateChildren = record;
+	duplicateChildren.apps.push_back({2778580, 0, {}, {}});
+	duplicateChildren.apps.push_back({0, 0, {}, {}});
+	DlcMetadata::appendChildAppIds(duplicateChildren, authoritative);
+	check(authoritative.size() == 2,
+		"child authority ignores zero and duplicate appids");
+	std::ifstream provisionSource("src/feats/appinfo_provision.cpp");
+	const std::string provisionText(
+		(std::istreambuf_iterator<char>(provisionSource)),
+		std::istreambuf_iterator<char>());
+	check(provisionText.find(
+		"DlcMetadata::appendChildAppIds(metadata, authoritative)") !=
+			std::string::npos,
+		"validated sidecars feed child ids into the live authority set");
 	std::string encoded;
 	check(DlcMetadata::encodeCache(record, encoded),
 		"validated metadata cache serializes");

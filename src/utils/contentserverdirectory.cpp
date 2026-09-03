@@ -2,9 +2,10 @@
 
 #include "contentserverdirectory.hpp"
 
+#include "../ascii.hpp"
+
 #include "yaml-cpp/yaml.h"
 
-#include <cctype>
 #include <unordered_set>
 #include <utility>
 
@@ -34,7 +35,7 @@ bool safeAuthority(std::string_view value)
 	if (value.empty() || value.size() > 255) return false;
 	for (const unsigned char ch : value)
 	{
-		if (std::isalnum(ch) || ch == '.' || ch == '-' || ch == '_'
+		if (Ascii::isAlnum(ch) || ch == '.' || ch == '-' || ch == '_'
 		    || ch == ':' || ch == '[' || ch == ']')
 		{
 			continue;

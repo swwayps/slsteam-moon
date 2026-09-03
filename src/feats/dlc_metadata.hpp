@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 namespace DlcMetadata
@@ -28,6 +29,14 @@ struct CacheRecord
 
 	bool operator==(const CacheRecord&) const = default;
 };
+
+inline void appendChildAppIds(
+	const CacheRecord& record,
+	std::unordered_set<std::uint32_t>& appIds)
+{
+	for (const auto& app : record.apps)
+		if (app.appid != 0) appIds.insert(app.appid);
+}
 
 // Runtime readers must match the exact managed-app generation.  A process
 // starts at generation zero, so only that state may reuse a sidecar written

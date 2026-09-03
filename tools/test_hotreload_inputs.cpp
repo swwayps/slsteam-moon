@@ -3,7 +3,9 @@
 #include "../src/feats/hotreload_publish_policy.hpp"
 
 #include <cstdint>
+#include <fstream>
 #include <iostream>
+#include <iterator>
 #include <string_view>
 #include <vector>
 
@@ -53,6 +55,26 @@ int main()
 	check(HotReloadPublishPolicy::readyBaseIds(
 		{420530, 582010}, {582010}) == std::vector<std::uint32_t>({582010}),
 		"only prepared additions become generation-visible ownership work");
+	check(HotReloadPublishPolicy::guardedAppInfoIds(
+			/*managed=*/{100}, /*planner=*/{100, 200},
+			/*authoritative=*/{300}) ==
+			std::unordered_set<std::uint32_t>({100, 200, 300}),
+		"marker-only compatibility authority enters the appinfo guard scope");
+	check(HotReloadPublishPolicy::guardedAppInfoIds(
+			/*managed=*/{100}, /*planner=*/{100}, /*authoritative=*/{}) ==
+			std::unordered_set<std::uint32_t>({100}),
+		"removed compatibility authority cannot survive the next scope publication");
+	check(HotReloadPublishPolicy::nonAuthoritativeAppInfoRequestIds(
+			{300, 100, 200, 200, 0}, {200, 300}) ==
+			std::vector<std::uint32_t>({100}),
+		"locally loaded appinfo is not immediately requested back from Steam");
+	std::ifstream hotReloadSource("src/feats/hotreload.cpp");
+	const std::string hotReloadText(
+		(std::istreambuf_iterator<char>(hotReloadSource)),
+		std::istreambuf_iterator<char>());
+	check(hotReloadText.find("nonAuthoritativeAppInfoRequestIds(") !=
+		std::string::npos,
+		"hot reload filters local authority before package refresh requests");
 
 	const auto empty = HotReloadInputs::build(8, {});
 	check(empty.valid && empty.snapshot.metadataComplete &&

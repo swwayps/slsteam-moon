@@ -3,12 +3,15 @@
 #include "audit_log.hpp"
 #include "audit_policy.hpp"
 
+#include <algorithm>
 #include <cstdio>
+#include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <link.h>
 #include <string>
 #include <unistd.h>
+#include <vector>
 
 namespace
 {
@@ -98,6 +101,43 @@ int main()
 	check(policyReady != std::string::npos && setupLock != std::string::npos
 	          && policyReady < setupLock,
 	      "narrow audit policy is published before a secondary namespace can skip setup");
+
+	// The audit module can run on Steam-owned threads whose locale TLS does
+	// not contain the audit namespace's glibc ctype table. Keep byte parsing
+	// on the locale-free Ascii helpers throughout src/, not only in the parser
+	// that first exposed the crash.
+	const std::vector<std::string> forbiddenCtype = {
+		"#include<cctype>", "#include<ctype.h>",
+		"std::isalnum(", "std::isalpha(", "std::isdigit(",
+		"std::isspace(", "std::isxdigit(", "std::tolower(",
+		"std::toupper(",
+	};
+	bool auditSourcesAreLocaleFree = true;
+	for (const auto& entry : std::filesystem::recursive_directory_iterator("src"))
+	{
+		if (!entry.is_regular_file()) continue;
+		const auto extension = entry.path().extension();
+		if (extension != ".cpp" && extension != ".hpp" && extension != ".h")
+			continue;
+		std::ifstream source(entry.path());
+		std::string text(
+			(std::istreambuf_iterator<char>(source)),
+			std::istreambuf_iterator<char>());
+		text.erase(std::remove_if(text.begin(), text.end(), [](char value)
+		{
+			return value == ' ' || value == '\t' || value == '\n' ||
+				value == '\v' || value == '\f' || value == '\r';
+		}), text.end());
+		for (const auto& token : forbiddenCtype)
+		{
+			if (text.find(token) == std::string::npos) continue;
+			std::fprintf(stderr, "unsafe audit ctype dependency: %s (%s)\n",
+				entry.path().c_str(), token.c_str());
+			auditSourcesAreLocaleFree = false;
+		}
+	}
+	check(auditSourcesAreLocaleFree,
+	      "audit sources avoid locale-dependent libc ctype calls");
 
 	char logPath[] = "/tmp/slssteam-audit-log-XXXXXX";
 	int logFd = mkstemp(logPath);

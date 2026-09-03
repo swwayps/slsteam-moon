@@ -343,6 +343,15 @@ bool memoizePublishedCachePairLocked(uint32_t appId);
 // is the single safe entry point for direct buffer consumers.
 bool readValidatedCacheBuffer(uint32_t appId, std::string& buffer);
 
+// Return active appinfo that must remain authoritative over Steam's token-
+// gated refresh. Synthetic marker-only compatibility state is retained even
+// outside the managed provider scope; normal pairs must be managed, pass full
+// cache validation and carry provider-normalized (or legacy ambiguous)
+// provenance. Explicit raw-PICS pairs remain refreshable.
+std::unordered_set<std::uint32_t> locallyAuthoritativeApps(
+	const std::unordered_set<std::uint32_t>& managedCandidates,
+	const std::unordered_set<std::uint32_t>& activeCandidates);
+
 // Allow a newly published pair to become readable after a prior managed-app
 // removal invalidated the old cache in this process.
 void clearCacheReadInvalidation(uint32_t appId);

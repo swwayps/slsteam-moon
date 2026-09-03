@@ -881,7 +881,9 @@ fi
 exec "$STEAM_BIN" "$@"
 EOF
 
-	chmod +x "$SLSDIR/path/steam"
+	# The root-owned launcher shim refuses group/other-writable wrappers. Set the
+	# complete mode explicitly so a user umask such as 0002 cannot produce 0775.
+	chmod 0755 "$SLSDIR/path/steam"
 
 	log_success "Steam wrapper created at $SLSDIR/path/steam"
 	echo ""

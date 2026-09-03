@@ -12,6 +12,7 @@
 #include "../globals.hpp"
 
 #include "appinfo_provision.hpp"
+#include "appinfostate.hpp"
 #include "clouddecision.hpp"
 #include "fakeappid.hpp"
 #include "synthmark.hpp"
@@ -192,7 +193,7 @@ namespace
 			                  APPSTATE_FULLY_INSTALLED) != 0;
 		}
 		return SynthMark::installStateAllowsStrip(
-		    AppInfoProvision::isSynthesizedApp(appId),
+		    AppInfoState::isAuthoritative(appId),
 		    g_config.isAddedAppId(appId), appManagerResolved, fullyInstalled);
 	}
 
@@ -527,15 +528,11 @@ void Apps::sendPICSInfoRequest(CMsgClientPICSProductInfoRequest* msg)
 {
 	const auto tokens = g_config.appTokens.get();
 
-	// Strip token-locked synthetic AddedApps from Steam's outgoing
-	// product-info request.  These apps' access token is DENIED, so Steam's
-	// refresh response is an EMPTY buffer; letting it through clobbers the
-	// depots + installdir we synthesized into appinfo at startup, dropping
-	// the install dialog to 0 B with "Invalid install path".  By removing
-	// them from the request, Steam never re-fetches them and keeps the
-	// startup splice. Protection is gated off after full installation. It is
-	// deliberately not time/count bounded: the AppInfoState skip flag completes
-	// Steam's updater state, so falling through later only permits clobbering.
+	// Strip locally authoritative AddedApps from Steam's outgoing product-info
+	// request. Their account access token may be denied even when our anonymous
+	// CM fetch returned complete metadata; the resulting empty refresh clobbers
+	// the startup splice. Protection is gated off after full installation and
+	// deliberately has no time/count limit.
 	{
 		std::vector<uint32_t> requested;
 		requested.reserve(static_cast<size_t>(msg->apps_size()));
@@ -547,7 +544,7 @@ void Apps::sendPICSInfoRequest(CMsgClientPICSProductInfoRequest* msg)
 
 		for (int idx : strip) // descending, safe for in-place delete
 		{
-			g_pLog->debug("PICS-request: stripping token-locked synthetic app %u\n",
+			g_pLog->debug("PICS-request: stripping locally authoritative app %u\n",
 			              msg->apps(idx).appid());
 			msg->mutable_apps()->DeleteSubrange(idx, 1);
 		}

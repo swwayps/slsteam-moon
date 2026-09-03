@@ -85,9 +85,9 @@ int main()
 	      PICS::rawCacheWorkerShouldContinueAfterDeferral(true),
 	      "response cache queue: a concurrent arrival keeps the worker draining");
 
-	// Runtime publication is a recovery path only for synthetic rows whose
-	// delivery to Steam was suppressed. Normal product-info rows retain the
-	// default disk-only refresh behavior.
+	// Runtime publication is a recovery path only for locally authoritative
+	// rows whose delivery to Steam was suppressed. Ordinary product-info rows
+	// retain the default disk-only refresh behavior.
 	{
 		const std::vector<AppInfoProvision::RefreshRequest> requests{
 			{420530, 8, 3, AppInfoProvision::reasonMask(
@@ -98,7 +98,7 @@ int main()
 		const auto tagged = PICS::markRuntimePublicationForSuppressedApps(
 			requests, std::unordered_set<uint32_t>{4496490});
 		CHECK(!tagged[0].publishRuntime && tagged[1].publishRuntime,
-		      "runtime publication: only suppressed synthetic response rows are tagged");
+		      "runtime publication: only suppressed authoritative response rows are tagged");
 		const auto managedSynthetic = PICS::markRuntimePublicationForSuppressedApps(
 			requests, std::unordered_set<uint32_t>{123});
 		CHECK(!managedSynthetic[0].publishRuntime &&

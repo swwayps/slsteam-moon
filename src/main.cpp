@@ -1,5 +1,6 @@
 #include <dlfcn.h>
 #include "afftrace.hpp"
+#include "ascii.hpp"
 #include "sdk/steam.hpp"
 #include "api.hpp"
 #include "runtimedir.hpp"
@@ -905,7 +906,8 @@ namespace
 		for (; argv[n]; ++n)
 		{
 			const char* p = std::strstr(argv[n], CefPort::kSwitchPrefix);
-			if (p && std::isdigit(static_cast<unsigned char>(p[std::strlen(CefPort::kSwitchPrefix)])))
+			if (p && Ascii::isDigit(static_cast<unsigned char>(
+				p[std::strlen(CefPort::kSwitchPrefix)])))
 			{
 				any = true;
 			}

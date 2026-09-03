@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../ascii.hpp"
+
 // Pure, side-effect-light helpers for the CEF debug-port rewrite shim.
 //
 // Steam's client launches the CEF webhelper with a HARD-CODED
@@ -21,7 +23,6 @@
 // 8080 (Decky's injector is hard-coded to it). main.cpp::setup() then leaves
 // the port alone and Lumen falls back to 8080 too; both share the endpoint.
 
-#include <cctype>
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
@@ -61,7 +62,8 @@ namespace CefPort
 				i += prefix.size();
 
 				size_t start = i;
-				while (i < arg.size() && std::isdigit(static_cast<unsigned char>(arg[i])))
+				while (i < arg.size() && Ascii::isDigit(
+					static_cast<unsigned char>(arg[i])))
 				{
 					++i;
 				}

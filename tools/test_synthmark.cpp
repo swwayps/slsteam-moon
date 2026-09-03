@@ -133,15 +133,16 @@ int main()
 	// early-boot stripping behavior, while a fully installed app is safe to
 	// refresh and must not be stripped.
 	CHECK(!SynthMark::installStateAllowsStrip(false, true, false, false),
-	      "non-synthetic app is never strip-eligible");
+	      "app without local authority is never strip-eligible");
 	CHECK(!SynthMark::installStateAllowsStrip(true, false, false, false),
-	      "unmanaged synthetic app is never strip-eligible");
-	CHECK(SynthMark::installStateAllowsStrip(true, true, false, true),
-	      "unresolved app manager keeps stripping enabled");
+	      "unmanaged local authority is never strip-eligible");
+	CHECK(SynthMark::installStateAllowsStrip(
+	          SynthMark::isMarked(dir, 250900), true, false, true),
+	      "unresolved app manager keeps synthetic stripping enabled");
 	CHECK(SynthMark::installStateAllowsStrip(true, true, true, false),
-	      "not-fully-installed synthetic app remains strip-eligible");
+	      "not-fully-installed local authority remains strip-eligible");
 	CHECK(!SynthMark::installStateAllowsStrip(true, true, true, true),
-	      "fully-installed synthetic app is not strip-eligible");
+	      "fully-installed local authority is not strip-eligible");
 
 	// Runtime protection must never expire into a destructive empty response.
 	// The AppInfoState skip bit prevents the updater retry loop; this outgoing
@@ -154,6 +155,24 @@ int main()
 	      "runtime synthetic protection has no expiring strip budget");
 	CHECK(appsText.find("strip cap tripped") == std::string::npos,
 	      "runtime can never fall through to clobber after a cap event");
+	CHECK(appsText.find("AppInfoState::isAuthoritative(appId)") !=
+	          std::string::npos,
+	      "outgoing PICS requests protect every locally authoritative appinfo");
+
+	std::ifstream picsSource("src/feats/pics.cpp");
+	const std::string picsText(
+		(std::istreambuf_iterator<char>(picsSource)),
+		std::istreambuf_iterator<char>());
+	CHECK(picsText.find("AppInfoState::isAuthoritative(appId)") !=
+	          std::string::npos,
+	      "PICS changelists protect every locally authoritative appinfo");
+
+	std::ifstream hotReloadSource("src/feats/hotreload.cpp");
+	const std::string hotReloadText(
+		(std::istreambuf_iterator<char>(hotReloadSource)),
+		std::istreambuf_iterator<char>());
+	CHECK(hotReloadText.find("locallyAuthoritativeApps") != std::string::npos,
+	      "hot reload publishes normalized caches as locally authoritative");
 
 	// --- app/depot relation tracking ---------------------------------------
 

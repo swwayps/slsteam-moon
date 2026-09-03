@@ -31,9 +31,9 @@
 
 #pragma once
 
+#include "../ascii.hpp"
 #include "yaml-cpp/yaml.h"
 
-#include <cctype>
 #include <cstdint>
 #include <string>
 #include <utility>
@@ -105,7 +105,9 @@ namespace ManifestSynth
 	{
 		auto lower = [](std::string s)
 		{
-			for (auto& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+			for (auto& c : s)
+				c = static_cast<char>(
+					Ascii::toLower(static_cast<unsigned char>(c)));
 			return s;
 		};
 		auto ends = [](const std::string& s, const std::string& suf)
@@ -360,7 +362,9 @@ namespace ManifestSynth
 	{
 		auto lower = [](std::string s)
 		{
-			for (auto& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+			for (auto& c : s)
+				c = static_cast<char>(
+					Ascii::toLower(static_cast<unsigned char>(c)));
 			return s;
 		};
 		auto ends = [&](const std::string& s, const std::string& suf)

@@ -4,12 +4,13 @@
 
 #include "dlcids.hpp"
 
+#include "../ascii.hpp"
+
 #include "yaml-cpp/yaml.h"
 #include "yaml-cpp/emitter.h"
 
 #include "base64/base64.hpp"
 
-#include <cctype>
 #include <charconv>
 #include <string>
 
@@ -90,7 +91,7 @@ private:
 		while (current_ < end_)
 		{
 			const unsigned char value = static_cast<unsigned char>(*current_);
-			if (std::isspace(value)) { ++current_; continue; }
+			if (Ascii::isSpace(value)) { ++current_; continue; }
 			if (*current_ == '/' && current_ + 1 < end_ && current_[1] == '/')
 			{
 				while (current_ < end_ && *current_ != '\n') ++current_;
@@ -129,7 +130,7 @@ private:
 		while (current_ < end_)
 		{
 			const unsigned char value = static_cast<unsigned char>(*current_);
-			if (std::isspace(value) || *current_ == '{' || *current_ == '}' ||
+			if (Ascii::isSpace(value) || *current_ == '{' || *current_ == '}' ||
 				*current_ == '"') break;
 			output.push_back(*current_++);
 		}
@@ -197,7 +198,7 @@ std::string lower(std::string value)
 {
 	for (char& character : value)
 		character = static_cast<char>(
-			std::tolower(static_cast<unsigned char>(character)));
+			Ascii::toLower(static_cast<unsigned char>(character)));
 	return value;
 }
 } // namespace
@@ -220,7 +221,7 @@ bool normalize(
 		{
 			const unsigned char trailing =
 				static_cast<unsigned char>(cmWire[wireSize - 1]);
-			if (trailing != 0 && !std::isspace(trailing)) break;
+			if (trailing != 0 && !Ascii::isSpace(trailing)) break;
 			--wireSize;
 		}
 		if (wireSize == 0) return false;

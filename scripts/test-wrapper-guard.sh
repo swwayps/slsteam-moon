@@ -52,7 +52,7 @@ mkdir -p "$SLSDIR"
 printf 'so'  > "$SLSDIR/SLSsteam.so"
 printf 'inj' > "$SLSDIR/library-inject.so"
 
-( log_info() { :; }; log_success() { :; }; log_warn() { :; }; eval "$FN"; SLSDIR="$SLSDIR" create_steam_wrapper )
+( umask 0002; log_info() { :; }; log_success() { :; }; log_warn() { :; }; eval "$FN"; SLSDIR="$SLSDIR" create_steam_wrapper )
 WRAP="$SLSDIR/path/steam"
 [ -x "$WRAP" ] || { echo "wrapper was not generated at $WRAP" >&2; exit 1; }
 
@@ -111,6 +111,10 @@ reset_state() {
 }
 
 echo "== test-wrapper-guard =="
+
+[ "$(stat -c '%a' "$WRAP")" = 755 ] \
+  && ok "wrapper mode is trusted even under a group-writable umask" \
+  || bad "wrapper mode follows caller umask: $(stat -c '%a' "$WRAP")"
 
 # An old desktop entry can invoke the wrapper with our audit objects already in
 # LD_AUDIT.  The wrapper must canonicalize its own entries to one pair and keep

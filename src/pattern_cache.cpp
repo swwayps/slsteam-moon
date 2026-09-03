@@ -1,11 +1,12 @@
 #include "pattern_cache.hpp"
 
+#include "ascii.hpp"
+
 #include <algorithm>
 #include <array>
 #include <atomic>
 #include <charconv>
 #include <cerrno>
-#include <cctype>
 #include <fcntl.h>
 #include <limits>
 #include <system_error>
@@ -248,7 +249,7 @@ namespace
 		{
 			const unsigned char left = static_cast<unsigned char>(value[index]);
 			const unsigned char right = static_cast<unsigned char>(token[index]);
-			if (std::tolower(left) != std::tolower(right))
+			if (Ascii::toLower(left) != Ascii::toLower(right))
 				return false;
 		}
 		return true;
