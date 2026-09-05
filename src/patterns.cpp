@@ -542,7 +542,7 @@ namespace
 Pattern_t::Pattern_t(const char* name, const char* pattern,
 	MemHlp::SigFollowMode followMode, lm_module_t* module, const char* symbol)
 	:
-	Pattern_t(name, pattern, followMode, std::vector<uint8_t>(), module, symbol)
+	Pattern_t(name, pattern, followMode, std::vector<int16_t>(), module, symbol)
 {
 }
 
@@ -554,7 +554,21 @@ Pattern_t::Pattern_t(const char* name, const char* pattern,
 	symbol(symbol != nullptr ? symbol : std::string("Patterns::") + name),
 	pattern(pattern),
 	followMode(followMode),
-	prologue(prologue),
+	prologue(prologue.begin(), prologue.end()),
+	module(module)
+{
+	Patterns::patterns().emplace_back(this);
+}
+
+Pattern_t::Pattern_t(const char* name, const char* pattern,
+	MemHlp::SigFollowMode followMode, std::vector<int16_t> prologue,
+	lm_module_t* module, const char* symbol)
+	:
+	name(name),
+	symbol(symbol != nullptr ? symbol : std::string("Patterns::") + name),
+	pattern(pattern),
+	followMode(followMode),
+	prologue(std::move(prologue)),
 	module(module)
 {
 	Patterns::patterns().emplace_back(this);

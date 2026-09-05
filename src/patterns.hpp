@@ -22,7 +22,7 @@ public:
 	// id drift.  Every other pattern is left untouched.
 	std::string pattern;
 	const MemHlp::SigFollowMode followMode;
-	std::vector<uint8_t> prologue;
+	std::vector<int16_t> prologue;
 
 	// When true, a failure to resolve this pattern does NOT make
 	// Patterns::init() fail (and therefore does not abort the whole
@@ -42,6 +42,9 @@ public:
 	          const char* symbol = nullptr);
 	Pattern_t(const char* name, const char* pattern,
 	          MemHlp::SigFollowMode followMode, std::vector<uint8_t> prologue,
+	          lm_module_t* module = nullptr, const char* symbol = nullptr);
+	Pattern_t(const char* name, const char* pattern,
+	          MemHlp::SigFollowMode followMode, std::vector<int16_t> prologue,
 	          lm_module_t* module = nullptr, const char* symbol = nullptr);
 
 	bool find();

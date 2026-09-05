@@ -20,6 +20,12 @@ namespace
 
 int main()
 {
+	check(MemHlp::prologueByteMatches(-1, 0x42),
+	      "wildcard prologue byte matches any value");
+	check(MemHlp::prologueByteMatches(0x42, 0x42),
+	      "literal prologue byte matches itself");
+	check(!MemHlp::prologueByteMatches(0x42, 0x43),
+	      "literal prologue byte rejects another value");
 	check(MemHlp::prologueWindowWithin(0x1100, 0x1000, 0, 4),
 	      "window at address remains inside lower bound");
 	check(MemHlp::prologueWindowWithin(0x1100, 0x1000, 0xfd, 4),

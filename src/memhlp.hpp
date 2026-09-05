@@ -82,6 +82,10 @@ namespace MemHlp
 			return moduleBase;
 		return segmentBase;
 	}
+	inline bool prologueByteMatches(int16_t expected, lm_byte_t actual) noexcept
+	{
+		return expected == -1 || expected == actual;
+	}
 	inline bool formatPICThunkInstruction(char* output, std::size_t outputSize,
 	                                      const char* mnemonic,
 	                                      const char* operand,
@@ -165,16 +169,16 @@ namespace MemHlp
 		const char* signature,
 		lm_module_t module,
 		SigFollowMode mode,
-		void* extraData,
+		const int16_t* extraData,
 		size_t extraDataSize
 	);
-	lm_address_t searchSignature(const char* name, const char* signature, lm_module_t module, SigFollowMode mode, void* extraData, size_t extraDataSize);
+	lm_address_t searchSignature(const char* name, const char* signature, lm_module_t module, SigFollowMode mode, const int16_t* extraData, size_t extraDataSize);
 	lm_address_t searchSignature(const char* name, const char* signature, lm_module_t module, SigFollowMode mode);
 	lm_address_t searchSignature(const char* name, const char* signature, lm_module_t module);
 
 	lm_address_t getJmpTarget(lm_address_t address);
 	lm_address_t findPrologue(lm_address_t address, lm_address_t lowerBound,
-	                          const lm_byte_t* prologueBytes, lm_size_t prologueSize);
+	                          const int16_t* prologueBytes, lm_size_t prologueSize);
 
 	//TODO: Create hooking wrapper that calls this automatically
 	bool fixPICThunkCall(const char* name, lm_address_t fn, lm_address_t tramp);

@@ -109,7 +109,7 @@ MemHlp::SignatureSearchResult MemHlp::searchSignatureDetailed(
 	const char* signature,
 	lm_module_t module,
 	SigFollowMode mode,
-	void* extraData,
+	const int16_t* extraData,
 	size_t extraDataSize
 )
 {
@@ -196,7 +196,7 @@ MemHlp::SignatureSearchResult MemHlp::searchSignatureDetailed(
 					result.target = MemHlp::findPrologue(
 						result.match,
 						MemHlp::prologueLowerBound(module.base, matchSegment.base),
-						static_cast<lm_byte_t*>(extraData), extraDataSize
+						extraData, extraDataSize
 					);
 				}
 				break;
@@ -216,7 +216,7 @@ lm_address_t MemHlp::searchSignature(
 	const char* signature,
 	lm_module_t module,
 	SigFollowMode mode,
-	void* extraData,
+	const int16_t* extraData,
 	size_t extraDataSize
 )
 {
@@ -257,7 +257,7 @@ lm_address_t MemHlp::getJmpTarget(lm_address_t address)
 }
 
 lm_address_t MemHlp::findPrologue(lm_address_t address, lm_address_t lowerBound,
-                                   const lm_byte_t* prologueBytes, lm_size_t prologueSize)
+                                   const int16_t* prologueBytes, lm_size_t prologueSize)
 {
 	constexpr unsigned int scanSize = 0x10000;
 
@@ -269,7 +269,8 @@ lm_address_t MemHlp::findPrologue(lm_address_t address, lm_address_t lowerBound,
 		bool found = true;
 		for(unsigned int j = 0u; j < prologueSize; j++)
 		{
-			if (*reinterpret_cast<lm_byte_t*>(address - i - j) != prologueBytes[j])
+			if (!prologueByteMatches(
+				prologueBytes[j], *reinterpret_cast<lm_byte_t*>(address - i - j)))
 			{
 				found = false;
 				break;
