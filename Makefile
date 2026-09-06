@@ -95,7 +95,7 @@ test-fakeappid-presence: obj/sdk/protobufs/encrypted_app_ticket.pb.o \
                           obj/sdk/protobufs/steammessages_clientserver_2.pb.o
 	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem include -I src \
 		-ffunction-sections -fdata-sections tools/test_fakeappid_presence.cpp \
-		src/feats/fakeappid.cpp $^ lib/libprotobuf-lite.a \
+		src/feats/fakeappid.cpp src/sdk/CNetPacket.cpp $^ lib/libprotobuf-lite.a \
 		-Wl,--gc-sections -pthread -o /tmp/test_fakeappid_presence
 	/tmp/test_fakeappid_presence
 
