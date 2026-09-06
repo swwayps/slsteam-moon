@@ -358,31 +358,43 @@ bool hkBBuildAndAsyncSendFrame(void* pConnection,
 	if (eOpCode == k_eWebSocketOpCode_Binary)
 	{
 		CNetPacket packet{};
-		packet.body = reinterpret_cast<CNetPacketBody*>(pubData);
-		packet.originalBody = packet.body;
-		packet.size = cubData;
-		if (packet.isValid() && packet.isProtoBuf())
+		packet.body = reinterpret_cast<CNetPacketBody*>(Steam::Plat_Alloc(cubData));
+		if (packet.body)
 		{
-			Apps::sendMsg(&packet);
-			FakeAppIds::sendMsg(&packet);
+			std::memcpy(packet.body, pubData, cubData);
+			packet.size = cubData;
+			if (packet.isValid() && packet.isProtoBuf())
+			{
+				Apps::sendMsg(&packet);
+				FakeAppIds::sendMsg(&packet);
+			}
 			pubData = reinterpret_cast<uint8_t*>(packet.body);
 			cubData = packet.size;
-		}
 
-		uint32_t eMsg = 0;
-		const uint8_t* pHdr  = nullptr;
-		const uint8_t* pBody = nullptr;
-		uint32_t cbHdr = 0, cbBody = 0;
-		if (decodeFrame(pubData, cubData, eMsg, pHdr, cbHdr, pBody, cbBody))
-		{
-			std::lock_guard<std::mutex> lk(g_TxLock);
-			g_PatchTx = false;
-			dispatchSend(eMsg, pBody, cbBody, pHdr, cbHdr);
-			if (g_PatchTx)
+			uint32_t eMsg = 0;
+			const uint8_t* pHdr  = nullptr;
+			const uint8_t* pBody = nullptr;
+			uint32_t cbHdr = 0, cbBody = 0;
+			if (decodeFrame(pubData, cubData, eMsg, pHdr, cbHdr, pBody, cbBody))
 			{
-				return Hooks::CWebSocketConnection_BBuildAndAsyncSendFrame.tramp.fn(
-				    pConnection, eOpCode, g_TxFrame, g_TxFrameLen);
+				std::lock_guard<std::mutex> lk(g_TxLock);
+				g_PatchTx = false;
+				dispatchSend(eMsg, pBody, cbBody, pHdr, cbHdr);
+				if (g_PatchTx)
+				{
+					const bool success =
+						Hooks::CWebSocketConnection_BBuildAndAsyncSendFrame.tramp.fn(
+							pConnection, eOpCode, g_TxFrame, g_TxFrameLen);
+					packet.free();
+					return success;
+				}
 			}
+
+			const bool success =
+				Hooks::CWebSocketConnection_BBuildAndAsyncSendFrame.tramp.fn(
+					pConnection, eOpCode, pubData, cubData);
+			packet.free();
+			return success;
 		}
 	}
 	return Hooks::CWebSocketConnection_BBuildAndAsyncSendFrame.tramp.fn(

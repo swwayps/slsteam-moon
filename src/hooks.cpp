@@ -1519,7 +1519,6 @@ void Hooks::place()
 	}
 	CProtoBufMsgBase_Send.place();
 
-	CWebSocketConnection_BBuildAndAsyncSendFrame.place();
 	CRemoteClientManager_RecvPkt.place();
 	CJobMgr_BRouteMsgToJob.place();
 	CDepotDownloadMgr_BYldRequestDepotManifest.place();
