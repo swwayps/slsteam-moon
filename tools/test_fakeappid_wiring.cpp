@@ -1,3 +1,6 @@
+#include "../src/sdk/CUtl.hpp"
+#include "../src/sdk/steam.hpp"
+
 #include <cstdio>
 #include <fstream>
 #include <iterator>
@@ -40,9 +43,13 @@ std::size_t occurrences(const std::string& text, const std::string& needle)
 
 int main()
 {
+	static_assert(sizeof(EIPCExitCode) == 1);
+
 	const std::string hooks = read("src/hooks.cpp");
 	const std::string engine = read("src/sdk/CSteamEngine.cpp");
 	const std::string fakeAppIds = read("src/feats/fakeappid.cpp");
+	const std::string patterns = read("src/patterns.cpp");
+	const std::string process = read("src/process.hpp");
 
 	expect(hooks.find("createAndPlaceSteamIdHook") == std::string::npos,
 	       "legacy naked SteamID hook is removed");
@@ -50,6 +57,8 @@ int main()
 	       "legacy executable SteamID trampoline is removed");
 	expect(hooks.find("0xD6FC3200") != std::string::npos,
 	       "SteamID result handling lives in ProcessIPCFrame");
+	expect(patterns.find("IClientUser::GetSteamID") == std::string::npos,
+	       "the removed SteamID hook has no stale locator");
 	expect(occurrences(
 		hooks, "CWebSocketConnection_BBuildAndAsyncSendFrame.remove();") == 1,
 	       "WebSocket detour has one teardown path");
@@ -68,6 +77,17 @@ int main()
 	       "runIPCFrame resolves IClientUtils only for extended logging");
 	expect(run.find("if (!utils)") == std::string::npos,
 	       "logging lookup cannot suppress the AppID transition");
+	expect(process.find("cmdLine") == std::string::npos,
+	       "unused command-line state is not retained");
+
+	CUtlBuffer buffer{};
+	expect(!buffer.hasBytes(1), "a null IPC buffer has no readable bytes");
+	unsigned char bytes[10]{};
+	buffer.mem.base = bytes;
+	buffer.put = 9;
+	expect(!buffer.hasBytes(10), "a short IPC buffer is rejected");
+	buffer.put = 10;
+	expect(buffer.hasBytes(10), "a complete IPC buffer is readable");
 
 	return failures == 0 ? 0 : 1;
 }

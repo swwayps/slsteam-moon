@@ -58,6 +58,7 @@
 #include <span>
 #include <strings.h>
 #include <unistd.h>
+#include <utility>
 #include <vector>
 
 
@@ -355,7 +356,14 @@ static uint32_t hkSteamEngine_ProcessIPCFrame(
 		g_pSteamEngine = reinterpret_cast<CSteamEngine*>(pSteamEngine);
 	}
 
-	const EIPCCmd cmd = *reinterpret_cast<EIPCCmd*>(pBufIn->mem.base);
+	if (!pBufIn || !pBufIn->hasBytes(sizeof(EIPCCmd)))
+	{
+		return Hooks::CSteamEngine_ProcessIPCFrame.tramp.fn(
+			pSteamEngine, hPipe, pBufIn, pBufOut);
+	}
+
+	EIPCCmd cmd{};
+	std::memcpy(&cmd, pBufIn->mem.base, sizeof(cmd));
 	const bool log = g_config.extendedLogging.get();
 	if (log)
 	{
@@ -366,12 +374,12 @@ static uint32_t hkSteamEngine_ProcessIPCFrame(
 	}
 
 	uint32_t ret;
-	if (cmd == EIPCCmd::RunInterface)
+	if (cmd == EIPCCmd::RunInterface && pBufIn->hasBytes(10))
 	{
-		const EIPCInterface interface =
-			*reinterpret_cast<EIPCInterface*>(pBufIn->mem.base + 1);
-		const uint32_t function =
-			*reinterpret_cast<uint32_t*>(pBufIn->mem.base + 6);
+		EIPCInterface interface{};
+		uint32_t function = 0;
+		std::memcpy(&interface, pBufIn->mem.base + 1, sizeof(interface));
+		std::memcpy(&function, pBufIn->mem.base + 6, sizeof(function));
 		if (log)
 		{
 			const auto utils = g_pSteamEngine->getUtils();
@@ -387,21 +395,25 @@ static uint32_t hkSteamEngine_ProcessIPCFrame(
 			pSteamEngine, hPipe, pBufIn, pBufOut);
 		FakeAppIds::runIPCFrame(true, interface);
 
-		const EIPCExitCode exitCode =
-			*reinterpret_cast<EIPCExitCode*>(pBufOut->mem.base);
-		if (interface == EIPCInterface::User &&
-			exitCode == EIPCExitCode::Success && function == 0xD6FC3200)
+		if (pBufOut && pBufOut->hasBytes(1 + sizeof(CSteamId)) &&
+			interface == EIPCInterface::User && function == 0xD6FC3200)
 		{
-			CSteamId id{};
-			std::memcpy(&id, pBufOut->mem.base + 1, sizeof(id));
-			if (!g_currentSteamId.steamId && id.steamId)
+			EIPCExitCode exitCode{};
+			std::memcpy(&exitCode, pBufOut->mem.base, sizeof(exitCode));
+			if (exitCode == EIPCExitCode::Success)
 			{
-				g_currentSteamId = id;
-				StatsPolicy::setAccount(id.steamId);
-			}
+				CSteamId id{};
+				std::memcpy(&id, pBufOut->mem.base + 1, sizeof(id));
+				if (!g_currentSteamId.steamId && id.steamId)
+				{
+					g_currentSteamId = id;
+					StatsPolicy::setAccount(id.steamId);
+				}
 
-			const CSteamId newId = hkClientUser_GetSteamId(g_currentSteamId);
-			std::memcpy(pBufOut->mem.base + 1, &newId, sizeof(newId));
+				const CSteamId newId =
+					hkClientUser_GetSteamId(g_currentSteamId);
+				std::memcpy(pBufOut->mem.base + 1, &newId, sizeof(newId));
+			}
 		}
 	}
 	else
@@ -415,8 +427,20 @@ static uint32_t hkSteamEngine_ProcessIPCFrame(
 		const auto serverPipe = g_pSteamEngine->getServerPipe(hPipe);
 		if (serverPipe)
 		{
-			auto& proc = g_processMap[serverPipe->pipe];
-			proc.init(serverPipe->pid, serverPipe->pipe);
+			Process_t process{};
+			if (process.init(serverPipe->pid, serverPipe->pipe))
+			{
+				g_processMap.insert_or_assign(
+					serverPipe->pipe, std::move(process));
+			}
+			else
+			{
+				g_processMap.erase(serverPipe->pipe);
+			}
+		}
+		else
+		{
+			g_processMap.erase(hPipe);
 		}
 	}
 
@@ -1536,8 +1560,6 @@ void Hooks::remove()
 	CUser_PostCallbackToAppId.remove();
 
 	IClientFriends_GetFriendGamePlayed.remove();
-
-	CWebSocketConnection_BBuildAndAsyncSendFrame.remove();
 
 	IClientAppManager_BCanRemotePlayTogether.remove();
 

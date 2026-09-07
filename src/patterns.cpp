@@ -1295,14 +1295,6 @@ namespace Patterns
 			SigFollowMode::PrologueUpwards,
 			std::vector<uint8_t> { 0x53, 0x56, 0x57, 0x55 }
 		};
-		Pattern_t GetSteamId
-		{
-			"IClientUser::GetSteamID",
-			"E8 ? ? ? ? 89 D8 83 C4 0C 83 C4 08 5B C2 04 00 ? 83 EC 08 50 53 FF D2 89 D8 83 C4 0C 83 C4 08 5B C2 04 00",
-			SigFollowMode::Relative,
-			nullptr,
-			"Patterns::IClientUser::GetSteamId"
-		};
 		Pattern_t IsUserSubscribedAppInTicket
 		{
 			"IClientUser::IsUserSubscribedAppInTicket",

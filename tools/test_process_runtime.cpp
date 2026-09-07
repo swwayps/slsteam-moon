@@ -70,5 +70,18 @@ int main()
 	expect(valid.getAppIdFromEnv() == 480,
 	       "a valid SteamAppId is parsed unchanged");
 
+	Process_t embedded{};
+	embedded.exe = "/tmp/game";
+	embedded.environ = "NotSteamAppId=480\0SteamGameId=480";
+	expect(embedded.getAppIdFromEnv() == 0,
+	       "an embedded SteamAppId name is not accepted");
+
+	Process_t afterOtherVariable{};
+	afterOtherVariable.exe = "/tmp/game";
+	constexpr char environment[] = "SteamGameId=480\0SteamAppId=480";
+	afterOtherVariable.environ.assign(environment, sizeof(environment) - 1);
+	expect(afterOtherVariable.getAppIdFromEnv() == 480,
+	       "SteamAppId is found after another environment variable");
+
 	return failures == 0 ? 0 : 1;
 }

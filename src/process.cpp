@@ -1,15 +1,14 @@
 #include "process.hpp"
 
-#include "sdk/CSteamEngine.hpp"
-
 #include "log.hpp"
-#include "utils.hpp"
 
+#include <charconv>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
-#include <regex>
 #include <sstream>
+#include <string_view>
 
 
 std::filesystem::path Process_t::getPath(const char* fileName)
@@ -36,20 +35,39 @@ std::string Process_t::readFile(const char* fileName)
 
 AppId_t Process_t::getAppIdFromEnv()
 {
-	auto reAppId = std::regex("SteamAppId=[0-9]+");
-	std::smatch appIdMatch;
-
-	if (!std::regex_search(environ, appIdMatch, reAppId))
+	constexpr std::string_view prefix = "SteamAppId=";
+	std::size_t valueStart = 0;
+	for (;;)
+	{
+		valueStart = environ.find(prefix, valueStart);
+		if (valueStart == std::string::npos || valueStart == 0 ||
+			environ[valueStart - 1] == '\0')
+		{
+			break;
+		}
+		valueStart += prefix.size();
+	}
+	if (valueStart == std::string::npos)
 	{
 		g_pLog->warn("No SteamAppId in %s's environment! Using 0\n", exe.filename().c_str());
 		return 0;
 	}
 
-	reAppId = std::regex("[0-9]+");
-	const auto envVar = appIdMatch.str();
+	const char* begin = environ.data() + valueStart + prefix.size();
+	const char* end = static_cast<const char*>(
+		std::memchr(begin, '\0', environ.data() + environ.size() - begin));
+	if (!end)
+	{
+		end = environ.data() + environ.size();
+	}
 
-	std::regex_search(envVar, appIdMatch, reAppId);
-	AppId_t appId = std::stoul(appIdMatch.str());
+	AppId_t appId = 0;
+	const auto result = std::from_chars(begin, end, appId);
+	if (result.ec != std::errc{} || result.ptr != end)
+	{
+		g_pLog->warn("Invalid SteamAppId in %s's environment! Using 0\n", exe.filename().c_str());
+		return 0;
+	}
 
 	g_pLog->debug("AppId for process %s in %u is %u\n", exe.filename().c_str(), pipeHandle, appId);
 	return appId;
@@ -57,7 +75,12 @@ AppId_t Process_t::getAppIdFromEnv()
 
 std::filesystem::path Process_t::getRealExe()
 {
-	const auto linkTarget = std::filesystem::read_symlink(getPath("exe"));
+	std::error_code error;
+	const auto linkTarget = std::filesystem::read_symlink(getPath("exe"), error);
+	if (error)
+	{
+		return {};
+	}
 	const auto targetName = linkTarget.filename();
 
 	if (targetName != "wine-preloader" && targetName != "wine64-preloader")
@@ -69,14 +92,20 @@ std::filesystem::path Process_t::getRealExe()
 	//Wine does not point to the actual .exe files, so we iterate the open
 	//files and pick the one ending with .exe
 	const auto maps = getPath("map_files");
-	for (const auto& link : std::filesystem::directory_iterator { maps })
+	std::filesystem::directory_iterator link(maps, error);
+	const std::filesystem::directory_iterator end;
+	while (!error && link != end)
 	{
-		const auto path = std::filesystem::read_symlink(link).string();
+		std::error_code linkError;
+		const auto path =
+			std::filesystem::read_symlink(link->path(), linkError).string();
 
-		if (path.ends_with(".exe"))
+		if (!linkError && path.ends_with(".exe"))
 		{
 			return path;
 		}
+
+		link.increment(error);
 	}
 
 	return linkTarget;
@@ -87,20 +116,12 @@ bool Process_t::init(const pid_t pid, const HSteamPipe pipeHandle)
 	this->pid = pid;
 	this->pipeHandle = pipeHandle;
 
-	const auto serverPipe = g_pSteamEngine->getServerPipe(pipeHandle);
-	if (!serverPipe)
-	{
-		g_pLog->warn("ServerPipe for %u is null!\n", pipeHandle);
-		return false;
-	}
-
 	exe = getRealExe();
-	if (!exe.string().size())
+	if (exe.empty())
 	{
 		return false;
 	}
 
-	cmdLine = Utils::strsplit(const_cast<char*>(readFile("cmdline").c_str()), "\0");
 	environ = readFile("environ");
 
 	if (!environ.size())

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "steam.hpp"
+#include <cstddef>
 #include <cstdint>
 
 class CUser;
@@ -17,6 +18,9 @@ public:
 	uint8_t __pad0x18[0x8];		//0x18
 	HSteamUser user;			//0x21
 };
+
+static_assert(offsetof(CServerPipe, pipe) == 0x8);
+static_assert(offsetof(CServerPipe, pid) == 0x14);
 
 class CSteamEngine
 {

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 
 
@@ -42,4 +43,10 @@ public:
 	int32_t offset;				//0x14
 	uint32_t flags;				//0x1A
 	uint8_t __pad0x1B[0x8];		//0x1B
+
+	constexpr bool hasBytes(const std::size_t count) const
+	{
+		return mem.base && put >= 0 &&
+			static_cast<std::size_t>(put) >= count;
+	}
 }; //0x24
