@@ -5,10 +5,15 @@
 
 #include <cstring>
 #include <cstdint>
+#include <cstdlib>
 #include <cstdio>
 #include <limits>
+#include <memory>
 #include <string>
 #include <string_view>
+#include <sys/mman.h>
+#include <sys/wait.h>
+#include <unistd.h>
 #include <vector>
 
 namespace
@@ -40,6 +45,11 @@ void fakePlatFree(void* memory)
 	freedBody = memory;
 }
 
+void* fakePlatAlloc(int size)
+{
+	return std::malloc(static_cast<std::size_t>(size));
+}
+
 bool blocks(
 	bool enabled,
 	std::uint32_t protobufType,
@@ -53,10 +63,14 @@ bool blocks(
 
 namespace Steam
 {
-Plat_Alloc_t Plat_Alloc = nullptr;
+Plat_Alloc_t Plat_Alloc = fakePlatAlloc;
 Plat_Free_t Plat_Free = fakePlatFree;
 Plat_Realloc_t Plat_Realloc = nullptr;
 }
+
+std::unique_ptr<CLog> g_pLog;
+CLog::~CLog() = default;
+LogLevel CLog::getMinLevel() { return LogLevel::None; }
 
 int main()
 {
@@ -163,6 +177,36 @@ int main()
 	expect(
 		!invalidPacket.deserializeHeader(parsedHeader),
 		"truncated protobuf header is rejected");
+
+	const pid_t child = fork();
+	if (child == 0)
+	{
+		const long pageSize = sysconf(_SC_PAGESIZE);
+		auto* mapping = static_cast<std::uint8_t*>(mmap(
+			nullptr, static_cast<std::size_t>(pageSize) * 2,
+			PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
+		if (mapping == MAP_FAILED ||
+			mprotect(mapping + pageSize, pageSize, PROT_NONE) != 0)
+		{
+			_exit(2);
+		}
+
+		auto* guardedBody = reinterpret_cast<CNetPacketBody*>(
+			mapping + pageSize - sizeof(CNetPacketBody));
+		guardedBody->type = CNetPacket::PROTOBUF_TYPE_MASK | kServiceMethod;
+		guardedBody->headerSize = 1;
+		CNetPacket guardedPacket{};
+		guardedPacket.body = guardedBody;
+		guardedPacket.originalBody = guardedBody;
+		guardedPacket.size = sizeof(CNetPacketBody);
+		CMsgProtoBufHeader emptyHeader;
+		guardedPacket.serialize(emptyHeader);
+		_exit(0);
+	}
+	int childStatus = 0;
+	expect(child > 0 && waitpid(child, &childStatus, 0) == child &&
+	       WIFEXITED(childStatus) && WEXITSTATUS(childStatus) == 0,
+	       "serialization rejects a header extending beyond the packet");
 
 	static_assert(sizeof(CNetPacket) == 0x20);
 	CNetPacket packet{};

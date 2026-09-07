@@ -11,7 +11,9 @@
 #include "../src/config.hpp"
 #include "../src/feats/fakeappid.hpp"
 #include "../src/sdk/CNetPacket.hpp"
+#include "../src/sdk/CProtoBufMsgBase.hpp"
 #include "../src/sdk/CUser.hpp"
+#include "../src/sdk/protobufs/steammessages_clientserver.pb.h"
 #include "../src/sdk/protobufs/steammessages_clientserver_2.pb.h"
 
 #include <cstdlib>
@@ -89,6 +91,43 @@ void route(uint32_t realAppId, uint32_t fakeAppId, uint32_t expected)
 	      "rich presence uses the configured routing AppID");
 	packet.free();
 }
+
+void preserveShortcut(uint64_t gameId)
+{
+	const auto lowAppId = static_cast<uint32_t>(gameId);
+	g_config.fakeAppIds = std::unordered_map<uint32_t, uint32_t>{
+		{lowAppId, 480},
+	};
+
+	CMsgProtoBufHeader header;
+	CMsgClientGamesPlayed message;
+	message.add_games_played()->set_game_id(gameId);
+
+	const auto headerSize = static_cast<uint32_t>(header.ByteSizeLong());
+	const auto messageSize = static_cast<uint32_t>(message.ByteSizeLong());
+	const auto packetSize = static_cast<uint32_t>(
+		sizeof(CNetPacketBody) + headerSize + messageSize);
+	auto* bytes = static_cast<uint8_t*>(std::malloc(packetSize));
+	auto* body = reinterpret_cast<CNetPacketBody*>(bytes);
+	body->type = EMSG_GAMESPLAYED | CNetPacket::PROTOBUF_TYPE_MASK;
+	body->headerSize = headerSize;
+	header.SerializeToArray(bytes + sizeof(CNetPacketBody), headerSize);
+	message.SerializeToArray(
+		bytes + sizeof(CNetPacketBody) + headerSize, messageSize);
+
+	CNetPacket packet{};
+	packet.body = body;
+	packet.originalBody = body;
+	packet.size = packetSize;
+	FakeAppIds::sendMsg(&packet);
+
+	const auto result = packet.deserializeBody<CMsgClientGamesPlayed>();
+	CHECK(result.games_played_size() == 1,
+	      "shortcut remains in the games-played message");
+	CHECK(result.games_played(0).game_id() == gameId,
+	      "shortcut IDs are selected by their type bit, not exact low word");
+	packet.free();
+}
 }
 
 int main()
@@ -99,6 +138,8 @@ int main()
 	route(4001890, 480, 480);
 
 	route(123, 0, 123);
+
+	preserveShortcut(0x1234567802000001ULL);
 
 	return failures == 0 ? 0 : 1;
 }
