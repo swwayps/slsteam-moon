@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <limits>
 
 
 //Helper class to make calculations more legible
@@ -65,13 +66,29 @@ public:
 	template<typename T>
 	void serialize(const T& message, const CMsgProtoBufHeader* header)
 	{
-		const uintptr_t headerOffset = sizeof(CNetPacketBody);
-		const uintptr_t headerSize = header
+		if (!isValid())
+		{
+			return;
+		}
+
+		constexpr std::size_t headerOffset = sizeof(CNetPacketBody);
+		constexpr std::size_t maxPacketSize =
+			static_cast<std::size_t>(std::numeric_limits<int>::max());
+		const std::size_t headerSize = header
 			? header->ByteSizeLong()
 			: body->headerSize;
-		const uintptr_t messageOffset = headerOffset + headerSize;
-		const uintptr_t newSize = message.ByteSizeLong() + messageOffset;
-		auto* memory = static_cast<uint8_t*>(Steam::Plat_Alloc(newSize));
+		const std::size_t messageSize = message.ByteSizeLong();
+		if (headerSize > maxPacketSize - headerOffset ||
+			messageSize > maxPacketSize - headerOffset - headerSize ||
+			(!header && headerSize > size - headerOffset))
+		{
+			return;
+		}
+
+		const std::size_t messageOffset = headerOffset + headerSize;
+		const std::size_t newSize = messageSize + messageOffset;
+		auto* memory = static_cast<uint8_t*>(
+			Steam::Plat_Alloc(static_cast<int>(newSize)));
 		if (!memory)
 		{
 			g_pLog->warn("Failed to allocate packet body with size %zu\n", newSize);
@@ -79,10 +96,11 @@ public:
 		}
 		auto* newBody = reinterpret_cast<CNetPacketBody*>(memory);
 		newBody->type = body->type;
-		newBody->headerSize = headerSize;
+		newBody->headerSize = static_cast<uint32_t>(headerSize);
 		if (header)
 		{
-			if (!header->SerializeToArray(memory + headerOffset, headerSize))
+			if (!header->SerializeToArray(
+				memory + headerOffset, static_cast<int>(headerSize)))
 			{
 				Steam::Plat_Free(memory);
 				return;
@@ -95,7 +113,8 @@ public:
 				headerSize);
 		}
 
-		if (!message.SerializeToArray(memory + messageOffset, message.ByteSizeLong()))
+		if (!message.SerializeToArray(
+			memory + messageOffset, static_cast<int>(messageSize)))
 		{
 			Steam::Plat_Free(memory);
 			return;
@@ -116,11 +135,29 @@ public:
 	template<typename T>
 	T deserializeBody() const
 	{
-		const uintptr_t messageOffset = body->headerSize + sizeof(CNetPacketBody);
 		T message;
-		message.ParseFromArray(
-			reinterpret_cast<uint8_t*>(body) + messageOffset,
-			size - messageOffset);
+		if (!isValid())
+		{
+			return message;
+		}
+
+		constexpr std::size_t headerOffset = sizeof(CNetPacketBody);
+		const std::size_t available = size - headerOffset;
+		if (body->headerSize > available)
+		{
+			return message;
+		}
+
+		const std::size_t messageOffset = headerOffset + body->headerSize;
+		const std::size_t messageSize = size - messageOffset;
+		if (messageSize > static_cast<std::size_t>(
+				std::numeric_limits<int>::max()))
+		{
+			return message;
+		}
+
+		message.ParseFromArray(reinterpret_cast<uint8_t*>(body) + messageOffset,
+			static_cast<int>(messageSize));
 		return message;
 	}
 
