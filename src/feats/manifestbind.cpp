@@ -459,10 +459,8 @@ namespace
 		// runtime) must NOT pull the depot in here: redirectGid would archive
 		// it into the ManifestStore and could redirect an owned depot to a
 		// stale local gid.  The store holds LuaTools depots only.
-		return DepotKey::depotInManifestScope(
-		    appId   && g_config.isAddedAppId(appId),
-		    depotId && g_config.isAddedAppId(depotId),
-		    DepotKey::isManagedDepot(depotId),
+		return DepotKey::manifestInManagedScope(
+		    appId, depotId,
 		    /*depotHasPin=*/g_config.getManifestPin(appId, depotId) != 0);
 	}
 
@@ -808,7 +806,8 @@ namespace
 					// managed by the current discovery pass.
 					const uint64_t targetGid = *gidp;
 					if (targetGid
-					    && (DepotKey::isManagedDepot(depotId) || pin))
+					    && DepotKey::manifestInManagedScope(
+					        entryAppId, depotId, pin != 0, dlcAppId))
 					{
 						registerPlanTarget(depotId, targetGid, planDeadline);
 						if (planDepotcache.empty()

@@ -84,6 +84,34 @@ int main()
 	CHECK(depotInManifestScope(true, true, true, true),
 	      "all signals present is in scope");
 
+	// A LuaTools script also marks legitimately licensed content as managed.
+	// Native ownership wins per content app: both a licensed base game and a
+	// licensed DLC use Steam's normal authenticated manifest exchange. An
+	// unlicensed DLC remains managed even when its base game is licensed.
+	CHECK(!depotInManifestScope(true, false, true, false,
+	                            /*contentHasNativeLicense=*/true),
+	      "owned AddedApp base depot uses Steam's manifest path");
+	CHECK(!depotInManifestScope(true, false, true, false,
+	                           /*contentHasNativeLicense=*/true),
+	      "owned AddedApp DLC depot uses Steam's manifest path");
+	CHECK(depotInManifestScope(true, false, true, false,
+	                          /*contentHasNativeLicense=*/false),
+	      "unlicensed AddedApp DLC depot remains in managed manifest scope");
+	CHECK(!depotInManifestScope(true, false, true, true,
+	                            /*contentHasNativeLicense=*/true),
+	      "native ownership wins over an explicit manifest pin");
+	CHECK(!depotInManifestScope(true, true, true, false,
+	                            /*contentHasNativeLicense=*/true),
+	      "owned AddedApp workshop depot uses Steam's manifest path");
+	CHECK(DepotKey::manifestContentAppId(227300, 227300, 227300, 0) == 227300,
+	      "workshop content follows the base app license");
+	CHECK(DepotKey::manifestContentAppId(227300, 227300, 227300, 2004210) == 2004210,
+	      "DLC depot follows its own content license");
+	CHECK(DepotKey::manifestContentAppId(227300, 227300, 2780810, 0) == 227300,
+	      "explicit base context wins over a shared catalog entry");
+	CHECK(DepotKey::manifestContentAppId(0, 0, 2780810, 0) == 2780810,
+	      "catalog content is used when the request has no app context");
+
 	// The managed flag is STICKY across catalog writes.  A depot first
 	// imported from a Lua script (managed) must stay managed even when Steam
 	// later returns the same key in a legitimate response (observed) — else

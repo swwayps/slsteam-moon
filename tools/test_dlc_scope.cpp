@@ -28,6 +28,7 @@ int failures = 0;
 std::uint32_t activeApp = kBaseApp;
 std::unordered_set<std::uint32_t> subscribedAppIds{kBaseApp};
 std::unordered_set<std::uint32_t> excludedAppIds;
+std::unordered_set<std::uint32_t> nativeLicenseAppIds;
 bool localUserAvailable = true;
 
 #define CHECK(condition, message)                                           \
@@ -67,6 +68,14 @@ bool CUser::isSubscribed(std::uint32_t appId)
 	return subscribedAppIds.contains(appId);
 }
 
+namespace StatsPolicy
+{
+bool hasNativeLicense(std::uint32_t appId)
+{
+	return nativeLicenseAppIds.contains(appId);
+}
+}
+
 bool Apps::unlockApp(std::uint32_t, CAppOwnershipInfo*)
 {
 	return true;
@@ -78,6 +87,9 @@ int main()
 	CHECK(Apps::ownershipOverrideAllowed(
 	          true, false, false, false, false, false, false),
 	      "a LuaTools-managed app remains eligible before type discovery");
+	CHECK(Apps::ownershipOverrideAllowed(
+	          true, false, true, true, false, false, true),
+	      "package-zero owns flag does not prove native ownership");
 	CHECK(!Apps::ownershipOverrideAllowed(
 	          false, true, false, true, true, false, false),
 	      "an unmanaged DLC is rejected before any ownership metadata changes");
@@ -162,8 +174,12 @@ int main()
 	g_config.dlcData.set({});
 
 	subscribedAppIds.insert(kManagedDlc);
+	CHECK(DLC::shouldUnlockDlc(kManagedDlc),
+	      "package-zero subscription does not hide an unlicensed managed DLC");
+	nativeLicenseAppIds.insert(kManagedDlc);
 	CHECK(!DLC::shouldUnlockDlc(kManagedDlc),
 	      "an already-owned managed DLC keeps Steam's ownership result");
+	nativeLicenseAppIds.erase(kManagedDlc);
 	subscribedAppIds.erase(kManagedDlc);
 
 	excludedAppIds.insert(kManagedDlc);

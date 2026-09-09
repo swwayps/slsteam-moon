@@ -5,6 +5,7 @@
 #include "depotkey_import.hpp"
 #include "depotkey_index.hpp"
 #include "appinfo_provision.hpp"
+#include "stats_policy.hpp"
 
 #include "../config.hpp"
 #include "../config_discovery.hpp"
@@ -244,6 +245,47 @@ bool isManagedDepot(uint32_t depotId)
 {
 	const auto k = getCachedKey(depotId);
 	return k.managed && k.key.size() == 32;
+}
+
+bool manifestInManagedScope(uint32_t appId, uint32_t depotId,
+	                         bool depotHasPin, uint32_t knownContentAppId)
+{
+	const auto key = getCachedKey(depotId);
+	uint32_t baseAppId = 0;
+	if (appId && g_config.isAddedAppId(appId))
+		baseAppId = appId;
+	else if (key.appId && g_config.isAddedAppId(key.appId))
+		baseAppId = key.appId;
+	else if (depotId && g_config.isAddedAppId(depotId))
+		baseAppId = depotId;
+
+	uint32_t depotDlcAppId = knownContentAppId;
+	if (!depotDlcAppId && baseAppId)
+	{
+		std::string wire;
+		if (AppInfoProvision::readValidatedCacheBuffer(baseAppId, wire))
+		{
+			depotDlcAppId = AppInfoProvision::dlcAppIdForDepot(
+				wire, baseAppId, depotId);
+		}
+	}
+	const uint32_t contentAppId = manifestContentAppId(
+		baseAppId, appId, key.appId, depotDlcAppId);
+	const bool nativeLicense = contentAppId &&
+		StatsPolicy::hasNativeLicense(contentAppId);
+	if (nativeLicense && g_pLog)
+	{
+		g_pLog->infoOnce(
+			"ManifestScope: app=%u content=%u depot=%u has a native license; using Steam's manifest path\n",
+			baseAppId, contentAppId, depotId);
+	}
+
+	return depotInManifestScope(
+		baseAppId != 0,
+		depotId && g_config.isAddedAppId(depotId),
+		key.managed && key.key.size() == 32,
+		depotHasPin,
+		nativeLicense);
 }
 
 std::vector<uint32_t> managedDepotsForApp(uint32_t appId)

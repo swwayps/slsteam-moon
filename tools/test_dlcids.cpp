@@ -373,6 +373,14 @@ int main()
 		      "classify: a dlcappid-tagged depot resolves to the tag");
 		CHECK(AppInfoProvision::dlcAppIdForDepot(tagged, 250900, 250900) == 0,
 		      "classify: tagged form still protects the base app");
+		const std::string siblingTag =
+			"\"depots\"\n{\n"
+			"\t\"250901\"\n\t{\n\t\t\"manifests\"\n\t\t{\n\t\t}\n\t}\n"
+			"\t\"250911\"\n\t{\n\t\t\"dlcappid\"\t\t\"1426300\"\n\t}\n"
+			"}\n";
+		CHECK(AppInfoProvision::dlcAppIdForDepot(
+		          siblingTag, 250900, 250901) == 0,
+		      "classify: a sibling depot cannot donate its dlcappid tag");
 	}
 
 	// 17) A late cold-provisioning pass must be able to merge newly discovered

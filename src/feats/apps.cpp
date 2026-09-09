@@ -1,5 +1,7 @@
 #include "apps.hpp"
 
+#include "stats_policy.hpp"
+
 #include "../sdk/CAppOwnershipInfo.hpp"
 #include "../sdk/CNetPacket.hpp"
 #include "../sdk/CProtoBufMsgBase.hpp"
@@ -256,6 +258,10 @@ bool Apps::checkAppOwnership(uint32_t appId, CAppOwnershipInfo* pInfo)
 	}
 
 	if (g_config.shouldExcludeAppId(appId))
+	{
+		return false;
+	}
+	if (StatsPolicy::hasNativeLicense(appId))
 	{
 		return false;
 	}

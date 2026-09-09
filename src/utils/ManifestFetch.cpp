@@ -186,17 +186,6 @@ std::optional<uint64_t> cachedCode(uint64_t gid)
 	return it->second;
 }
 
-// Drop a cached request-code so the next runOnce() for this gid re-resolves
-// a fresh one from the provider instead of reusing the expired one.  Codes
-// carry a ~5-min CDN TTL; once the CDN starts answering 401, the cached code
-// is dead and must be evicted or every retry repeats the 401.
-void invalidateCode(uint64_t gid)
-{
-	std::lock_guard<std::mutex> lk(g_codeLock);
-	g_codeByGid.erase(gid);
-}
-
-
 bool parseDigitsOnly(std::string_view body, uint64_t* out)
 {
 	if (body.empty()) return false;
@@ -677,12 +666,8 @@ bool fetchManifestBlob(uint64_t gid, uint32_t depotId,
 	const auto servers = contentServers(budget);
 	if (servers.empty()) return false;
 
-	bool retriedWithFreshCode = false;
-retry_cdn:
 	HttpResponse zipResp;
 	bool gotZip = false;
-	std::vector<CdnOutcome> outcomes;
-	outcomes.reserve(servers.size());
 	for (const auto& server : servers)
 	{
 		if (budget && budget->shouldStop()) break;
@@ -695,33 +680,20 @@ retry_cdn:
 			gotZip = true;
 			break;
 		}
-		outcomes.push_back({ zipResp.networkError, zipResp.status });
+		if (requiresSteamCdnAuth({zipResp.networkError, zipResp.status}))
+		{
+			g_pLog->infoOnce(
+			    "ManifestFetch: CDN host requires Steam depot authentication; "
+			    "trying alternate hosts for this manifest\n");
+		}
 		// info, not warn: warn fires a notify-send popup; a single edge
-		// returning 503 (or an expired code returning 401) is expected and
-		// we just try the next host.
+		// returning a transient error is expected and we just try the next host.
 		g_pLog->info("ManifestFetch: blob depot=%u gid=%llu host=%s HTTP=%ld err='%s', trying next CDN\n",
 		             depotId, static_cast<unsigned long long>(gid), server.host.c_str(),
 		             zipResp.status, zipResp.diagnostic.c_str());
 	}
 	if (!gotZip)
 	{
-		// A unanimous 401 across every host is the signature of an expired
-		// request-code (codes carry a ~5-min CDN TTL).  This is exactly what
-		// the background pre-warm worker hits when it re-stages a DLC depot
-		// Steam purged minutes after the base install committed.  Evict the
-		// stale code, re-resolve a fresh one, and retry the CDN ONCE.
-		if (!retriedWithFreshCode && isExpiredCodeSignature(outcomes))
-		{
-			retriedWithFreshCode = true;
-			invalidateCode(gid);
-			g_pLog->info("ManifestFetch: blob depot=%u gid=%llu code expired (all 401), re-resolving\n",
-			             depotId, static_cast<unsigned long long>(gid));
-			if (auto freshCode = runOnce(gid, /*appId=*/0, depotId, budget))
-			{
-				code = *freshCode;
-				goto retry_cdn;
-			}
-		}
 		g_pLog->info("ManifestFetch: blob depot=%u gid=%llu all CDN hosts failed (last HTTP=%ld)\n",
 		             depotId, static_cast<unsigned long long>(gid), zipResp.status);
 		// Log-only: this is our manifest-blob staging fetch; the resilience

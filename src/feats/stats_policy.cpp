@@ -23,6 +23,16 @@ void StatsPolicy::observe(Context context, uint32_t app, bool success, const CAp
 	              info->ownsLicense, info->licenseExpired, context.epoch);
 }
 
+bool StatsPolicy::hasNativeLicense(uint32_t app)
+{
+	return state.hasNativeLicense(state.account(), app);
+}
+
+void StatsPolicy::observeNativePackage(uint32_t package, uint32_t app)
+{
+	state.observePackage(package, app);
+}
+
 uint64_t StatsPolicy::localEpoch(uint32_t app, uint32_t id, bool refresh)
 {
 	if (!id || id != state.account() || !g_config.isAddedAppId(app) ||

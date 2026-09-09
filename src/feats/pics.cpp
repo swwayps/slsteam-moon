@@ -28,6 +28,7 @@
 #include "yaml-cpp/emitter.h"
 #include "yaml-cpp/yaml.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
@@ -581,7 +582,9 @@ void recvProductInfoResponse(CMsgClientPICSProductInfoResponse* resp)
 				// Only prefetch depots WE manage (LuaTools).  An owned
 				// library app's depots are Steam's job — touching them here
 				// is needless wudrm traffic for content we don't manage.
-				if (!DepotKey::isManagedDepot(depotId))
+				if (!DepotKey::manifestInManagedScope(
+				        app->appid(), depotId,
+				        g_config.getManifestPin(app->appid(), depotId) != 0))
 				{
 					continue;
 				}
@@ -596,6 +599,12 @@ void recvProductInfoResponse(CMsgClientPICSProductInfoResponse* resp)
 		// key filter (we only stage depots we hold a key for — staging a
 		// blob we can't decrypt just wastes a CDN round-trip) is applied
 		// there, in buildSyncStagePlan.
+		std::erase_if(depots, [&](const DepotGid& depot)
+		{
+			return !DepotKey::manifestInManagedScope(
+				app->appid(), depot.first,
+				g_config.getManifestPin(app->appid(), depot.first) != 0);
+		});
 		toStage.push_back({app->appid(), std::move(depots)});
 	}
 

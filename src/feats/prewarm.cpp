@@ -145,6 +145,16 @@ void runLoop()
 				if (depotId && gid && seenTargets.insert(target).second)
 					targets.push_back(target);
 			};
+			auto appendManagedTarget = [&](uint32_t appId,
+			                               const DepotGid& target,
+			                               bool pinned)
+			{
+				if (DepotKey::manifestInManagedScope(
+				        appId, target.first, pinned))
+				{
+					appendTarget(target);
+				}
+			};
 
 			const auto hasKey = [](uint32_t depotId) {
 				return !DepotKey::getCachedKey(depotId).key.empty();
@@ -162,12 +172,13 @@ void runLoop()
 					    ? std::vector<DepotGid>{}
 					    : planStageTargets({buf}, hasKey);
 					for (const auto& target : planPinnedStageTargets(publicTargets, pins))
-						appendTarget(target);
+						appendManagedTarget(
+							appId, target, pins.count(target.first) != 0);
 				}
 				else if (!buf.empty())
 				{
 					for (const auto& target : planStageTargets({buf}, hasKey))
-						appendTarget(target);
+						appendManagedTarget(appId, target, false);
 				}
 			}
 
@@ -198,7 +209,7 @@ void runLoop()
 				for (const auto& wm : extractWorkshopManifests(acf, appId))
 				{
 					const auto before = targets.size();
-					appendTarget(wm);
+					appendManagedTarget(appId, wm, false);
 					if (targets.size() != before) ++workshopCount;
 				}
 			}

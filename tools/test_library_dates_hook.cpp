@@ -16,6 +16,7 @@ constexpr uint32_t packageDate = 1577128970;
 constexpr uint32_t realDate = 1700000000;
 int failures = 0;
 bool excluded = false;
+bool nativeLicense = false;
 IClientApps clientApps;
 
 void check(bool condition, const char* message)
@@ -31,6 +32,7 @@ CAppOwnershipInfo checkDate(int32_t packageId, uint32_t date,
 	info.subId = packageId;
 	info.purchaseTime = date;
 	info.ownsLicense = ownsLicense;
+	nativeLicense = packageId > 0;
 	Apps::checkAppOwnership(appId, &info);
 	return info;
 }
@@ -48,6 +50,7 @@ bool CConfig::isAddedAppId(uint32_t id) { return addedAppIds.contains(id); }
 bool CConfig::shouldExcludeAppId(uint32_t) { return excluded; }
 uint32_t CConfig::getDenuvoGameOwner(uint32_t) { return 0; }
 EAppType IClientApps::getAppType(uint32_t) { return APPTYPE_GAME; }
+namespace StatsPolicy { bool hasNativeLicense(uint32_t) { return nativeLicense; } }
 
 int main()
 {

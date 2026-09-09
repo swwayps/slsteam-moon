@@ -3,14 +3,15 @@
 #include <cstdint>
 #include <mutex>
 #include <unordered_map>
+#include <unordered_set>
 
 struct CAppOwnershipInfo;
 
 namespace StatsPolicy
 {
-// Only observations from Steam's ORIGINAL ownership routine are accepted.
-// Missing evidence is not a local-only license. Account/license messages
-// invalidate passive observations; foreground stats requests query Steam anew.
+// Only observations from Steam's original ownership routine and real nonzero
+// package loads are accepted. Missing evidence is not a local-only license;
+// account/license messages invalidate observations.
 struct Context { uint32_t account; uint64_t epoch; };
 class Store
 {
@@ -19,14 +20,22 @@ public:
 	{
 		std::lock_guard lock(m_mutex);
 		if (m_account == account) return;
+		const bool adoptPending = m_account == 0 && account != 0;
 		m_account = account;
 		m_apps.clear();
+		if (adoptPending)
+		{
+			for (const uint32_t app : m_pendingPackageApps)
+				m_apps[app].native = true;
+		}
+		m_pendingPackageApps.clear();
 		++m_epoch;
 	}
 	void invalidate()
 	{
 		std::lock_guard lock(m_mutex);
 		m_apps.clear();
+		if (m_account != 0) m_pendingPackageApps.clear();
 		++m_epoch;
 	}
 	uint32_t account() const
@@ -50,6 +59,15 @@ public:
 		entry.native = entry.native || native;
 		entry.local = !entry.native && success && package == 0 && owns && !expired;
 	}
+	void observePackage(uint32_t package, uint32_t app)
+	{
+		std::lock_guard lock(m_mutex);
+		if (!package || !app) return;
+		if (!m_account)
+			m_pendingPackageApps.insert(app);
+		else
+			m_apps[app].native = true;
+	}
 	uint64_t localEpoch(uint32_t account, uint32_t app) const
 	{
 		std::lock_guard lock(m_mutex);
@@ -58,12 +76,20 @@ public:
 		if (it == m_apps.end() || !it->second.local) return 0;
 		return m_epoch;
 	}
+	bool hasNativeLicense(uint32_t account, uint32_t app) const
+	{
+		std::lock_guard lock(m_mutex);
+		if (!account || account != m_account) return false;
+		auto it = m_apps.find(app);
+		return it != m_apps.end() && it->second.native;
+	}
 private:
 	struct Entry { bool native = false; bool local = false; };
 	mutable std::mutex m_mutex;
 	uint32_t m_account = 0;
 	uint64_t m_epoch = 1;
 	std::unordered_map<uint32_t, Entry> m_apps;
+	std::unordered_set<uint32_t> m_pendingPackageApps;
 };
 
 inline bool isSelf(uint64_t target, uint32_t account)
@@ -76,6 +102,10 @@ void invalidate();
 uint32_t account();
 Context context();
 void observe(Context context, uint32_t app, bool success, const CAppOwnershipInfo* info);
+// Passive evidence from Steam's original CheckAppOwnership result. Missing or
+// invalidated evidence returns false, preserving the managed install path.
+bool hasNativeLicense(uint32_t app);
+void observeNativePackage(uint32_t package, uint32_t app);
 // refresh=true is ONLY for a Steam-owned request thread. Background consumers
 // use the session-scoped observation; they never call Steam from their thread.
 uint64_t localEpoch(uint32_t app, uint32_t account, bool refresh = false);

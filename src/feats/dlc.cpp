@@ -1,13 +1,12 @@
 #include "dlc.hpp"
 
 #include "../sdk/CAppOwnershipInfo.hpp"
-#include "../sdk/CSteamEngine.hpp"
-#include "../sdk/CUser.hpp"
 #include "../sdk/IClientUtils.hpp"
 
 #include "../config.hpp"
 
 #include "apps.hpp"
+#include "stats_policy.hpp"
 
 
 bool DLC::shouldUnlockDlc(uint32_t appId)
@@ -35,12 +34,11 @@ bool DLC::shouldUnlockDlc(uint32_t appId)
 		return false;
 	}
 
-	CUser* user = getLocalUser();
-	if (user != nullptr && user->isSubscribed(appId))
+	if (StatsPolicy::hasNativeLicense(appId))
 	{
 		return false;
 	}
-	
+
 	return true;
 }
 

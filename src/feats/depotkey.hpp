@@ -64,6 +64,13 @@ namespace DepotKey
 	// merely-observed key (owned game / runtime) returns false.
 	bool isManagedDepot(uint32_t depotId);
 
+	// Central manifest-routing decision. Content Steam reports through a real
+	// package stays on Steam's authenticated path, even when its Lua entry has
+	// a manifest pin. Unlicensed managed content retains the local path.
+	bool manifestInManagedScope(uint32_t appId, uint32_t depotId,
+	                            bool depotHasPin = false,
+	                            uint32_t contentAppId = 0);
+
 	// Every MANAGED (Lua-injected) depot whose catalog entry records the
 	// given appId.  The catalog is loaded lazily into an in-memory index and
 	// parsed at most once per process.  Used to rebuild a token-locked app's

@@ -23,6 +23,7 @@
 #include "hotreload_capabilities.hpp"
 #include "license_refresh_policy.hpp"
 #include "libraryremoval.hpp"
+#include "stats_policy.hpp"
 
 #include "libmem/libmem.h"
 
@@ -751,6 +752,15 @@ namespace
 
 		if (pInfo->PackageId != 0)
 		{
+			if (result && pInfo->Status == EPackageStatus::Available &&
+				validLiveVector(pInfo->AppIdVec))
+			{
+				for (std::uint32_t i = 0; i < pInfo->AppIdVec.m_Size; ++i)
+				{
+					StatsPolicy::observeNativePackage(
+						pInfo->PackageId, pInfo->AppIdVec.m_Memory.m_pMemory[i]);
+				}
+			}
 			return result;
 		}
 

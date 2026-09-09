@@ -3,6 +3,7 @@
 #include "depotquarantine.hpp"
 
 #include "depotkey.hpp"
+#include "stats_policy.hpp"
 #include "depotquarantine_store.hpp"
 #include "dlcids.hpp"
 #include "appinfo_provision.hpp"
@@ -367,6 +368,7 @@ namespace DepotQuarantine
 	{
 		try
 		{
+			if (StatsPolicy::hasNativeLicense(dlcAppId)) return false;
 			if (!depotId || !dlcAppId || !g_registry.contains(depotId))
 			{
 				return false;

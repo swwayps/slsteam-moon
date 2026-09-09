@@ -18,11 +18,28 @@ int main()
 	check(!store.localEpoch(7, 123), "failed lookup stays unknown");
 	store.observe(7, 123, true, 0, true, false, context.epoch);
 	check(store.localEpoch(7, 123) == context.epoch, "native observation permits local package zero");
+	check(!store.hasNativeLicense(7, 123),
+	      "package zero is not native ownership evidence");
 	check(!store.localEpoch(8, 123), "an observation cannot cross accounts");
 	store.observe(7, 123, true, 25, true, false, context.epoch);
 	store.observe(7, 123, true, 0, true, false, context.epoch);
 	check(!store.localEpoch(7, 123), "a real package wins over package zero until license invalidation");
+	check(store.hasNativeLicense(7, 123),
+	      "a real package records native ownership for manifest routing");
 	store.invalidate();
+	check(!store.hasNativeLicense(7, 123),
+	      "license invalidation clears native ownership evidence");
+	StatsPolicy::Store packageStore;
+	packageStore.observePackage(25, 123);
+	packageStore.setAccount(7);
+	check(packageStore.hasNativeLicense(7, 123),
+	      "real package loaded before account discovery becomes native evidence");
+	packageStore.observePackage(0, 456);
+	check(!packageStore.hasNativeLicense(7, 456),
+	      "package zero never becomes native evidence");
+	packageStore.setAccount(8);
+	check(!packageStore.hasNativeLicense(8, 123),
+	      "package evidence cannot cross accounts");
 	store.observe(7, 123, true, 0, true, false, context.epoch);
 	check(!store.localEpoch(7, 123), "in-flight observation cannot republish after invalidation");
 	context = store.context();

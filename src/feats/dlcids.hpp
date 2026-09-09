@@ -73,6 +73,29 @@ inline bool nextQuotedValueFor(const std::string& s, const std::string& key,
 	return true;
 }
 
+inline std::size_t matchingBrace(const std::string& s, std::size_t open)
+{
+	if (open >= s.size() || s[open] != '{') return std::string::npos;
+	unsigned int depth = 0;
+	bool quoted = false;
+	bool escaped = false;
+	for (std::size_t i = open; i < s.size(); ++i)
+	{
+		const char c = s[i];
+		if (quoted)
+		{
+			if (escaped) escaped = false;
+			else if (c == '\\') escaped = true;
+			else if (c == '"') quoted = false;
+			continue;
+		}
+		if (c == '"') quoted = true;
+		else if (c == '{') ++depth;
+		else if (c == '}' && --depth == 0) return i;
+	}
+	return std::string::npos;
+}
+
 } // namespace detail
 
 // Keep the two appinfo DLC sources separate.  Depot-tagged ids are
@@ -329,15 +352,23 @@ inline uint32_t dlcAppIdForDepot(const std::string& wire, uint32_t baseAppId,
 		while ((pos = wire.find(key, pos)) != std::string::npos)
 		{
 			pos += key.size();
-			// The tag belongs to this depot only if it appears before the next
-			// depot block opens a sibling key at the same nesting level; a
-			// bounded window keeps this simple and allocation-free.
-			const std::size_t window = wire.find("\"dlcappid\"", pos);
-			if (window == std::string::npos) break;
+			const std::size_t nextQuote = wire.find('"', pos);
+			const std::size_t open = wire.find('{', pos);
+			if (open == std::string::npos) break;
+			if (nextQuote != std::string::npos && nextQuote < open) continue;
+			const std::size_t close = detail::matchingBrace(wire, open);
+			if (close == std::string::npos) break;
+			const std::size_t tag = wire.find("\"dlcappid\"", open + 1);
+			if (tag == std::string::npos || tag >= close)
+			{
+				pos = close + 1;
+				continue;
+			}
 
 			std::string value;
-			std::size_t next = pos;
-			if (detail::nextQuotedValueFor(wire, "dlcappid", pos, value, next))
+			std::size_t next = tag;
+			if (detail::nextQuotedValueFor(wire, "dlcappid", tag, value, next) &&
+				next <= close)
 			{
 				std::vector<uint32_t> parsed;
 				std::unordered_set<uint32_t> seen;

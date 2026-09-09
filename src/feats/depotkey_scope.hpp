@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include <cstdint>
+
 namespace DepotKey
 {
 	// Should our manifest machinery engage for this (appId, depotId)?
@@ -28,12 +30,29 @@ namespace DepotKey
 	//                       from a Lua script (NOT one merely observed from a
 	//                       legitimate Steam response)
 	//   depotHasPin       - an explicit manifest-gid pin exists for the depot
+	//   contentHasNativeLicense - Steam's original ownership result named a
+	//                       real package for the base app or DLC that owns this
+	//                       depot, rather than our package-0 contribution
 	inline bool depotInManifestScope(bool appIsAddedApp,
 	                                 bool depotIsAddedApp,
 	                                 bool depotKeyIsManaged,
-	                                 bool depotHasPin)
+	                                 bool depotHasPin,
+	                                 bool contentHasNativeLicense = false)
 	{
-		return appIsAddedApp || depotIsAddedApp || depotKeyIsManaged || depotHasPin;
+		if (contentHasNativeLicense) return false;
+		if (depotHasPin) return true;
+		return appIsAddedApp || depotIsAddedApp || depotKeyIsManaged;
+	}
+
+	inline uint32_t manifestContentAppId(uint32_t baseAppId,
+	                                    uint32_t requestedAppId,
+	                                    uint32_t catalogAppId,
+	                                    uint32_t depotDlcAppId)
+	{
+		if (depotDlcAppId) return depotDlcAppId;
+		if (requestedAppId && requestedAppId != baseAppId)
+			return requestedAppId;
+		return baseAppId ? baseAppId : catalogAppId;
 	}
 
 	// The catalog's managed flag is sticky: once a depot is known to be

@@ -194,11 +194,8 @@ void handleSend_GetManifestRequestCode(const uint8_t* pBody, uint32_t cbBody,
 	const uint64_t gid     = req.manifest_id();
 	const uint32_t appId   = req.has_app_id() ? req.app_id() : 0;
 
-	const bool inScope =
-	    (appId   && g_config.isAddedAppId(appId))
-	    || (depotId && g_config.isAddedAppId(depotId))
-	    || DepotKey::isManagedDepot(depotId)
-	    || !ManifestId::getPinnedGid(depotId).empty();
+	const bool inScope = DepotKey::manifestInManagedScope(
+	    appId, depotId, !ManifestId::getPinnedGid(depotId).empty());
 	if (!inScope)
 	{
 		g_pLog->debug("ManifestCode send: app=%u depot=%u gid=%llu not in scope, skip\n",
@@ -548,11 +545,8 @@ bool hkCDepotDownloadMgr_BYldRequestDepotManifest(void* pthis, uint32_t appId, u
 	g_pLog->info("BYldRequestDepotManifest: app=%u depot=%u manifest=%llu branch=%s\n",
 	             appId, depotId, static_cast<unsigned long long>(manifestId), branch ? branch : "");
 
-	const bool inScope =
-	    (appId   && g_config.isAddedAppId(appId))
-	    || (depotId && g_config.isAddedAppId(depotId))
-	    || DepotKey::isManagedDepot(depotId)
-	    || !ManifestId::getPinnedGid(depotId).empty();
+	const bool inScope = DepotKey::manifestInManagedScope(
+	    appId, depotId, !ManifestId::getPinnedGid(depotId).empty());
 
 	if (!inScope)
 	{
