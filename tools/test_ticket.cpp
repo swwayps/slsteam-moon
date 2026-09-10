@@ -7,20 +7,29 @@
 
 #include "../src/config_discovery.hpp"
 #include "../src/feats/ticket.hpp"
+#include "../src/sdk/CSteamEngine.hpp"
 
 #include <cstdio>
 #include <fstream>
 #include <iterator>
 #include <string>
 #include <type_traits>
+#include <unordered_map>
 
 namespace Ticket
 {
-	std::map<uint32_t, SavedTicket> ticketMap;
-	std::map<uint32_t, SavedTicket> encryptedTicketMap;
+	std::unordered_map<AppId_t, CSteamId> oneTimeSteamIdSpoof;
+	std::unordered_map<AppId_t, SavedTicket> ticketMap;
+	std::unordered_map<AppId_t, SavedTicket> encryptedTicketMap;
 }
 
 static_assert(std::is_same_v<decltype(&Ticket::forgetApp), bool (*)(uint32_t)>);
+static_assert(std::is_same_v<decltype(Ticket::SavedTicket::steamId), CSteamId>);
+static_assert(sizeof(CSteamId) == sizeof(uint64_t));
+static_assert(sizeof(CServerPipe) == 0x60);
+static_assert(offsetof(CServerPipe, pipeHandle) == 0x8);
+static_assert(offsetof(CServerPipe, pid) == 0x14);
+static_assert(offsetof(CServerPipe, userHandle) == 0x21);
 
 static int g_failures = 0;
 
@@ -32,6 +41,12 @@ static int g_failures = 0;
 
 int main()
 {
+	constexpr uint64_t fullSteamId = 76561198012345678ULL;
+	const CSteamId identity(fullSteamId);
+	CHECK(identity.isSet(), "ticket: full Steam identity is set");
+	CHECK(identity.steamId64 == fullSteamId,
+	      "ticket: full 64-bit Steam identity is preserved");
+
 	CHECK(Ticket::shouldStampAppOwnershipTicket(true, false),
 	      "ticket: managed base app is covered");
 	CHECK(Ticket::shouldStampAppOwnershipTicket(false, true),
@@ -42,7 +57,7 @@ int main()
 	      "ticket: unknown app remains untouched");
 
 	Ticket::SavedTicket cached;
-	cached.steamId = 7;
+	cached.steamId = identity;
 	cached.ticket = "ordinary";
 	Ticket::ticketMap[400] = cached;
 	Ticket::encryptedTicketMap[400] = cached;
@@ -61,6 +76,16 @@ int main()
 	CHECK(Ticket::ticketMap.count(401) == 1,
 	      "ticket: forgetting one app preserves another app's ticket");
 	CHECK(!Ticket::forgetApp(0), "ticket: zero app id is rejected");
+
+	const CSteamId first(76561198000000001ULL);
+	const CSteamId second(76561198000000002ULL);
+	Ticket::oneTimeSteamIdSpoof[400] = first;
+	Ticket::oneTimeSteamIdSpoof[401] = second;
+	Ticket::oneTimeSteamIdSpoof.erase(400);
+	CHECK(!Ticket::oneTimeSteamIdSpoof.contains(400),
+	      "ticket: consuming one app's identity clears only that app");
+	CHECK(Ticket::oneTimeSteamIdSpoof.at(401).steamId64 == second.steamId64,
+	      "ticket: per-app identity state remains isolated");
 
 	const std::unordered_set<uint32_t> before = {101, 202, 303};
 	const std::unordered_set<uint32_t> after = {202, 404};
