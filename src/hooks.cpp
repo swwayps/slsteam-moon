@@ -428,14 +428,14 @@ static uint32_t hkSteamEngine_ProcessIPCFrame(
 		if (serverPipe)
 		{
 			Process_t process{};
-			if (process.init(serverPipe->pid, serverPipe->pipe))
+			if (process.init(serverPipe->pid, serverPipe->pipeHandle))
 			{
 				g_processMap.insert_or_assign(
-					serverPipe->pipe, std::move(process));
+					serverPipe->pipeHandle, std::move(process));
 			}
 			else
 			{
-				g_processMap.erase(serverPipe->pipe);
+				g_processMap.erase(serverPipe->pipeHandle);
 			}
 		}
 		else
