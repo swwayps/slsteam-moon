@@ -1,3 +1,5 @@
+#include "../src/sdk/steam.hpp"
+#include "../src/config.hpp"
 #include "../src/log.hpp"
 #include "../src/process.hpp"
 
@@ -6,11 +8,13 @@
 #include <memory>
 
 std::unique_ptr<CLog> g_pLog;
+CConfig g_config;
 
 CLog::CLog(const char* logPath) : path(logPath) {}
 CLog::~CLog() = default;
 LogLevel CLog::getMinLevel() { return LogLevel::None; }
 bool CLog::shouldNotify() { return false; }
+CConfig::~CConfig() = default;
 
 namespace
 {
@@ -82,6 +86,14 @@ int main()
 	afterOtherVariable.environ.assign(environment, sizeof(environment) - 1);
 	expect(afterOtherVariable.getAppIdFromEnv() == 480,
 	       "SteamAppId is found after another environment variable");
+
+	const auto currentExecutable = IExecutableFile::create("/proc/self/exe");
+	expect(currentExecutable != nullptr && !currentExecutable->sections.empty(),
+	       "the upstream executable analyser parses the running ELF image");
+	const auto missingExecutable = IExecutableFile::create(
+		"/proc/self/definitely-missing", LogLevel::Debug);
+	expect(missingExecutable == nullptr,
+	       "a disappearing open file degrades to an ignored debug result");
 
 	return failures == 0 ? 0 : 1;
 }

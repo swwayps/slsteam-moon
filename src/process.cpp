@@ -29,15 +29,15 @@ IExecutableFile::~IExecutableFile()
 	}
 }
 
-bool IExecutableFile::load(const std::string& filePath, const LogLevelFlags_t logErrorFlags)
+bool IExecutableFile::load(const std::string& filePath, const LogLevel logErrorLevel)
 {
 	path = filePath;
 	file = fopen(path.c_str(), "r");
-	errorFlags = logErrorFlags;
+	errorLevel = logErrorLevel;
 
 	if (!file)
 	{
-		LOG_CUSTOM(errorFlags, "Failed to open %s!\n", path.c_str());
+		logFailure("Failed to open %s!\n", path.c_str());
 		return false;
 	}
 
@@ -69,7 +69,7 @@ bool IExecutableFile::hasSteamDRM()
 		const auto bytes = readSection(last);
 		const double entropy = Utils::calculateEntropy(bytes);
 
-		LOG_DEBUG("%s has entropy of %f\n", last.name.c_str(), entropy);
+		if (g_pLog) g_pLog->debug("%s has entropy of %f\n", last.name.c_str(), entropy);
 
 		if (entropy >= 7.0)
 		{
@@ -142,14 +142,14 @@ bool IExecutableFile::hasDenuvo()
 
 			if (g_config.extendedLogging.get())
 			{
-				LOG_DEBUG("%s entropy is %f\n", sec.name.c_str(), entropy);
+				if (g_pLog) g_pLog->debug("%s entropy is %f\n", sec.name.c_str(), entropy);
 			}
 
 			codeEntropy = std::max(codeEntropy, entropy);
 		}
 	}
 
-	LOG_DEBUG("%u Denuvo sections, entropy %f\n", secsFound, codeEntropy);
+	if (g_pLog) g_pLog->debug("%u Denuvo sections, entropy %f\n", secsFound, codeEntropy);
 
 	//At least one denuvo section & and code has to encrypted/obfuscated
 	return secsFound > 0 && codeEntropy > MIN_ENTROPY;
@@ -159,7 +159,7 @@ std::vector<uint8_t> IExecutableFile::readSection(const SectionHdr_t& section)
 {
 	if (fseek(file, section.offset, SEEK_SET) != 0)
 	{
-		LOG_CUSTOM(errorFlags, "Failed to seek to section %s!\n", section.name.c_str());
+		logFailure("Failed to seek to section %s!\n", section.name.c_str());
 		return { };
 	}
 
@@ -168,23 +168,24 @@ std::vector<uint8_t> IExecutableFile::readSection(const SectionHdr_t& section)
 
 	if (fread(bytes.data(), bytes.size(), 1, file) < 1)
 	{
-		LOG_CUSTOM(errorFlags, "Failed to read section %s!\n", section.name.c_str());
+		logFailure("Failed to read section %s!\n", section.name.c_str());
 		return { };
 	}
 
 	return bytes;
 }
 
-std::unique_ptr<IExecutableFile> IExecutableFile::create(const std::string& path, const LogLevelFlags_t logErrorFlags)
+std::unique_ptr<IExecutableFile> IExecutableFile::create(
+	const std::string& path, const LogLevel logErrorLevel)
 {
 	std::unique_ptr<IExecutableFile> file = std::make_unique<CPortableExecutableFile>();
-	if (file->load(path, logErrorFlags))
+	if (file->load(path, logErrorLevel))
 	{
 		return file;
 	}
 
 	file = std::make_unique<CELFExecutableFile>();
-	if (file->load(path, logErrorFlags))
+	if (file->load(path, logErrorLevel))
 	{
 		return file;
 	}
@@ -196,7 +197,7 @@ bool CPortableExecutableFile::checkMagic()
 {
 	if (fseek(file, 0, SEEK_SET) != 0)
 	{
-		LOG_CUSTOM(errorFlags, "Failed to seek to magic!\n");
+		logFailure("Failed to seek to magic!\n");
 		return false;
 	}
 
@@ -205,7 +206,7 @@ bool CPortableExecutableFile::checkMagic()
 
 	if (fread(magic.data(), magic.size(), 1, file) < 1)
 	{
-		LOG_CUSTOM(errorFlags, "Failed to read e_magic!\n");
+		logFailure("Failed to read e_magic!\n");
 		return false;
 	}
 
@@ -224,24 +225,24 @@ bool CPortableExecutableFile::parseSections()
 		return false;
 	}
 
-	LOG_DEBUG("Parsing PE %s\n", path.filename().c_str());
+	if (g_pLog) g_pLog->debug("Parsing PE %s\n", path.filename().c_str());
 
 	if (fseek(file, 0x3C, SEEK_SET) != 0)
 	{
-		LOG_CUSTOM(errorFlags, "Failed to seek to e_lfanew!\n");
+		logFailure("Failed to seek to e_lfanew!\n");
 		return false;
 	}
 
 	uint32_t e_lfanew;
 	if (fread(&e_lfanew, sizeof(e_lfanew), 1, file) < 1)
 	{
-		LOG_CUSTOM(errorFlags, "Failed to read e_lfanew!\n");
+		logFailure("Failed to read e_lfanew!\n");
 		return false;
 	}
 
 	if (fseek(file, e_lfanew, SEEK_SET) != 0)
 	{
-		LOG_CUSTOM(errorFlags, "Failed to seek to e_lfanew!\n");
+		logFailure("Failed to seek to e_lfanew!\n");
 		return false;
 	}
 
@@ -249,7 +250,7 @@ bool CPortableExecutableFile::parseSections()
 
 	if (fread(peHdr, sizeof(peHdr), 1, file) < 1)
 	{
-		LOG_CUSTOM(errorFlags, "Failed to read NT_HEADER64!\n");
+		logFailure("Failed to read NT_HEADER64!\n");
 		return false;
 	}
 
@@ -261,22 +262,22 @@ bool CPortableExecutableFile::parseSections()
 	if (machine == MACHINE_I386)
 	{
 		sectionHdrsOffset += PE_HEADER32_SIZE;
-		LOG_DEBUG("Parsing as 32 bit file\n");
+		if (g_pLog) g_pLog->debug("Parsing as 32 bit file\n");
 	}
 	else if (machine == MACHINE_X64)
 	{
 		sectionHdrsOffset += PE_HEADER64_SIZE;
-		LOG_DEBUG("Parsing as 64 bit file\n");
+		if (g_pLog) g_pLog->debug("Parsing as 64 bit file\n");
 	}
 	else
 	{
-		LOG_CUSTOM(errorFlags, "Unknown machine %u!\n", machine);
+		logFailure("Unknown machine %u!\n", machine);
 		return false;
 	}
 
 	if (fseek(file, sectionHdrsOffset, SEEK_SET) != 0)
 	{
-		LOG_CUSTOM(errorFlags, "Failed to seek to section headers!\n");
+		logFailure("Failed to seek to section headers!\n");
 		return false;
 	}
 
@@ -286,7 +287,7 @@ bool CPortableExecutableFile::parseSections()
 
 		if (fread(sectHdr, sizeof(sectHdr), 1, file) < 1)
 		{
-			LOG_CUSTOM(errorFlags, "Failed to read section header %i!\n", i);
+			logFailure("Failed to read section header %i!\n", i);
 			return false;
 		}
 
@@ -299,7 +300,7 @@ bool CPortableExecutableFile::parseSections()
 
 		if (g_config.extendedLogging.get())
 		{
-			LOG_DEBUG("Section header %s at 0x%x with size 0x%x\n", name, ptr, size);
+			if (g_pLog) g_pLog->debug("Section header %s at 0x%x with size 0x%x\n", name, ptr, size);
 		}
 
 		sections.emplace_back(SectionHdr_t { std::string(name, strnlen(name, sizeof(name))), rva, ptr, size });
@@ -312,7 +313,7 @@ bool CELFExecutableFile::parseElf32Headers(const Elf32_Ehdr& hdr)
 {
 	if (sizeof(Elf32_Shdr) < hdr.e_shentsize)
 	{
-		LOG_CUSTOM(errorFlags, "hdr.e_shentsize < sizeof(Elf_Shdr)!\n");
+		logFailure("hdr.e_shentsize < sizeof(Elf_Shdr)!\n");
 		return false;
 	}
 
@@ -321,13 +322,13 @@ bool CELFExecutableFile::parseElf32Headers(const Elf32_Ehdr& hdr)
 
 	if (fseek(file, hdr.e_shoff, SEEK_SET) != 0)
 	{
-		LOG_CUSTOM(errorFlags, "Failed to seek to section headers\n");
+		logFailure("Failed to seek to section headers\n");
 		return false;
 	}
 
 	if (fread(shdrs.data(), sizeof(Elf32_Shdr), shdrs.size(), file) < shdrs.size())
 	{
-		LOG_CUSTOM(errorFlags, "Failed to read section headers\n");
+		logFailure("Failed to read section headers\n");
 		return false;
 	}
 
@@ -337,13 +338,13 @@ bool CELFExecutableFile::parseElf32Headers(const Elf32_Ehdr& hdr)
 
 	if (fseek(file, strHdr.sh_offset, SEEK_SET) != 0)
 	{
-		LOG_CUSTOM(errorFlags, "Failed to seek to strHdr.sh_offset!\n");
+		logFailure("Failed to seek to strHdr.sh_offset!\n");
 		return false;
 	}
 
 	if (fread(strSec.data(), sizeof(unsigned char), strSec.size(), file) < strSec.size())
 	{
-		LOG_CUSTOM(errorFlags, "Failed to read strHdr!\n");
+		logFailure("Failed to read strHdr!\n");
 		return false;
 	}
 
@@ -361,7 +362,7 @@ bool CELFExecutableFile::parseElf32Headers(const Elf32_Ehdr& hdr)
 
 		if (g_config.extendedLogging.get())
 		{
-			LOG_DEBUG("Section header name %s, address 0x%x, offset 0x%x\n", name, shdr.sh_addr, shdr.sh_offset);
+			if (g_pLog) g_pLog->debug("Section header name %s, address 0x%x, offset 0x%x\n", name, shdr.sh_addr, shdr.sh_offset);
 		}
 
 		sections.emplace_back(SectionHdr_t { name, shdr.sh_addr, shdr.sh_offset, shdr.sh_size });
@@ -374,7 +375,7 @@ bool CELFExecutableFile::parseElf64Headers(const Elf64_Ehdr& hdr)
 {
 	if (sizeof(Elf64_Shdr) < hdr.e_shentsize)
 	{
-		LOG_CUSTOM(errorFlags, "hdr.e_shentsize < sizeof(Elf_Shdr)!\n");
+		logFailure("hdr.e_shentsize < sizeof(Elf_Shdr)!\n");
 		return false;
 	}
 
@@ -383,13 +384,13 @@ bool CELFExecutableFile::parseElf64Headers(const Elf64_Ehdr& hdr)
 
 	if (fseek(file, hdr.e_shoff, SEEK_SET) != 0)
 	{
-		LOG_CUSTOM(errorFlags, "Failed to seek to section headers\n");
+		logFailure("Failed to seek to section headers\n");
 		return false;
 	}
 
 	if (fread(shdrs.data(), sizeof(Elf64_Shdr), shdrs.size(), file) < shdrs.size())
 	{
-		LOG_CUSTOM(errorFlags, "Failed to read section headers\n");
+		logFailure("Failed to read section headers\n");
 		return false;
 	}
 
@@ -399,13 +400,13 @@ bool CELFExecutableFile::parseElf64Headers(const Elf64_Ehdr& hdr)
 
 	if (fseek(file, strHdr.sh_offset, SEEK_SET) != 0)
 	{
-		LOG_CUSTOM(errorFlags, "Failed to seek to strHdr.sh_offset!\n");
+		logFailure("Failed to seek to strHdr.sh_offset!\n");
 		return false;
 	}
 
 	if (fread(strSec.data(), sizeof(unsigned char), strSec.size(), file) < strSec.size())
 	{
-		LOG_CUSTOM(errorFlags, "Failed to read strHdr!\n");
+		logFailure("Failed to read strHdr!\n");
 		return false;
 	}
 
@@ -423,7 +424,7 @@ bool CELFExecutableFile::parseElf64Headers(const Elf64_Ehdr& hdr)
 
 		if (g_config.extendedLogging.get())
 		{
-			LOG_DEBUG("Section header name %s, address 0x%llx, offset 0x%llx\n", name, shdr.sh_addr, shdr.sh_offset);
+			if (g_pLog) g_pLog->debug("Section header name %s, address 0x%llx, offset 0x%llx\n", name, shdr.sh_addr, shdr.sh_offset);
 		}
 
 		sections.emplace_back(SectionHdr_t { name, shdr.sh_addr, shdr.sh_offset, shdr.sh_size });
@@ -438,13 +439,13 @@ bool CELFExecutableFile::checkMagic()
 
 	if (fseek(file, 0, SEEK_SET) != 0)
 	{
-		LOG_CUSTOM(errorFlags, "Failed to seek to Magic!\n");
+		logFailure("Failed to seek to Magic!\n");
 		return false;
 	}
 
 	if (fread(magic, sizeof(magic), 1, file) < 1)
 	{
-		LOG_CUSTOM(errorFlags, "Failed to read magic!\n");
+		logFailure("Failed to read magic!\n");
 		return false;
 	}
 	
@@ -469,24 +470,24 @@ bool CELFExecutableFile::parseSections()
 		return false;
 	}
 
-	LOG_DEBUG("Parsing ELF %s\n", path.filename().c_str());
+	if (g_pLog) g_pLog->debug("Parsing ELF %s\n", path.filename().c_str());
 
 	if (fseek(file, 0, SEEK_SET) != 0)
 	{
-		LOG_CUSTOM(errorFlags, "Failed to seek to file beginning!\n");
+		logFailure("Failed to seek to file beginning!\n");
 		return false;
 	}
 
 	Elf64_Ehdr hdr64;
 	if (fread(&hdr64, sizeof(hdr64), 1, file) < 1)
 	{
-		LOG_CUSTOM(errorFlags, "Failed to read Elf header!\n");
+		logFailure("Failed to read Elf header!\n");
 		return false;
 	}
 
 	if (hdr64.e_ident[EI_CLASS] == ELFCLASS32 && hdr64.e_machine == ISA_X86)
 	{
-		LOG_DEBUG("Parsing as 32 bit file\n");
+		if (g_pLog) g_pLog->debug("Parsing as 32 bit file\n");
 
 		//Headers are the same till e_entry. The 64bit version is longer
 		//so we can just recast it
@@ -495,12 +496,12 @@ bool CELFExecutableFile::parseSections()
 	}
 	else if (hdr64.e_ident[EI_CLASS] == ELFCLASS64 && hdr64.e_machine == ISA_AMD64)
 	{
-		LOG_DEBUG("Parsing as 64 bit file\n");
+		if (g_pLog) g_pLog->debug("Parsing as 64 bit file\n");
 		parseElf64Headers(hdr64);
 	}
 	else
 	{
-		LOG_CUSTOM(errorFlags, "Unknown ELFCLASS/e_machine %u | %u!\n", hdr64.e_ident[EI_CLASS], hdr64.e_machine);
+		logFailure("Unknown ELFCLASS/e_machine %u | %u!\n", hdr64.e_ident[EI_CLASS], hdr64.e_machine);
 		return false;
 	}
 
@@ -638,7 +639,7 @@ bool Process_t::analyse()
 
 	if (!exeFile)
 	{
-		LOG_ERROR("Failed to parse %s!\n", exe.filename().c_str());
+		if (g_pLog) g_pLog->warn("Failed to parse %s!\n", exe.filename().c_str());
 		return false;
 	}
 
@@ -649,7 +650,7 @@ bool Process_t::analyse()
 	//So we check all of them
 	for (const auto& file : getOpenFiles())
 	{
-		const auto executable = IExecutableFile::create(file, ELogLevel::k_ELogLevelDebug);
+		const auto executable = IExecutableFile::create(file, LogLevel::Debug);
 		if (!executable)
 		{
 			continue;
@@ -668,16 +669,16 @@ bool Process_t::analyse()
 
 	if (steamDRM)
 	{
-		LOG_DEBUG("Detected SteamDRM in %s!\n", exe.filename().c_str());
+		if (g_pLog) g_pLog->debug("Detected SteamDRM in %s!\n", exe.filename().c_str());
 	}
 
 	if (denuvo)
 	{
-		LOG_DEBUG("Detected Denuvo in %s!\n", exe.filename().c_str());
+		if (g_pLog) g_pLog->debug("Detected Denuvo in %s!\n", exe.filename().c_str());
 	}
 
 	const auto endTime = std::chrono::system_clock::now();
-	LOG_DEBUG("Analysed %s in %llums\n", exe.filename().c_str(), std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count());
+	if (g_pLog) g_pLog->debug("Analysed %s in %llums\n", exe.filename().c_str(), std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count());
 	return true;
 }
 
@@ -689,7 +690,7 @@ bool Process_t::init(const pid_t pid, const HSteamPipe pipeHandle)
 	const auto serverPipe = g_pSteamEngine->getServerPipe(pipeHandle);
 	if (!serverPipe)
 	{
-		LOG_ERROR("ServerPipe for %p is null!\n", reinterpret_cast<void*>(pipeHandle));
+		if (g_pLog) g_pLog->warn("ServerPipe for %p is null!\n", reinterpret_cast<void*>(pipeHandle));
 		return false;
 	}
 

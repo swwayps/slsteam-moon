@@ -28,11 +28,11 @@ public:
 	FILE* file;
 	std::vector<SectionHdr_t> sections;
 	//We use this to not clutter the log with failed open file reads
-	LogLevelFlags_t errorFlags;
+	LogLevel errorLevel;
 
 	virtual ~IExecutableFile();
 
-	bool load(const std::string& filePath, const LogLevelFlags_t logErrorFlags = ELogLevel::k_ELogLevelError);
+	bool load(const std::string& filePath, LogLevel logErrorLevel = LogLevel::Warn);
 	std::vector<uint8_t> readSection(const SectionHdr_t& section);
 
 	bool hasSteamDRM();
@@ -41,7 +41,19 @@ public:
 	virtual bool checkMagic() = 0;
 	virtual bool parseSections() = 0;
 
-	static std::unique_ptr<IExecutableFile> create(const std::string& path, const LogLevelFlags_t logErrorFlags = ELogLevel::k_ELogLevelError);
+	static std::unique_ptr<IExecutableFile> create(
+		const std::string& path, LogLevel logErrorLevel = LogLevel::Warn);
+
+protected:
+	template<typename ...Args>
+	void logFailure(const char* message, Args... args) const
+	{
+		if (!g_pLog) return;
+		if (errorLevel == LogLevel::Debug)
+			g_pLog->debug(message, args...);
+		else
+			g_pLog->warn(message, args...);
+	}
 };
 
 class CPortableExecutableFile : public IExecutableFile
