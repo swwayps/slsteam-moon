@@ -1,6 +1,5 @@
 #include "utils.hpp"
 
-#include <cctype>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
@@ -46,7 +45,7 @@ bool Utils::isNumber(const char* str)
 	{
 		const char c = str[i];
 
-		if (!std::isdigit(c))
+		if (c < '0' || c > '9')
 		{
 			return false;
 		}
