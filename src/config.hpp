@@ -2,6 +2,7 @@
 
 #include "mtvar.hpp"
 #include "log.hpp"
+#include "sdk/steam.hpp"
 #include "feats/manifestpins.hpp"
 #include "feats/librarydates.hpp"
 
