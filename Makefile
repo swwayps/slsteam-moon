@@ -105,7 +105,8 @@ test-fakeappid-wiring:
 	/tmp/test_fakeappid_wiring
 
 test-ticket:
-	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror -I include -I src \
+	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
+		-Wall -Wextra -Wpedantic -Werror -I include -I src \
 		tools/test_ticket.cpp -o /tmp/test_ticket
 	/tmp/test_ticket
 

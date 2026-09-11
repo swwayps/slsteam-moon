@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../sdk/CSteamID.hpp"
+#include "../sdk/steam.hpp"
 
 #include <cstdint>
 #include <mutex>

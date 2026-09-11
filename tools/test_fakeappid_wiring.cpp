@@ -49,6 +49,7 @@ int main()
 	const std::string engine = read("src/sdk/CSteamEngine.cpp");
 	const std::string fakeAppIds = read("src/feats/fakeappid.cpp");
 	const std::string patterns = read("src/patterns.cpp");
+	const std::string ticket = read("src/feats/ticket.cpp");
 	const std::string process = read("src/process.hpp");
 
 	expect(hooks.find("createAndPlaceSteamIdHook") == std::string::npos,
@@ -59,6 +60,16 @@ int main()
 	       "SteamID result handling lives in ProcessIPCFrame");
 	expect(patterns.find("IClientUser::GetSteamID") == std::string::npos,
 	       "the removed SteamID hook has no stale locator");
+	expect(patterns.find("IClientUser::GetEncryptedAppTicket") != std::string::npos,
+	       "encrypted-ticket identity timing has a Moon locator");
+	expect(hooks.find(
+		"IClientUser_GetEncryptedAppTicket.setup(Patterns::IClientUser::GetEncryptedAppTicket")
+		!= std::string::npos,
+	       "encrypted-ticket hook is configured during setup");
+	expect(occurrences(hooks, "IClientUser_GetEncryptedAppTicket.place();") == 1,
+	       "encrypted-ticket hook has one placement path");
+	expect(occurrences(hooks, "IClientUser_GetEncryptedAppTicket.remove();") == 1,
+	       "encrypted-ticket hook has one teardown path");
 	expect(occurrences(
 		hooks, "CWebSocketConnection_BBuildAndAsyncSendFrame.remove();") == 1,
 	       "WebSocket detour has one teardown path");
@@ -77,8 +88,16 @@ int main()
 	       "runIPCFrame resolves IClientUtils only for extended logging");
 	expect(run.find("if (!utils)") == std::string::npos,
 	       "logging lookup cannot suppress the AppID transition");
-	expect(process.find("cmdLine") == std::string::npos,
-	       "unused command-line state is not retained");
+	expect(process.find("cmdLine") != std::string::npos,
+	       "upstream process command-line state is retained");
+	expect(ticket.find("g_processMap.at(pipe)") == std::string::npos,
+	       "ticket pipe connection tolerates an absent process mapping");
+	expect(ticket.find("g_processMap.at(utils->getCurrentSteamPipe())")
+	       == std::string::npos,
+	       "ticket ownership timing tolerates an absent process mapping");
+	expect(hooks.find("g_processMap.at(utils->getCurrentSteamPipe())")
+	       == std::string::npos,
+	       "SteamID timing tolerates an absent process mapping");
 
 	CUtlBuffer buffer{};
 	expect(!buffer.hasBytes(1), "a null IPC buffer has no readable bytes");

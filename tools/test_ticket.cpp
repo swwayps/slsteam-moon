@@ -96,18 +96,18 @@ int main()
 	std::ifstream configSource("src/config.cpp");
 	const std::string configText((std::istreambuf_iterator<char>(configSource)),
 	                            std::istreambuf_iterator<char>());
-	CHECK(configText.find("ConfigDiscovery::removedAppIds") != std::string::npos,
-	      "config watcher uses the removed-app diff helper");
+	CHECK(configText.find("ConfigDiscovery::classifyReloadRemovals") != std::string::npos,
+	      "config watcher classifies managed and active removals");
 	CHECK(configText.find("AppInfoProvision::forgetApp") != std::string::npos,
 	      "config watcher invalidates native appinfo state on removal");
 	CHECK(configText.find("Ticket::forgetApp") != std::string::npos,
 	      "config watcher invalidates ticket state on removal");
 	const auto manifestImport = configText.find("ManifestId::importLuaScripts();");
-	const auto hotAddDetection = configText.find("bool hasNewApp = false;");
+	const auto hotAddDetection = configText.find("HotReload::publish(afterManaged, true);");
 	CHECK(manifestImport != std::string::npos &&
 	      hotAddDetection != std::string::npos &&
 	      manifestImport < hotAddDetection,
-	      "config watcher re-imports manifest pins for existing script edits");
+	      "config watcher refreshes manifest pins before publishing hot changes");
 
 	if (g_failures == 0) { std::printf("\nALL PASS\n"); return 0; }
 	std::printf("\n%d CHECK(S) FAILED\n", g_failures);

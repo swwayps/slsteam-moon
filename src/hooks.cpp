@@ -1215,6 +1215,10 @@ static uint8_t hkClientUser_IsUserSubscribedAppInTicket(void* pClientUser, uint6
 
 static CSteamId hkClientUser_GetSteamId(const CSteamId& steamId)
 {
+	if (!g_pSteamEngine)
+	{
+		return steamId;
+	}
 	const auto utils = g_pSteamEngine->getUtils();
 	if (!utils)
 	{
@@ -1266,9 +1270,8 @@ static CSteamId hkClientUser_GetSteamId(const CSteamId& steamId)
 
 	if (g_config.smartTickets.get() & CConfig::k_ESmartTicketsDenuvo)
 	{
-		const auto& proc = g_processMap.at(utils->getCurrentSteamPipe());
-
-		if (!proc.denuvo)
+		const auto process = g_processMap.find(utils->getCurrentSteamPipe());
+		if (process == g_processMap.end() || !process->second.denuvo)
 		{
 			return steamId;
 		}
@@ -1461,6 +1464,7 @@ bool Hooks::setup()
 		&& IClientUser_BLoggedOn.setup(Patterns::IClientUser::BLoggedOn, &hkClientUser_BLoggedOn)
 		&& IClientUser_BUpdateAppOwnershipTicket.setup(Patterns::IClientUser::BUpdateAppOwnershipTicket, hkClientUser_BUpdateOwnershipTicket)
 		&& IClientUser_GetAppOwnershipTicketExtendedData.setup(Patterns::IClientUser::GetAppOwnershipTicketExtendedData, hkClientUser_GetAppOwnershipTicketExtendedData)
+		&& IClientUser_GetEncryptedAppTicket.setup(Patterns::IClientUser::GetEncryptedAppTicket, hkClientUser_GetEncryptedAppTicket)
 		&& IClientUser_IsUserSubscribedAppInTicket.setup(Patterns::IClientUser::IsUserSubscribedAppInTicket, &hkClientUser_IsUserSubscribedAppInTicket)
 		&& IClientUser_RequiresLegacyCDKey.setup(Patterns::IClientUser::RequiresLegacyCDKey, hkClientUser_RequiresLegacyCDKey)
 
@@ -1554,6 +1558,7 @@ void Hooks::place()
 	IClientUser_BLoggedOn.place();
 	IClientUser_BUpdateAppOwnershipTicket.place();
 	IClientUser_GetAppOwnershipTicketExtendedData.place();
+	IClientUser_GetEncryptedAppTicket.place();
 	IClientUser_IsUserSubscribedAppInTicket.place();
 	IClientUser_RequiresLegacyCDKey.place();
 
@@ -1629,6 +1634,7 @@ void Hooks::remove()
 	IClientUser_BLoggedOn.remove();
 	IClientUser_BUpdateAppOwnershipTicket.remove();
 	IClientUser_GetAppOwnershipTicketExtendedData.remove();
+	IClientUser_GetEncryptedAppTicket.remove();
 	IClientUser_IsUserSubscribedAppInTicket.remove();
 	IClientUser_RequiresLegacyCDKey.remove();
 

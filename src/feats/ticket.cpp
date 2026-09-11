@@ -115,7 +115,12 @@ bool Ticket::saveTicketToCache(CMsgClientGetAppOwnershipTicketResponse* resp)
 
 void Ticket::connectPipe(const HSteamPipe pipe)
 {
-	const auto& proc = g_processMap.at(pipe);
+	const auto process = g_processMap.find(pipe);
+	if (process == g_processMap.end())
+	{
+		return;
+	}
+	const auto& proc = process->second;
 
 	if (!proc.steamDRM)
 	{
@@ -162,12 +167,14 @@ void Ticket::getEncryptedAppTicket(uint32_t appId)
 
 void Ticket::getTicketOwnershipExtendedData(uint32_t appId)
 {
-	const auto utils = g_pSteamEngine->getUtils();
-
-	if ((g_config.smartTickets.get() & CConfig::k_ESmartTicketsSteamDRM))
+	if ((g_config.smartTickets.get() & CConfig::k_ESmartTicketsSteamDRM)
+		&& g_pSteamEngine)
 	{
-		const auto& proc = g_processMap.at(utils->getCurrentSteamPipe());
-		if (proc.steamDRM)
+		const auto utils = g_pSteamEngine->getUtils();
+		const auto process = utils
+			? g_processMap.find(utils->getCurrentSteamPipe())
+			: g_processMap.end();
+		if (process != g_processMap.end() && process->second.steamDRM)
 		{
 			//Handled in connectPipe
 			//For other ticket requests we fall through to spoofing the next GetSteamID call
