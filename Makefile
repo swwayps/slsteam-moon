@@ -219,7 +219,8 @@ test-ascii:
 	/tmp/test_ascii
 
 test-dlc-scope:
-	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src -I include \
+	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
+		-Wall -Wextra -Wpedantic -I src -I include \
 		tools/test_dlc_scope.cpp src/feats/dlc.cpp \
 		src/feats/managed_dlc_scope.cpp -pthread \
 		-o /tmp/test_dlc_scope
