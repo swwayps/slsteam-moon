@@ -89,8 +89,8 @@ namespace
 	//   +0x08 u64 ManifestGid   +0x10 u64 ManifestSize
 	//   +0x18 u32 DlcAppId   +0x1c u8 Lcs   +0x1d u8 bNotNewTarget
 	//   +0x1e u8 SharedInstall ; stride 0x20.
-	// CUtlVector<DepotEntry>: element base @ +0x00 (m_Memory.m_pMemory),
-	//   count (m_Size) @ +0x0c.
+	// CUtlVector<DepotEntry>: element base @ +0x00 (memory.base),
+	//   count (size) @ +0x0c.
 	constexpr size_t kDepotEntryStride = ManagedDepotFilter::kDepotEntryStride;
 	constexpr size_t kDepotEntryAppIdOff = 0x04;
 	constexpr size_t kDepotEntryGidOff = 0x08;

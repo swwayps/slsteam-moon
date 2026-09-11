@@ -13,6 +13,8 @@
 
 #pragma once
 
+#include "CUtl.hpp"
+
 #include <cstdint>
 
 
@@ -27,21 +29,8 @@ enum class EPackageStatus : uint32_t
 enum class EBillingType : uint32_t {};
 enum class ELicenseType : uint32_t {};
 
-template<typename T>
-struct CUtlMemory
-{
-	T* m_pMemory;             // +0x00
-	uint32_t m_nAllocationCount; // +0x04
-	int32_t m_nGrowSize;        // +0x08 (negative => externally allocated)
-};
 static_assert(sizeof(CUtlMemory<uint32_t>) == 12, "CUtlMemory layout drift");
 
-template<typename T>
-struct CUtlVector
-{
-	CUtlMemory<T> m_Memory;   // +0x00
-	uint32_t m_Size;          // +0x0C
-};
 static_assert(sizeof(CUtlVector<uint32_t>) == 16, "CUtlVector layout drift");
 
 struct PackageInfo
