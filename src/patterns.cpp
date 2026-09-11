@@ -1295,13 +1295,6 @@ namespace Patterns
 			SigFollowMode::PrologueUpwards,
 			std::vector<uint8_t> { 0x53, 0x56, 0x57, 0x55 }
 		};
-		Pattern_t GetEncryptedAppTicket
-		{
-			"IClientUser::GetEncryptedAppTicket",
-			"C7 45 B0 B4 8C 46 E0 6A 04 50 57 E8 ? ? ? ? 8B 45 10 83 C4 0C 6A 04 89 45 B4 8D 45 B4 50 57 E8 ? ? ? ? 8D 45 B8 83 C4 0C C7 45 B8 00 02 B8 E0",
-			SigFollowMode::PrologueUpwards,
-			std::vector<uint8_t> { 0x55, 0x89, 0xe5, 0x57, 0x56 }
-		};
 		Pattern_t IsUserSubscribedAppInTicket
 		{
 			"IClientUser::IsUserSubscribedAppInTicket",

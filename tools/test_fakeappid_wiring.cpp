@@ -1,5 +1,6 @@
 #include "../src/sdk/CUtl.hpp"
 #include "../src/sdk/steam.hpp"
+#include "../src/vftableinfo.hpp"
 
 #include <cstdio>
 #include <fstream>
@@ -46,6 +47,7 @@ int main()
 	static_assert(sizeof(EIPCExitCode) == 1);
 
 	const std::string hooks = read("src/hooks.cpp");
+	const std::string hooksHeader = read("src/hooks.hpp");
 	const std::string engine = read("src/sdk/CSteamEngine.cpp");
 	const std::string fakeAppIds = read("src/feats/fakeappid.cpp");
 	const std::string patterns = read("src/patterns.cpp");
@@ -60,16 +62,23 @@ int main()
 	       "SteamID result handling lives in ProcessIPCFrame");
 	expect(patterns.find("IClientUser::GetSteamID") == std::string::npos,
 	       "the removed SteamID hook has no stale locator");
-	expect(patterns.find("IClientUser::GetEncryptedAppTicket") != std::string::npos,
-	       "encrypted-ticket identity timing has a Moon locator");
-	expect(hooks.find(
-		"IClientUser_GetEncryptedAppTicket.setup(Patterns::IClientUser::GetEncryptedAppTicket")
+	expect(patterns.find("IClientUser::GetEncryptedAppTicket") == std::string::npos,
+	       "encrypted-ticket identity timing has no stale detour locator");
+	expect(hooksHeader.find(
+		"extern VFTHook<IClientUser_GetEncryptedAppTicket_t> IClientUser_GetEncryptedAppTicket;")
 		!= std::string::npos,
-	       "encrypted-ticket hook is configured during setup");
+	       "encrypted-ticket identity timing uses the upstream VFT hook shape");
+	expect(hooks.find(
+		"IClientUser_GetEncryptedAppTicket.setup(\n"
+		"\t\t\tvft,\n"
+		"\t\t\tVFTIndexes::IClientUser::GetEncryptedAppTicket")
+		!= std::string::npos,
+	       "encrypted-ticket hook is configured from the live IClientUser vtable");
 	expect(occurrences(hooks, "IClientUser_GetEncryptedAppTicket.place();") == 1,
 	       "encrypted-ticket hook has one placement path");
 	expect(occurrences(hooks, "IClientUser_GetEncryptedAppTicket.remove();") == 1,
 	       "encrypted-ticket hook has one teardown path");
+	static_assert(VFTIndexes::IClientUser::GetEncryptedAppTicket == 121);
 	expect(occurrences(
 		hooks, "CWebSocketConnection_BBuildAndAsyncSendFrame.remove();") == 1,
 	       "WebSocket detour has one teardown path");

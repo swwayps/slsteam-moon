@@ -45,6 +45,8 @@ namespace VFTIndexes
 	{
 		constexpr int BLoggedOn = 4;
 		constexpr int GetSteamID = 10;
+		// Linux i386 IClientUserMap; the wrapper carries IPC hash 0xE0468CB4.
+		constexpr int GetEncryptedAppTicket = 121;
 	}
 
 	namespace IClientUtils

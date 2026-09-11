@@ -1316,6 +1316,22 @@ static void hkClientUser_RunIPCFrame(void* pClientUser, void* a1, void* a2, void
 	static std::once_flag attestationOnce;
 	attestHookInvocation(attestationOnce, Hooks::IClientUser_RunIPCFrame.name);
 
+	static bool hooked = false;
+	if (!hooked)
+	{
+		std::shared_ptr<lm_vmt_t> vft = std::make_shared<lm_vmt_t>();
+		LM_VmtNew(*reinterpret_cast<lm_address_t**>(pClientUser), vft.get());
+
+		Hooks::IClientUser_GetEncryptedAppTicket.setup(
+			vft,
+			VFTIndexes::IClientUser::GetEncryptedAppTicket,
+			hkClientUser_GetEncryptedAppTicket);
+		Hooks::IClientUser_GetEncryptedAppTicket.place();
+
+		g_pLog->debug("IClientUser->vft at %p\n", vft->vtable);
+		hooked = true;
+	}
+
 	AffTrace::FrameGuard frame;
 	OwnerWork::drainOnOwnerFrame();
 
@@ -1401,7 +1417,6 @@ namespace Hooks
 	DetourHook<IClientUser_BLoggedOn_t> IClientUser_BLoggedOn;
 	DetourHook<IClientUser_BUpdateAppOwnershipTicket_t> IClientUser_BUpdateAppOwnershipTicket;
 	DetourHook<IClientUser_GetAppOwnershipTicketExtendedData_t> IClientUser_GetAppOwnershipTicketExtendedData;
-	DetourHook<IClientUser_GetEncryptedAppTicket_t> IClientUser_GetEncryptedAppTicket;
 	DetourHook<IClientUser_IsUserSubscribedAppInTicket_t> IClientUser_IsUserSubscribedAppInTicket;
 	DetourHook<IClientUser_RequiresLegacyCDKey_t> IClientUser_RequiresLegacyCDKey;
 
@@ -1415,6 +1430,8 @@ namespace Hooks
 	VFTHook<IClientApps_GetAppData_t> IClientApps_GetAppData("IClientApps::GetAppData");
 
 	VFTHook<IClientRemoteStorage_IsCloudEnabledForApp_t> IClientRemoteStorage_IsCloudEnabledForApp("IClientRemoteStorage::IsCloudEnabledForApp");
+
+	VFTHook<IClientUser_GetEncryptedAppTicket_t> IClientUser_GetEncryptedAppTicket("IClientUser::GetEncryptedAppTicket");
 
 	VFTHook<IClientUtils_GetAppId_t> IClientUtils_GetAppId("IClientUtils::GetAppId");
 	VFTHook<IClientUtils_GetOfflineMode_t> IClientUtils_GetOfflineMode("IClientUtils::GetOfflineMode");
@@ -1464,7 +1481,6 @@ bool Hooks::setup()
 		&& IClientUser_BLoggedOn.setup(Patterns::IClientUser::BLoggedOn, &hkClientUser_BLoggedOn)
 		&& IClientUser_BUpdateAppOwnershipTicket.setup(Patterns::IClientUser::BUpdateAppOwnershipTicket, hkClientUser_BUpdateOwnershipTicket)
 		&& IClientUser_GetAppOwnershipTicketExtendedData.setup(Patterns::IClientUser::GetAppOwnershipTicketExtendedData, hkClientUser_GetAppOwnershipTicketExtendedData)
-		&& IClientUser_GetEncryptedAppTicket.setup(Patterns::IClientUser::GetEncryptedAppTicket, hkClientUser_GetEncryptedAppTicket)
 		&& IClientUser_IsUserSubscribedAppInTicket.setup(Patterns::IClientUser::IsUserSubscribedAppInTicket, &hkClientUser_IsUserSubscribedAppInTicket)
 		&& IClientUser_RequiresLegacyCDKey.setup(Patterns::IClientUser::RequiresLegacyCDKey, hkClientUser_RequiresLegacyCDKey)
 
@@ -1558,7 +1574,6 @@ void Hooks::place()
 	IClientUser_BLoggedOn.place();
 	IClientUser_BUpdateAppOwnershipTicket.place();
 	IClientUser_GetAppOwnershipTicketExtendedData.place();
-	IClientUser_GetEncryptedAppTicket.place();
 	IClientUser_IsUserSubscribedAppInTicket.place();
 	IClientUser_RequiresLegacyCDKey.place();
 
