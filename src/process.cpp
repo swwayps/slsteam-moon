@@ -62,7 +62,16 @@ bool IExecutableFile::hasSteamDRM()
 	}
 	//SteamDRM appends .bind section with very high entropy (usually 7.9+)
 
-	const auto& last = sections.at(sections.size() - 1);
+	//A validly-parsed but section-stripped/packed binary (common for DRM'd
+	//titles) can leave this empty. size() - 1 would underflow and .at() would
+	//throw std::out_of_range, aborting the whole Steam client from the
+	//unguarded ConnectPipe analysis path.
+	if (sections.empty())
+	{
+		return false;
+	}
+
+	const auto& last = sections.back();
 
 	if (last.name == ".bind")
 	{
@@ -317,6 +326,12 @@ bool CELFExecutableFile::parseElf32Headers(const Elf32_Ehdr& hdr)
 		return false;
 	}
 
+	if (hdr.e_shnum == 0 || hdr.e_shstrndx >= hdr.e_shnum)
+	{
+		logFailure("ELF has no usable section header string table\n");
+		return false;
+	}
+
 	auto shdrs = std::vector<Elf32_Shdr>();
 	shdrs.resize(hdr.e_shnum);
 
@@ -358,6 +373,12 @@ bool CELFExecutableFile::parseElf32Headers(const Elf32_Ehdr& hdr)
 			continue;
 		}
 
+		if (shdr.sh_name >= strSec.size())
+		{
+			//sh_name points past the string table; skip rather than read OOB.
+			continue;
+		}
+
 		const char* name = &strSec[shdr.sh_name];
 
 		if (g_config.extendedLogging.get())
@@ -376,6 +397,12 @@ bool CELFExecutableFile::parseElf64Headers(const Elf64_Ehdr& hdr)
 	if (sizeof(Elf64_Shdr) < hdr.e_shentsize)
 	{
 		logFailure("hdr.e_shentsize < sizeof(Elf_Shdr)!\n");
+		return false;
+	}
+
+	if (hdr.e_shnum == 0 || hdr.e_shstrndx >= hdr.e_shnum)
+	{
+		logFailure("ELF has no usable section header string table\n");
 		return false;
 	}
 
@@ -417,6 +444,12 @@ bool CELFExecutableFile::parseElf64Headers(const Elf64_Ehdr& hdr)
 		if (!shdr.sh_name)
 		{
 			//LOG_DEBUG("Skipping nameless section\n");
+			continue;
+		}
+
+		if (shdr.sh_name >= strSec.size())
+		{
+			//sh_name points past the string table; skip rather than read OOB.
 			continue;
 		}
 
