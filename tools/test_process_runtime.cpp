@@ -86,6 +86,58 @@ std::vector<uint8_t> makeStrippedElf64()
 	return b;
 }
 
+// A valid-magic 64-bit ELF whose single section header advertises a ~4 GiB
+// string table (sh_size = 0xFFFFFFFF) that cannot fit in the tiny file. The
+// parser must reject it instead of strSec.resize()/fread()-ing 4 GiB sized
+// straight from the header (bad_alloc/length_error thrown across the release
+// build's .cold EH partition aborts the client; a real read stalls it).
+std::vector<uint8_t> makeHugeStringTableElf64()
+{
+	std::vector<uint8_t> b(sizeof(Elf64_Ehdr) + sizeof(Elf64_Shdr), 0);
+	Elf64_Ehdr hdr{};
+	hdr.e_ident[EI_MAG0] = ELFMAG0;
+	hdr.e_ident[EI_MAG1] = ELFMAG1;
+	hdr.e_ident[EI_MAG2] = ELFMAG2;
+	hdr.e_ident[EI_MAG3] = ELFMAG3;
+	hdr.e_ident[EI_CLASS] = ELFCLASS64;
+	hdr.e_machine = 0x3e; // EM_X86_64, matches CELFExecutableFile::ISA_AMD64
+	hdr.e_shoff = sizeof(Elf64_Ehdr);
+	hdr.e_shnum = 1;
+	hdr.e_shstrndx = 0;
+	hdr.e_shentsize = sizeof(Elf64_Shdr);
+	std::memcpy(b.data(), &hdr, sizeof(hdr));
+
+	Elf64_Shdr shdr{};
+	shdr.sh_name = 0;
+	shdr.sh_offset = 0;
+	shdr.sh_size = 0xFFFFFFFFu;
+	std::memcpy(b.data() + sizeof(Elf64_Ehdr), &shdr, sizeof(shdr));
+	return b;
+}
+
+// A valid-magic i386 PE with a single ".bind" section whose size advertises
+// ~4 GiB. hasSteamDRM() reads the last section when it is named ".bind";
+// readSection() must not resize()/fread() a buffer sized past the file end.
+std::vector<uint8_t> makeHugeBindSectionPe()
+{
+	const size_t sectionHdrOffset = 0x80 + 0xf8; // e_lfanew + PE_HEADER32_SIZE
+	std::vector<uint8_t> b(sectionHdrOffset + 0x28, 0);
+	b[0] = 'M'; b[1] = 'Z';
+	const uint32_t eLfanew = 0x80;
+	std::memcpy(&b[0x3C], &eLfanew, sizeof(eLfanew));
+	b[0x80] = 'P'; b[0x81] = 'E'; b[0x82] = 0; b[0x83] = 0;
+	const uint16_t machineI386 = 0x014c;
+	const uint16_t numberOfSections = 1;
+	std::memcpy(&b[0x84], &machineI386, sizeof(machineI386));
+	std::memcpy(&b[0x86], &numberOfSections, sizeof(numberOfSections));
+	std::memcpy(&b[sectionHdrOffset], ".bind", 5);
+	const uint32_t hugeSize = 0xFFFFFFFFu;
+	const uint32_t rawPtr = 0;
+	std::memcpy(&b[sectionHdrOffset + 0x10], &hugeSize, sizeof(hugeSize));
+	std::memcpy(&b[sectionHdrOffset + 0x14], &rawPtr, sizeof(rawPtr));
+	return b;
+}
+
 // Runs hasSteamDRM() on a crafted file and reports whether it stayed alive
 // (returned without throwing). Returns true when the analyser survived.
 bool drmProbeSurvives(const char* path, const std::vector<uint8_t>& bytes)
@@ -180,6 +232,12 @@ int main()
 
 	expect(drmProbeSurvives("/tmp/slsteam_stripped.elf64", makeStrippedElf64()),
 	       "a section-header-stripped ELF does not abort SteamDRM analysis");
+
+	expect(drmProbeSurvives("/tmp/slsteam_huge_strtab.elf64", makeHugeStringTableElf64()),
+	       "an ELF section string table larger than the file is rejected without a giant allocation");
+
+	expect(drmProbeSurvives("/tmp/slsteam_huge_bind.pe", makeHugeBindSectionPe()),
+	       "a .bind section larger than the file does not trigger a giant read");
 
 	return failures == 0 ? 0 : 1;
 }

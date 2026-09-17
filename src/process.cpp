@@ -41,6 +41,16 @@ bool IExecutableFile::load(const std::string& filePath, const LogLevel logErrorL
 		return false;
 	}
 
+	//Capture the on-disk size up front (non-throwing overload) so every
+	//header-derived offset/size can be range-checked before it is used to
+	//size an allocation or a read.
+	std::error_code sizeError;
+	fileSize = std::filesystem::file_size(path, sizeError);
+	if (sizeError)
+	{
+		fileSize = 0;
+	}
+
 	if (!checkMagic())
 	{
 		return false;
@@ -166,6 +176,23 @@ bool IExecutableFile::hasDenuvo()
 
 std::vector<uint8_t> IExecutableFile::readSection(const SectionHdr_t& section)
 {
+	//offset/size come straight from on-disk headers. A corrupt or hostile
+	//binary can advertise a multi-gigabyte section; resize() would then throw
+	//bad_alloc/length_error (unreliable to catch across the release build's
+	//.cold EH partition) or fread would block on a huge read. Reject anything
+	//that does not fit inside the file.
+	if (fileSize == 0
+		|| section.offset > fileSize
+		|| section.size > fileSize - section.offset)
+	{
+		logFailure("Section %s out of bounds (offset %llu size %llu file %llu)!\n",
+			section.name.c_str(),
+			static_cast<unsigned long long>(section.offset),
+			static_cast<unsigned long long>(section.size),
+			static_cast<unsigned long long>(fileSize));
+		return { };
+	}
+
 	if (fseek(file, section.offset, SEEK_SET) != 0)
 	{
 		logFailure("Failed to seek to section %s!\n", section.name.c_str());
@@ -332,6 +359,18 @@ bool CELFExecutableFile::parseElf32Headers(const Elf32_Ehdr& hdr)
 		return false;
 	}
 
+	//The section header table must fit inside the file; otherwise e_shnum is
+	//bogus and shdrs.resize()/fread() would over-allocate or over-read.
+	const std::uintmax_t shTableBytes =
+		static_cast<std::uintmax_t>(hdr.e_shnum) * sizeof(Elf32_Shdr);
+	if (fileSize == 0
+		|| static_cast<std::uintmax_t>(hdr.e_shoff) > fileSize
+		|| shTableBytes > fileSize - static_cast<std::uintmax_t>(hdr.e_shoff))
+	{
+		logFailure("ELF section header table out of bounds\n");
+		return false;
+	}
+
 	auto shdrs = std::vector<Elf32_Shdr>();
 	shdrs.resize(hdr.e_shnum);
 
@@ -348,6 +387,15 @@ bool CELFExecutableFile::parseElf32Headers(const Elf32_Ehdr& hdr)
 	}
 
 	const Elf32_Shdr& strHdr = shdrs[hdr.e_shstrndx];
+
+	if (static_cast<std::uintmax_t>(strHdr.sh_offset) > fileSize
+		|| static_cast<std::uintmax_t>(strHdr.sh_size)
+			> fileSize - static_cast<std::uintmax_t>(strHdr.sh_offset))
+	{
+		logFailure("ELF section string table out of bounds\n");
+		return false;
+	}
+
 	auto strSec = std::vector<char>();
 	strSec.resize(strHdr.sh_size);
 
@@ -406,6 +454,18 @@ bool CELFExecutableFile::parseElf64Headers(const Elf64_Ehdr& hdr)
 		return false;
 	}
 
+	//The section header table must fit inside the file; otherwise e_shnum is
+	//bogus and shdrs.resize()/fread() would over-allocate or over-read.
+	const std::uintmax_t shTableBytes =
+		static_cast<std::uintmax_t>(hdr.e_shnum) * sizeof(Elf64_Shdr);
+	if (fileSize == 0
+		|| static_cast<std::uintmax_t>(hdr.e_shoff) > fileSize
+		|| shTableBytes > fileSize - static_cast<std::uintmax_t>(hdr.e_shoff))
+	{
+		logFailure("ELF section header table out of bounds\n");
+		return false;
+	}
+
 	auto shdrs = std::vector<Elf64_Shdr>();
 	shdrs.resize(hdr.e_shnum);
 
@@ -422,6 +482,15 @@ bool CELFExecutableFile::parseElf64Headers(const Elf64_Ehdr& hdr)
 	}
 
 	const Elf64_Shdr& strHdr = shdrs[hdr.e_shstrndx];
+
+	if (static_cast<std::uintmax_t>(strHdr.sh_offset) > fileSize
+		|| static_cast<std::uintmax_t>(strHdr.sh_size)
+			> fileSize - static_cast<std::uintmax_t>(strHdr.sh_offset))
+	{
+		logFailure("ELF section string table out of bounds\n");
+		return false;
+	}
+
 	auto strSec = std::vector<char>();
 	strSec.resize(strHdr.sh_size);
 
@@ -679,24 +748,38 @@ bool Process_t::analyse()
 	steamDRM = exeFile->hasSteamDRM();
 	denuvo = exeFile->hasDenuvo();
 
-	//Some games put denuvo in their dynamic link libraries
-	//So we check all of them
-	for (const auto& file : getOpenFiles())
+	//The mapped-file scan below exists only to catch Denuvo hidden in a game's
+	//dynamic link libraries. SteamStub's high-entropy ".bind" section is only
+	//ever appended to a title's main executable, never to the shared libraries
+	//it maps, so scanning them for SteamDRM finds nothing the exe parse missed.
+	//When Denuvo detection is off (the shipped default, SmartTickets=0x1) the
+	//scan therefore does hundreds of full PE/ELF parses on the Steam engine
+	//thread for no result, which trips Steam's >15s BMainLoop watchdog and
+	//fatally exits the client. Only walk the mapped files when Denuvo detection
+	//is enabled and still unresolved.
+	//Trade-off: a Proton title whose real .exe is not the one getRealExe()
+	//resolved (a launcher shim) no longer has its SteamDRM detected via the
+	//library scan under the default config; that already relied on a
+	//nondeterministic exe pick. Enable the Denuvo bit to restore the full scan.
+	if ((g_config.smartTickets.get() & CConfig::k_ESmartTicketsDenuvo) && !denuvo)
 	{
-		const auto executable = IExecutableFile::create(file, LogLevel::Debug);
-		if (!executable)
+		for (const auto& file : getOpenFiles())
 		{
-			continue;
-		}
+			const auto executable = IExecutableFile::create(file, LogLevel::Debug);
+			if (!executable)
+			{
+				continue;
+			}
 
-		if (!steamDRM)
-		{
-			steamDRM |= executable->hasSteamDRM();
-		}
+			if (!steamDRM)
+			{
+				steamDRM |= executable->hasSteamDRM();
+			}
 
-		if (!denuvo)
-		{
-			denuvo |= executable->hasDenuvo();
+			if (!denuvo)
+			{
+				denuvo |= executable->hasDenuvo();
+			}
 		}
 	}
 

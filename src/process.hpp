@@ -3,6 +3,7 @@
 #include "log.hpp"
 #include "sdk/steam.hpp"
 
+#include <cstdint>
 #include <elf.h>
 #include <filesystem>
 #include <memory>
@@ -26,6 +27,10 @@ class IExecutableFile
 public:
 	std::filesystem::path path;
 	FILE* file;
+	//Size of the opened file. Header-derived offsets/sizes are validated
+	//against this so a corrupt or hostile binary cannot drive a multi-gigabyte
+	//allocation/read off unvalidated on-disk fields.
+	std::uintmax_t fileSize = 0;
 	std::vector<SectionHdr_t> sections;
 	//We use this to not clutter the log with failed open file reads
 	LogLevel errorLevel;
