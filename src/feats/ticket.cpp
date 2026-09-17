@@ -17,6 +17,7 @@
 #include "yaml-cpp/emitter.h"
 #include "yaml-cpp/emittermanip.h"
 
+#include <exception>
 #include <filesystem>
 #include <fstream>
 #include <ios>
@@ -66,12 +67,25 @@ Ticket::SavedTicket Ticket::getCachedTicket(uint32_t appId)
 
 	g_pLog->debug("Reading ticket for %u\n", appId);
 
-	auto node = YAML::LoadFile(path);
-	ticket.steamId = CSteamId(node["steamId"].as<uint64_t>());
-	ticket.ticket = std::string
-	(
-		base64::from_base64(node["ticket"].as<std::string>())
-	);
+	// The cache file is untrusted on-disk state: a truncated or corrupt
+	// ticket_<appid>.yaml makes YAML::LoadFile / node.as<>() / base64 decode
+	// throw. Uncaught on this IPC path the throw aborts the whole client. The
+	// release build pins -fno-reorder-blocks-and-partition, keeping this catch
+	// a reliable backstop; treat any parse failure as a cache miss.
+	try
+	{
+		auto node = YAML::LoadFile(path);
+		ticket.steamId = CSteamId(node["steamId"].as<uint64_t>());
+		ticket.ticket = std::string
+		(
+			base64::from_base64(node["ticket"].as<std::string>())
+		);
+	}
+	catch (const std::exception& e)
+	{
+		g_pLog->warn("Ignoring corrupt ticket cache for %u: %s\n", appId, e.what());
+		return {};
+	}
 
 	// Keep the disk read and map publication in one transaction with the
 	// invalidation check. forgetApp() cannot interleave and leave a late cache
@@ -225,18 +239,29 @@ Ticket::SavedTicket Ticket::getCachedEncryptedTicket(uint32_t appId)
 
 	g_pLog->debug("Reading encrypted ticket for %u\n", appId);
 
-	auto node = YAML::LoadFile(path);
-	ticket.steamId = CSteamId(node["steamId"].as<uint64_t>());
-	ticket.ticket = std::string
-	(
-		//Can not get yaml-cpp to properly decode
-		//TODO: Investigate
-		//reinterpret_cast<const char*>
-		//(
-		//	&YAML::DecodeBase64(node["encryptedTicket"].as<std::string>()).at(0)
-		//)
-		base64::from_base64(node["encryptedTicket"].as<std::string>())
-	);
+	// Same untrusted-cache guard as getCachedTicket: a corrupt
+	// encryptedTicket_<appid>.yaml must degrade to a cache miss, not abort the
+	// client from this IPC path.
+	try
+	{
+		auto node = YAML::LoadFile(path);
+		ticket.steamId = CSteamId(node["steamId"].as<uint64_t>());
+		ticket.ticket = std::string
+		(
+			//Can not get yaml-cpp to properly decode
+			//TODO: Investigate
+			//reinterpret_cast<const char*>
+			//(
+			//	&YAML::DecodeBase64(node["encryptedTicket"].as<std::string>()).at(0)
+			//)
+			base64::from_base64(node["encryptedTicket"].as<std::string>())
+		);
+	}
+	catch (const std::exception& e)
+	{
+		g_pLog->warn("Ignoring corrupt encrypted ticket cache for %u: %s\n", appId, e.what());
+		return {};
+	}
 
 	// Keep the disk read and map publication in one transaction with the
 	// invalidation check, just like ordinary ownership tickets.
