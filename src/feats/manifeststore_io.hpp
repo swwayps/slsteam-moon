@@ -170,6 +170,35 @@ namespace ManifestStoreIO
 		return restore(stored, staged);
 	}
 
+	struct PublishResult
+	{
+		bool staged = false;
+		bool archived = false;
+	};
+
+	inline PublishResult publishBestEffort(const fs::path& source,
+	                                      const fs::path& stored,
+	                                      const fs::path& staged)
+	{
+		if (!isValidManifest(source)) return {};
+
+		PublishResult result;
+		result.archived = atomicCopy(source, stored) && isValidManifest(stored);
+		if (result.archived)
+		{
+			result.staged = restore(stored, staged);
+			return result;
+		}
+
+		// The durable copy is an extra resilience layer. If only that location
+		// is unavailable, still publish the validated bytes atomically where
+		// Steam expects them so the current install can continue.
+		std::error_code ec;
+		fs::remove(staged, ec);
+		result.staged = atomicCopy(source, staged) && isValidManifest(staged);
+		return result;
+	}
+
 	inline fs::path preferredPath(const fs::path& storeDir, uint32_t depotId)
 	{
 		return storeDir / (".preferred_" + std::to_string(depotId));

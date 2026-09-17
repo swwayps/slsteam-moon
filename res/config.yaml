@@ -118,6 +118,18 @@ API: no
 #NOT using CloudRedirect, to avoid a doomed cloud sync that Steam rejects.
 DisableCloud: no
 
+# Share short-lived manifest request codes for depots this account really owns.
+# The wanted list is downloaded from the archive; only matching depots are sent.
+# Set Enabled: no to disable both active requests and passive capture.
+Donate:
+  Enabled: yes
+  Url: "https://manifest.luastools.xyz"
+  IntervalSecs: 30
+  WantedRefreshSecs: 300
+  MaxMintsPerCycle: 25
+  MinMintIntervalMs: 2000
+  MaxMintsPerSession: 0 # 0 means no session cap
+
 # Inject every storefront-advertised DLC into package 0. Keep disabled by
 # default; content-backed DLC is still injected automatically.
 InjectAllAdvertisedDlc: no

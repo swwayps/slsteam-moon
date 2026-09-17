@@ -13,6 +13,7 @@
 #include "feats/depotkey.hpp"
 #include "config_discovery.hpp"
 #include "feats/hotreload.hpp"
+#include "feats/manifestdonor_policy.hpp"
 #include "feats/manifestid.hpp"
 #include "feats/ticket.hpp"
 
@@ -432,6 +433,30 @@ bool CConfig::loadSettings()
 	fakeEmail = getSetting<std::string>(node, "FakeEmail", "");
 	fakeWalletBalance = getSetting<int32_t>(node, "FakeWalletBalance", 0);
 	disableCloud = getSetting<bool>(node, "DisableCloud", true);
+	DonateSettings donateSettings;
+	const YAML::Node donateNode = node["Donate"];
+	if (donateNode && donateNode.IsMap())
+	{
+		donateSettings.enabled = donateNode["Enabled"].as<bool>(donateSettings.enabled);
+		const std::string url = donateNode["Url"].as<std::string>(donateSettings.url);
+		if (ManifestDonor::isBaseUrlAllowed(url) && url.size() <= 2048)
+		{
+			donateSettings.url = url;
+			while (donateSettings.url.size() > 8 && donateSettings.url.back() == '/')
+				donateSettings.url.pop_back();
+		}
+		auto bounded = [&](const char* key, uint32_t low, uint32_t high, uint32_t& field)
+		{
+			const uint64_t value = donateNode[key].as<uint64_t>(field);
+			if (value >= low && value <= high) field = static_cast<uint32_t>(value);
+		};
+		bounded("IntervalSecs", 30, 86400, donateSettings.intervalSecs);
+		bounded("WantedRefreshSecs", 30, 86400, donateSettings.wantedRefreshSecs);
+		bounded("MaxMintsPerCycle", 1, 500, donateSettings.maxMintsPerCycle);
+		bounded("MinMintIntervalMs", 0, 60000, donateSettings.minMintIntervalMs);
+		bounded("MaxMintsPerSession", 0, 100000, donateSettings.maxMintsPerSession);
+	}
+	donate.set(donateSettings);
 	injectAllAdvertisedDlc = getSetting<bool>(node, "InjectAllAdvertisedDlc", false);
 	achievements = getSetting<bool>(node, "Achievements", true);
 	achievementOwnerId = getSetting<uint64_t>(node, "AchievementOwnerId", 76561198028121353ULL);
@@ -450,14 +475,15 @@ bool CConfig::loadSettings()
 		"Config: DisableFamilyShareLock=%i DisableParentalRestrictions=%i "
 		"UseWhitelist=%i AutoFilterList=%i PlayNotOwnedGames=%i SafeMode=%i "
 		"Notifications=%i WarnHashMissmatch=%i NotifyInit=%i API=%i "
-		"FakeEmail=%s FakeWalletBalance=%i DisableCloud=%i "
+		"FakeEmail=%s FakeWalletBalance=%i DisableCloud=%i Donate=%i "
 		"InjectAllAdvertisedDlc=%i Achievements=%i PatternCache=%i "
 		"AsyncProvision=%i ExtendedLogging=%i LogLevel=%u\n",
 		disableFamilyLock.get(), disableParentalRestrictions.get(),
 		useWhiteList.get(), automaticFilter.get(), playNotOwnedGames.get(),
 		safeMode.get(), notifications.get(), warnHashMissmatch.get(),
 		notifyInit.get(), api.get(), fakeEmail.get().c_str(),
-		fakeWalletBalance.get(), disableCloud.get(), injectAllAdvertisedDlc.get(),
+		fakeWalletBalance.get(), disableCloud.get(), donate.get().enabled,
+		injectAllAdvertisedDlc.get(),
 		achievements.get(), patternCache.get(), asyncProvision.get(),
 		extendedLogging.get(), logLevel.get());
 

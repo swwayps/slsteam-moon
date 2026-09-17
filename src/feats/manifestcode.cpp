@@ -4,6 +4,7 @@
 #include "depotkey.hpp"
 #include "manifestid.hpp"
 #include "manifeststore.hpp"
+#include "manifestdonor.hpp"
 #include "achievements.hpp"
 #include "apps.hpp"
 #include "fakeappid.hpp"
@@ -22,12 +23,16 @@
 #include "../utils/ManifestFetch.hpp"
 
 #include <chrono>
+#include <condition_variable>
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
+#include <future>
 #include <mutex>
 #include <string>
 #include <thread>
+#include <unordered_map>
+#include <vector>
 
 
 namespace ManifestCode
@@ -44,6 +49,50 @@ constexpr int      kPacketPoolSize = 8;
 
 std::mutex g_RxLock;
 std::mutex g_TxLock;
+
+constexpr uint64_t kDonorJobBase = 0x7e51000000000000ULL;
+struct DonorPending { std::promise<uint64_t> result; };
+struct PassiveRequest
+{
+	uint32_t depotId;
+	uint64_t gid;
+	uint64_t generation;
+	std::chrono::steady_clock::time_point sentAt;
+};
+std::mutex g_DonorLock;
+std::condition_variable g_DonorSendCv;
+std::size_t g_DonorActiveSends = 0;
+bool g_DonorResetting = false;
+bool g_DonorDeferredReset = false;
+thread_local unsigned int t_DonorSendDepth = 0;
+uint64_t g_DonorContextGeneration = 1;
+void* g_DonorConnection = nullptr;
+std::vector<uint8_t> g_DonorHeader;
+uint64_t g_NextDonorJob = kDonorJobBase;
+std::unordered_map<uint64_t, DonorPending> g_DonorPending;
+std::unordered_map<uint64_t, PassiveRequest> g_PassiveRequests;
+
+void clearDonorSessionLocked()
+{
+	for (auto& [job, pending] : g_DonorPending)
+		pending.result.set_value(0);
+	g_DonorPending.clear();
+	g_PassiveRequests.clear();
+	g_DonorConnection = nullptr;
+	g_DonorHeader.clear();
+}
+
+void prunePassiveRequestsLocked()
+{
+	const auto cutoff = std::chrono::steady_clock::now() - std::chrono::minutes(1);
+	for (auto it = g_PassiveRequests.begin(); it != g_PassiveRequests.end();)
+	{
+		if (it->second.sentAt < cutoff)
+			it = g_PassiveRequests.erase(it);
+		else
+			++it;
+	}
+}
 
 uint8_t  g_RxBody[kMaxBodySize];
 uint32_t g_RxBodyLen = 0;
@@ -193,6 +242,22 @@ void handleSend_GetManifestRequestCode(const uint8_t* pBody, uint32_t cbBody,
 	const uint32_t depotId = req.depot_id();
 	const uint64_t gid     = req.manifest_id();
 	const uint32_t appId   = req.has_app_id() ? req.app_id() : 0;
+	ManifestDonor::observeDepot(appId, depotId, gid);
+	if (g_config.donate.get().enabled)
+	{
+		CMsgProtoBufHeader capturedHeader;
+		if (capturedHeader.ParseFromArray(pHdr, cbHdr) &&
+		    capturedHeader.has_jobid_source())
+		{
+			std::lock_guard lock(g_DonorLock);
+			prunePassiveRequestsLocked();
+			if (!g_DonorResetting && g_PassiveRequests.size() < 4096)
+				g_PassiveRequests[capturedHeader.jobid_source()] = {
+					depotId, gid, ManifestDonor::sessionGeneration(),
+					std::chrono::steady_clock::now()
+				};
+		}
+	}
 
 	const bool inScope = DepotKey::manifestInManagedScope(
 	    appId, depotId, !ManifestId::getPinnedGid(depotId).empty());
@@ -216,7 +281,9 @@ void handleSend_GetManifestRequestCode(const uint8_t* pBody, uint32_t cbBody,
 	             appId, static_cast<unsigned long long>(jobId));
 	ManifestFetch::submit(jobId, gid, appId, depotId);
 
-	ManifestFetch::submitManifestBlob(gid, appId, depotId);
+	ManifestFetch::submitManifestBlob(
+		gid, appId, depotId,
+		ManifestFetch::isAnyManagedDownloadActive(appId));
 }
 
 void handleRecv_GetManifestRequestCode(const uint8_t* pHdr, uint32_t cbHdr,
@@ -265,9 +332,8 @@ void handleRecv_GetManifestRequestCode(const uint8_t* pHdr, uint32_t cbHdr,
 
 	g_PatchRxHdr = true;
 	g_PatchRx    = true;
-	g_pLog->info("ManifestCode recv: jobid=%llu injected code=%llu (orig cbBody=%u)\n",
+	g_pLog->info("ManifestCode recv: jobid=%llu injected request code (orig cbBody=%u)\n",
 	             static_cast<unsigned long long>(jobId),
-	             static_cast<unsigned long long>(*resolved),
 	             cbBody);
 }
 
@@ -311,10 +377,62 @@ void dispatchSend(uint32_t eMsg,
 	}
 }
 
+bool resolveDonorResponse(uint64_t job, const CMsgProtoBufHeader& header,
+                          const uint8_t* pBody, uint32_t cbBody)
+{
+	std::promise<uint64_t> pending;
+	bool originated = false, passive = false;
+	PassiveRequest sent{};
+	{
+		std::lock_guard lock(g_DonorLock);
+		if (auto it = g_DonorPending.find(job); it != g_DonorPending.end())
+		{
+			pending = std::move(it->second.result);
+			g_DonorPending.erase(it);
+			originated = true;
+		}
+		if (auto it = g_PassiveRequests.find(job); it != g_PassiveRequests.end())
+		{
+			sent = it->second;
+			g_PassiveRequests.erase(it);
+			passive = true;
+		}
+	}
+	if (!originated && !passive) return false;
+
+	uint64_t code = 0;
+	if (header.has_eresult() && header.eresult() == ERESULT_OK)
+	{
+		CContentServerDirectory_GetManifestRequestCode_Response response;
+		if (response.ParseFromArray(pBody, cbBody) &&
+		    response.has_manifest_request_code())
+			code = response.manifest_request_code();
+	}
+	if (originated)
+	{
+		pending.set_value(code);
+		g_pLog->info("Donor: Steam response job=%llu result=%d code=%s\n",
+		             static_cast<unsigned long long>(job), header.eresult(),
+		             code ? "present" : "absent");
+	}
+	if (passive && code)
+		ManifestDonor::submitCapturedCode(
+			sent.depotId, sent.gid, code, sent.generation);
+	return true;
+}
+
 void dispatchRecv(uint32_t eMsg,
                   const uint8_t* pBody, uint32_t cbBody,
                   const uint8_t* pHdr,  uint32_t cbHdr)
 {
+	if (eMsg == kEMsgServiceMethodResponse)
+	{
+		CMsgProtoBufHeader header;
+		if (header.ParseFromArray(pHdr, cbHdr) && header.has_jobid_target())
+		{
+			resolveDonorResponse(header.jobid_target(), header, pBody, cbBody);
+		}
+	}
 	if (eMsg == EMSG_REQUEST_USERSTATS_RESPONSE || eMsg == kEMsgServiceMethodResponse)
 	{
 		CMsgProtoBufHeader header;
@@ -324,11 +442,18 @@ void dispatchRecv(uint32_t eMsg,
 		if (body && body->size() <= sizeof(g_RxBody) &&
 		    header.ByteSizeLong() <= sizeof(g_RxHdr))
 		{
-			if (!body->empty()) std::memcpy(g_RxBody, body->data(), body->size());
-			g_RxBodyLen = static_cast<uint32_t>(body->size());
 			g_RxHdrLen = static_cast<uint32_t>(header.ByteSizeLong());
-			g_PatchRxHdr = header.SerializeToArray(g_RxHdr, g_RxHdrLen);
-			g_PatchRx = true;
+			// Commit the rewritten header and body together. If the header
+			// fails to encode, leave both untouched so the original frame
+			// passes through — never emit the new body under the old header.
+			if (header.SerializeToArray(g_RxHdr, g_RxHdrLen))
+			{
+				if (!body->empty())
+					std::memcpy(g_RxBody, body->data(), body->size());
+				g_RxBodyLen = static_cast<uint32_t>(body->size());
+				g_PatchRxHdr = true;
+				g_PatchRx = true;
+			}
 		}
 	}
 	if (eMsg != kEMsgServiceMethodResponse)
@@ -344,6 +469,136 @@ void dispatchRecv(uint32_t eMsg,
 }
 
 } // namespace
+
+CodeRequest requestCode(uint32_t appId, uint32_t depotId, uint64_t gid)
+{
+	CodeRequest request;
+	std::promise<uint64_t> promise;
+	request.result = promise.get_future();
+	auto fail = [&]() -> CodeRequest
+	{
+		promise.set_value(0);
+		return std::move(request);
+	};
+	if (!depotId || !gid) return fail();
+
+	void* connection = nullptr;
+	decltype(Hooks::CWebSocketConnection_BBuildAndAsyncSendFrame.tramp.fn)
+		sendFrame = nullptr;
+	std::vector<uint8_t> frame;
+	uint64_t job = 0;
+	{
+		std::lock_guard lock(g_DonorLock);
+		if (g_DonorResetting || !g_DonorConnection || g_DonorHeader.empty() ||
+		    !Hooks::CWebSocketConnection_BBuildAndAsyncSendFrame.tramp.fn ||
+		    g_DonorPending.size() >= 128)
+		{
+			g_pLog->info("Donor: Steam WebSocket send context unavailable\n");
+			return fail();
+		}
+		CMsgProtoBufHeader header;
+		if (!header.ParseFromArray(g_DonorHeader.data(), g_DonorHeader.size()))
+			return fail();
+		request.jobId = ++g_NextDonorJob;
+		header.set_target_job_name(
+			"ContentServerDirectory.GetManifestRequestCode#1");
+		header.set_jobid_source(request.jobId);
+		header.clear_jobid_target();
+		CContentServerDirectory_GetManifestRequestCode_Request body;
+		body.set_app_id(appId);
+		body.set_depot_id(depotId);
+		body.set_manifest_id(gid);
+		const auto headerSize = header.ByteSizeLong();
+		const auto bodySize = body.ByteSizeLong();
+		if (headerSize > kMaxHdrSize || bodySize > kMaxBodySize) return fail();
+		frame.resize(sizeof(MsgHdr) + headerSize + bodySize);
+		auto* prefix = reinterpret_cast<MsgHdr*>(frame.data());
+		prefix->eMsg = kEMsgServiceMethodCallFromClient | kMsgHdrProtoFlag;
+		prefix->headerLength = static_cast<uint32_t>(headerSize);
+		if (!header.SerializeToArray(frame.data() + sizeof(MsgHdr), headerSize) ||
+		    !body.SerializeToArray(
+			    frame.data() + sizeof(MsgHdr) + headerSize, bodySize))
+			return fail();
+		job = request.jobId;
+		connection = g_DonorConnection;
+		sendFrame = Hooks::CWebSocketConnection_BBuildAndAsyncSendFrame.tramp.fn;
+		g_DonorPending.emplace(job, DonorPending{std::move(promise)});
+		++g_DonorActiveSends;
+	}
+
+	// The trampoline may synchronously drive Steam networking. Do not hold the
+	// donor state mutex across that foreign call; its response path takes the
+	// same mutex to complete the promise.
+	++t_DonorSendDepth;
+	const bool accepted = sendFrame(
+		connection, k_eWebSocketOpCode_Binary,
+		frame.data(), static_cast<uint32_t>(frame.size()));
+	--t_DonorSendDepth;
+	{
+		std::lock_guard lock(g_DonorLock);
+		if (g_DonorActiveSends) --g_DonorActiveSends;
+		if (g_DonorActiveSends == 0 && g_DonorDeferredReset)
+		{
+			clearDonorSessionLocked();
+			g_DonorDeferredReset = false;
+			g_DonorResetting = false;
+		}
+	}
+	g_DonorSendCv.notify_all();
+	if (!accepted)
+	{
+		g_pLog->info("Donor: Steam WebSocket send rejected request\n");
+		std::lock_guard lock(g_DonorLock);
+		if (const auto it = g_DonorPending.find(job); it != g_DonorPending.end())
+		{
+			it->second.result.set_value(0);
+			g_DonorPending.erase(it);
+		}
+	}
+	else
+	{
+		g_pLog->debug("Donor: Steam WebSocket accepted job=%llu (%zu bytes)\n",
+		             static_cast<unsigned long long>(job), frame.size());
+	}
+	return request;
+}
+
+void discardRequest(uint64_t jobId)
+{
+	if (!jobId) return;
+	std::lock_guard lock(g_DonorLock);
+	const auto it = g_DonorPending.find(jobId);
+	if (it == g_DonorPending.end()) return;
+	it->second.result.set_value(0);
+	g_DonorPending.erase(it);
+}
+
+void resetSession()
+{
+	{
+		std::unique_lock lock(g_DonorLock);
+		if (g_DonorResetting)
+		{
+			if (t_DonorSendDepth != 0) return;
+			g_DonorSendCv.wait(lock, [] { return !g_DonorResetting; });
+		}
+		g_DonorResetting = true;
+		++g_DonorContextGeneration;
+		clearDonorSessionLocked();
+		if (t_DonorSendDepth != 0)
+		{
+			g_DonorDeferredReset = true;
+			lock.unlock();
+			ManifestFetch::resetSessionState();
+			return;
+		}
+		g_DonorSendCv.wait(lock, [] { return g_DonorActiveSends == 0; });
+		clearDonorSessionLocked();
+		g_DonorResetting = false;
+	}
+	g_DonorSendCv.notify_all();
+	ManifestFetch::resetSessionState();
+}
 
 
 
@@ -374,6 +629,47 @@ bool hkBBuildAndAsyncSendFrame(void* pConnection,
 			uint32_t cbHdr = 0, cbBody = 0;
 			if (decodeFrame(pubData, cubData, eMsg, pHdr, cbHdr, pBody, cbBody))
 			{
+				uint64_t contextGeneration = 0;
+				{
+					std::lock_guard donorLock(g_DonorLock);
+					if (!g_DonorResetting)
+						contextGeneration = g_DonorContextGeneration;
+				}
+				if (eMsg == kEMsgServiceMethodCallFromClient &&
+				    cbHdr && cbHdr <= kMaxHdrSize)
+				{
+					CMsgProtoBufHeader header;
+					if (header.ParseFromArray(pHdr, cbHdr) &&
+					    header.has_target_job_name() &&
+					    header.has_steamid() && header.steamid() &&
+					    header.has_client_sessionid() && header.client_sessionid())
+					{
+						std::unique_lock donorLock(g_DonorLock);
+						// A re-entrant send on the donor worker thread
+						// (t_DonorSendDepth != 0) must never wait on
+						// g_DonorActiveSends: the outstanding donor send it would
+						// wait for is this same thread, so waiting self-deadlocks.
+						// Mirror resetSession()'s depth guard and skip both the
+						// wait and the context capture in that case.
+						g_DonorSendCv.wait(donorLock, [&]
+						{
+							return t_DonorSendDepth != 0 ||
+							       g_DonorActiveSends == 0 || g_DonorResetting ||
+							       contextGeneration != g_DonorContextGeneration;
+						});
+						if (t_DonorSendDepth == 0 &&
+						    pConnection && contextGeneration && !g_DonorResetting &&
+						    contextGeneration == g_DonorContextGeneration)
+						{
+							const bool first = g_DonorHeader.empty();
+							g_DonorConnection = pConnection;
+							g_DonorHeader.assign(pHdr, pHdr + cbHdr);
+							if (first)
+								g_pLog->infoOnce(
+								    "Donor: authenticated Steam send context captured\n");
+						}
+					}
+				}
 				std::lock_guard<std::mutex> lk(g_TxLock);
 				g_PatchTx = false;
 				dispatchSend(eMsg, pBody, cbBody, pHdr, cbHdr);
@@ -488,6 +784,9 @@ bool hkBRouteMsgToJob(void* pJobMgr, void* arg2, void* pMsg, void* pJob)
 		return Hooks::CJobMgr_BRouteMsgToJob.tramp.fn(pJobMgr, arg2, pMsg, pJob);
 	}
 
+	const uint32_t bodyOffset = sizeof(MsgHdr) + cbProtoHdr;
+	resolveDonorResponse(jobIdTarget, hdr, pBuf + bodyOffset, cbBuf - bodyOffset);
+
 	auto resolved = ManifestFetch::resolve(jobIdTarget);
 	if (!resolved)
 	{
@@ -532,9 +831,8 @@ bool hkBRouteMsgToJob(void* pJobMgr, void* arg2, void* pMsg, void* pJob)
 	*reinterpret_cast<uint32_t*>(pInner + 0x8) = static_cast<uint32_t>(newTotalLen);
 
 	g_pLog->info(
-	    "ManifestCode recv: jobid_target=%llu injected code=%llu (cbBuf %u -> %zu in-place)\n",
+	    "ManifestCode recv: jobid_target=%llu injected request code (cbBuf %u -> %zu in-place)\n",
 	    static_cast<unsigned long long>(jobIdTarget),
-	    static_cast<unsigned long long>(*resolved),
 	    cbBuf, newTotalLen);
 
 	return Hooks::CJobMgr_BRouteMsgToJob.tramp.fn(pJobMgr, arg2, pMsg, pJob);
@@ -598,8 +896,9 @@ bool hkCDepotDownloadMgr_BYldRequestDepotManifest(void* pthis, uint32_t appId, u
 			// gid lagged Steam's), in which case we stage the exact gid
 			// Steam asked for and fall through to the original's
 			// request-code handshake (our BRouteMsgToJob hook answers it).
-			const bool ok = ManifestFetch::awaitManifestBlob(manifestId, depotId,
-			                                                ManifestFetch::getTimeoutSec());
+			const bool ok = ManifestFetch::awaitManifestBlob(
+				manifestId, appId, depotId, ManifestFetch::getTimeoutSec(),
+				ManifestFetch::isAnyManagedDownloadActive(appId));
 			if (ok)
 			{
 				ManifestStore::archiveManifest(depotId, manifestId);

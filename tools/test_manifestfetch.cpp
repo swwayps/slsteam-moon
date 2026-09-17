@@ -17,6 +17,7 @@
 
 #include "../src/utils/ManifestFetch.hpp"
 
+#include <algorithm>
 #include <cstdio>
 #include <vector>
 
@@ -33,22 +34,84 @@ using ManifestFetch::requiresSteamCdnAuth;
 using ManifestFetch::RequestCodeCircuit;
 using ManifestFetch::ProviderOutcome;
 using ManifestFetch::isDefinitiveNotFound;
+using ManifestFetch::looksLikeArchivedManifest;
+using ManifestFetch::defaultProviderChain;
+using ManifestFetch::expandProviderTemplate;
+using ManifestFetch::appStateIsDownloading;
+using ManifestFetch::cachedRequestCodeIsFresh;
 
 int main()
 {
+	const auto& providers = defaultProviderChain();
+	CHECK(!providers.empty(), "default request-code provider chain is not empty");
+	CHECK(providers.front().find("{appid}/{depotid}/{gid}") != std::string::npos,
+	      "first provider binds request codes to app, depot, and gid");
+	CHECK(std::all_of(providers.begin(), providers.end(), [](const auto& provider)
+	      {
+		      return provider.find("{depotid}") != std::string::npos;
+	      }),
+	      "every automatic provider route is depot-aware");
+	CHECK(expandProviderTemplate(providers.front(), 33, 11, 22).find("11/22/33") !=
+	      std::string::npos,
+	      "depot-aware provider template expands every identifier");
+
+	CHECK(appStateIsDownloading(0x100), "update-running state is active");
+	CHECK(appStateIsDownloading(0x400), "update-started state is active");
+	CHECK(appStateIsDownloading(0x500), "combined update state is active");
+	CHECK(!appStateIsDownloading(0x2), "update-required state alone is inactive");
+	CHECK(!appStateIsDownloading(0x4), "fully-installed state alone is inactive");
+	CHECK(cachedRequestCodeIsFresh(60000, 1),
+	      "a request code remains available for the immediate paired consumer");
+	CHECK(!cachedRequestCodeIsFresh(60001, 0),
+	      "a request code expires from transient memory after one minute");
+	CHECK(!cachedRequestCodeIsFresh(1000, 1001),
+	      "a request code timestamp from the future is rejected");
+
+	std::atomic<bool> bypass{false};
+	ManifestFetch::detail::promoteArchiveMissBypass(bypass, false);
+	CHECK(!bypass.load(), "background join does not promote archive retry");
+	ManifestFetch::detail::promoteArchiveMissBypass(bypass, true);
+	CHECK(bypass.load(), "active join promotes an existing blob job");
+	ManifestFetch::detail::promoteArchiveMissBypass(bypass, false);
+	CHECK(bypass.load(), "archive retry promotion is monotonic");
+	std::atomic<uint32_t> appId{0};
+	ManifestFetch::detail::promoteAppId(appId, 0);
+	CHECK(appId.load() == 0, "missing app id does not replace the job context");
+	ManifestFetch::detail::promoteAppId(appId, 11);
+	CHECK(appId.load() == 11, "blob job retains a real app id for depot-aware lookup");
+	ManifestFetch::detail::promoteAppId(appId, 22);
+	CHECK(appId.load() == 11, "first real app id remains stable across joiners");
+
+	std::string manifest("\xd0\x17\xf6\x71", 4);
+	manifest.append(8, '\0');
+	manifest.append("\xab\x15\xc4\x32", 4);
+	CHECK(looksLikeArchivedManifest(manifest),
+	      "archive accepts Steam payload and EOF markers");
+	CHECK(!looksLikeArchivedManifest(manifest.substr(0, 15)),
+	      "archive rejects a truncated body");
+	manifest[0] = 0;
+	CHECK(!looksLikeArchivedManifest(manifest),
+	      "archive rejects a bad payload marker");
+	manifest[0] = static_cast<char>(0xd0);
+	manifest.back() = 0;
+	CHECK(!looksLikeArchivedManifest(manifest),
+	      "archive rejects a bad EOF marker");
+
 	// Request-code provider circuit: 429 opens immediately, the cooldown does
 	// not generate a synthetic gid=0 probe, and recovery is proven only by a
 	// real successful request admitted after the deadline.
 	{
 		RequestCodeCircuit circuit(/*failureThreshold=*/2, /*cooldownMs=*/30000);
-		CHECK(circuit.beginAttempt(1000), "closed circuit admits the first real gid");
-		circuit.finishAttempt(1000, /*success=*/false,
+		const auto first = circuit.beginAttempt(1000);
+		CHECK(first, "closed circuit admits the first real gid");
+		circuit.finishAttempt(first, 1000, /*success=*/false,
 		                     /*rateLimited=*/true, /*transportFailure=*/false);
 		CHECK(circuit.open(), "HTTP 429 opens the request-code circuit immediately");
 		CHECK(!circuit.beginAttempt(30999), "cooldown rejects requests without a probe");
-		CHECK(circuit.beginAttempt(31000), "cooldown admits one real half-open request");
+		const auto halfOpen = circuit.beginAttempt(31000);
+		CHECK(halfOpen, "cooldown admits one real half-open request");
 		CHECK(!circuit.beginAttempt(31000), "only one half-open request runs at a time");
-		circuit.finishAttempt(31000, /*success=*/true,
+		circuit.finishAttempt(halfOpen, 31000, /*success=*/true,
 		                     /*rateLimited=*/false, /*transportFailure=*/false);
 		CHECK(!circuit.open() && circuit.beginAttempt(31001),
 		      "a numeric real-gid success closes the circuit");
@@ -56,18 +119,39 @@ int main()
 
 	{
 		RequestCodeCircuit circuit(2, 30000);
-		CHECK(circuit.beginAttempt(0), "first transport attempt admitted");
-		circuit.finishAttempt(0, false, false, true);
+		const auto initial = circuit.beginAttempt(1000);
+		CHECK(initial, "cancel test admits initial request");
+		circuit.finishAttempt(initial, 1000, false, true, false);
+		const auto oldHalfOpen = circuit.beginAttempt(31000);
+		CHECK(oldHalfOpen, "cancel test admits half-open request");
+		circuit.cancelAttempt(oldHalfOpen);
+		const auto newHalfOpen = circuit.beginAttempt(31000);
+		CHECK(newHalfOpen, "replacement half-open request is admitted");
+		circuit.cancelAttempt(oldHalfOpen);
+		CHECK(!circuit.beginAttempt(31000),
+		      "an old token cannot release a newer half-open request");
+		circuit.cancelAttempt(newHalfOpen);
+		CHECK(circuit.beginAttempt(31000),
+		      "session cancellation releases the half-open request immediately");
+	}
+
+	{
+		RequestCodeCircuit circuit(2, 30000);
+		const auto first = circuit.beginAttempt(0);
+		CHECK(first, "first transport attempt admitted");
+		circuit.finishAttempt(first, 0, false, false, true);
 		CHECK(!circuit.open(), "one transport failure does not open the circuit");
-		CHECK(circuit.beginAttempt(1), "second transport attempt admitted");
-		circuit.finishAttempt(1, false, false, true);
+		const auto second = circuit.beginAttempt(1);
+		CHECK(second, "second transport attempt admitted");
+		circuit.finishAttempt(second, 1, false, false, true);
 		CHECK(circuit.open(), "two consecutive transport failures open the circuit");
 	}
 
 	{
 		RequestCodeCircuit circuit(2, 30000);
-		CHECK(circuit.beginAttempt(0), "404-only attempt admitted");
-		circuit.finishAttempt(0, false, false, false);
+		const auto attempt = circuit.beginAttempt(0);
+		CHECK(attempt, "404-only attempt admitted");
+		circuit.finishAttempt(attempt, 0, false, false, false);
 		CHECK(!circuit.open(), "HTTP 404 alone is not a provider outage");
 	}
 

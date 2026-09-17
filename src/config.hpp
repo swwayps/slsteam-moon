@@ -47,6 +47,17 @@ public:
 		//without implementing it ourself anyway
 	};
 
+	struct DonateSettings
+	{
+		bool enabled = true;
+		std::string url = "https://manifest.luastools.xyz";
+		uint32_t intervalSecs = 30;
+		uint32_t wantedRefreshSecs = 300;
+		uint32_t maxMintsPerCycle = 25;
+		uint32_t minMintIntervalMs = 2000;
+		uint32_t maxMintsPerSession = 0;
+	};
+
 	static std::vector<std::uint32_t> selectConfiguredDlcIds(
 		const std::unordered_set<std::uint32_t>& managedParents,
 		const std::unordered_map<std::uint32_t, CDlcData>& configured)
@@ -112,6 +123,7 @@ public:
 	MTVariable<bool> notifyInit;
 	MTVariable<bool> api;
 	MTVariable<bool> disableCloud;
+	MTVariable<DonateSettings> donate;
 	// Restore the pre-Phase-3 behavior of injecting every advertised DLC
 	// into package 0. Default false keeps storefront-only DLC out of CM
 	// ownership traffic unless it has content of its own.

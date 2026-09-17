@@ -40,6 +40,28 @@ int main()
 	packageStore.setAccount(8);
 	check(!packageStore.hasNativeLicense(8, 123),
 	      "package evidence cannot cross accounts");
+	StatsPolicy::Store preAccountSnapshot;
+	const auto preAccountContext = preAccountSnapshot.context();
+	preAccountSnapshot.replacePackageApps(preAccountContext, {123, 456});
+	preAccountSnapshot.replacePackageApps(preAccountContext, {456});
+	preAccountSnapshot.setAccount(7);
+	check(!preAccountSnapshot.hasNativeLicense(7, 123) &&
+	      preAccountSnapshot.hasNativeLicense(7, 456),
+	      "pre-account package snapshots retain only the latest license set");
+	auto stalePackageContext = packageStore.context();
+	packageStore.setAccount(9);
+	packageStore.observePackage(stalePackageContext, 25, 456);
+	check(!packageStore.hasNativeLicense(9, 456),
+	      "stale package publication cannot cross account epochs");
+	auto currentPackageContext = packageStore.context();
+	packageStore.observePackage(currentPackageContext, 25, 456);
+	check(packageStore.hasNativeLicense(9, 456),
+	      "current package publication records native ownership");
+	packageStore.replacePackageApps(currentPackageContext, {456, 789});
+	check(!packageStore.hasNativeLicense(9, 123) &&
+	      packageStore.hasNativeLicense(9, 456) &&
+	      packageStore.hasNativeLicense(9, 789),
+	      "package snapshot replacement revokes removed native evidence");
 	store.observe(7, 123, true, 0, true, false, context.epoch);
 	check(!store.localEpoch(7, 123), "in-flight observation cannot republish after invalidation");
 	context = store.context();

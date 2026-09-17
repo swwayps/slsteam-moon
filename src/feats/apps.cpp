@@ -1,4 +1,5 @@
 #include "apps.hpp"
+#include "stats_policy.hpp"
 
 #include "stats_policy.hpp"
 

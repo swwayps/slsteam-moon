@@ -68,6 +68,23 @@ int main()
 	CHECK(readAll(source) == readAll(stored) && readAll(stored) == readAll(staged),
 	      "published copies preserve the exact bytes");
 
+	// The persistent archive adds resilience, but a permissions failure there
+	// must not prevent Steam from receiving a valid manifest in depotcache.
+	const fs::path blockedParent = root / "blocked-store";
+	{
+		std::ofstream blocker(blockedParent);
+		blocker << "not a directory";
+	}
+	const fs::path fallbackStaged = depotcache / "330_44.manifest";
+	const auto degraded = ManifestStoreIO::publishBestEffort(
+		source, blockedParent / "330_44.manifest", fallbackStaged);
+	CHECK(degraded.staged,
+	      "depotcache publication survives an unavailable persistent store");
+	CHECK(!degraded.archived,
+	      "degraded publication reports that persistence was unavailable");
+	CHECK(readAll(source) == readAll(fallbackStaged),
+	      "degraded depotcache copy preserves the exact bytes");
+
 	// Steam may purge depotcache. Restore must use the persistent copy without
 	// contacting the network.
 	fs::remove(staged);

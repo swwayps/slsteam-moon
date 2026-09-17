@@ -29,6 +29,8 @@
 #include "feats/depotkey.hpp"
 #include "feats/hotreload.hpp"
 #include "feats/manifestid.hpp"
+#include "feats/manifestdonor.hpp"
+#include "feats/manifestcode.hpp"
 #include "feats/steamstub.hpp"
 #include "feats/stats_policy.hpp"
 
@@ -100,6 +102,8 @@ static void unload()
 	// An audited non-Steam process returns from setup before logging/hooks
 	// exist. Hooks::remove logs, so this early no-op must precede teardown.
 	if (!g_pLog) return;
+	ManifestDonor::stop();
+	ManifestCode::resetSession();
 	HotReload::shutdown();
 	Hooks::remove();
 

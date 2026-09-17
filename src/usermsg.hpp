@@ -41,6 +41,7 @@ enum class UserMsg
 	ContentServersUnavailable, // CDN unreachable / 5xx; {detail} = HTTP code
 	DownloadAuthUnavailable,   // could not obtain a manifest request code
 	DownloadTimedOut,          // timed out waiting on Steam's servers
+	ManifestNotReady,          // exact version is not in the shared archive yet
 	GameMetadataUnavailable,  // no network and no local metadata; {detail}=appid
 	GamePreparationFailed,     // could not assemble a title's metadata
 	// Same condition as GamePreparationFailed, but for a whole pass: a bulk copy
@@ -202,6 +203,14 @@ inline UiMessage messageFor(UserMsg m, Lang lang)
 			            : "Steam took too long to respond. Check your connection and "
 			              "try downloading the game again.",
 			         Severity::Error };
+
+		case UserMsg::ManifestNotReady:
+			return { pt ? "Um ou mais manifests desta versão ainda não estão no "
+			              "arquivo compartilhado. Aguarde um pouco e tente instalar "
+			              "novamente."
+			            : "One or more manifests for this version aren't in the shared "
+			              "archive yet. Please wait a little and try installing again.",
+			         Severity::Warning };
 
 		case UserMsg::GameMetadataUnavailable:
 			return { pt ? "Não foi possível atualizar os dados do AppID {detail} "

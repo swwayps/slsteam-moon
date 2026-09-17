@@ -4,6 +4,7 @@
 #include <mutex>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 struct CAppOwnershipInfo;
 
@@ -23,10 +24,11 @@ public:
 		const bool adoptPending = m_account == 0 && account != 0;
 		m_account = account;
 		m_apps.clear();
+		m_nativePackageApps.clear();
 		if (adoptPending)
 		{
 			for (const uint32_t app : m_pendingPackageApps)
-				m_apps[app].native = true;
+				m_nativePackageApps.insert(app);
 		}
 		m_pendingPackageApps.clear();
 		++m_epoch;
@@ -35,6 +37,7 @@ public:
 	{
 		std::lock_guard lock(m_mutex);
 		m_apps.clear();
+		m_nativePackageApps.clear();
 		if (m_account != 0) m_pendingPackageApps.clear();
 		++m_epoch;
 	}
@@ -66,14 +69,39 @@ public:
 		if (!m_account)
 			m_pendingPackageApps.insert(app);
 		else
-			m_apps[app].native = true;
+			m_nativePackageApps.insert(app);
+	}
+	void observePackage(Context expected, uint32_t package, uint32_t app)
+	{
+		std::lock_guard lock(m_mutex);
+		if (!package || !app || !expected.account ||
+		    expected.account != m_account || expected.epoch != m_epoch)
+			return;
+		m_nativePackageApps.insert(app);
+	}
+	void replacePackageApps(Context expected,
+	                        const std::vector<uint32_t>& apps)
+	{
+		std::lock_guard lock(m_mutex);
+		if (expected.account != m_account || expected.epoch != m_epoch) return;
+		if (!m_account)
+		{
+			m_pendingPackageApps.clear();
+			for (const uint32_t app : apps)
+				if (app) m_pendingPackageApps.insert(app);
+			return;
+		}
+		m_nativePackageApps.clear();
+		for (const uint32_t app : apps)
+			if (app) m_nativePackageApps.insert(app);
 	}
 	uint64_t localEpoch(uint32_t account, uint32_t app) const
 	{
 		std::lock_guard lock(m_mutex);
 		if (!account || account != m_account) return 0;
 		auto it = m_apps.find(app);
-		if (it == m_apps.end() || !it->second.local) return 0;
+		if (m_nativePackageApps.contains(app) ||
+		    it == m_apps.end() || !it->second.local) return 0;
 		return m_epoch;
 	}
 	bool hasNativeLicense(uint32_t account, uint32_t app) const
@@ -81,7 +109,8 @@ public:
 		std::lock_guard lock(m_mutex);
 		if (!account || account != m_account) return false;
 		auto it = m_apps.find(app);
-		return it != m_apps.end() && it->second.native;
+		return (it != m_apps.end() && it->second.native) ||
+		       m_nativePackageApps.contains(app);
 	}
 private:
 	struct Entry { bool native = false; bool local = false; };
@@ -89,6 +118,7 @@ private:
 	uint32_t m_account = 0;
 	uint64_t m_epoch = 1;
 	std::unordered_map<uint32_t, Entry> m_apps;
+	std::unordered_set<uint32_t> m_nativePackageApps;
 	std::unordered_set<uint32_t> m_pendingPackageApps;
 };
 
@@ -106,6 +136,9 @@ void observe(Context context, uint32_t app, bool success, const CAppOwnershipInf
 // invalidated evidence returns false, preserving the managed install path.
 bool hasNativeLicense(uint32_t app);
 void observeNativePackage(uint32_t package, uint32_t app);
+void observeNativePackage(Context expected, uint32_t package, uint32_t app);
+void replaceNativePackageApps(Context expected,
+	                          const std::vector<uint32_t>& apps);
 // refresh=true is ONLY for a Steam-owned request thread. Background consumers
 // use the session-scoped observation; they never call Steam from their thread.
 uint64_t localEpoch(uint32_t app, uint32_t account, bool refresh = false);

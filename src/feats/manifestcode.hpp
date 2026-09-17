@@ -4,10 +4,19 @@
 #include "../sdk/CWebSocketFrame.hpp"
 
 #include <cstdint>
+#include <future>
 
 
 namespace ManifestCode
 {
+	struct CodeRequest
+	{
+		uint64_t jobId = 0;
+		std::future<uint64_t> result;
+	};
+	CodeRequest requestCode(uint32_t appId, uint32_t depotId, uint64_t gid);
+	void discardRequest(uint64_t jobId);
+	void resetSession();
 	bool hkBBuildAndAsyncSendFrame(void* pConnection,
 	                               EWebSocketOpCode eOpCode,
 	                               uint8_t* pubData,

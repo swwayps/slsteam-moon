@@ -10,6 +10,7 @@
 #include "manageddepotfilter.hpp"
 #include "manifestselection.hpp"
 #include "manifeststore.hpp"
+#include "manifestdonor.hpp"
 
 #include "../manifest_index.hpp"
 
@@ -504,7 +505,7 @@ namespace
 				if (!manifestOnDisk(dc, depotId, pin)
 				    && !ManifestStore::restoreToDepotcache(depotId, pin))
 				{
-					ManifestFetch::fetchManifestBlobSync(pin, depotId);
+					ManifestFetch::fetchManifestBlobSync(pin, appId, depotId);
 				}
 			}
 			g_pLog->debug("ManifestBind[%s]: depot=%u pin gid=%llu staged "
@@ -567,10 +568,15 @@ namespace
 		// submitManifestBlob is deduplicated, so this also covers paths that
 		// reached the leaf without the builder hook. Wait only for the time
 		// remaining in the plan-wide budget.
-		ManifestFetch::submitManifestBlob(manifestId, appId, depotId);
+		const bool activeRequest =
+			ManifestFetch::isAnyManagedDownloadActive(appId);
+		ManifestFetch::submitManifestBlob(
+			manifestId, appId, depotId, activeRequest);
 		const int waitMs = remainingPlanBudgetMs(depotId, manifestId);
 		const bool fetched = ManifestFetch::awaitManifestBlobFor(
-		    manifestId, depotId, waitMs, /*notifyOnTimeout=*/false);
+		    manifestId, appId, depotId, waitMs,
+		    /*notifyOnTimeout=*/false,
+		    activeRequest);
 		if (fetched && ManifestStore::isInDepotcache(depotId, manifestId))
 		{
 			ManifestStore::markPreferredGid(depotId, manifestId);
@@ -709,7 +715,9 @@ namespace
 						    entryAppId, depotId);
 						if (pin && !ManifestStore::installedSize(depotId, pin))
 						{
-							ManifestFetch::submitManifestBlob(pin, entryAppId, depotId);
+							ManifestFetch::submitManifestBlob(
+							    pin, entryAppId, depotId,
+							    ManifestFetch::isAnyManagedDownloadActive(entryAppId));
 						}
 					}
 				}
@@ -747,6 +755,7 @@ namespace
 
 					const uint32_t entryAppId =
 						*reinterpret_cast<const uint32_t*>(e + kDepotEntryAppIdOff);
+					ManifestDonor::observeDepot(entryAppId, depotId, *gidp);
 					const uint64_t pin = g_config.getManifestPinForPlanner(
 						entryAppId, depotId);
 					if (flag == kTargetPlanFlag && pin)
@@ -765,10 +774,12 @@ namespace
 						    {
 							return ManifestStore::installedSize(depotId, pin);
 						    },
-						    [depotId, pin](int waitMs)
+						    [depotId, pin, entryAppId](int waitMs)
 						    {
 							return ManifestFetch::awaitManifestBlobFor(
-							    pin, depotId, waitMs, /*notifyOnTimeout=*/false);
+							    pin, entryAppId, depotId, waitMs,
+							    /*notifyOnTimeout=*/false,
+							    ManifestFetch::isAnyManagedDownloadActive(entryAppId));
 						    });
 						if (resolved.pinned)
 						{
@@ -815,7 +826,8 @@ namespace
 						        planDepotcache, depotId, targetGid))
 						{
 							ManifestFetch::submitManifestBlob(
-							    targetGid, entryAppId, depotId);
+							    targetGid, entryAppId, depotId,
+							    ManifestFetch::isAnyManagedDownloadActive(entryAppId));
 						}
 					}
 

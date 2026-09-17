@@ -30,6 +30,7 @@
 #include "feats/depotquarantine.hpp"
 #include "feats/dlc.hpp"
 #include "feats/manifestcode.hpp"
+#include "feats/manifestdonor.hpp"
 #include "feats/manifestbind.hpp"
 #include "feats/misc.hpp"
 #include "feats/fakeappid.hpp"
@@ -295,6 +296,13 @@ static void hkProtoBufMsgBase_InitFromPacket(CProtoBufMsgBase* pMsg, void* pSrc)
 	g_pLog->debug("Received ProtoBufMsg of type %u with type %s\n", pMsg->type, MemHlp::getTypeName(pMsg));
 
 	Achievements::recvMessage(pMsg);
+	if (pMsg->type == 780)
+		ManifestDonor::onLicenseList(pMsg->getBody<CMsgClientLicenseList>());
+	else if (pMsg->type == 757)
+	{
+		ManifestDonor::onLoggedOff();
+		ManifestCode::resetSession();
+	}
 	DepotKey::recvMsg(pMsg);
 	Misc::recvMsg(pMsg);
 	PICS::recvMsg(pMsg);

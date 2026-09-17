@@ -38,6 +38,7 @@ static const UserMsg kAll[] = {
 	UserMsg::ContentServersUnavailable,
 	UserMsg::DownloadAuthUnavailable,
 	UserMsg::DownloadTimedOut,
+	UserMsg::ManifestNotReady,
 	UserMsg::GamePreparationFailed,
 	UserMsg::DrmRemovalFailed,
 	UserMsg::LocalStorageError,
@@ -91,6 +92,15 @@ int main()
 		const UiMessage pt = messageFor(UserMsg::ContentServersUnavailable, Lang::Portuguese);
 		CHECK(std::strcmp(en.body, pt.body) != 0,
 		      "ContentServersUnavailable differs EN vs PT");
+	}
+
+	{
+		const UiMessage en = messageFor(UserMsg::ManifestNotReady, Lang::English);
+		const UiMessage pt = messageFor(UserMsg::ManifestNotReady, Lang::Portuguese);
+		CHECK(contains(en.body, "manifest") && contains(en.body, "try"),
+		      "ManifestNotReady explains that a retry is needed");
+		CHECK(contains(pt.body, "manifest") && contains(pt.body, "tente"),
+		      "ManifestNotReady has actionable Portuguese wording");
 	}
 
 	// 4) Detail substitution: a body template carrying the {detail} sentinel

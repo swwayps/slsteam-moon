@@ -682,7 +682,7 @@ void recvProductInfoResponse(CMsgClientPICSProductInfoResponse* resp)
 		for (const auto& t : pending)
 		{
 			const bool staged = ManifestFetch::awaitManifestBlob(
-			    t.gid, t.depotId, ManifestFetch::getTimeoutSec());
+			    t.gid, t.appId, t.depotId, ManifestFetch::getTimeoutSec());
 			if (staged)
 			{
 				ManifestStore::archiveManifest(t.depotId, t.gid);

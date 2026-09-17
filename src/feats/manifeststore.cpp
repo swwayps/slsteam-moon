@@ -167,7 +167,16 @@ namespace ManifestStore
 		const std::string name = manifestName(depotId, gid);
 		const fs::path archived = fs::path(store) / name;
 		const fs::path staged = fs::path(root) / "depotcache" / name;
-		if (!ManifestStoreIO::publish(sourcePath, archived, staged)) return false;
+		const auto result = ManifestStoreIO::publishBestEffort(
+			sourcePath, archived, staged);
+		if (!result.staged) return false;
+		if (!result.archived)
+		{
+			g_pLog->warn(
+				"ManifestStore: staged %s without persistent archive copy\n",
+				name.c_str());
+			return true;
+		}
 
 		g_pLog->info("ManifestStore: published downloaded %s (store -> depotcache)\n",
 		             name.c_str());

@@ -8,9 +8,11 @@
 #include "boundedexecutor.hpp"
 #include "contentserverdirectory.hpp"
 #include "manifest_zip.hpp"
+#include "../sdk/IClientAppManager.hpp"
 
 #include <curl/curl.h>
 
+#include <algorithm>
 #include <cerrno>
 #include <charconv>
 #include <chrono>
@@ -25,6 +27,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <signal.h>
 #include <string>
 #include <string_view>
@@ -45,6 +48,7 @@ namespace
 {
 
 std::atomic<bool> g_providersOffline{false};
+std::atomic<uint64_t> g_sessionEpoch{1};
 
 std::mutex g_notFoundLock;
 std::unordered_set<uint64_t> g_notFoundGids;
@@ -116,22 +120,37 @@ std::int64_t steadyNowMs()
 	    std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
-bool beginProviderAttempt()
+uint64_t beginProviderAttempt(uint64_t sessionEpoch)
 {
 	std::lock_guard<std::mutex> lock(g_circuitLock);
+	if (sessionEpoch != g_sessionEpoch.load(std::memory_order_acquire))
+		return 0;
 	return g_requestCodeCircuit.beginAttempt(steadyNowMs());
 }
 
-void finishProviderAttempt(bool success, bool rateLimited,
+void cancelProviderAttempt(uint64_t attemptToken)
+{
+	std::lock_guard<std::mutex> lock(g_circuitLock);
+	g_requestCodeCircuit.cancelAttempt(attemptToken);
+}
+
+void finishProviderAttempt(uint64_t sessionEpoch,
+	                         uint64_t attemptToken,
+	                         bool success, bool rateLimited,
 	                         bool transportFailure)
 {
 	bool wasOffline = false;
 	bool nowOffline = false;
 	{
 		std::lock_guard<std::mutex> lock(g_circuitLock);
+		if (sessionEpoch != g_sessionEpoch.load(std::memory_order_acquire))
+		{
+			g_requestCodeCircuit.cancelAttempt(attemptToken);
+			return;
+		}
 		wasOffline = g_requestCodeCircuit.open();
 		g_requestCodeCircuit.finishAttempt(
-		    steadyNowMs(), success, rateLimited, transportFailure);
+		    attemptToken, steadyNowMs(), success, rateLimited, transportFailure);
 		nowOffline = g_requestCodeCircuit.open();
 	}
 	g_providersOffline.store(nowOffline, std::memory_order_release);
@@ -148,42 +167,107 @@ void finishProviderAttempt(bool success, bool rateLimited,
 	}
 }
 
-const std::vector<std::string>& providerChain()
-{
-	static const std::vector<std::string> chain = {
-		"http://gmrc.wudrm.com/manifest/{gid}",
-	};
-	return chain;
-}
-
-
 std::mutex g_lock;
-std::map<uint64_t, std::shared_future<std::optional<uint64_t>>> g_pending;
-
-// Cache of resolved manifest request codes keyed by gid.  The same gid
-// is resolved twice in a normal install: once by the blob fetch inside
-// BYldRequestDepotManifest (to download the .manifest), and again when
-// Steam's GetManifestRequestCode job response arrives.  Caching by gid
-// lets the second lookup return instantly instead of racing a fresh
-// HTTP round-trip — which is what caused the first install attempt to
-// fail with "NO INTERNET CONNECTION" (the job response arrived before
-// the per-job async resolve finished) and only succeed on retry.
-std::mutex g_codeLock;
-std::map<uint64_t, uint64_t> g_codeByGid;
-
-void cacheCode(uint64_t gid, uint64_t code)
+struct PendingRequestCode
 {
-	if (!gid || !code) return;
-	std::lock_guard<std::mutex> lk(g_codeLock);
-	g_codeByGid[gid] = code;
+	uint64_t epoch;
+	std::shared_future<std::optional<uint64_t>> future;
+	std::shared_ptr<JobBudget> budget;
+};
+std::map<uint64_t, PendingRequestCode> g_pending;
+
+BoundedExecutor& requestCodeExecutor()
+{
+	static auto* executor = new BoundedExecutor(8, 128);
+	return *executor;
 }
 
-std::optional<uint64_t> cachedCode(uint64_t gid)
+// One-use handoff for the paired consumers in a normal install: the blob fetch
+// and Steam's GetManifestRequestCode response. Codes are depot-bound and
+// short-lived, so keep them only in memory, consume them on lookup, and expire
+// an orphan after one minute.
+std::mutex g_codeLock;
+struct CachedRequestCode
+{
+	uint64_t value;
+	int64_t storedAtMs;
+	uint64_t epoch;
+};
+std::map<std::pair<uint32_t, uint64_t>, CachedRequestCode> g_codeByDepotGid;
+
+std::mutex g_missingNotifyLock;
+std::set<std::pair<uint32_t, uint64_t>> g_missingNotified;
+
+bool markMissingForNotification(uint32_t depotId, uint64_t gid,
+	                            uint64_t epoch)
+{
+	if (epoch != g_sessionEpoch.load(std::memory_order_acquire)) return false;
+	std::lock_guard lock(g_missingNotifyLock);
+	if (epoch != g_sessionEpoch.load(std::memory_order_acquire)) return false;
+	return g_missingNotified.emplace(depotId, gid).second;
+}
+
+constexpr auto kArchiveMissTtl = std::chrono::minutes(10);
+std::mutex g_archiveMissLock;
+std::map<std::pair<uint32_t, uint64_t>, std::chrono::steady_clock::time_point>
+	    g_archiveMisses;
+
+bool hasRecentArchiveMiss(uint32_t depotId, uint64_t gid)
+{
+	std::lock_guard lock(g_archiveMissLock);
+	const auto key = std::make_pair(depotId, gid);
+	const auto it = g_archiveMisses.find(key);
+	if (it == g_archiveMisses.end()) return false;
+	if (std::chrono::steady_clock::now() - it->second < kArchiveMissTtl)
+		return true;
+	g_archiveMisses.erase(it);
+	return false;
+}
+
+void rememberArchiveMiss(uint32_t depotId, uint64_t gid)
+{
+	std::lock_guard lock(g_archiveMissLock);
+	if (g_archiveMisses.size() >= 100000) g_archiveMisses.clear();
+	g_archiveMisses[{depotId, gid}] = std::chrono::steady_clock::now();
+}
+
+void clearArchiveMiss(uint32_t depotId, uint64_t gid)
+{
+	std::lock_guard lock(g_archiveMissLock);
+	g_archiveMisses.erase({depotId, gid});
+}
+
+void cacheCode(uint32_t depotId, uint64_t gid, uint64_t code,
+	           uint64_t epoch)
+{
+	if (!depotId || !gid || !code ||
+	    epoch != g_sessionEpoch.load(std::memory_order_acquire)) return;
+	std::lock_guard<std::mutex> lk(g_codeLock);
+	if (epoch != g_sessionEpoch.load(std::memory_order_acquire)) return;
+	const int64_t now = steadyNowMs();
+	std::erase_if(g_codeByDepotGid, [now](const auto& item)
+	{
+		return item.second.epoch !=
+		           g_sessionEpoch.load(std::memory_order_acquire)
+		       || !cachedRequestCodeIsFresh(now, item.second.storedAtMs);
+	});
+	if (g_codeByDepotGid.size() >= 4096) g_codeByDepotGid.clear();
+	g_codeByDepotGid[{depotId, gid}] = {code, now, epoch};
+}
+
+std::optional<uint64_t> cachedCode(uint32_t depotId, uint64_t gid,
+	                              uint64_t epoch)
 {
 	std::lock_guard<std::mutex> lk(g_codeLock);
-	auto it = g_codeByGid.find(gid);
-	if (it == g_codeByGid.end()) return std::nullopt;
-	return it->second;
+	auto it = g_codeByDepotGid.find({depotId, gid});
+	if (it == g_codeByDepotGid.end()) return std::nullopt;
+	const auto cached = it->second;
+	g_codeByDepotGid.erase(it);
+	if (cached.epoch != epoch ||
+	    epoch != g_sessionEpoch.load(std::memory_order_acquire) ||
+	    !cachedRequestCodeIsFresh(steadyNowMs(), cached.storedAtMs))
+		return std::nullopt;
+	return cached.value;
 }
 
 bool parseDigitsOnly(std::string_view body, uint64_t* out)
@@ -232,38 +316,15 @@ bool parseJsonDigitField(std::string_view body, uint64_t* out)
 	return false;
 }
 
-std::string expandTemplate(std::string_view tmpl,
-                           uint64_t gid, uint32_t appId, uint32_t depotId)
-{
-	std::string out;
-	out.reserve(tmpl.size() + 32);
-	for (std::size_t i = 0; i < tmpl.size();)
-	{
-		if (tmpl[i] != '{') { out.push_back(tmpl[i++]); continue; }
-		auto end = tmpl.find('}', i + 1);
-		if (end == std::string_view::npos) { out.push_back(tmpl[i++]); continue; }
-		auto tag = tmpl.substr(i + 1, end - i - 1);
-		if (tag == "gid")          out += std::to_string(gid);
-		else if (tag == "appid")   out += std::to_string(appId);
-		else if (tag == "depotid") out += std::to_string(depotId);
-		else                       out.append(tmpl.substr(i, end - i + 1));
-		i = end + 1;
-	}
-	return out;
-}
+struct BodySink { std::string* out; std::size_t limit; };
 
-struct HttpResponse
+std::size_t curlWriteCb(const char* p, std::size_t sz, std::size_t n, BodySink* sink)
 {
-	long status         = 0;
-	std::string body;
-	bool networkError   = false;
-	std::string diagnostic;
-};
-
-std::size_t curlWriteCb(const char* p, std::size_t sz, std::size_t n, std::string* dst)
-{
-	dst->append(p, sz * n);
-	return sz * n;
+	if (sz && n > SIZE_MAX / sz) return 0;
+	const std::size_t bytes = sz * n;
+	if (bytes > sink->limit - sink->out->size()) return 0;
+	sink->out->append(p, bytes);
+	return bytes;
 }
 
 #include <dlfcn.h>
@@ -285,8 +346,10 @@ static curl_easy_getinfo_t p_curl_easy_getinfo = nullptr;
 static curl_easy_strerror_t p_curl_easy_strerror = nullptr;
 static curl_slist_append_t p_curl_slist_append = nullptr;
 static curl_slist_free_all_t p_curl_slist_free_all = nullptr;
+static std::mutex g_curlLoadMutex;
 
 static bool load_curl() {
+	std::lock_guard lock(g_curlLoadMutex);
 	if (p_curl_easy_init && p_curl_easy_setopt && p_curl_easy_perform
 	    && p_curl_easy_cleanup && p_curl_slist_append
 	    && p_curl_slist_free_all)
@@ -298,32 +361,57 @@ static bool load_curl() {
 	if (!handle) handle = dlopen("libcurl.so.4", RTLD_LAZY);
 	if (!handle) handle = RTLD_DEFAULT;
 
-	p_curl_easy_init = (curl_easy_init_t)dlsym(handle, "curl_easy_init");
-	p_curl_easy_setopt = (curl_easy_setopt_t)dlsym(handle, "curl_easy_setopt");
-	p_curl_easy_perform = (curl_easy_perform_t)dlsym(handle, "curl_easy_perform");
-	p_curl_easy_cleanup = (curl_easy_cleanup_t)dlsym(handle, "curl_easy_cleanup");
-	p_curl_easy_getinfo = (curl_easy_getinfo_t)dlsym(handle, "curl_easy_getinfo");
-	p_curl_easy_strerror = (curl_easy_strerror_t)dlsym(handle, "curl_easy_strerror");
-	p_curl_slist_append = (curl_slist_append_t)dlsym(handle, "curl_slist_append");
-	p_curl_slist_free_all = (curl_slist_free_all_t)dlsym(handle, "curl_slist_free_all");
+	const auto init = (curl_easy_init_t)dlsym(handle, "curl_easy_init");
+	const auto setopt = (curl_easy_setopt_t)dlsym(handle, "curl_easy_setopt");
+	const auto perform = (curl_easy_perform_t)dlsym(handle, "curl_easy_perform");
+	const auto cleanup = (curl_easy_cleanup_t)dlsym(handle, "curl_easy_cleanup");
+	const auto getinfo = (curl_easy_getinfo_t)dlsym(handle, "curl_easy_getinfo");
+	const auto strerror = (curl_easy_strerror_t)dlsym(handle, "curl_easy_strerror");
+	const auto listAppend =
+		(curl_slist_append_t)dlsym(handle, "curl_slist_append");
+	const auto listFree =
+		(curl_slist_free_all_t)dlsym(handle, "curl_slist_free_all");
+	if (!init || !setopt || !perform || !cleanup || !getinfo || !strerror ||
+	    !listAppend || !listFree)
+		return false;
 
-	return p_curl_easy_init && p_curl_easy_setopt && p_curl_easy_perform
-	       && p_curl_easy_cleanup && p_curl_slist_append
-	       && p_curl_slist_free_all;
+	p_curl_easy_init = init;
+	p_curl_easy_setopt = setopt;
+	p_curl_easy_perform = perform;
+	p_curl_easy_cleanup = cleanup;
+	p_curl_easy_getinfo = getinfo;
+	p_curl_easy_strerror = strerror;
+	p_curl_slist_append = listAppend;
+	p_curl_slist_free_all = listFree;
+	return true;
 }
 
-int curlBudgetProgress(void* userdata,
-                       curl_off_t, curl_off_t, curl_off_t, curl_off_t)
+struct TransferControl
 {
-	const auto* budget = static_cast<const JobBudget*>(userdata);
-	return budget != nullptr && budget->shouldStop() ? 1 : 0;
+	const JobBudget* budget;
+	const std::atomic<bool>* keepRunning;
+};
+
+int curlTransferProgress(void* userdata,
+                         curl_off_t, curl_off_t, curl_off_t, curl_off_t)
+{
+	const auto* control = static_cast<const TransferControl*>(userdata);
+	if (!control) return 0;
+	if (control->budget && control->budget->shouldStop()) return 1;
+	return control->keepRunning
+	       && !control->keepRunning->load(std::memory_order_acquire) ? 1 : 0;
 }
 
 HttpResponse httpGet(const std::string& url, const JobBudget* budget = nullptr,
-                     std::string_view hostHeader = {})
+                     std::string_view hostHeader = {},
+                     std::string_view method = "GET", std::string_view postBody = {},
+                     std::size_t maxBodyBytes = 64u * 1024u * 1024u,
+                     long timeoutMs = 10000,
+                     const std::atomic<bool>* keepRunning = nullptr)
 {
 	HttpResponse r;
-	if (budget != nullptr && budget->shouldStop())
+	if ((budget != nullptr && budget->shouldStop()) ||
+	    (keepRunning && !keepRunning->load(std::memory_order_acquire)))
 	{
 		r.networkError = true;
 		r.diagnostic = "manifest job budget expired";
@@ -345,6 +433,7 @@ HttpResponse httpGet(const std::string& url, const JobBudget* budget = nullptr,
 		return r;
 	}
 	curl_slist* requestHeaders = nullptr;
+	BodySink sink{&r.body, maxBodyBytes};
 	if (!hostHeader.empty())
 	{
 		const std::string host = "Host: " + std::string(hostHeader);
@@ -359,12 +448,23 @@ HttpResponse httpGet(const std::string& url, const JobBudget* budget = nullptr,
 		p_curl_easy_setopt(c, CURLOPT_HTTPHEADER, requestHeaders);
 	}
 	p_curl_easy_setopt(c, CURLOPT_URL, url.c_str());
-	p_curl_easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1L);
+	p_curl_easy_setopt(c, CURLOPT_FOLLOWLOCATION, method == "POST" ? 0L : 1L);
 	p_curl_easy_setopt(c, CURLOPT_WRITEFUNCTION, curlWriteCb);
-	p_curl_easy_setopt(c, CURLOPT_WRITEDATA, &r.body);
+	p_curl_easy_setopt(c, CURLOPT_WRITEDATA, &sink);
+	p_curl_easy_setopt(c, CURLOPT_ACCEPT_ENCODING, "");
+	if (method == "HEAD") p_curl_easy_setopt(c, CURLOPT_NOBODY, 1L);
+	if (method == "POST")
+	{
+		p_curl_easy_setopt(c, CURLOPT_POST, 1L);
+		p_curl_easy_setopt(c, CURLOPT_POSTFIELDS, postBody.data());
+		p_curl_easy_setopt(c, CURLOPT_POSTFIELDSIZE_LARGE,
+		                   static_cast<curl_off_t>(postBody.size()));
+		requestHeaders = p_curl_slist_append(requestHeaders, "Content-Type: text/plain");
+		if (requestHeaders) p_curl_easy_setopt(c, CURLOPT_HTTPHEADER, requestHeaders);
+	}
 	if (budget == nullptr)
 	{
-		p_curl_easy_setopt(c, CURLOPT_TIMEOUT, 10L);
+		p_curl_easy_setopt(c, CURLOPT_TIMEOUT_MS, timeoutMs);
 		p_curl_easy_setopt(c, CURLOPT_CONNECTTIMEOUT, 5L);
 	}
 	else
@@ -378,14 +478,18 @@ HttpResponse httpGet(const std::string& url, const JobBudget* budget = nullptr,
 			r.diagnostic = "manifest job budget expired";
 			return r;
 		}
-		if (remainingMs > 10000) remainingMs = 10000;
+		if (remainingMs > timeoutMs) remainingMs = timeoutMs;
 		const long timeoutMs = static_cast<long>(remainingMs < 1 ? 1 : remainingMs);
 		const long connectMs = timeoutMs < 5000 ? timeoutMs : 5000;
 		p_curl_easy_setopt(c, CURLOPT_TIMEOUT_MS, timeoutMs);
 		p_curl_easy_setopt(c, CURLOPT_CONNECTTIMEOUT_MS, connectMs);
+	}
+	TransferControl control{budget, keepRunning};
+	if (budget || keepRunning)
+	{
 		p_curl_easy_setopt(c, CURLOPT_NOPROGRESS, 0L);
-		p_curl_easy_setopt(c, CURLOPT_XFERINFOFUNCTION, curlBudgetProgress);
-		p_curl_easy_setopt(c, CURLOPT_XFERINFODATA, budget);
+		p_curl_easy_setopt(c, CURLOPT_XFERINFOFUNCTION, curlTransferProgress);
+		p_curl_easy_setopt(c, CURLOPT_XFERINFODATA, &control);
 	}
 	// MANDATORY for multi-threaded use: httpGet runs on a ManifestFetch
 	// worker thread.  Without CURLOPT_NOSIGNAL, libcurl built with a
@@ -471,15 +575,22 @@ std::vector<ContentServerDirectory::Server> contentServers(
 }
 
 std::optional<uint64_t> runOnce(uint64_t gid, uint32_t appId, uint32_t depotId,
+	                            uint64_t sessionEpoch,
                                 const std::shared_ptr<JobBudget>& budget = {})
 {
-	if (budget && budget->shouldStop()) return std::nullopt;
+	const auto cancelled = [&]
+	{
+		return (budget && budget->shouldStop()) ||
+		       sessionEpoch != g_sessionEpoch.load(std::memory_order_acquire);
+	};
+	if (cancelled())
+		return std::nullopt;
 
 	// Fast path: a previous resolve (e.g. the blob fetch in
 	// BYldRequestDepotManifest) already learned this gid's request
 	// code.  Reuse it so we don't race a fresh HTTP round-trip when
 	// Steam's GetManifestRequestCode job response arrives.
-	if (auto c = cachedCode(gid))
+	if (auto c = cachedCode(depotId, gid, sessionEpoch))
 	{
 		return c;
 	}
@@ -487,17 +598,24 @@ std::optional<uint64_t> runOnce(uint64_t gid, uint32_t appId, uint32_t depotId,
 	// An open circuit admits one actual queued gid after the cooldown. This is
 	// both the recovery probe and useful work; a dead provider's gid=0 404 can
 	// never reset health falsely.
-	if (!beginProviderAttempt())
+	const uint64_t attemptToken = beginProviderAttempt(sessionEpoch);
+	if (!attemptToken)
 	{
 		g_pLog->debug(
 		    "ManifestFetch: gid=%llu skipped during request-code cooldown\n",
 		    static_cast<unsigned long long>(gid));
 		return std::nullopt;
 	}
+	if (cancelled())
+	{
+		cancelProviderAttempt(attemptToken);
+		return std::nullopt;
+	}
 
-	const auto& chain = providerChain();
+	const auto& chain = defaultProviderChain();
 	if (chain.empty())
 	{
+		cancelProviderAttempt(attemptToken);
 		g_pLog->debug("ManifestFetch: gid=%llu skipped, no providers configured\n",
 		              static_cast<unsigned long long>(gid));
 		return std::nullopt;
@@ -509,14 +627,24 @@ std::optional<uint64_t> runOnce(uint64_t gid, uint32_t appId, uint32_t depotId,
 	outcomes.reserve(chain.size());
 	for (std::size_t i = 0; i < chain.size(); ++i)
 	{
+		if (cancelled())
+		{
+			cancelProviderAttempt(attemptToken);
+			return std::nullopt;
+		}
 		const auto& tmpl = chain[i];
 		if (tmpl.empty()) continue;
-		const auto url = expandTemplate(tmpl, gid, appId, depotId);
+		const auto url = expandProviderTemplate(tmpl, gid, appId, depotId);
 		g_pLog->info("ManifestFetch: gid=%llu provider %zu/%zu GET %s\n",
 		             static_cast<unsigned long long>(gid),
 		             i + 1, chain.size(), url.c_str());
 
 		const auto resp = httpGet(url, budget.get());
+		if (cancelled())
+		{
+			cancelProviderAttempt(attemptToken);
+			return std::nullopt;
+		}
 		if (resp.networkError)
 		{
 			outcomes.push_back({true, 0});
@@ -546,21 +674,19 @@ std::optional<uint64_t> runOnce(uint64_t gid, uint32_t appId, uint32_t depotId,
 		uint64_t code = 0;
 		if (parseDigitsOnly(resp.body, &code) || parseJsonDigitField(resp.body, &code))
 		{
-			g_pLog->info("ManifestFetch: gid=%llu resolved code=%llu via provider %zu\n",
+			g_pLog->info("ManifestFetch: gid=%llu resolved request code via provider %zu\n",
 			             static_cast<unsigned long long>(gid),
-			             static_cast<unsigned long long>(code),
 			             i + 1);
-			cacheCode(gid, code);
-			finishProviderAttempt(
-			    /*success=*/true, /*rateLimited=*/false,
+			cacheCode(depotId, gid, code, sessionEpoch);
+			finishProviderAttempt(sessionEpoch, attemptToken,
+				/*success=*/true, /*rateLimited=*/false,
 			    /*transportFailure=*/false);
 			return code;
 		}
-		g_pLog->info("ManifestFetch: gid=%llu provider %zu body unparseable (first 64: '%.*s'), trying next\n",
+		g_pLog->info("ManifestFetch: gid=%llu provider %zu body unparseable "
+		             "(%zu bytes), trying next\n",
 		             static_cast<unsigned long long>(gid),
-		             i + 1,
-		             static_cast<int>(std::min<std::size_t>(resp.body.size(), 64)),
-		             resp.body.c_str());
+		             i + 1, resp.body.size());
 	}
 
 	g_pLog->info("ManifestFetch: gid=%llu all %zu providers exhausted\n",
@@ -568,7 +694,7 @@ std::optional<uint64_t> runOnce(uint64_t gid, uint32_t appId, uint32_t depotId,
 	if (isDefinitiveNotFound(outcomes))
 		markGidNotFoundInternal(gid);
 
-	finishProviderAttempt(
+	finishProviderAttempt(sessionEpoch, attemptToken,
 	    /*success=*/false, hasRateLimit, hasNetworkOrServerError);
 
 	// No user notification here: when the request-code providers are down the
@@ -604,15 +730,40 @@ std::string findSteamRootForBlob()
 	return {};
 }
 
-bool writeManifestFile(const std::string& path,
-                       const std::vector<unsigned char>& bytes)
+uint32_t appManifestState(const std::string& steamRoot, uint32_t appId)
+{
+	if (steamRoot.empty() || !appId) return 0;
+	std::ifstream input(steamRoot + "/steamapps/appmanifest_"
+	                    + std::to_string(appId) + ".acf");
+	if (!input) return 0;
+	std::string line;
+	while (std::getline(input, line))
+	{
+		const auto key = line.find("\"StateFlags\"");
+		if (key == std::string::npos) continue;
+		const auto open = line.find('"', key + sizeof("\"StateFlags\"") - 1);
+		if (open == std::string::npos) return 0;
+		const auto close = line.find('"', open + 1);
+		if (close == std::string::npos) return 0;
+		uint32_t state = 0;
+		const char* begin = line.data() + open + 1;
+		const char* end = line.data() + close;
+		const auto parsed = std::from_chars(begin, end, state);
+		return parsed.ec == std::errc{} && parsed.ptr == end ? state : 0;
+	}
+	return 0;
+}
+
+bool writeManifestFile(const std::string& path, const void* data,
+                       std::size_t size)
 {
 	const int fd = open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0600);
 	if (fd < 0) return false;
 	std::size_t offset = 0;
-	while (offset < bytes.size())
+	while (offset < size)
 	{
-		const ssize_t written = write(fd, bytes.data() + offset, bytes.size() - offset);
+		const ssize_t written = write(fd,
+		    static_cast<const unsigned char*>(data) + offset, size - offset);
 		if (written < 0 && errno == EINTR) continue;
 		if (written <= 0)
 		{
@@ -625,9 +776,10 @@ bool writeManifestFile(const std::string& path,
 	return close(fd) == 0;
 }
 
-bool fetchManifestBlob(uint64_t gid, uint32_t depotId,
+bool fetchManifestBlob(uint64_t gid, uint32_t appId, uint32_t depotId,
                        const std::string& depotcacheDir,
-                       const std::shared_ptr<JobBudget>& budget)
+                       const std::shared_ptr<JobBudget>& budget,
+                       bool bypassArchiveMiss, uint64_t sessionEpoch)
 {
 	if (budget && budget->shouldStop()) return false;
 	std::string targetPath = depotcacheDir + "/" + std::to_string(depotId)
@@ -649,14 +801,64 @@ bool fetchManifestBlob(uint64_t gid, uint32_t depotId,
 	// Steam may leave a truncated/corrupt depotcache entry after interruption.
 	unlink(targetPath.c_str());
 
-	auto codeOpt = runOnce(gid, /*appId=*/0, depotId, budget);
+	enum class ArchiveResult { Failed, NotReady, Staged };
+	const auto fetchArchive = [&]() -> ArchiveResult
+	{
+		const std::string archiveUrl = "https://manifest.luastools.xyz/m/"
+		    + std::to_string(depotId) + "/" + std::to_string(gid);
+		long archiveTimeout = 60000;
+		if (budget)
+			archiveTimeout = std::max<long>(1, std::min<long>(archiveTimeout,
+			    static_cast<long>(budget->remaining().count())));
+		const auto archived = httpGet(archiveUrl, budget.get(), {}, "GET", {},
+		                              64u * 1024u * 1024u, archiveTimeout);
+		if (!archived.networkError && archived.status == 404)
+		{
+			rememberArchiveMiss(depotId, gid);
+			return ArchiveResult::NotReady;
+		}
+		if (!archived.networkError && archived.status == 200 &&
+		    looksLikeArchivedManifest(archived.body))
+		{
+			clearArchiveMiss(depotId, gid);
+			const std::string tmp = targetPath + ".archive." + std::to_string(getpid());
+			if (writeManifestFile(tmp, archived.body.data(), archived.body.size()) &&
+			    ManifestStore::publishDownloadedManifest(depotId, gid, tmp))
+			{
+				unlink(tmp.c_str());
+				g_pLog->info("ManifestFetch: archive staged depot=%u gid=%llu\n",
+			             depotId, static_cast<unsigned long long>(gid));
+				return ArchiveResult::Staged;
+			}
+			unlink(tmp.c_str());
+		}
+		return ArchiveResult::Failed;
+	};
+
+	// The archive serves raw Steam manifest bytes. Reuse the durable store's
+	// atomic publication path so Steam's depotcache purge cannot lose this copy.
+	ArchiveResult archiveResult = ArchiveResult::Failed;
+	if (bypassArchiveMiss ||
+	    !hasRecentArchiveMiss(depotId, gid))
+	{
+		archiveResult = fetchArchive();
+		if (archiveResult == ArchiveResult::Staged) return true;
+	}
+	auto failed = [&]
+	{
+		if (archiveResult == ArchiveResult::NotReady &&
+		    bypassArchiveMiss &&
+		    markMissingForNotification(depotId, gid, sessionEpoch))
+			g_pLog->notifyUser(UserMsg::ManifestNotReady);
+		return false;
+	};
+
+	auto codeOpt = runOnce(gid, appId, depotId, sessionEpoch, budget);
 	if (!codeOpt)
 	{
 		g_pLog->info("ManifestFetch: blob depot=%u gid=%llu request-code lookup failed\n",
 		             depotId, static_cast<unsigned long long>(gid));
-		// Log-only: the manifest resilience fallback handles providers-down
-		// (see the all-providers-exhausted path above).
-		return false;
+		return failed();
 	}
 	uint64_t code = *codeOpt;
 
@@ -664,7 +866,7 @@ bool fetchManifestBlob(uint64_t gid, uint32_t depotId,
 	// lets the service choose for the requester's public IP, matching Steam's
 	// normal content path without pinning users to one geographic cell.
 	const auto servers = contentServers(budget);
-	if (servers.empty()) return false;
+	if (servers.empty()) return failed();
 
 	HttpResponse zipResp;
 	bool gotZip = false;
@@ -700,7 +902,7 @@ bool fetchManifestBlob(uint64_t gid, uint32_t depotId,
 		// fallback (feats/manifestbind.cpp) installs from a local manifest
 		// when it fails, so the download proceeds.  A genuine content-CDN
 		// outage (chunks unreachable) is surfaced by Steam's own UI.
-		return false;
+		return failed();
 	}
 
 	std::vector<unsigned char> manifest;
@@ -711,7 +913,7 @@ bool fetchManifestBlob(uint64_t gid, uint32_t depotId,
 			"ManifestFetch: blob depot=%u gid=%llu archive rejected: %s\n",
 			depotId, static_cast<unsigned long long>(gid),
 			extractDiagnostic.c_str());
-		return false;
+		return failed();
 	}
 
 	const std::string tmpOutPath = targetPath + ".slsteam_tmp." +
@@ -723,14 +925,14 @@ bool fetchManifestBlob(uint64_t gid, uint32_t depotId,
 	{
 		g_pLog->warn("ManifestFetch: blob depot=%u gid=%llu bad manifest magic\n",
 		             depotId, static_cast<unsigned long long>(gid));
-		return false;
+		return failed();
 	}
-	if (!writeManifestFile(tmpOutPath, manifest))
+	if (!writeManifestFile(tmpOutPath, manifest.data(), manifest.size()))
 	{
 		g_pLog->warn("ManifestFetch: blob depot=%u gid=%llu manifest write failed\n",
 		             depotId, static_cast<unsigned long long>(gid));
 		g_pLog->notifyUser(UserMsg::LocalStorageError);
-		return false;
+		return failed();
 	}
 
 	if (!ManifestStore::publishDownloadedManifest(depotId, gid, tmpOutPath))
@@ -740,7 +942,7 @@ bool fetchManifestBlob(uint64_t gid, uint32_t depotId,
 		    "ManifestFetch: blob depot=%u gid=%llu persistent publish failed\n",
 		    depotId, static_cast<unsigned long long>(gid));
 		g_pLog->notifyUser(UserMsg::LocalStorageError);
-		return false;
+		return failed();
 	}
 	unlink(tmpOutPath.c_str());
 
@@ -751,6 +953,25 @@ bool fetchManifestBlob(uint64_t gid, uint32_t depotId,
 }
 
 } // namespace
+
+bool isAnyManagedDownloadActive(uint32_t appIdHint)
+{
+	auto apps = g_config.managedAppIds.get();
+	if (appIdHint) apps.insert(appIdHint);
+	if (apps.empty()) return false;
+	const std::string steamRoot = findSteamRootForBlob();
+	for (const uint32_t appId : apps)
+	{
+		if (g_pClientAppManager)
+		{
+			const auto state = static_cast<uint32_t>(
+				g_pClientAppManager->getAppInstallState(appId));
+			if (appStateIsDownloading(state)) return true;
+		}
+		if (appStateIsDownloading(appManifestState(steamRoot, appId))) return true;
+	}
+	return false;
+}
 
 namespace
 {
@@ -779,7 +1000,10 @@ struct BlobJob
 {
 	std::shared_future<bool> future;
 	std::shared_ptr<JobBudget> budget;
+	uint64_t sessionEpoch = 0;
 	std::atomic<int> waiters{0};
+	std::atomic<uint32_t> appId{0};
+	std::atomic<bool> bypassArchiveMiss{false};
 	// A fire-and-forget submit owns the job independently of blocking
 	// waiters.  A timed-out waiter may leave, but must not cancel the producer
 	// while it is still staging the manifest in the background.
@@ -797,16 +1021,30 @@ BoundedExecutor& blobExecutor()
 	return *executor;
 }
 
-std::shared_ptr<BlobJob> launchOrJoinBlob(uint64_t gid, uint32_t depotId,
+std::shared_ptr<BlobJob> launchOrJoinBlob(uint64_t gid, uint32_t appId,
+	                                      uint32_t depotId,
                                           const std::string& depotcacheDir,
-                                          bool registerWaiter)
+                                          bool registerWaiter,
+                                          bool bypassArchiveMiss)
 {
 	const BlobKey key{gid, depotId};
 	std::lock_guard<std::mutex> lk(g_blobLock);
+	const uint64_t sessionEpoch =
+		g_sessionEpoch.load(std::memory_order_acquire);
 	auto it = g_blobInflight.find(key);
+	if (it != g_blobInflight.end() &&
+	    it->second->sessionEpoch != sessionEpoch)
+	{
+		it->second->budget->cancel();
+		g_blobInflight.erase(it);
+		it = g_blobInflight.end();
+	}
 	if (it != g_blobInflight.end())
 	{
 		auto job = it->second;
+		detail::promoteAppId(job->appId, appId);
+		detail::promoteArchiveMissBypass(job->bypassArchiveMiss,
+		                                bypassArchiveMiss);
 		// If the previous job finished successfully AND the manifest is
 		// still on disk, return that. If it finished but failed, OR the
 		// file is gone, drop the entry so a fresh re-fetch happens.
@@ -832,7 +1070,11 @@ std::shared_ptr<BlobJob> launchOrJoinBlob(uint64_t gid, uint32_t depotId,
 	auto job = std::make_shared<BlobJob>();
 	job->future = completion->get_future().share();
 	job->budget = std::make_shared<JobBudget>(
-		std::chrono::milliseconds(getTimeoutSec() * 1000));
+		std::chrono::seconds(60));
+	job->sessionEpoch = sessionEpoch;
+	detail::promoteAppId(job->appId, appId);
+	detail::promoteArchiveMissBypass(job->bypassArchiveMiss,
+	                                bypassArchiveMiss);
 	if (registerWaiter) detail::registerWaiterLocked(job->waiters);
 	g_blobInflight.emplace(key, job);
 
@@ -840,30 +1082,54 @@ std::shared_ptr<BlobJob> launchOrJoinBlob(uint64_t gid, uint32_t depotId,
 	    [gid, depotId, depotcacheDir, completion, job, key]
 	    {
 	        bool ok = false;
-	        try
+	        bool activeRetryDone = false;
+	        for (;;)
 	        {
-	            if (!job->budget->shouldStop())
+	            try
 	            {
-	                // Do filesystem restoration and any network fetch on our
-	                // executor, never on Steam's PICS/IPC worker.
-	                ok = ManifestStore::restoreToDepotcache(depotId, gid)
-	                     || fetchManifestBlob(gid, depotId, depotcacheDir,
-	                                           job->budget);
+	                if (!job->budget->shouldStop())
+	                {
+	                    // Do filesystem restoration and any network fetch on our
+	                    // executor, never on Steam's PICS/IPC worker.
+	                    const bool bypassArchiveMiss =
+	                        job->bypassArchiveMiss.load(std::memory_order_acquire);
+	                    const bool firstAttempt = !activeRetryDone;
+	                    if (bypassArchiveMiss) activeRetryDone = true;
+	                    ok = (firstAttempt &&
+	                          ManifestStore::restoreToDepotcache(depotId, gid))
+	                         || fetchManifestBlob(
+	                             gid,
+	                             job->appId.load(std::memory_order_acquire),
+	                             depotId, depotcacheDir, job->budget,
+	                             bypassArchiveMiss, job->sessionEpoch);
+	                }
 	            }
-	        }
-	        catch (...)
-	        {
-	            g_pLog->info(
-	                "ManifestFetch: blob depot=%u gid=%llu worker failed unexpectedly\n",
-	                depotId, static_cast<unsigned long long>(gid));
-	        }
-	        try { completion->set_value(ok); } catch (...) {}
-	        {
-	            std::lock_guard<std::mutex> lk(g_blobLock);
+	            catch (...)
+	            {
+	                g_pLog->info(
+	                    "ManifestFetch: blob depot=%u gid=%llu worker failed unexpectedly\n",
+	                    depotId, static_cast<unsigned long long>(gid));
+	            }
+
+	            // Serialize the terminal decision with join/promotion. If an
+	            // active installer promoted this background job before we took
+	            // the lock, make one final archive-bypass attempt. A joiner that
+	            // arrives after this lock sees the completed job removed and
+	            // starts its own active attempt, so no promotion can be lost.
+	            std::unique_lock<std::mutex> lk(g_blobLock);
+	            if (!ok && !activeRetryDone && !job->budget->shouldStop() &&
+	                job->bypassArchiveMiss.load(std::memory_order_acquire))
+	            {
+	                activeRetryDone = true;
+	                lk.unlock();
+	                continue;
+	            }
+	            try { completion->set_value(ok); } catch (...) {}
 	            job->producerActive = false;
 	            auto it = g_blobInflight.find(key);
 	            if (it != g_blobInflight.end() && it->second == job)
 	                g_blobInflight.erase(it);
+	            break;
 	        }
 	    });
 	if (!accepted)
@@ -907,7 +1173,8 @@ const char* defaultTimeoutKey()
 	return "ManifestFetch.timeout_sec";
 }
 
-void submitManifestBlob(uint64_t manifestGid, uint32_t /*appId*/, uint32_t depotId)
+void submitManifestBlob(uint64_t manifestGid, uint32_t appId, uint32_t depotId,
+                        bool bypassArchiveMiss)
 {
 	const auto steamRoot = findSteamRootForBlob();
 	if (steamRoot.empty())
@@ -918,25 +1185,31 @@ void submitManifestBlob(uint64_t manifestGid, uint32_t /*appId*/, uint32_t depot
 		return;
 	}
 	const std::string depotcacheDir = steamRoot + "/depotcache";
-	(void)launchOrJoinBlob(manifestGid, depotId, depotcacheDir,
-	                       /*registerWaiter=*/false);
+	(void)launchOrJoinBlob(manifestGid, appId, depotId, depotcacheDir,
+	                       /*registerWaiter=*/false, bypassArchiveMiss);
 }
 
-bool awaitManifestBlob(uint64_t manifestGid, uint32_t depotId, int timeoutSec)
+bool awaitManifestBlob(uint64_t manifestGid, uint32_t appId,
+                       uint32_t depotId, int timeoutSec, bool activeRequest)
 {
 	if (timeoutSec <= 0) timeoutSec = getTimeoutSec();
 	return awaitManifestBlobFor(
-	    manifestGid, depotId, timeoutSec * 1000, /*notifyOnTimeout=*/true);
+	    manifestGid, appId, depotId, timeoutSec * 1000,
+	    /*notifyOnTimeout=*/true,
+	    activeRequest);
 }
 
-bool awaitManifestBlobFor(uint64_t manifestGid, uint32_t depotId,
-                          int timeoutMs, bool notifyOnTimeout)
+bool awaitManifestBlobFor(uint64_t manifestGid, uint32_t appId,
+                          uint32_t depotId,
+                          int timeoutMs, bool notifyOnTimeout,
+                          bool activeRequest)
 {
 	const auto steamRoot = findSteamRootForBlob();
 	if (steamRoot.empty()) return false;
 	const std::string depotcacheDir = steamRoot + "/depotcache";
-	auto job = launchOrJoinBlob(manifestGid, depotId, depotcacheDir,
-	                            /*registerWaiter=*/true);
+	auto job = launchOrJoinBlob(manifestGid, appId, depotId, depotcacheDir,
+	                            /*registerWaiter=*/true,
+	                            /*bypassArchiveMiss=*/activeRequest);
 	if (timeoutMs < 0) timeoutMs = 0;
 	if (job->future.wait_for(std::chrono::milliseconds(timeoutMs)) !=
 	    std::future_status::ready)
@@ -955,53 +1228,128 @@ bool awaitManifestBlobFor(uint64_t manifestGid, uint32_t depotId,
 	return result;
 }
 
-bool fetchManifestBlobSync(uint64_t manifestGid, uint32_t depotId)
+bool fetchManifestBlobSync(uint64_t manifestGid, uint32_t appId,
+                           uint32_t depotId)
 {
-	return awaitManifestBlob(manifestGid, depotId, getTimeoutSec());
+	return awaitManifestBlob(manifestGid, appId, depotId, getTimeoutSec());
 }
 
 void submit(uint64_t jobId, uint64_t manifestGid, uint32_t appId, uint32_t depotId)
 {
-	std::lock_guard<std::mutex> lk(g_lock);
-	if (g_pending.count(jobId))
+	auto completion =
+		std::make_shared<std::promise<std::optional<uint64_t>>>();
+	const auto future = completion->get_future().share();
+	const int timeoutSecs = getTimeoutSec() > 0 ? getTimeoutSec() : 12;
+	auto budget = std::make_shared<JobBudget>(
+		std::chrono::seconds(timeoutSecs));
+	uint64_t sessionEpoch = 0;
 	{
-		g_pLog->debug("ManifestFetch: duplicate submit for jobId=%llu\n",
-		              static_cast<unsigned long long>(jobId));
-		return;
+		std::lock_guard<std::mutex> lk(g_lock);
+		if (g_pending.count(jobId))
+		{
+			g_pLog->debug("ManifestFetch: duplicate submit for jobId=%llu\n",
+			              static_cast<unsigned long long>(jobId));
+			return;
+		}
+		sessionEpoch = g_sessionEpoch.load(std::memory_order_acquire);
+		g_pending.emplace(
+			jobId, PendingRequestCode{sessionEpoch, future, budget});
 	}
-	auto fut = std::async(std::launch::async,
-	                      [manifestGid, appId, depotId]() -> std::optional<uint64_t>
-	                      {
-	                          return runOnce(manifestGid, appId, depotId);
-	                      });
-	g_pending.emplace(jobId, fut.share());
+	const bool accepted = requestCodeExecutor().submit(
+		[completion, manifestGid, appId, depotId, sessionEpoch, budget]
+	{
+			std::optional<uint64_t> result;
+			try
+			{
+				result = runOnce(
+					manifestGid, appId, depotId, sessionEpoch, budget);
+			}
+			catch (...) {}
+			try { completion->set_value(result); } catch (...) {}
+		});
+	if (!accepted)
+	{
+		budget->cancel();
+		try { completion->set_value(std::nullopt); } catch (...) {}
+	}
 }
 
 std::optional<uint64_t> resolve(uint64_t jobId)
 {
-	std::shared_future<std::optional<uint64_t>> fut;
+	PendingRequestCode pending{};
 	{
 		std::lock_guard<std::mutex> lk(g_lock);
 		auto it = g_pending.find(jobId);
 		if (it == g_pending.end()) return std::nullopt;
-		fut = it->second;
-		g_pending.erase(it);
+		pending = it->second;
+	}
+	if (pending.epoch != g_sessionEpoch.load(std::memory_order_acquire))
+	{
+		pending.budget->cancel();
+		return std::nullopt;
 	}
 	const int budget = getTimeoutSec() > 0 ? getTimeoutSec() : 12;
-	if (fut.wait_for(std::chrono::seconds(budget)) != std::future_status::ready)
+	if (pending.future.wait_for(std::chrono::seconds(budget)) !=
+	    std::future_status::ready)
 	{
+		pending.budget->cancel();
+		std::lock_guard<std::mutex> lk(g_lock);
+		g_pending.erase(jobId);
 		g_pLog->info("ManifestFetch: jobId=%llu timed out after %ds\n",
 		             static_cast<unsigned long long>(jobId), budget);
 		g_pLog->notifyUser(UserMsg::DownloadTimedOut);
 		return std::nullopt;
 	}
-	return fut.get();
+	if (pending.epoch != g_sessionEpoch.load(std::memory_order_acquire))
+	{
+		pending.budget->cancel();
+		return std::nullopt;
+	}
+	const auto result = pending.future.get();
+	{
+		std::lock_guard<std::mutex> lk(g_lock);
+		g_pending.erase(jobId);
+	}
+	return result;
 }
 
 void discard(uint64_t jobId)
 {
 	std::lock_guard<std::mutex> lk(g_lock);
-	g_pending.erase(jobId);
+	if (const auto it = g_pending.find(jobId); it != g_pending.end())
+	{
+		it->second.budget->cancel();
+		g_pending.erase(it);
+	}
+}
+
+void resetSessionState()
+{
+	{
+		std::lock_guard lock(g_lock);
+		{
+			std::lock_guard circuitLock(g_circuitLock);
+			g_sessionEpoch.fetch_add(1, std::memory_order_acq_rel);
+			g_requestCodeCircuit.cancelCurrentAttempt();
+		}
+		for (const auto& [job, pending] : g_pending)
+			pending.budget->cancel();
+		g_pending.clear();
+	}
+	{
+		std::lock_guard lock(g_codeLock);
+		g_codeByDepotGid.clear();
+	}
+	{
+		std::lock_guard lock(g_missingNotifyLock);
+		g_missingNotified.clear();
+	}
+	{
+		std::lock_guard lock(g_blobLock);
+		for (const auto& [key, job] : g_blobInflight)
+			job->budget->cancel();
+		g_blobInflight.clear();
+	}
 }
 
 bool areProvidersOffline()
@@ -1012,6 +1360,17 @@ bool areProvidersOffline()
 bool isGidNotFound(uint64_t gid)
 {
 	return isGidNotFoundInternal(gid);
+}
+
+HttpResponse archiveRequest(const std::string& method, const std::string& url,
+	                        const std::string& body, std::size_t maxBodyBytes,
+	                        long timeoutMs,
+	                        const std::atomic<bool>* keepRunning)
+{
+	if (method != "GET" && method != "HEAD" && method != "POST")
+		return {0, {}, true, "unsupported HTTP method"};
+	return httpGet(url, nullptr, {}, method, body, maxBodyBytes, timeoutMs,
+	               keepRunning);
 }
 
 void markGidNotFound(uint64_t gid)

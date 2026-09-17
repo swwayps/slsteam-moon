@@ -54,6 +54,17 @@ endif
 .PHONY: test-library-dates test-library-dates-hook
 .PHONY: test-achievements test-achievement-scope test-stats-audit
 .PHONY: test-stats-provenance
+.PHONY: test-manifestdonor test-manifestfetch
+
+test-manifestdonor:
+	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror \
+		tools/test_manifestdonor.cpp -o /tmp/test_manifestdonor
+	/tmp/test_manifestdonor
+
+test-manifestfetch:
+	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror \
+		tools/test_manifestfetch.cpp -o /tmp/test_manifestfetch
+	/tmp/test_manifestfetch
 
 test-stats-provenance:
 	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem include -I src \
