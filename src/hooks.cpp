@@ -1390,6 +1390,7 @@ static void patchRetn(lm_address_t address)
 namespace Hooks
 {
 	static bool familyShareHookReady = false;
+	static bool playerStatsHookReady = false;
 
 	DetourHook<TraceIPC_t> TraceIPC;
 
@@ -1459,8 +1460,6 @@ bool Hooks::setup()
 	bool succeeded =
 		TraceIPC.setup(Patterns::TraceIPC, &hkTraceIPC)
 
-		&& CAPIJob_GetPlayerStats.setup(Patterns::CAPIJob::GetPlayerStats, &hkCAPIJob_GetPlayerStats)
-
 		&& CProtoBufMsgBase_InitFromPacket.setup(Patterns::CProtoBufMsgBase::InitFromPacket, &hkProtoBufMsgBase_InitFromPacket)
 		&& CProtoBufMsgBase_Send.setup(Patterns::CProtoBufMsgBase::Send, &hkProtoBufMsgBase_Send)
 
@@ -1507,6 +1506,17 @@ bool Hooks::setup()
 			"Family Share receive hook unavailable; message filtering disabled\n");
 	}
 
+	// CAPIJob::GetPlayerStats is a debug-only observation hook, and its pattern
+	// is optional (Patterns::init).  It must NOT sit in the mandatory
+	// `succeeded` chain above: a client build that restructures the function
+	// (as a later beta did) leaves the pattern unresolved, so its .setup()
+	// returns false and would drag the whole chain to false -- making
+	// Hooks::setup() report failure and tear down EVERY hook (no ownership, no
+	// injection).  Set it up separately and place it only when resolved,
+	// exactly like the optional Family Share hook above.
+	playerStatsHookReady = CAPIJob_GetPlayerStats.setup(
+		Patterns::CAPIJob::GetPlayerStats, &hkCAPIJob_GetPlayerStats);
+
 	Hooks::place();
 
 	// AppInfoState keeps this non-owning Store* in its hot path.  The static
@@ -1547,7 +1557,10 @@ void Hooks::place()
 	OwnerWork::notePlacement();
 	TraceIPC.place();
 
-	CAPIJob_GetPlayerStats.place();
+	if (playerStatsHookReady)
+	{
+		CAPIJob_GetPlayerStats.place();
+	}
 
 	CProtoBufMsgBase_InitFromPacket.place();
 	if (familyShareHookReady)
@@ -1622,7 +1635,11 @@ void Hooks::remove()
 
 	TraceIPC.remove();
 
-	CAPIJob_GetPlayerStats.remove();
+	if (playerStatsHookReady)
+	{
+		CAPIJob_GetPlayerStats.remove();
+		playerStatsHookReady = false;
+	}
 
 	CProtoBufMsgBase_InitFromPacket.remove();
 	if (familyShareHookReady)

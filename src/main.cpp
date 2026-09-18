@@ -633,6 +633,12 @@ static void load()
 
 	if (!Hooks::setup())
 	{
+		// Hooks::setup() returns false when a REQUIRED hook's pattern did not
+		// resolve.  This tears every hook down and runs Steam unmodified, so it
+		// must never be silent: a bare unload() here previously presented as
+		// "injection did nothing" (no ownership, Buy button) with no log line.
+		g_pLog->warn("Hooks::setup() reported failure; aborting injection and "
+		             "running unmodified\n");
 		unload();
 		return;
 	}
@@ -722,10 +728,27 @@ static void load()
 		}
 	}
 	}
+	catch (const std::exception& e)
+	{
+		// A thrown std::exception here silently tore down every hook (unload()
+		// closes the owner queue) and left Steam unmodified.  Surface what() so
+		// a client-update behaviour break is diagnosable from the log instead of
+		// presenting as "injection silently did nothing".
+		if (g_pLog) g_pLog->warn("setup() aborted by exception: %s\n", e.what());
+		try
+		{
+			unload();
+		}
+		catch (...)
+		{
+		}
+		return;
+	}
 	catch (...)
 	{
 		// Never let an exception cross the rtld-audit callback boundary: the
 		// dynamic linker cannot unwind through la_objopen safely.
+		if (g_pLog) g_pLog->warn("setup() aborted by a non-std exception\n");
 		try
 		{
 			unload();
