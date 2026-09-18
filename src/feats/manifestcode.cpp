@@ -610,18 +610,18 @@ bool hkBBuildAndAsyncSendFrame(void* pConnection,
 	if (eOpCode == k_eWebSocketOpCode_Binary)
 	{
 		CNetPacket packet{};
-		packet.body = reinterpret_cast<CNetPacketBody*>(Steam::Plat_Alloc(cubData));
-		if (packet.body)
+		packet.setBody(reinterpret_cast<CNetPacketBody*>(Steam::Plat_Alloc(cubData)));
+		if (packet.body())
 		{
-			std::memcpy(packet.body, pubData, cubData);
-			packet.size = cubData;
+			std::memcpy(packet.body(), pubData, cubData);
+			packet.setSize(cubData);
 			if (packet.isValid() && packet.isProtoBuf())
 			{
 				Apps::sendMsg(&packet);
 				FakeAppIds::sendMsg(&packet);
 			}
-			pubData = reinterpret_cast<uint8_t*>(packet.body);
-			cubData = packet.size;
+			pubData = reinterpret_cast<uint8_t*>(packet.body());
+			cubData = packet.sizeBytes();
 
 			uint32_t eMsg = 0;
 			const uint8_t* pHdr  = nullptr;
@@ -696,7 +696,13 @@ bool hkBBuildAndAsyncSendFrame(void* pConnection,
 
 void* hkRecvPkt(void* pManager, CRemoteClientPacket* pPacket)
 {
-	if (pPacket && pPacket->m_pubData && pPacket->m_cubData)
+	// Guard against a client ABI change shifting CRemoteClientPacket: a mis-read
+	// m_pubData/m_cubData (implausible pointer or absurd length) must degrade to
+	// the original receive path, never feed a wild pointer/length to decodeFrame.
+	const auto rcpDataAddr = pPacket
+	    ? reinterpret_cast<uintptr_t>(pPacket->m_pubData) : 0u;
+	if (pPacket && rcpDataAddr >= 0x10000u && rcpDataAddr < 0xFFFFF000u
+	    && pPacket->m_cubData && pPacket->m_cubData <= (64u * 1024 * 1024))
 	{
 		std::lock_guard<std::mutex> lock(g_RxLock);
 		uint32_t eMsg = 0;
@@ -736,13 +742,24 @@ namespace
 
 bool hkBRouteMsgToJob(void* pJobMgr, void* arg2, void* pMsg, void* pJob)
 {
-	auto peek32 = [](const void* p, int off) -> uint32_t {
-		if (!p) return 0;
+	// Reject not just null but any implausible pointer before dereferencing.
+	// A Steam client ABI change can shift the message/job structs these offsets
+	// walk (a beta did), so a chained read (e.g. pInner = peek32(pMsg,0xc)) can
+	// yield a 0xFFFFFFFF sentinel instead of a real inner pointer; dereferencing
+	// it segfaults the whole client on the job-routing path.  Treat an
+	// implausible pointer as "no data" so this hook falls through to the
+	// original routing unchanged.
+	auto plausible = [](const void* p) -> bool {
+		const auto a = reinterpret_cast<uintptr_t>(p);
+		return a >= 0x10000u && a < 0xFFFFF000u;
+	};
+	auto peek32 = [&](const void* p, int off) -> uint32_t {
+		if (!plausible(p)) return 0;
 		return *reinterpret_cast<const uint32_t*>(
 		    static_cast<const uint8_t*>(p) + off);
 	};
-	auto peek64 = [](const void* p, int off) -> uint64_t {
-		if (!p) return 0;
+	auto peek64 = [&](const void* p, int off) -> uint64_t {
+		if (!plausible(p)) return 0;
 		return *reinterpret_cast<const uint64_t*>(
 		    static_cast<const uint8_t*>(p) + off);
 	};
@@ -758,7 +775,13 @@ bool hkBRouteMsgToJob(void* pJobMgr, void* arg2, void* pMsg, void* pJob)
 	const uint32_t cbBuf = peek32(pInner, 0x8);
 	const uint64_t jobIdTarget = peek64(pJob, 0x8);
 
-	if (!pBuf || cbBuf < sizeof(MsgHdr) + 1)
+	// pBuf is a value read out of the (client-owned) inner struct, then used as
+	// a MsgHdr*.  On an ABI-shifted client that inner read yields a 0xFFFFFFFF
+	// sentinel, which is non-null but derefs into unmapped memory (MsgHdr access
+	// below segfaults the client).  Require a plausible pointer and a sane
+	// buffer length so this whole interception falls through to the original
+	// routing on a layout we no longer parse, instead of crashing.
+	if (!plausible(pBuf) || cbBuf < sizeof(MsgHdr) + 1 || cbBuf > (64u * 1024 * 1024))
 	{
 		return Hooks::CJobMgr_BRouteMsgToJob.tramp.fn(pJobMgr, arg2, pMsg, pJob);
 	}

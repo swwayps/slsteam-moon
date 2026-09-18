@@ -8,22 +8,24 @@ bool CNetPacket::deserializeHeader(CMsgProtoBufHeader& header) const
 	if (!isValid())
 		return false;
 
-	const uint32_t available = size - sizeof(CNetPacketBody);
-	if (body->headerSize > available
-	    || body->headerSize > static_cast<uint32_t>(std::numeric_limits<int>::max()))
+	CNetPacketBody* b = body();
+	const uint32_t available = sizeBytes() - sizeof(CNetPacketBody);
+	if (b->headerSize > available
+	    || b->headerSize > static_cast<uint32_t>(std::numeric_limits<int>::max()))
 		return false;
 
 	const auto* memory =
-		reinterpret_cast<const uint8_t*>(body) + sizeof(CNetPacketBody);
-	return header.ParseFromArray(memory, static_cast<int>(body->headerSize));
+		reinterpret_cast<const uint8_t*>(b) + sizeof(CNetPacketBody);
+	return header.ParseFromArray(memory, static_cast<int>(b->headerSize));
 }
 
 void CNetPacket::free()
 {
-	if (body)
-		Steam::Plat_Free(body);
+	CNetPacketBody* b = body();
+	if (b)
+		Steam::Plat_Free(b);
 
-	size = 0;
-	body = nullptr;
-	originalBody = nullptr;
+	setSize(0);
+	setBody(nullptr);
+	setOriginalBody(nullptr);
 }

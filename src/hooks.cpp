@@ -311,6 +311,11 @@ static void hkProtoBufMsgBase_InitFromPacket(CProtoBufMsgBase* pMsg, void* pSrc)
 
 static void hkCMInterface_RecvPkt(void* pCMInterface, CNetPacket* pNetPacket)
 {
+	// Settle the packet field layout from the first live Steam-owned packet
+	// before any field is read.  No-op once settled; stays at shift 0 (the
+	// stable layout) unless a packet fails to validate there.
+	CNetPacket::detectLayout(pNetPacket);
+
 	g_pLog->debug(
 		"RecvPkt %u\n",
 		pNetPacket ? pNetPacket->getType() : CNetPacket::INVALID_MESSAGE_TYPE);
