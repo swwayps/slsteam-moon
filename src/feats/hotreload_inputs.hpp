@@ -103,10 +103,21 @@ inline BuildResult build(std::uint64_t generation,
 	return out;
 }
 
+// Builds one AppInput per managed base by reading and parsing each app's cached
+// appinfo + DLC-metadata sidecar. That per-app work dominates hot-reload cost on
+// large libraries, so results are memoized per base and only recomputed when the
+// app's inputs change (cache/metadata mtime or ready/pending/deferred state).
+// `forceRecompute` bypasses the memo for the given bases; callers that already
+// detected a local content change (e.g. a depot-key edit that does not move a
+// file mtime) pass those ids so the stale memo entry is refreshed.
 BuildResult buildFromCaches(std::uint64_t generation,
 	const std::unordered_set<std::uint32_t>& managedAppIds,
 	const std::unordered_set<std::uint32_t>& metadataPendingBaseIds,
 	const std::unordered_set<std::uint32_t>& metadataDeferredBaseIds,
-	const std::unordered_set<std::uint32_t>& readyBaseIds);
+	const std::unordered_set<std::uint32_t>& readyBaseIds,
+	const std::unordered_set<std::uint32_t>& forceRecompute = {});
+
+// Test/lifecycle hook: drop all memoized per-base inputs.
+void clearInputMemo() noexcept;
 
 } // namespace HotReloadInputs

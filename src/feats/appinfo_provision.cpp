@@ -2085,6 +2085,14 @@ std::int64_t cachePairMtimeSecs(uint32_t appId) noexcept
 	return cachePairMtimeSecsImpl(appId);
 }
 
+std::int64_t dlcMetadataCacheMtimeSecs(uint32_t appId) noexcept
+{
+	struct stat st{};
+	if (appId == 0 || stat(getDlcMetadataPath(appId).c_str(), &st) != 0)
+		return 0;
+	return static_cast<std::int64_t>(st.st_mtime);
+}
+
 void sha1Bytes(const void* data, std::size_t size, std::uint8_t out[20])
 {
 	sha1BytesInternal(data, size, out);
@@ -2188,54 +2196,134 @@ bool readValidatedCacheBuffer(uint32_t appId, std::string& buffer)
 	return readValidatedCacheBufferLocked(appId, buffer, diag);
 }
 
+namespace
+{
+// Per-app authoritative-set contribution memo. locallyAuthoritativeApps ran once
+// per publish and re-read+SHA-validated each app's cache pair, its metadata
+// sidecar, and its DLC-metadata YAML (plus a file-lock acquisition per app). On
+// a large library that is a second O(N) pass on the hot-reload critical path,
+// alongside HotReloadInputs::buildFromCaches. An app's contribution is a pure
+// function of its two cache-file mtimes plus its managed/synthetic status, so
+// cache it and recompute only when one of those changes.
+struct AuthMemoKey
+{
+	std::int64_t pairMtime = -1;
+	std::int64_t dlcMetaMtime = -1;
+	bool managed = false;
+	bool synthetic = false;
+
+	bool operator==(const AuthMemoKey& o) const
+	{
+		return pairMtime == o.pairMtime && dlcMetaMtime == o.dlcMetaMtime &&
+			managed == o.managed && synthetic == o.synthetic;
+	}
+};
+
+struct AuthContribution
+{
+	std::vector<std::uint32_t> ids;
+	bool memoizable = true;
+};
+
+// Resolve one app's contribution to the authoritative set: the app itself when
+// it is authoritative, plus its DLC children when it is an authoritative managed
+// base. A transient cache-lock miss is reported non-memoizable so it is retried
+// on the next pass rather than frozen as "not authoritative".
+AuthContribution computeAuthContribution(
+	std::uint32_t appId, bool managed, bool synthetic)
+{
+	AuthContribution out;
+	bool authoritative = false;
+
+	// Preserve the existing marker-only compatibility behavior even after
+	// managed-source cleanup moved the readable cache pair aside.
+	if (cache::locallyAuthoritative({
+			.managed = managed, .active = true, .synthetic = synthetic}))
+	{
+		authoritative = true;
+	}
+	else if (managed)
+	{
+		ProcessLock::FileLock cacheLock(cacheLockPath(), false);
+		if (!cacheLock.acquired())
+		{
+			out.memoizable = false;
+			return out;
+		}
+		std::string wire;
+		std::string validationDiag;
+		if (readValidatedCacheBufferLocked(appId, wire, validationDiag))
+		{
+			std::string metadataText;
+			cache::CacheMetadataView metadata;
+			if (readCacheMetadataFile(appId, metadataText, metadata) &&
+				metadata.appId == appId && cache::locallyAuthoritative({
+					.managed = true,
+					.active = true,
+					.cacheValid = true,
+					.hasNormalizedMarker = metadata.hasNormalized,
+					.normalized = metadata.normalized}))
+			{
+				authoritative = true;
+			}
+		}
+	}
+
+	if (!authoritative) return out;
+	out.ids.push_back(appId);
+	if (managed)
+	{
+		DlcMetadata::CacheRecord metadata;
+		if (readValidatedDlcMetadataCache(appId, 0, metadata))
+		{
+			std::unordered_set<std::uint32_t> children;
+			DlcMetadata::appendChildAppIds(metadata, children);
+			out.ids.insert(out.ids.end(), children.begin(), children.end());
+		}
+	}
+	return out;
+}
+
+std::mutex g_authMemoMu;
+std::unordered_map<std::uint32_t, std::pair<AuthMemoKey, std::vector<std::uint32_t>>>
+	g_authMemo;
+} // namespace
+
 std::unordered_set<std::uint32_t> locallyAuthoritativeApps(
 	const std::unordered_set<std::uint32_t>& managedCandidates,
 	const std::unordered_set<std::uint32_t>& activeCandidates)
 {
 	std::unordered_set<std::uint32_t> authoritative;
 	authoritative.reserve(activeCandidates.size());
+
+	std::lock_guard<std::mutex> memoLock(g_authMemoMu);
+	for (auto it = g_authMemo.begin(); it != g_authMemo.end();)
+		it = activeCandidates.count(it->first) == 0 ? g_authMemo.erase(it)
+		                                            : std::next(it);
+
 	for (const std::uint32_t appId : activeCandidates)
 	{
-		// Preserve the existing marker-only compatibility behavior even after
-		// managed-source cleanup moved the readable cache pair aside.
-		const bool managed = managedCandidates.count(appId) != 0;
-		const bool synthetic = isSynthesizedApp(appId);
-		if (cache::locallyAuthoritative({
-				.managed = managed, .active = true, .synthetic = synthetic}))
+		const AuthMemoKey key{
+			cachePairMtimeSecs(appId),
+			dlcMetadataCacheMtimeSecs(appId),
+			managedCandidates.count(appId) != 0,
+			isSynthesizedApp(appId),
+		};
+		const auto it = g_authMemo.find(appId);
+		if (it != g_authMemo.end() && it->second.first == key)
 		{
-			authoritative.insert(appId);
+			for (const std::uint32_t id : it->second.second)
+				authoritative.insert(id);
 			continue;
 		}
-		if (!managed) continue;
-
-		ProcessLock::FileLock cacheLock(cacheLockPath(), false);
-		if (!cacheLock.acquired()) continue;
-		std::string wire;
-		std::string validationDiag;
-		if (!readValidatedCacheBufferLocked(appId, wire, validationDiag))
-			continue;
-
-		std::string metadataText;
-		cache::CacheMetadataView metadata;
-		if (readCacheMetadataFile(appId, metadataText, metadata) &&
-			metadata.appId == appId && cache::locallyAuthoritative({
-				.managed = true,
-				.active = true,
-				.cacheValid = true,
-				.hasNormalizedMarker = metadata.hasNormalized,
-				.normalized = metadata.normalized}))
-		{
-			authoritative.insert(appId);
-		}
-	}
-	const std::vector<std::uint32_t> authoritativeBases(
-		authoritative.begin(), authoritative.end());
-	for (const std::uint32_t baseAppId : authoritativeBases)
-	{
-		if (managedCandidates.count(baseAppId) == 0) continue;
-		DlcMetadata::CacheRecord metadata;
-		if (readValidatedDlcMetadataCache(baseAppId, 0, metadata))
-			DlcMetadata::appendChildAppIds(metadata, authoritative);
+		const AuthContribution contribution =
+			computeAuthContribution(appId, key.managed, key.synthetic);
+		if (contribution.memoizable)
+			g_authMemo[appId] = {key, contribution.ids};
+		else
+			g_authMemo.erase(appId);
+		for (const std::uint32_t id : contribution.ids)
+			authoritative.insert(id);
 	}
 	return authoritative;
 }

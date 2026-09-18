@@ -141,9 +141,14 @@ bool publishLocked(
 	if (HotReloadPublishPolicy::shouldAwaitDlcMetadata(
 		initialPublication, !added.empty()))
 		metadataPendingBaseIds.insert(added.begin(), added.end());
+	// Bases whose local inputs changed this reload bypass the per-app memo:
+	// `added` are new, `locallyChanged` are those whose content fingerprint
+	// moved (e.g. a depot-key edit that does not shift a cache-file mtime).
+	std::unordered_set<std::uint32_t> forceRecompute(added.begin(), added.end());
+	forceRecompute.insert(locallyChanged.begin(), locallyChanged.end());
 	auto built = HotReloadInputs::buildFromCaches(
 		nextGeneration, managedAppIds, metadataPendingBaseIds,
-		state.metadataDeferredBaseIds, readyBaseIds);
+		state.metadataDeferredBaseIds, readyBaseIds, forceRecompute);
 	if (!built.valid)
 	{
 		if (g_pLog != nullptr)
@@ -712,6 +717,7 @@ void shutdown() noexcept
 		state.generation = 0;
 		state.hasLastSnapshot = false;
 		state.lastSnapshot = {};
+		HotReloadInputs::clearInputMemo();
 	}
 	catch (...)
 	{
