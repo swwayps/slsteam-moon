@@ -1,16 +1,23 @@
-// Regression tests for the IClientRemoteStorage::RunIPCFrame fingerprint
-// against both the OLD (2026-07-21 stable) and NEW (2026-08-05) 32-bit
-// steamclient.so modules supplied as argv[1] and argv[2].
+// Regression tests for the high-24-bit dispatch-pivot resolver used to locate
+// IClientRemoteStorage::RunIPCFrame and IClientUserStats::RunIPCFrame when their
+// binary-search median jumps beyond the nearest-root band.  Runs against two
+// 32-bit steamclient.so modules (an OLD and a NEW build) supplied as argv[1]
+// and argv[2].
 //
 // WHY THIS EXISTS
 // ---------------
-// The 2026-08-05 client moved every message id in the RemoteStorage dispatch
-// tree: the median/root drifted from 0x8712DD4B to 0x8712DD54 and each of the
-// sibling comparison pivots moved ~-8..+5. The pre-update fingerprint literals
-// (0x5DB4729A, 0x7F3F5645, 0x84692E78) matched the OLD build but missed the NEW
-// one, so the required locator regressed to "missing". The repaired literals
-// sit at the midpoints so the same bounded fingerprint resolves exactly one
-// candidate on BOTH builds.
+// These two interfaces have each moved their dispatch median by ~1.9M between
+// builds, far outside the deliberately narrow nearest-root band, so a single
+// root literal cannot identify them across builds.  The runtime resolves them
+// structurally instead: several of each interface's dispatch message ids keep
+// their top 24 bits stable across builds while only the low byte drifts, so a
+// set of high-24 pivots identifies exactly one dispatcher on every build with
+// no cross-interface collision (the interfaces live in different high-byte
+// regions).  This test proves both pivot sets each resolve to EXACTLY ONE, and
+// DISTINCT, candidate on both supplied builds.
+//
+// The pivot literals below MUST mirror src/patterns.cpp
+// (autoResolveIpcFrameRoots).
 //
 // Build + run (from repo root):
 //   g++ -std=c++20 -I include tools/test_autorepair_cmpfingerprint.cpp -o /tmp/tacf \
@@ -78,64 +85,67 @@ static TextSection loadText(const std::string& path)
 	return ts;
 }
 
-// Midpoints of the two shipped builds; these are the literals embedded in
-// src/patterns.cpp and MUST stay in sync with them (guard re-derives the
-// fingerprint from src/patterns.cpp and independently verifies the candidates).
-static constexpr uint32_t kRepairedFingerprint[] = {
-	0x5DB47296, 0x7F3F564A, 0x84692E73,
+// High-24 dispatch pivots; MUST mirror src/patterns.cpp.
+static constexpr uint32_t kRemoteStoragePivots[] = {
+	0x396376, 0x5DB472, 0x84692E, 0x8694E9, 0x8712DD,
+	0xC0F5C7, 0xDB2410, 0xE82BD7, 0xF5841E, 0xFD3CA9,
 };
-static constexpr uint32_t kStaleFingerprint[] = {
-	0x5DB4729A, 0x7F3F5645, 0x84692E78,
+static constexpr uint32_t kUserStatsPivots[] = {
+	0x84EDDC, 0x85DE33, 0x85E5D6, 0xF7452C,
+	0xF991AC, 0xF9B9E3, 0xFF7DFB, 0xFF94F2,
 };
+static constexpr size_t kPivotMinMatches = 4;
 
-static size_t countFingerprintMatches(
+// Resolve a pivot set to a single candidate offset (SIZE_MAX if none/ambiguous).
+static size_t resolvePivots(
 	const std::vector<IpcFrame::Cand>& cands,
 	const uint8_t* text,
-	const uint32_t* pivots)
+	const uint32_t* pivots,
+	size_t pivotCount,
+	size_t* qualifyingOut)
 {
-	size_t hits = 0;
+	size_t hit = SIZE_MAX, qualifying = 0;
 	for (const auto& cand : cands)
 	{
-		if (IpcFrame::matchesCmpFingerprint(
-			text + cand.offset, cand.available,
-			pivots, 3, 4))
+		if (IpcFrame::countHighPivots(
+			text + cand.offset, cand.available, pivots, pivotCount) >= kPivotMinMatches)
 		{
-			++hits;
+			hit = &cand - cands.data();
+			++qualifying;
 		}
 	}
-	return hits;
+	if (qualifyingOut) *qualifyingOut = qualifying;
+	return (qualifying == 1) ? hit : SIZE_MAX;
 }
 
-static void run(const std::string& label, const TextSection& ts,
-	            const std::vector<IpcFrame::Cand>& cands,
-	            uint32_t expectedRoot, uint32_t staleHits, uint32_t repairedHits)
+static void run(const std::string& label, const TextSection& ts)
 {
-	// The whole .text must still yield the generic dispatch tails.
+	if (!ts.ok)
+	{
+		std::printf("%s: SKIP (.text not loadable)\n", label.c_str());
+		return;
+	}
+	auto cands = IpcFrame::scan(ts.bytes.data(), ts.bytes.size());
 	CHECK(cands.size() >= 4, (label + ": generic RunIPCFrame tails found").c_str());
 
-	// The repaired midpoints must identify EXACTLY ONE generated dispatcher on
-	// BOTH builds, and it must be the RemoteStorage tree whose root is stable.
-	CHECK(repairedHits == 1, (label + ": repaired fingerprint unique").c_str());
-	if (repairedHits != 1) return;
+	size_t rsQual = 0, usQual = 0;
+	size_t rs = resolvePivots(cands, ts.bytes.data(), kRemoteStoragePivots,
+	                          std::size(kRemoteStoragePivots), &rsQual);
+	size_t us = resolvePivots(cands, ts.bytes.data(), kUserStatsPivots,
+	                          std::size(kUserStatsPivots), &usQual);
 
-	size_t idx = SIZE_MAX;
-	for (size_t i = 0; i < cands.size(); ++i)
-	{
-		if (IpcFrame::matchesCmpFingerprint(
-			ts.bytes.data() + cands[i].offset, cands[i].available,
-			kRepairedFingerprint, 3, 4))
-		{
-			idx = i;
-		}
-	}
-	if (idx == SIZE_MAX) return;
-	CHECK(cands[idx].root == expectedRoot,
-	      (label + ": resolved RemoteStorage dispatch-tree root").c_str());
+	CHECK(rsQual == 1, (label + ": RemoteStorage pivots resolve exactly one candidate").c_str());
+	CHECK(usQual == 1, (label + ": UserStats pivots resolve exactly one candidate").c_str());
+	if (rs != SIZE_MAX && us != SIZE_MAX)
+		CHECK(cands[rs].offset != cands[us].offset,
+		      (label + ": RemoteStorage and UserStats resolve distinct functions").c_str());
 
-	// Pre-repair literals never need to fail on the OLD build; the NEW build
-	// carries the regression proof (stale == 0 there).
-	std::printf("%s: stale=%u repaired=%u\n",
-	            label.c_str(), staleHits, repairedHits);
+	if (rs != SIZE_MAX)
+		std::printf("%s: RemoteStorage root=0x%08X (qual=%zu)\n",
+		            label.c_str(), cands[rs].root, rsQual);
+	if (us != SIZE_MAX)
+		std::printf("%s: UserStats     root=0x%08X (qual=%zu)\n",
+		            label.c_str(), cands[us].root, usQual);
 }
 
 int main(int argc, char** argv)
@@ -150,25 +160,8 @@ int main(int argc, char** argv)
 	TextSection newTs = loadText(argv[2]);
 	CHECK(oldTs.ok && newTs.ok, "both supplied steamclient.so load");
 
-	if (oldTs.ok)
-	{
-		auto cands = IpcFrame::scan(oldTs.bytes.data(), oldTs.bytes.size());
-		size_t stale = countFingerprintMatches(cands, oldTs.bytes.data(), kStaleFingerprint);
-		size_t rep   = countFingerprintMatches(cands, oldTs.bytes.data(), kRepairedFingerprint);
-		run("OLD", oldTs, cands, 0x8712DD4B, (uint32_t)stale, (uint32_t)rep);
-	}
-
-	if (newTs.ok)
-	{
-		auto cands = IpcFrame::scan(newTs.bytes.data(), newTs.bytes.size());
-		size_t stale = countFingerprintMatches(cands, newTs.bytes.data(), kStaleFingerprint);
-		size_t rep   = countFingerprintMatches(cands, newTs.bytes.data(), kRepairedFingerprint);
-
-		// The OLD literals must NOT resolve on the NEW binary: this is the
-		// regression that the repair fixes.
-		CHECK(stale == 0, "NEW: stale fingerprint misses (drift, pre-repair)");
-		run("NEW", newTs, cands, 0x8712DD54, (uint32_t)stale, (uint32_t)rep);
-	}
+	run("OLD", oldTs);
+	run("NEW", newTs);
 
 	if (g_failures == 0)
 	{

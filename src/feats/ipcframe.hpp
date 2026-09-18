@@ -149,29 +149,36 @@ namespace IpcFrame
 		return (inBand == 1) ? hit : SIZE_MAX;
 	}
 
-	// Match a generated dispatch function by several non-root cmp-eax pivots.
-	// This is the guarded fallback for an interface whose binary-search median
-	// changes to a numerically distant message id: one root is not identity,
-	// but three independent pivots retained by the same dispatcher are.
-	inline bool matchesCmpFingerprint(
+	// Count how many of `pivots` appear as the high 24 bits of some cmp-eax
+	// immediate in this function's dispatch tail.  Each pivot is the top three
+	// bytes of a dispatch message id (id >> 8).
+	//
+	// This is the drift-proof successor to matchesCmpFingerprint's absolute
+	// numeric drift.  Observed per-build id drift moves the LOW byte by tens
+	// (and occasionally carries into byte 1) while the top bytes stay put, and
+	// the median/root itself can jump millions (RemoteStorage and UserStats
+	// both did between recent builds).  Comparing only the high 24 bits absorbs
+	// the low-byte drift, while the interfaces' ids live in completely different
+	// high-byte regions, so several high-24 pivots identify one dispatcher with
+	// no cross-interface collision.  Never reads past `size`.
+	inline size_t countHighPivots(
 		const uint8_t* code,
 		size_t size,
 		const uint32_t* pivots,
 		size_t pivotCount,
-		uint32_t maxDrift,
-		size_t scanSpan = 0x100)
+		size_t scanSpan = 0x600)
 	{
 		if (code == nullptr || pivots == nullptr || pivotCount == 0)
-			return false;
+			return 0;
 
 		const size_t end = (size < scanSpan) ? size : scanSpan;
-		if (end <= kMatchSpan)
-			return false;
+		if (end < 5)
+			return 0;
 
+		size_t hits = 0;
 		for (size_t p = 0; p < pivotCount; ++p)
 		{
-			bool found = false;
-			for (size_t i = kMatchSpan; i + 5 <= end; ++i)
+			for (size_t i = 0; i + 5 <= end; ++i)
 			{
 				if (code[i] != 0x3D) // cmp eax, imm32
 					continue;
@@ -180,19 +187,14 @@ namespace IpcFrame
 					| static_cast<uint32_t>(code[i + 2]) << 8
 					| static_cast<uint32_t>(code[i + 3]) << 16
 					| static_cast<uint32_t>(code[i + 4]) << 24;
-				const uint64_t drift = (live > pivots[p])
-					? static_cast<uint64_t>(live) - pivots[p]
-					: static_cast<uint64_t>(pivots[p]) - live;
-				if (drift <= maxDrift)
+				if ((live >> 8) == pivots[p])
 				{
-					found = true;
+					++hits;
 					break;
 				}
 			}
-			if (!found)
-				return false;
 		}
-		return true;
+		return hits;
 	}
 
 	// A RunIPCFrame pattern string ends with "3D b0 b1 b2 b3" — the cmp-eax
