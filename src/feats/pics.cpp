@@ -599,11 +599,19 @@ void recvProductInfoResponse(CMsgClientPICSProductInfoResponse* resp)
 		// key filter (we only stage depots we hold a key for — staging a
 		// blob we can't decrypt just wastes a CDN round-trip) is applied
 		// there, in buildSyncStagePlan.
+		//
+		// Narrowed to lua-PINNED depots: the gids mined here come from the
+		// provisioned appinfo buffer, which is NOT the gid Steam ends up
+		// requesting for a non-pinned depot, so synchronously fetching on it
+		// is a guess (a 404 or a manifest Steam never reads).  A setManifestid
+		// pin is the only thing that states the gid the download will use.
+		// Every other managed depot is covered on demand by the
+		// ProcessDepotManifest leaf hook (feats/manifestbind.cpp), which fires
+		// with the gid Steam states outright — so it needs no speculative
+		// synchronous pre-seed here.
 		std::erase_if(depots, [&](const DepotGid& depot)
 		{
-			return !DepotKey::manifestInManagedScope(
-				app->appid(), depot.first,
-				g_config.getManifestPin(app->appid(), depot.first) != 0);
+			return g_config.getManifestPin(app->appid(), depot.first) == 0;
 		});
 		toStage.push_back({app->appid(), std::move(depots)});
 	}
