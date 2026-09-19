@@ -446,6 +446,16 @@ bool Apps::shouldDisableUpdates(uint32_t appId)
 		{
 			return true;  // providers offline: suppress updates
 		}
+		if (!g_config.autoUpdateApps.get())
+		{
+			// Global "auto-update apps" is off: freeze this unpinned app on
+			// whatever build is installed (mirrors LuaTools' toggle).  Safe:
+			// we are past the FULLY_INSTALLED gate so the initial install
+			// already ran, and with no pin there is no gid rewrite -> no
+			// reconcile loop.  A per-app pin takes the locked branch below
+			// and is unaffected by this switch.
+			return true;
+		}
 		return false;  // unlocked AddedApp: updates enabled (grab latest)
 	}
 

@@ -120,6 +120,11 @@ API: no
 #NOT using CloudRedirect, to avoid a doomed cloud sync that Steam rejects.
 DisableCloud: no
 
+#Keep managed games on the latest build. Default "yes" (games auto-update).
+#Set to "no" to lock every managed game to its currently installed build (like
+#LuaTools' "Auto Update Apps" toggle). Builds you pin per game still apply.
+AutoUpdateApps: yes
+
 # Share short-lived manifest request codes for depots this account really owns.
 # The wanted list is downloaded from the archive; only matching depots are sent.
 # Set Enabled: no to disable both active requests and passive capture.
@@ -135,6 +140,22 @@ Donate:
 # Inject every storefront-advertised DLC into package 0. Keep disabled by
 # default; content-backed DLC is still injected automatically.
 InjectAllAdvertisedDlc: no
+
+#Show achievements for unowned games. Steam only returns a game's achievement
+#schema to an account that owns it, so the schema is sourced from an owner (see
+#AchievementOwnerId). Set to "no" to disable achievement schema spoofing.
+Achievements: yes
+
+#Fallback account (SteamID64) used to read achievement schemas when a game has
+#no per-game override in AchievementOwners. Only the public schema is read; the
+#account is never signed in to.
+AchievementOwnerId: 76561198028121353
+
+#Per-game override of the achievement-schema source account. Same shape as
+#FakeAppIds:
+#AchievementOwners:
+#  AppId: SteamID64
+AchievementOwners:
 
 # Local pattern cache keyed by GNU build-id, module size, and mtime. Each
 # cached signature is rechecked before an address is accepted.

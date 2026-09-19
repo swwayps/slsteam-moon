@@ -123,6 +123,11 @@ public:
 	MTVariable<bool> notifyInit;
 	MTVariable<bool> api;
 	MTVariable<bool> disableCloud;
+	// When off, fully-installed managed apps that are NOT individually pinned
+	// freeze on their installed build instead of tracking the latest public
+	// gid (mirrors LuaTools' "Auto Update Apps"). Per-app pins are unaffected.
+	// Default on.
+	MTVariable<bool> autoUpdateApps;
 	MTVariable<DonateSettings> donate;
 	// Restore the pre-Phase-3 behavior of injecting every advertised DLC
 	// into package 0. Default false keeps storefront-only DLC out of CM
