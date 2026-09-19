@@ -54,6 +54,10 @@
 
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
+
 namespace ReconcilePin
 {
 	// Resolve EvaluateConfigChanges and install the detour. Returns false when
@@ -62,4 +66,65 @@ namespace ReconcilePin
 
 	// Tear the detour back down (called from Hooks::remove).
 	void remove();
+
+	namespace detail
+	{
+		// RE'd offset of the target-vector builder `call rel32`, relative to the
+		// EvaluateConfigChanges entry (confirmed on build cfe99f0c).
+		inline constexpr std::size_t kBuilderCallOff = 0x183;
+		// How far to look on either side of kBuilderCallOff when the function
+		// body was recompiled and the call moved.
+		inline constexpr std::size_t kBuilderCallWindow = 0x40;
+
+		// Locate the `call rel32` (opcode 0xE8) to the target-vector builder.
+		//
+		// The exact offset drifts when Steam recompiles EvaluateConfigChanges
+		// (on the beta client the byte at kBuilderCallOff is no longer the
+		// call), so instead of giving up on any drift this searches around it.
+		// `code`/`len` is the readable function prologue, `codeAddr` its runtime
+		// base (to decode the near-call target), and `targetExecutable(addr)`
+		// reports whether a decoded absolute target lands in executable memory
+		// (wired to LM_FindSegment by the caller).
+		//
+		// Returns the offset of the call, or -1 when it cannot be located
+		// UNAMBIGUOUSLY. Ambiguity (more than one candidate) or absence yields
+		// -1 so the caller keeps the target-local fix disabled — the same safe
+		// degradation as before, never a guessed-address hook that could
+		// corrupt the reconcile.
+		template <typename TargetExecutable>
+		inline long findBuilderCallRel32(
+			const std::uint8_t* code, std::size_t len, std::uintptr_t codeAddr,
+			std::size_t expectedOff, std::size_t window,
+			TargetExecutable targetExecutable)
+		{
+			const auto callTargetOk = [&](std::size_t off) -> bool
+			{
+				if (off + 5 > len) return false;
+				if (code[off] != 0xE8) return false;
+				std::int32_t rel = 0;
+				std::memcpy(&rel, code + off + 1, sizeof(rel));
+				const std::uintptr_t target = codeAddr + off + 5 +
+					static_cast<std::uintptr_t>(static_cast<std::intptr_t>(rel));
+				return targetExecutable(target);
+			};
+
+			// Fast path: the RE'd offset still holds (unambiguous by design).
+			if (callTargetOk(expectedOff)) return static_cast<long>(expectedOff);
+
+			// Drift: accept a nearby call ONLY if it is the unique valid one in
+			// the window. Two candidates are ambiguous and a wrong hook is worse
+			// than none, so give up safely.
+			long found = -1;
+			const std::size_t lo = expectedOff > window ? expectedOff - window : 0;
+			const std::size_t hi = expectedOff + window;
+			for (std::size_t off = lo; off <= hi; ++off)
+			{
+				if (off == expectedOff) continue;  // tried above, it failed
+				if (!callTargetOk(off)) continue;
+				if (found != -1) return -1;         // ambiguous
+				found = static_cast<long>(off);
+			}
+			return found;
+		}
+	}
 }

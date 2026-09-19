@@ -55,6 +55,7 @@ endif
 .PHONY: test-achievements test-achievement-scope test-stats-audit
 .PHONY: test-stats-provenance
 .PHONY: test-manifestdonor test-manifestfetch
+.PHONY: test-reconcilepin-scan
 
 test-manifestdonor:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror \
@@ -253,6 +254,10 @@ test-config-discovery:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src -I include \
 		tools/test_config_discovery.cpp -o /tmp/test_config_discovery
 	/tmp/test_config_discovery
+test-reconcilepin-scan:
+	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src \
+		tools/test_reconcilepin_scan.cpp -o /tmp/test_reconcilepin_scan
+	/tmp/test_reconcilepin_scan
 
 test-filewatcher-burst:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -pthread -I src \

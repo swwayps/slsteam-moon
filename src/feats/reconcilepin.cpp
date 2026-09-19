@@ -186,9 +186,20 @@ namespace
 	// return-address inspection.
 	//
 	// CUtlVector<DepotEntry>: element base @ +0x0, count @ +0xc.
-	constexpr size_t kBuilderCallOff = 0x183;  // EvalAddr -> the `e8` opcode
 	constexpr size_t kVecBaseOff = 0x00;
 	constexpr size_t kVecCountOff = 0x0c;
+
+	// Whether an address lands in an executable segment. Used to validate a
+	// scanned near-call target so drift recovery can never pick a byte whose
+	// decoded destination is not code.
+	bool executableAddress(lm_address_t address)
+	{
+		lm_segment_t segment{};
+		return address != 0 && address != LM_ADDRESS_BAD &&
+			LM_FindSegment(address, &segment) &&
+			(segment.prot & LM_PROT_XR) == LM_PROT_XR &&
+			address >= segment.base && address < segment.end;
+	}
 
 	using BuildTargetFn_t = void* (*)(void*, uint32_t, void*, void*, void*,
 	                                  void*, void*, void*);
@@ -238,14 +249,30 @@ namespace
 	// ctx-vector patch alone rather than hooking a wrong address.
 	bool installBuildTargetHook(lm_address_t evalAddr)
 	{
-		const auto* site = reinterpret_cast<const uint8_t*>(evalAddr)
-		                   + kBuilderCallOff;
-		if (site[0] != 0xE8)  // expected `call rel32`
+		const auto* fn = reinterpret_cast<const uint8_t*>(evalAddr);
+		const size_t scanLen = ReconcilePin::detail::kBuilderCallOff
+		                     + ReconcilePin::detail::kBuilderCallWindow + 8;
+		// The RE'd call offset drifts when Steam recompiles the function (the
+		// beta client moved it), so locate the call instead of trusting a fixed
+		// offset. A validated near-call target and a uniqueness requirement keep
+		// this from ever hooking a wrong address; on ambiguity/absence it
+		// degrades to the ctx-vector patch alone, exactly as before.
+		const long callOff = ReconcilePin::detail::findBuilderCallRel32(
+		    fn, scanLen, reinterpret_cast<uintptr_t>(fn),
+		    ReconcilePin::detail::kBuilderCallOff,
+		    ReconcilePin::detail::kBuilderCallWindow,
+		    [](uintptr_t target) {
+			    return executableAddress(static_cast<lm_address_t>(target));
+		    });
+		if (callOff < 0)
 		{
-			g_pLog->warn("ReconcilePin: builder call site not `call rel32` "
-			             "(got 0x%02x); target-local fix disabled\n", site[0]);
+			g_pLog->warn("ReconcilePin: target-vector builder call not located "
+			             "near +0x%zx (byte 0x%02x); target-local fix disabled\n",
+			             ReconcilePin::detail::kBuilderCallOff,
+			             fn[ReconcilePin::detail::kBuilderCallOff]);
 			return false;
 		}
+		const auto* site = fn + callOff;
 		int32_t rel = 0;
 		__builtin_memcpy(&rel, site + 1, sizeof(rel));
 		const lm_address_t builderAddr = reinterpret_cast<lm_address_t>(
