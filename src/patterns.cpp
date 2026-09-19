@@ -792,11 +792,13 @@ static void autoResolveIpcFrameRoots()
 		const uint32_t found = ctx.cands[idx].root;
 		if (found != seed)
 		{
-			g_pLog->warn
-			(
-				"IpcFrame: %s root drifted 0x%08X -> 0x%08X; auto-resolved\n",
-				p->name.c_str(), seed, found
-			);
+			// Auto-resolving root drift is the designed steady state on new
+			// client builds, not a problem — keep it out of the normal log and
+			// surface it only when ExtendedLogging is explicitly enabled.
+			if (g_config.extendedLogging.get())
+				g_pLog->debug(
+					"IpcFrame: %s root drifted 0x%08X -> 0x%08X; auto-resolved\n",
+					p->name.c_str(), seed, found);
 			IpcFrame::setTrailingRoot(p->pattern, found);
 		}
 	}
