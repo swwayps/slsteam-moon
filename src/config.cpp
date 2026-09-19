@@ -157,6 +157,25 @@ std::unordered_set<uint32_t> CConfig::discoverStPluginAppIds()
 			result.insert(appIdStem);
 		}
 	}
+
+	// The plugin adds a game by writing <id>.lua into this directory while
+	// Steam runs, so the scan above races live writes/renames: a single
+	// directory_iterator pass (or a failed `ec` walk) can drop a still-present
+	// entry. Taken at face value that reads as a removal, and the watcher then
+	// quarantines the app's cache + re-provisions it on the next scan — the
+	// remove/re-add flap. Confirm each apparent drop against its actual file so
+	// a transient short scan cannot be misread as a removal; a genuinely
+	// deleted <id>.lua is still absent here and is correctly not recovered.
+	for (const uint32_t appId : ConfigDiscovery::recoverRacyScanDrops(
+	         result, managedAppIds.get(),
+	         [&](uint32_t id) {
+		         std::error_code fex;
+		         return std::filesystem::exists(
+		             stplug + "/" + std::to_string(id) + ".lua", fex);
+	         }))
+	{
+		result.insert(appId);
+	}
 	return result;
 }
 

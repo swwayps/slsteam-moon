@@ -37,6 +37,7 @@ int main()
 	using ConfigDiscovery::classifyAppIds;
 	using ConfigDiscovery::classifyReloadRemovals;
 	using ConfigDiscovery::keepDiscoveredMainApp;
+	using ConfigDiscovery::recoverRacyScanDrops;
 	using ConfigDiscovery::scanInstalledApps;
 	using ConfigDiscovery::selectManagedSources;
 	using ConfigDiscovery::steamAppsRootsFor;
@@ -217,6 +218,51 @@ int main()
 
 		CHECK(changes.managedAdded == std::vector<uint32_t>{200},
 		      "managed-source addition is reported independently");
+	}
+
+	// --- Racy-scan drop recovery ------------------------------------------
+	// The plugin adds a game by writing <id>.lua into the watched stplug-in
+	// directory (non-atomically). A concurrent write/rename can make a single
+	// directory_iterator pass skip a still-present entry, so a fresh scan can
+	// transiently be a strict subset of the previous managed set. That short
+	// scan must NOT read as a removal (which would quarantine the app's cache
+	// and re-provision it in a loop). Any previously-known id absent from the
+	// fresh scan whose source still exists on disk was dropped by the race and
+	// is recovered; a genuinely removed id (source gone) is not.
+	{
+		const std::unordered_set<uint32_t> freshScan{100, 101};        // 102 dropped
+		const std::unordered_set<uint32_t> previouslyKnown{100, 101, 102};
+		// 102's file still exists -> the scan raced, recover it.
+		const auto onDisk = std::unordered_set<uint32_t>{100, 101, 102};
+		const auto recovered = recoverRacyScanDrops(
+		    freshScan, previouslyKnown,
+		    [&](uint32_t id) { return onDisk.contains(id); });
+		CHECK(recovered == std::vector<uint32_t>{102},
+		      "a still-present id dropped by a racy scan is recovered");
+	}
+	{
+		const std::unordered_set<uint32_t> freshScan{100, 101};        // 102 gone
+		const std::unordered_set<uint32_t> previouslyKnown{100, 101, 102};
+		// 102's file was actually deleted -> a real removal, do not recover.
+		const auto onDisk = std::unordered_set<uint32_t>{100, 101};
+		const auto recovered = recoverRacyScanDrops(
+		    freshScan, previouslyKnown,
+		    [&](uint32_t id) { return onDisk.contains(id); });
+		CHECK(recovered.empty(),
+		      "a genuinely removed id (source gone) is not recovered");
+	}
+	{
+		// Multiple drops are recovered in sorted order; ids present in the
+		// fresh scan and the zero id are never recovered.
+		const std::unordered_set<uint32_t> freshScan{50};
+		const std::unordered_set<uint32_t> previouslyKnown{0, 50, 30, 10, 40};
+		const auto onDisk =
+		    std::unordered_set<uint32_t>{0, 10, 30, 40, 50};  // 30/40 gone from scan but on disk; 10 gone both
+		const auto recovered = recoverRacyScanDrops(
+		    freshScan, previouslyKnown,
+		    [&](uint32_t id) { return id == 30 || id == 40; });
+		CHECK(recovered == (std::vector<uint32_t>{30, 40}),
+		      "racy-drop recovery is sorted and skips present/zero ids");
 	}
 
 	// --- On-disk Accela discovery ----------------------------------------

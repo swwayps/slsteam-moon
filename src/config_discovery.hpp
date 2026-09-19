@@ -159,6 +159,40 @@ inline std::vector<uint32_t> removedAppIds(
 	return removed;
 }
 
+// Recover ids that a racy directory scan dropped.
+//
+// The stplug-in directory is written live: the plugin adds a game by dropping
+// `<id>.lua` into it (non-atomically). A concurrent write/rename can make a
+// single `directory_iterator` pass skip a still-present entry, so one fresh
+// scan can transiently be a strict subset of the previously-known set. If that
+// short scan were taken at face value, the missing id would be classified as a
+// removal — quarantining the app's cache and clearing its tickets — and the
+// next (complete) scan would re-add it, re-provisioning its metadata over the
+// network and re-broadcasting package-0. That loop is the observed flap.
+//
+// This confirms each apparent drop against the actual on-disk source: any
+// previously-known id that is absent from `freshScan` but whose source still
+// exists is a race artifact and is returned for the caller to re-insert. A
+// genuinely removed id (source gone, `sourceExists(id)` false) is NOT returned,
+// so real removals are still honored. `sourceExists` is a predicate over the
+// authoritative source (e.g. `exists(stplug-in/<id>.lua)`); a direct stat of a
+// specific stable file does not suffer the readdir race that dropped it.
+template <typename SourceExistsFn>
+inline std::vector<uint32_t> recoverRacyScanDrops(
+    const std::unordered_set<uint32_t>& freshScan,
+    const std::unordered_set<uint32_t>& previouslyKnown,
+    SourceExistsFn sourceExists)
+{
+	std::vector<uint32_t> recovered;
+	for (const uint32_t appId : previouslyKnown)
+	{
+		if (appId == 0 || freshScan.contains(appId)) continue;
+		if (sourceExists(appId)) recovered.push_back(appId);
+	}
+	std::sort(recovered.begin(), recovered.end());
+	return recovered;
+}
+
 struct ReloadRemovals
 {
 	std::vector<uint32_t> managed;
