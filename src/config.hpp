@@ -91,6 +91,10 @@ public:
 	// Managed apps plus installed compatibility entries used by ownership and
 	// package hooks. Compatibility entries never enter the provider chain.
 	MTVariable<std::unordered_set<uint32_t>> addedAppIds;
+	// Last observed on-disk installed set (appmanifest + content). Baseline for
+	// recovering a racy steamapps walk that transiently drops a still-installed
+	// compatibility app, so a scan artifact is not mistaken for an uninstall.
+	MTVariable<std::unordered_set<uint32_t>> installedAppIds;
 	MTVariable<std::unordered_map<uint32_t, CDlcData>> dlcData;
 	MTVariable<std::unordered_map<uint32_t, uint64_t>> appTokens;
 	MTVariable<std::unordered_set<uint32_t>> fakeOffline;

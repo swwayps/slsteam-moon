@@ -36,6 +36,7 @@ int main()
 	using ConfigDiscovery::appIdFromScriptName;
 	using ConfigDiscovery::classifyAppIds;
 	using ConfigDiscovery::classifyReloadRemovals;
+	using ConfigDiscovery::confirmInstalledApp;
 	using ConfigDiscovery::keepDiscoveredMainApp;
 	using ConfigDiscovery::recoverRacyScanDrops;
 	using ConfigDiscovery::scanInstalledApps;
@@ -330,6 +331,21 @@ int main()
 			      "only manifests with existing game content are installed");
 			CHECK(installed.accela == std::unordered_set<uint32_t>({701}),
 			      "Accela marker rediscovers the matching app id");
+
+			// Per-app re-confirmation (used to recover a racy whole-directory
+			// walk that dropped a still-present appmanifest). It must agree
+			// with the full scan without needing a directory listing.
+			{
+				bool accela = true;  // must be reset by the callee
+				CHECK(confirmInstalledApp(roots, 700, accela) && !accela,
+				      "confirmInstalledApp: installed non-Accela app confirmed");
+				CHECK(confirmInstalledApp(roots, 701, accela) && accela,
+				      "confirmInstalledApp: installed Accela app confirmed with marker");
+				CHECK(!confirmInstalledApp(roots, 702, accela),
+				      "confirmInstalledApp: manifest without content is not installed");
+				CHECK(!confirmInstalledApp(roots, 999999, accela),
+				      "confirmInstalledApp: absent manifest is not installed");
+			}
 
 			std::error_code ec;
 			std::filesystem::remove_all(made, ec);

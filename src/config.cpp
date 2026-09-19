@@ -522,8 +522,35 @@ bool CConfig::loadSettings()
 		const auto steamRoot = findSteamRootForConfig();
 		if (!steamRoot.empty())
 		{
-			installed = ConfigDiscovery::scanInstalledApps(
-			    ConfigDiscovery::steamAppsRootsFor(steamRoot));
+			const auto steamAppsRoots =
+			    ConfigDiscovery::steamAppsRootsFor(steamRoot);
+			installed = ConfigDiscovery::scanInstalledApps(steamAppsRoots);
+
+			// Steam rewrites appmanifests during boot/update, so the whole-
+			// directory walk above can transiently skip a still-installed app.
+			// Confirm each apparent disappearance against its specific manifest:
+			// a scan artifact (manifest still present) is recovered so it is not
+			// mistaken for an uninstall — which would drop the app from the
+			// active set and revoke its ownership/tickets + quarantine its
+			// cache. A genuinely removed manifest is still absent here and is
+			// correctly not recovered.
+			for (const uint32_t appId : ConfigDiscovery::recoverRacyScanDrops(
+			         installed.all, installedAppIds.get(),
+			         [&](uint32_t id) {
+				         bool acc = false;
+				         return ConfigDiscovery::confirmInstalledApp(
+				             steamAppsRoots, id, acc);
+			         }))
+			{
+				bool isAccela = false;
+				if (ConfigDiscovery::confirmInstalledApp(
+				        steamAppsRoots, appId, isAccela))
+				{
+					installed.all.insert(appId);
+					if (isAccela) installed.accela.insert(appId);
+				}
+			}
+			installedAppIds = installed.all;
 		}
 		// A cap of 0 means "no safety valve": pass the full discovered size so
 		// nothing is deferred. Installed apps are handed in so titles with
