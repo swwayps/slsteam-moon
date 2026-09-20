@@ -668,12 +668,12 @@ static void load()
 		{
 			auto root = std::filesystem::path(selfMod.path).parent_path().string();
 			SteamStub::setup(root.c_str());
-			// Background-warm the dedicated Wine prefix so the user
-			// doesn't pay the first-run wineboot cost when launching
-			// an app that goes through the wrapper-integration helper.
-			// Detached worker; onLaunchApp will join on this before
-			// invoking the helper.
-			SteamStub::warmupAsync();
+			// No startup Wine prewarm: executable processing is opt-in per
+			// app via the `--steamless` launch option (default runs the stub
+			// in place), so the vast majority of launches never touch the
+			// Wine prefix. onLaunchApp warms it on demand the first time an
+			// app actually opts in, so those users still get a warmed prefix
+			// before processing runs.
 		}
 		else
 		{
