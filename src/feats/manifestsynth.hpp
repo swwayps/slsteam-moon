@@ -437,6 +437,18 @@ namespace ManifestSynth
 		}
 		if (cands.empty()) return "";
 
+		// icculus steamshim wrapper: when a title ships a "steamshim" binary
+		// (steamshim.exe on Windows, a root ELF "steamshim" natively) THAT is
+		// the required launch entry point - it runs SteamAPI_Init, opens the
+		// parent<->child pipe, then spawns the real game binary. The game exe
+		// itself usually matches the installdir name and would win the match
+		// below, but launching it directly leaves it with no shim parent and
+		// it aborts with "Could not initialize Steamworks API". Prefer the
+		// shim whenever present - generic across any game built on it, not
+		// keyed to a specific appid.
+		for (const auto& f : cands)
+			if (stem(f) == "steamshim") return f;
+
 		// Prefer the candidate whose stem matches the install dir.
 		for (const auto& f : cands)
 			if (stem(f) == want) return f;

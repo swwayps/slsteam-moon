@@ -361,6 +361,28 @@ int main()
 		CHECK(pickLauncher(files, "OneShot", "macos") == "OneShot.app",
 		      "macos: recovers the .app bundle path");
 	}
+	{
+		// icculus steamshim wrapper: the real entry point is steamshim.exe
+		// (it does SteamAPI_Init, opens the pipe, then spawns the game), NOT
+		// the game exe whose name matches the installdir. Generic for any
+		// title shipping the shim (e.g. OneShot: steamshim.exe -> oneshot.exe).
+		std::vector<std::string> files = {
+		    "oneshot.exe", "steamshim.exe", "_______.exe"};
+		CHECK(pickLauncher(files, "OneShot", "windows") == "steamshim.exe",
+		      "windows: steamshim wrapper wins over the installdir-named game exe");
+	}
+	{
+		// Same for the native linux steamshim (root ELF, no extension).
+		std::vector<std::string> files = {"oneshot", "steamshim", "Data"};
+		CHECK(pickLauncher(files, "OneShot", "linux") == "steamshim",
+		      "linux: native steamshim wrapper wins over the game binary");
+	}
+	{
+		// Without a shim, behavior is unchanged: still the installdir match.
+		std::vector<std::string> files = {"oneshot.exe", "helper.exe"};
+		CHECK(pickLauncher(files, "OneShot", "windows") == "oneshot.exe",
+		      "windows: no shim present -> installdir-named exe still wins");
+	}
 	CHECK(pickLauncher({"sub\\dir\\helper.exe"}, "X", "windows").empty(),
 	      "no root-level launcher -> empty");
 	CHECK(pickLauncher({}, "X", "linux").empty(), "no files -> empty");
