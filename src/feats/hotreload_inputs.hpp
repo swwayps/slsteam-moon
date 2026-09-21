@@ -15,7 +15,21 @@
 namespace HotReloadInputs
 {
 
-inline constexpr std::size_t kMaxSnapshotIds = 4096;
+// Snapshot sanity ceilings. These are independent because a managed library
+// carries far more depots than apps: the app-source cap (config_discovery
+// kMaxManagedSourceApps) bounds base apps, but each app adds its DLC app ids
+// and, typically, several depots (measured ~6x depots-per-app on a dense
+// library). Sharing one 4096 ceiling for both silently rejected medium
+// libraries — the whole snapshot failed closed once depots crossed 4096, which
+// disabled runtime license sync and left managed installs stuck at
+// "Missing decryption key". The ceilings only exist to fail closed on
+// pathological/corrupt input; real scale is governed by kMaxManagedSourceApps.
+inline constexpr std::size_t kMaxSnapshotAppIds = 16384;
+inline constexpr std::size_t kMaxSnapshotDepotIds = 131072;
+
+// Retained name for callers that bound an app-id-scale collection
+// (e.g. the library-removal queue capacity).
+inline constexpr std::size_t kMaxSnapshotIds = kMaxSnapshotAppIds;
 
 struct AppInput
 {
@@ -40,7 +54,8 @@ struct BuildResult
 
 inline BuildResult build(std::uint64_t generation,
 	const std::vector<AppInput>& inputs,
-	std::size_t maxIds = kMaxSnapshotIds)
+	std::size_t maxAppIds = kMaxSnapshotAppIds,
+	std::size_t maxDepotIds = kMaxSnapshotDepotIds)
 {
 	BuildResult out;
 	out.snapshot.generation = generation;
@@ -48,8 +63,8 @@ inline BuildResult build(std::uint64_t generation,
 
 	std::unordered_set<std::uint32_t> appIds;
 	std::unordered_set<std::uint32_t> depotIds;
-	appIds.reserve(std::min(inputs.size(), maxIds));
-	depotIds.reserve(std::min(inputs.size(), maxIds));
+	appIds.reserve(std::min(inputs.size(), maxAppIds));
+	depotIds.reserve(std::min(inputs.size(), maxDepotIds));
 
 	for (const AppInput& input : inputs)
 	{
@@ -82,7 +97,7 @@ inline BuildResult build(std::uint64_t generation,
 		if (input.baseAppId != 0)
 			out.cacheMtimeSecs[input.baseAppId] = input.cacheMtimeSecs;
 
-		if (appIds.size() > maxIds || depotIds.size() > maxIds)
+		if (appIds.size() > maxAppIds || depotIds.size() > maxDepotIds)
 		{
 			out.snapshot.appIds.clear();
 			out.snapshot.depotIds.clear();

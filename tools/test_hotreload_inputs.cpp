@@ -103,10 +103,33 @@ int main()
 		std::vector<std::uint32_t>({420530}),
 		"a hidden missing cache remains scheduled for preparation");
 
-	const auto bounded = HotReloadInputs::build(9, inputs, 2);
+	const auto bounded = HotReloadInputs::build(9, inputs, 2, 2);
 	check(!bounded.valid && !bounded.snapshot.metadataComplete &&
 		bounded.snapshot.appIds.empty() && bounded.snapshot.depotIds.empty(),
 		"oversized input fails closed without a destructive partial snapshot");
+
+	// Depots outnumber apps several-fold. A library whose managed depots exceed
+	// the app ceiling but whose app ids stay within it must still build a valid
+	// snapshot: conflating the two ceilings silently rejected medium libraries
+	// and disabled runtime license sync (the AVA "Missing decryption key" bug).
+	{
+		AppInput wide;
+		wide.baseAppId = 500;
+		wide.cacheValid = true;
+		wide.publishReady = true;
+		for (std::uint32_t d = 1; d <= 6000; ++d)
+			wide.depotIds.push_back(1'000'000u + d);
+		const auto built6000 = HotReloadInputs::build(11, {wide});
+		check(built6000.valid,
+			"a library with >4096 managed depots still yields a valid snapshot");
+		check(built6000.snapshot.depotIds.size() == 6000,
+			"every managed depot is carried in the snapshot");
+	}
+	// The app-id ceiling remains an independent guard: too many app ids still
+	// fails closed even when the depot ceiling is ample.
+	const auto appBounded = HotReloadInputs::build(12, inputs, 2, 1000000);
+	check(!appBounded.valid && appBounded.snapshot.appIds.empty(),
+		"exceeding the app-id ceiling still fails closed");
 	const std::vector<AppInput> pendingInputs{
 		{1245620, true, {2778580}, {1245621}, true, true, 300},
 	};
