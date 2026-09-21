@@ -93,7 +93,11 @@ public:
 	SavedTicket getCachedEncryptedTicket(uint32_t appId);
 	bool saveEncryptedTicketToCache(CMsgClientRequestEncryptedAppTicketResponse* resp);
 
-	void recvEncryptedAppTicket(CMsgClientRequestEncryptedAppTicketResponse* msg);
-	void recvAppTicket(CMsgClientGetAppOwnershipTicketResponse* msg);
+	// Return true iff the response message was rewritten in place (a cached
+	// encrypted ticket was substituted, or eresult was stamped OK), so the
+	// CNetPacket CM-receive path knows to reserialize the packet. The classic
+	// CProtoBufMsgBase path mutates the arena body directly and ignores this.
+	bool recvEncryptedAppTicket(CMsgClientRequestEncryptedAppTicketResponse* msg);
+	bool recvAppTicket(CMsgClientGetAppOwnershipTicketResponse* msg);
 	void recvMsg(CProtoBufMsgBase* msg);
 }

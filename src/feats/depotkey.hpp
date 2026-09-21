@@ -27,6 +27,8 @@
 
 #pragma once
 
+#include "depotkey_recv_policy.hpp"
+
 #include "../sdk/protobufs/steammessages_clientserver_2.pb.h"
 
 #include <cstdint>
@@ -104,7 +106,12 @@ namespace DepotKey
 	void recvMsg(CProtoBufMsgBase* msg);
 	void sendMsg(CProtoBufMsgBase* msg);
 
-	// Specific protobuf-typed handlers.
-	void recvDepotKey(CMsgClientGetDepotDecryptionKeyResponse* resp);
+	// RecvAction + classifyRecv (the pure substitution decision) live in
+	// depotkey_recv_policy.hpp so they can be unit-tested without protobuf.
+
+	// Specific protobuf-typed handlers. recvDepotKey returns true iff it
+	// rewrote the response in place (so the CNetPacket CM-receive path
+	// reserializes the packet); the classic CProtoBufMsgBase path ignores it.
+	bool recvDepotKey(CMsgClientGetDepotDecryptionKeyResponse* resp);
 	void sendDepotKey(CMsgClientGetDepotDecryptionKey* req);
 }

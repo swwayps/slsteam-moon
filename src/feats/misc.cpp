@@ -18,37 +18,43 @@ bool Misc::shouldFakeOffline()
 }
 
 
+bool Misc::recvWalletInfo(CMsgClientWalletInfoUpdate* body)
+{
+	const int32_t amount = g_config.fakeWalletBalance.get();
+	if (!amount || !body)
+	{
+		return false;
+	}
+
+	body->set_has_wallet(true);
+	body->set_balance(amount);
+	body->set_balance64(amount);
+	return true;
+}
+
+bool Misc::recvEmailInfo(CMsgClientEmailAddrInfo* body)
+{
+	const auto email = g_config.fakeEmail.get();
+	if (email.size() < 1 || !body)
+	{
+		return false;
+	}
+
+	body->set_email_address(email);
+	body->set_email_is_validated(true);
+	return true;
+}
+
 void Misc::recvMsg(CProtoBufMsgBase *msg)
 {
 	switch(msg->type)
 	{
 		case EMSG_WALLET_INFO_UPDATE:
-		{
-			const int32_t amount = g_config.fakeWalletBalance.get();
-			if (!amount)
-			{
-				return;
-			}
-
-			const auto body = msg->getBody<CMsgClientWalletInfoUpdate>();
-			body->set_has_wallet(true);
-			body->set_balance(amount);
-			body->set_balance64(amount);
+			recvWalletInfo(msg->getBody<CMsgClientWalletInfoUpdate>());
 			break;
-		}
 
 		case EMSG_EMAIL_ADDRESS_INFO:
-		{
-			const auto email = g_config.fakeEmail.get();
-			if (email.size() < 1)
-			{
-				return;
-			}
-
-			const auto body = msg->getBody<CMsgClientEmailAddrInfo>();
-			body->set_email_address(email);
-			body->set_email_is_validated(true);
+			recvEmailInfo(msg->getBody<CMsgClientEmailAddrInfo>());
 			break;
-		}
 	}
 }

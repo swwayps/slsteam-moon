@@ -26,4 +26,9 @@ std::vector<uint8_t> rewriteRequest(bool modern, const uint8_t* data,
 std::optional<std::vector<uint8_t>> rewriteResponse(bool modern, const uint8_t* data,
 	uint32_t size, CMsgProtoBufHeader& header);
 void recvMessage(const CProtoBufMsgBase* msg);
+
+// Transport-agnostic form used by the CNetPacket CM-receive path, which has
+// the login/logoff/license eMsg and the parsed header's steamid but no
+// CProtoBufMsgBase. Behaviour matches the CProtoBufMsgBase overload.
+void recvMessage(uint32_t type, bool hasSteamId, uint64_t steamId);
 }

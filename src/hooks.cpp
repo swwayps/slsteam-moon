@@ -26,6 +26,7 @@
 #include "feats/appinfostate.hpp"
 #include "feats/appticket.hpp"
 #include "feats/apps.hpp"
+#include "feats/cmrecv.hpp"
 #include "feats/depotkey.hpp"
 #include "feats/depotquarantine.hpp"
 #include "feats/dlc.hpp"
@@ -295,6 +296,17 @@ static void hkProtoBufMsgBase_InitFromPacket(CProtoBufMsgBase* pMsg, void* pSrc)
 
 	g_pLog->debug("Received ProtoBufMsg of type %u with type %s\n", pMsg->type, MemHlp::getTypeName(pMsg));
 
+	// On the newer client these CM messages are dispatched from
+	// CCMInterface::RecvPkt as CNetPacket frames instead (hkCMInterface_RecvPkt
+	// -> CmRecv::dispatchNetPacket).  The transport latch keeps exactly one of
+	// the two paths authoritative so a message is never handled twice; this
+	// classic path stays live for a client that still delivers CM messages
+	// through InitFromPacket.
+	if (CmRecv::isTracked(pMsg->type) && !CmRecv::claim(CmRecv::Transport::Classic))
+	{
+		return;
+	}
+
 	Achievements::recvMessage(pMsg);
 	if (pMsg->type == 780)
 		ManifestDonor::onLicenseList(pMsg->getBody<CMsgClientLicenseList>());
@@ -340,6 +352,17 @@ static void hkCMInterface_RecvPkt(void* pCMInterface, CNetPacket* pNetPacket)
 				pNetPacket->free();
 				return;
 			}
+		}
+
+		// Route the CM protobuf frame through the message features (depot key,
+		// PICS, ticket, wallet/email, license list, login-state).  The newer
+		// client delivers these here instead of via
+		// CProtoBufMsgBase::InitFromPacket; the transport latch makes the two
+		// paths mutually exclusive.  dispatchNetPacket may rewrite the packet
+		// body in place before Steam processes it.
+		if (CmRecv::isTracked(type) && CmRecv::claim(CmRecv::Transport::NetPkt))
+		{
+			CmRecv::dispatchNetPacket(pNetPacket);
 		}
 	}
 

@@ -303,30 +303,31 @@ bool Ticket::saveEncryptedTicketToCache(CMsgClientRequestEncryptedAppTicketRespo
 	return true;
 }
 
-void Ticket::recvEncryptedAppTicket(CMsgClientRequestEncryptedAppTicketResponse* msg)
+bool Ticket::recvEncryptedAppTicket(CMsgClientRequestEncryptedAppTicketResponse* msg)
 {
 	if (msg->eresult() == ERESULT_OK)
 	{
 		saveEncryptedTicketToCache(msg);
-		return;
+		return false;
 	}
 
 	SavedTicket ticket = getCachedEncryptedTicket(msg->app_id());
 	if(!ticket.isValid())
 	{
-		return;
+		return false;
 	}
 
 	msg->ParseFromString(ticket.ticket);
 	g_pLog->debug("Using encryptedTicket_%u from disk\n", msg->app_id());
+	return true;
 }
 
-void Ticket::recvAppTicket(CMsgClientGetAppOwnershipTicketResponse* msg)
+bool Ticket::recvAppTicket(CMsgClientGetAppOwnershipTicketResponse* msg)
 {
 	if(msg->eresult() == ERESULT_OK)
 	{
 		saveTicketToCache(msg);
-		return;
+		return false;
 	}
 
 	const uint32_t appId = msg->app_id();
@@ -355,10 +356,11 @@ void Ticket::recvAppTicket(CMsgClientGetAppOwnershipTicketResponse* msg)
 		// CM only sends a handful of these per session.
 		g_pLog->info("Ticket: stamped eresult=OK on AppOwnershipTicket response for AdditionalApp=%u\n",
 		             appId);
-		return;
+		return true;
 	}
 
 	//We do not load tickets from disk in the network layer, otherwise they won't be loaded in offline mode
+	return false;
 }
 
 void Ticket::recvMsg(CProtoBufMsgBase* msg)

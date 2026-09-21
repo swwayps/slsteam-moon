@@ -56,6 +56,7 @@ endif
 .PHONY: test-stats-provenance
 .PHONY: test-manifestdonor test-manifestfetch
 .PHONY: test-reconcilepin-scan
+.PHONY: test-depotkey-recv-policy
 
 test-manifestdonor:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror \
@@ -322,6 +323,11 @@ test-depotkey-scope:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I include \
 		tools/test_depotkey_scope.cpp -pthread -o /tmp/test_depotkey_scope
 	/tmp/test_depotkey_scope
+
+test-depotkey-recv-policy:
+	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror \
+		tools/test_depotkey_recv_policy.cpp -o /tmp/test_depotkey_recv_policy
+	/tmp/test_depotkey_recv_policy
 
 test-memhlp-target:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src -I include \

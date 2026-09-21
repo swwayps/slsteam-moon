@@ -144,19 +144,28 @@ std::optional<std::vector<uint8_t>> Achievements::rewriteResponse(bool modern,
 	return out;
 }
 
-void Achievements::recvMessage(const CProtoBufMsgBase* msg)
+void Achievements::recvMessage(uint32_t type, bool hasSteamId, uint64_t steamId)
 {
-	if (!msg) return;
 	// ClientLogOnResponse=751, ClientLoggedOff=757, ClientLicenseList=780.
-	if (msg->type != 751 && msg->type != 757 && msg->type != 780) return;
+	if (type != 751 && type != 757 && type != 780) return;
 	StatsPolicy::invalidate();
-	if (msg->type == 757) StatsPolicy::setAccount(0);
-	else if (msg->header && msg->header->has_steamid())
+	if (type == 757) StatsPolicy::setAccount(0);
+	else if (hasSteamId)
 	{
-		const auto sid = msg->header->steamid();
-		const auto account = static_cast<uint32_t>(sid);
-		if (sid && StatsPolicy::isSelf(sid, account)) StatsPolicy::setAccount(account);
+		const auto account = static_cast<uint32_t>(steamId);
+		if (steamId && StatsPolicy::isSelf(steamId, account)) StatsPolicy::setAccount(account);
 	}
 	// Keep bounded outstanding jobs so their late replies are rejected rather
 	// than allowing the previously selected owner's progress through unchanged.
+}
+
+void Achievements::recvMessage(const CProtoBufMsgBase* msg)
+{
+	if (!msg) return;
+	// Gate on type BEFORE touching msg->header: on the newer client an
+	// untracked message can reach here with a header pointer that is not safe
+	// to dereference, and only 751/757/780 ever need the header at all.
+	if (msg->type != 751 && msg->type != 757 && msg->type != 780) return;
+	const bool hasSteamId = msg->header && msg->header->has_steamid();
+	recvMessage(msg->type, hasSteamId, hasSteamId ? msg->header->steamid() : 0);
 }
