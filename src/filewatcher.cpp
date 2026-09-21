@@ -5,6 +5,9 @@
 #include "log.hpp"
 #include "ownerwork.hpp"
 
+#include <atomic>
+#include <cstdlib>
+#include <mutex>
 #include <poll.h>
 #include <sys/inotify.h>
 #include <sys/stat.h>
@@ -28,6 +31,22 @@ namespace
 		}
 		return IN_MODIFY;
 	}
+
+	// Cooperative shutdown for the watcher thread(s).  The thread is a leaked,
+	// unjoined daemon: at process exit the static destructors free the globals
+	// it uses (g_pLog's ofstream, g_config, ...), and if the thread is still
+	// looping it dereferences freed memory.  It surfaced as a crash inside the
+	// logger's std::ostream on LogLevel 1, where the loop logs on every
+	// iteration and so is almost always mid-write when teardown begins.
+	//
+	// stopAllForShutdown() is registered with std::atexit from start(). Because
+	// it is registered at runtime — after those globals finished construction —
+	// the standard sequences it BEFORE their destructors, so it joins the
+	// thread while g_pLog/g_config are still valid.
+	std::atomic<bool>       g_watcherStopping{false};
+	std::mutex              g_watcherThreadsMu;
+	std::vector<pthread_t>  g_watcherThreads;
+	std::once_flag          g_watcherAtexitOnce;
 }
 
 
@@ -39,6 +58,15 @@ void* watchLoop(void* args)
 
 	for(;;)
 	{
+		// Bail before touching any global (g_pLog below first) once shutdown
+		// has been requested, so the thread never races the static destructors
+		// that free them. stopAllForShutdown() joins us, so g_pLog stays valid
+		// until we return here.
+		if (g_watcherStopping.load(std::memory_order_relaxed))
+		{
+			return nullptr;
+		}
+
 		g_pLog->debug("Watching for changes...\n");
 
 		// Bounded wait instead of a blocking read, so this thread also gets a
@@ -74,6 +102,14 @@ void* watchLoop(void* args)
 		}
 		size += static_cast<ssize_t>(
 			FileWatcherBurst::drainAdditionalReadable(watcher->notifyFd));
+
+		// A shutdown request can arrive while poll()/read() were blocked; don't
+		// start a reload (which logs and touches g_config) if we're tearing
+		// down.
+		if (g_watcherStopping.load(std::memory_order_relaxed))
+		{
+			return nullptr;
+		}
 
 		g_pLog->debug("inotify batch bytes=%zd\n", size);
 
@@ -157,10 +193,45 @@ void CFileWatcher::rearm()
 bool CFileWatcher::start()
 {
 	int code = pthread_create(&watchThread, nullptr, &watchLoop, this);
-	return code == 0;
+	if (code != 0)
+	{
+		return false;
+	}
+
+	// Track the thread so it can be joined at process exit, and register the
+	// shutdown hook exactly once. Registered here (at runtime) so std::atexit
+	// sequences it before the static destructors that free g_pLog/g_config.
+	{
+		std::lock_guard<std::mutex> lock(g_watcherThreadsMu);
+		g_watcherThreads.push_back(watchThread);
+	}
+	std::call_once(g_watcherAtexitOnce, []
+	{
+		std::atexit(&CFileWatcher::stopAllForShutdown);
+	});
+	return true;
 }
 
 void CFileWatcher::stop()
 {
 	pthread_cancel(watchThread);
+}
+
+void CFileWatcher::stopAllForShutdown()
+{
+	g_watcherStopping.store(true, std::memory_order_relaxed);
+
+	std::vector<pthread_t> threads;
+	{
+		std::lock_guard<std::mutex> lock(g_watcherThreadsMu);
+		threads.swap(g_watcherThreads);
+	}
+
+	// Join outside the lock: the thread wakes from its bounded poll() within
+	// kIdleTickMs, sees the flag, and returns. Joining guarantees it is gone
+	// before we hand control back to the exit sequence that frees the globals.
+	for (const pthread_t thread : threads)
+	{
+		pthread_join(thread, nullptr);
+	}
 }

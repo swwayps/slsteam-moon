@@ -27,4 +27,11 @@ public:
 	void rearm();
 	bool start();
 	void stop();
+
+	// Cooperatively stop and join every running watcher thread. Registered with
+	// std::atexit on the first start(), so it runs before the static
+	// destructors free g_pLog/g_config — the leaked, unjoined watcher thread
+	// must not touch those globals after teardown (a use-after-free that
+	// surfaced as a logger crash under LogLevel 1). Idempotent.
+	static void stopAllForShutdown();
 };
