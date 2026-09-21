@@ -213,19 +213,44 @@ namespace
 
 	constexpr auto kHelperTimeout = std::chrono::seconds(180);
 
-	bool waitForHelper(pid_t pid, int& status, const char* label)
+	// Outcome of waiting on a forked helper. `Reaped` covers the case where the
+	// Steam client keeps SIGCHLD at SIG_IGN, so the kernel auto-reaps our child
+	// and waitpid can never hand us an exit status (errno ECHILD): the child
+	// still ran to completion — we just can't read its code here, so the caller
+	// must judge success from the on-disk result.
+	enum class HelperWait { Exited, Reaped, Failed };
+
+	HelperWait waitForHelper(pid_t pid, int& status, const char* label)
 	{
 		const auto deadline = std::chrono::steady_clock::now() + kHelperTimeout;
+		bool autoReaped = false;
 		for (;;)
 		{
-			const pid_t waited = waitpid(pid, &status, WNOHANG);
-			if (waited == pid) return true;
-			if (waited < 0 && errno != EINTR)
+			if (!autoReaped)
 			{
-				g_pLog->warn("SteamStub: %s waitpid failed (errno=%d)\n",
-				             label, errno);
-				break;
+				const pid_t waited = waitpid(pid, &status, WNOHANG);
+				if (waited == pid) return HelperWait::Exited;
+				if (waited < 0 && errno == ECHILD)
+				{
+					// SIGCHLD is SIG_IGN in this process: the child is
+					// auto-reaped and its status is unrecoverable via waitpid.
+					// Switch to liveness polling so we still block until the
+					// helper actually finishes (preserving the synchronous
+					// contract) before the caller inspects the result.
+					autoReaped = true;
+				}
+				else if (waited < 0 && errno != EINTR)
+				{
+					g_pLog->warn("SteamStub: %s waitpid failed (errno=%d)\n",
+					             label, errno);
+					break;
+				}
 			}
+			else if (kill(pid, 0) != 0 && errno == ESRCH)
+			{
+				return HelperWait::Reaped;
+			}
+
 			if (std::chrono::steady_clock::now() >= deadline)
 			{
 				g_pLog->warn("SteamStub: %s timed out after %llds; terminating process group\n",
@@ -238,7 +263,7 @@ namespace
 
 		if (kill(-pid, SIGKILL) != 0) (void)kill(pid, SIGKILL);
 		while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {}
-		return false;
+		return HelperWait::Failed;
 	}
 
 	// Run `<script> <exePath>` synchronously with the STEAMLESS_HOME
@@ -271,14 +296,30 @@ namespace
 		// Parent.  Wait synchronously — we want the unpacked exe in
 		// place before LaunchApp returns and Proton starts.
 		int status = 0;
-		if (!waitForHelper(pid, status, "Steamless helper"))
-			return -1;
-		if (WIFEXITED(status))
+		switch (waitForHelper(pid, status, "Steamless helper"))
 		{
-			return WEXITSTATUS(status);
+			case HelperWait::Exited:
+				if (WIFEXITED(status)) return WEXITSTATUS(status);
+				g_pLog->warn("SteamStub: helper terminated abnormally (status=%d)\n", status);
+				return -1;
+			case HelperWait::Reaped:
+				// No exit code (auto-reaped by Steam's SIG_IGN). We only run the
+				// helper on an exe confirmed to carry the stub, so "stub now
+				// gone" is an unambiguous success; a stub still present is a
+				// real failure.
+				if (!fileHasStubMarker(exePath))
+				{
+					g_pLog->debug("SteamStub: helper auto-reaped; stub removed from %s -> success\n",
+					              exePath.c_str());
+					return 0;
+				}
+				g_pLog->warn("SteamStub: helper auto-reaped but stub remains in %s\n",
+				             exePath.c_str());
+				return -1;
+			case HelperWait::Failed:
+			default:
+				return -1;
 		}
-		g_pLog->warn("SteamStub: helper terminated abnormally (status=%d)\n", status);
-		return -1;
 	}
 
 	// Run `<script> --prewarm` synchronously (in a worker thread,
@@ -302,13 +343,17 @@ namespace
 		}
 		(void)setpgid(pid, pid);
 		int status = 0;
-		if (!waitForHelper(pid, status, "Steamless prewarm"))
-			return -1;
-		if (WIFEXITED(status))
+		switch (waitForHelper(pid, status, "Steamless prewarm"))
 		{
-			return WEXITSTATUS(status);
+			case HelperWait::Exited:
+				return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+			case HelperWait::Reaped:
+				// Prefix init is idempotent; auto-reap means it completed.
+				return 0;
+			case HelperWait::Failed:
+			default:
+				return -1;
 		}
-		return -1;
 	}
 
 	// True when the app's Steam launch options carry the `--steamless`
