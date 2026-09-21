@@ -6,8 +6,6 @@
 #include "../log.hpp"
 #include "../cainfo.hpp"
 #include "boundedexecutor.hpp"
-#include "contentserverdirectory.hpp"
-#include "manifest_zip.hpp"
 #include "../sdk/IClientAppManager.hpp"
 
 #include <curl/curl.h>
@@ -49,21 +47,6 @@ namespace
 
 std::atomic<bool> g_providersOffline{false};
 std::atomic<uint64_t> g_sessionEpoch{1};
-
-std::mutex g_notFoundLock;
-std::unordered_set<uint64_t> g_notFoundGids;
-
-void markGidNotFoundInternal(uint64_t gid)
-{
-	std::lock_guard<std::mutex> lk(g_notFoundLock);
-	g_notFoundGids.insert(gid);
-}
-
-bool isGidNotFoundInternal(uint64_t gid)
-{
-	std::lock_guard<std::mutex> lk(g_notFoundLock);
-	return g_notFoundGids.count(gid) > 0;
-}
 
 void setOfflineStatus(bool offline)
 {
@@ -111,7 +94,7 @@ struct OfflineCleaner
 static OfflineCleaner g_offlineCleaner;
 
 std::mutex g_circuitLock;
-RequestCodeCircuit g_requestCodeCircuit(
+ProviderCircuit g_providerCircuit(
 	/*failureThreshold=*/2, /*cooldownMs=*/30000);
 
 std::int64_t steadyNowMs()
@@ -125,13 +108,7 @@ uint64_t beginProviderAttempt(uint64_t sessionEpoch)
 	std::lock_guard<std::mutex> lock(g_circuitLock);
 	if (sessionEpoch != g_sessionEpoch.load(std::memory_order_acquire))
 		return 0;
-	return g_requestCodeCircuit.beginAttempt(steadyNowMs());
-}
-
-void cancelProviderAttempt(uint64_t attemptToken)
-{
-	std::lock_guard<std::mutex> lock(g_circuitLock);
-	g_requestCodeCircuit.cancelAttempt(attemptToken);
+	return g_providerCircuit.beginAttempt(steadyNowMs());
 }
 
 void finishProviderAttempt(uint64_t sessionEpoch,
@@ -145,55 +122,27 @@ void finishProviderAttempt(uint64_t sessionEpoch,
 		std::lock_guard<std::mutex> lock(g_circuitLock);
 		if (sessionEpoch != g_sessionEpoch.load(std::memory_order_acquire))
 		{
-			g_requestCodeCircuit.cancelAttempt(attemptToken);
+			g_providerCircuit.cancelAttempt(attemptToken);
 			return;
 		}
-		wasOffline = g_requestCodeCircuit.open();
-		g_requestCodeCircuit.finishAttempt(
+		wasOffline = g_providerCircuit.open();
+		g_providerCircuit.finishAttempt(
 		    attemptToken, steadyNowMs(), success, rateLimited, transportFailure);
-		nowOffline = g_requestCodeCircuit.open();
+		nowOffline = g_providerCircuit.open();
 	}
 	g_providersOffline.store(nowOffline, std::memory_order_release);
 	setOfflineStatus(nowOffline);
 	if (!wasOffline && nowOffline)
 	{
 		g_pLog->info(
-		    "ManifestFetch: request-code circuit opened; retrying a real gid after cooldown\n");
+		    "ManifestFetch: manifest archive unreachable; marking providers offline until it recovers\n");
 	}
 	else if (wasOffline && !nowOffline)
 	{
 		g_pLog->info(
-		    "ManifestFetch: real-gid request succeeded; request-code circuit closed\n");
+		    "ManifestFetch: manifest archive reachable again; clearing offline state\n");
 	}
 }
-
-std::mutex g_lock;
-struct PendingRequestCode
-{
-	uint64_t epoch;
-	std::shared_future<std::optional<uint64_t>> future;
-	std::shared_ptr<JobBudget> budget;
-};
-std::map<uint64_t, PendingRequestCode> g_pending;
-
-BoundedExecutor& requestCodeExecutor()
-{
-	static auto* executor = new BoundedExecutor(8, 128);
-	return *executor;
-}
-
-// One-use handoff for the paired consumers in a normal install: the blob fetch
-// and Steam's GetManifestRequestCode response. Codes are depot-bound and
-// short-lived, so keep them only in memory, consume them on lookup, and expire
-// an orphan after one minute.
-std::mutex g_codeLock;
-struct CachedRequestCode
-{
-	uint64_t value;
-	int64_t storedAtMs;
-	uint64_t epoch;
-};
-std::map<std::pair<uint32_t, uint64_t>, CachedRequestCode> g_codeByDepotGid;
 
 std::mutex g_missingNotifyLock;
 std::set<std::pair<uint32_t, uint64_t>> g_missingNotified;
@@ -235,85 +184,6 @@ void clearArchiveMiss(uint32_t depotId, uint64_t gid)
 {
 	std::lock_guard lock(g_archiveMissLock);
 	g_archiveMisses.erase({depotId, gid});
-}
-
-void cacheCode(uint32_t depotId, uint64_t gid, uint64_t code,
-	           uint64_t epoch)
-{
-	if (!depotId || !gid || !code ||
-	    epoch != g_sessionEpoch.load(std::memory_order_acquire)) return;
-	std::lock_guard<std::mutex> lk(g_codeLock);
-	if (epoch != g_sessionEpoch.load(std::memory_order_acquire)) return;
-	const int64_t now = steadyNowMs();
-	std::erase_if(g_codeByDepotGid, [now](const auto& item)
-	{
-		return item.second.epoch !=
-		           g_sessionEpoch.load(std::memory_order_acquire)
-		       || !cachedRequestCodeIsFresh(now, item.second.storedAtMs);
-	});
-	if (g_codeByDepotGid.size() >= 4096) g_codeByDepotGid.clear();
-	g_codeByDepotGid[{depotId, gid}] = {code, now, epoch};
-}
-
-std::optional<uint64_t> cachedCode(uint32_t depotId, uint64_t gid,
-	                              uint64_t epoch)
-{
-	std::lock_guard<std::mutex> lk(g_codeLock);
-	auto it = g_codeByDepotGid.find({depotId, gid});
-	if (it == g_codeByDepotGid.end()) return std::nullopt;
-	const auto cached = it->second;
-	g_codeByDepotGid.erase(it);
-	if (cached.epoch != epoch ||
-	    epoch != g_sessionEpoch.load(std::memory_order_acquire) ||
-	    !cachedRequestCodeIsFresh(steadyNowMs(), cached.storedAtMs))
-		return std::nullopt;
-	return cached.value;
-}
-
-bool parseDigitsOnly(std::string_view body, uint64_t* out)
-{
-	if (body.empty()) return false;
-	std::size_t b = 0, e = body.size();
-	auto isWs = [](char c)
-	{
-		return c == ' ' || c == '\r' || c == '\n' || c == '\t';
-	};
-	while (b < e && isWs(body[b])) ++b;
-	while (e > b && isWs(body[e - 1])) --e;
-	if (b == e) return false;
-	for (std::size_t i = b; i < e; ++i)
-	{
-		if (body[i] < '0' || body[i] > '9') return false;
-	}
-	uint64_t v = 0;
-	auto [_, ec] = std::from_chars(body.data() + b, body.data() + e, v);
-	if (ec != std::errc{}) return false;
-	*out = v;
-	return true;
-}
-
-bool parseJsonDigitField(std::string_view body, uint64_t* out)
-{
-	static constexpr std::string_view kKeys[] =
-	{
-		"\"manifest_request_code\"",
-		"\"content\"",
-		"\"code\"",
-	};
-	for (auto key : kKeys)
-	{
-		auto k = body.find(key);
-		if (k == std::string_view::npos) continue;
-		auto q1 = body.find('"', k + key.size());
-		if (q1 == std::string_view::npos) continue;
-		auto q2 = body.find('"', q1 + 1);
-		if (q2 == std::string_view::npos) continue;
-		if (parseDigitsOnly(body.substr(q1 + 1, q2 - q1 - 1), out))
-		{
-			return true;
-		}
-	}
-	return false;
 }
 
 struct BodySink { std::string* out; std::size_t limit; };
@@ -521,189 +391,6 @@ HttpResponse httpGet(const std::string& url, const JobBudget* budget = nullptr,
 	return r;
 }
 
-std::mutex g_contentServerLock;
-std::vector<ContentServerDirectory::Server> g_contentServers;
-std::chrono::steady_clock::time_point g_contentServersExpire{};
-
-std::vector<ContentServerDirectory::Server> contentServers(
-    const std::shared_ptr<JobBudget>& budget)
-{
-	static constexpr std::string_view kDirectoryUrl =
-	    "https://api.steampowered.com/"
-	    "IContentServerDirectoryService/GetServersForSteamPipe/v1/"
-	    "?cell_id=0&max_servers=20";
-	static constexpr auto kCacheTtl = std::chrono::minutes(10);
-	static constexpr auto kRetryTtl = std::chrono::minutes(1);
-
-	std::lock_guard<std::mutex> lock(g_contentServerLock);
-	const auto now = std::chrono::steady_clock::now();
-	if (now < g_contentServersExpire)
-	{
-		return g_contentServers;
-	}
-
-	const auto response = httpGet(std::string(kDirectoryUrl), budget.get());
-	if (!response.networkError && response.status == 200)
-	{
-		auto parsed = ContentServerDirectory::parseServerList(response.body);
-		if (!parsed.empty())
-		{
-			g_contentServers = std::move(parsed);
-			g_contentServersExpire = now + kCacheTtl;
-			g_pLog->info(
-			    "ManifestFetch: content directory returned %zu ranked server(s)\n",
-			    g_contentServers.size());
-			return g_contentServers;
-		}
-	}
-
-	if (!g_contentServers.empty())
-	{
-		g_contentServersExpire = now + kRetryTtl;
-		g_pLog->info(
-		    "ManifestFetch: content directory refresh failed (HTTP=%ld err='%s'); "
-		    "reusing %zu cached server(s)\n",
-		    response.status, response.diagnostic.c_str(), g_contentServers.size());
-		return g_contentServers;
-	}
-
-	g_pLog->info(
-	    "ManifestFetch: content directory unavailable (HTTP=%ld err='%s')\n",
-	    response.status, response.diagnostic.c_str());
-	g_contentServersExpire = now + kRetryTtl;
-	return {};
-}
-
-std::optional<uint64_t> runOnce(uint64_t gid, uint32_t appId, uint32_t depotId,
-	                            uint64_t sessionEpoch,
-                                const std::shared_ptr<JobBudget>& budget = {})
-{
-	const auto cancelled = [&]
-	{
-		return (budget && budget->shouldStop()) ||
-		       sessionEpoch != g_sessionEpoch.load(std::memory_order_acquire);
-	};
-	if (cancelled())
-		return std::nullopt;
-
-	// Fast path: a previous resolve (e.g. the blob fetch in
-	// BYldRequestDepotManifest) already learned this gid's request
-	// code.  Reuse it so we don't race a fresh HTTP round-trip when
-	// Steam's GetManifestRequestCode job response arrives.
-	if (auto c = cachedCode(depotId, gid, sessionEpoch))
-	{
-		return c;
-	}
-
-	// An open circuit admits one actual queued gid after the cooldown. This is
-	// both the recovery probe and useful work; a dead provider's gid=0 404 can
-	// never reset health falsely.
-	const uint64_t attemptToken = beginProviderAttempt(sessionEpoch);
-	if (!attemptToken)
-	{
-		g_pLog->debug(
-		    "ManifestFetch: gid=%llu skipped during request-code cooldown\n",
-		    static_cast<unsigned long long>(gid));
-		return std::nullopt;
-	}
-	if (cancelled())
-	{
-		cancelProviderAttempt(attemptToken);
-		return std::nullopt;
-	}
-
-	const auto& chain = defaultProviderChain();
-	if (chain.empty())
-	{
-		cancelProviderAttempt(attemptToken);
-		g_pLog->debug("ManifestFetch: gid=%llu skipped, no providers configured\n",
-		              static_cast<unsigned long long>(gid));
-		return std::nullopt;
-	}
-
-	bool hasNetworkOrServerError = false;
-	bool hasRateLimit = false;
-	std::vector<ProviderOutcome> outcomes;
-	outcomes.reserve(chain.size());
-	for (std::size_t i = 0; i < chain.size(); ++i)
-	{
-		if (cancelled())
-		{
-			cancelProviderAttempt(attemptToken);
-			return std::nullopt;
-		}
-		const auto& tmpl = chain[i];
-		if (tmpl.empty()) continue;
-		const auto url = expandProviderTemplate(tmpl, gid, appId, depotId);
-		g_pLog->info("ManifestFetch: gid=%llu provider %zu/%zu GET %s\n",
-		             static_cast<unsigned long long>(gid),
-		             i + 1, chain.size(), url.c_str());
-
-		const auto resp = httpGet(url, budget.get());
-		if (cancelled())
-		{
-			cancelProviderAttempt(attemptToken);
-			return std::nullopt;
-		}
-		if (resp.networkError)
-		{
-			outcomes.push_back({true, 0});
-			g_pLog->info("ManifestFetch: gid=%llu provider %zu net err '%s', trying next\n",
-			             static_cast<unsigned long long>(gid),
-			             i + 1, resp.diagnostic.c_str());
-			hasNetworkOrServerError = true;
-			continue;
-		}
-		if (resp.status != 200)
-		{
-			outcomes.push_back({false, resp.status});
-			g_pLog->info("ManifestFetch: gid=%llu provider %zu HTTP=%ld body_bytes=%zu, trying next\n",
-			             static_cast<unsigned long long>(gid),
-			             i + 1, resp.status, resp.body.size());
-			if (resp.status == 429)
-			{
-				hasRateLimit = true;
-			}
-			else if (resp.status >= 500)
-			{
-				hasNetworkOrServerError = true;
-			}
-			continue;
-		}
-		outcomes.push_back({false, 200});
-		uint64_t code = 0;
-		if (parseDigitsOnly(resp.body, &code) || parseJsonDigitField(resp.body, &code))
-		{
-			g_pLog->info("ManifestFetch: gid=%llu resolved request code via provider %zu\n",
-			             static_cast<unsigned long long>(gid),
-			             i + 1);
-			cacheCode(depotId, gid, code, sessionEpoch);
-			finishProviderAttempt(sessionEpoch, attemptToken,
-				/*success=*/true, /*rateLimited=*/false,
-			    /*transportFailure=*/false);
-			return code;
-		}
-		g_pLog->info("ManifestFetch: gid=%llu provider %zu body unparseable "
-		             "(%zu bytes), trying next\n",
-		             static_cast<unsigned long long>(gid),
-		             i + 1, resp.body.size());
-	}
-
-	g_pLog->info("ManifestFetch: gid=%llu all %zu providers exhausted\n",
-	             static_cast<unsigned long long>(gid), chain.size());
-	if (isDefinitiveNotFound(outcomes))
-		markGidNotFoundInternal(gid);
-
-	finishProviderAttempt(sessionEpoch, attemptToken,
-	    /*success=*/false, hasRateLimit, hasNetworkOrServerError);
-
-	// No user notification here: when the request-code providers are down the
-	// manifest resilience fallback (feats/manifestbind.cpp) installs from a
-	// locally-staged/archived manifest, so the download proceeds for the user.
-	// Keep it log-only.
-	return std::nullopt;
-}
-
 } // namespace
 
 
@@ -781,6 +468,9 @@ bool fetchManifestBlob(uint64_t gid, uint32_t appId, uint32_t depotId,
                        const std::shared_ptr<JobBudget>& budget,
                        bool bypassArchiveMiss, uint64_t sessionEpoch)
 {
+	// appId is part of the shared blob API but not needed here: the archive is
+	// addressed by depot and gid only.
+	(void)appId;
 	if (budget && budget->shouldStop()) return false;
 	std::string targetPath = depotcacheDir + "/" + std::to_string(depotId)
 	                          + "_" + std::to_string(gid) + ".manifest";
@@ -812,6 +502,17 @@ bool fetchManifestBlob(uint64_t gid, uint32_t appId, uint32_t depotId,
 			    static_cast<long>(budget->remaining().count())));
 		const auto archived = httpGet(archiveUrl, budget.get(), {}, "GET", {},
 		                              64u * 1024u * 1024u, archiveTimeout);
+		// Feed the sole manifest provider's reachability into the offline
+		// circuit. The fetch always runs (the user needs the manifest); the
+		// circuit only records whether the archive host answered. A 404 still
+		// counts as reachable — the manifest just has not been donated yet.
+		if (const uint64_t token = beginProviderAttempt(sessionEpoch))
+		{
+			const auto outcome = classifyArchiveOutcome(archived.networkError,
+			                                            archived.status);
+			finishProviderAttempt(sessionEpoch, token, outcome.success,
+			                      outcome.rateLimited, outcome.transportFailure);
+		}
 		if (!archived.networkError && archived.status == 404)
 		{
 			rememberArchiveMiss(depotId, gid);
@@ -853,103 +554,11 @@ bool fetchManifestBlob(uint64_t gid, uint32_t appId, uint32_t depotId,
 		return false;
 	};
 
-	auto codeOpt = runOnce(gid, appId, depotId, sessionEpoch, budget);
-	if (!codeOpt)
-	{
-		g_pLog->info("ManifestFetch: blob depot=%u gid=%llu request-code lookup failed\n",
-		             depotId, static_cast<unsigned long long>(gid));
-		return failed();
-	}
-	uint64_t code = *codeOpt;
-
-	// Ask Valve's content directory for a region/load-ranked list.  cell_id=0
-	// lets the service choose for the requester's public IP, matching Steam's
-	// normal content path without pinning users to one geographic cell.
-	const auto servers = contentServers(budget);
-	if (servers.empty()) return failed();
-
-	HttpResponse zipResp;
-	bool gotZip = false;
-	for (const auto& server : servers)
-	{
-		if (budget && budget->shouldStop()) break;
-		const std::string cdnUrl = ContentServerDirectory::manifestUrl(
-		    server, depotId, gid, code);
-		const std::string vhost = ContentServerDirectory::hostHeader(server);
-		zipResp = httpGet(cdnUrl, budget.get(), vhost);
-		if (!zipResp.networkError && zipResp.status == 200 && !zipResp.body.empty())
-		{
-			gotZip = true;
-			break;
-		}
-		if (requiresSteamCdnAuth({zipResp.networkError, zipResp.status}))
-		{
-			g_pLog->infoOnce(
-			    "ManifestFetch: CDN host requires Steam depot authentication; "
-			    "trying alternate hosts for this manifest\n");
-		}
-		// info, not warn: warn fires a notify-send popup; a single edge
-		// returning a transient error is expected and we just try the next host.
-		g_pLog->info("ManifestFetch: blob depot=%u gid=%llu host=%s HTTP=%ld err='%s', trying next CDN\n",
-		             depotId, static_cast<unsigned long long>(gid), server.host.c_str(),
-		             zipResp.status, zipResp.diagnostic.c_str());
-	}
-	if (!gotZip)
-	{
-		g_pLog->info("ManifestFetch: blob depot=%u gid=%llu all CDN hosts failed (last HTTP=%ld)\n",
-		             depotId, static_cast<unsigned long long>(gid), zipResp.status);
-		// Log-only: this is our manifest-blob staging fetch; the resilience
-		// fallback (feats/manifestbind.cpp) installs from a local manifest
-		// when it fails, so the download proceeds.  A genuine content-CDN
-		// outage (chunks unreachable) is surfaced by Steam's own UI.
-		return failed();
-	}
-
-	std::vector<unsigned char> manifest;
-	std::string extractDiagnostic;
-	if (!ManifestZip::extractSingleFile(zipResp.body, manifest, &extractDiagnostic))
-	{
-		g_pLog->warn(
-			"ManifestFetch: blob depot=%u gid=%llu archive rejected: %s\n",
-			depotId, static_cast<unsigned long long>(gid),
-			extractDiagnostic.c_str());
-		return failed();
-	}
-
-	const std::string tmpOutPath = targetPath + ".slsteam_tmp." +
-	                               std::to_string(static_cast<unsigned long>(getpid())) + "." +
-	                               std::to_string(reinterpret_cast<uintptr_t>(&zipResp));
-	if (manifest.size() < sizeof(std::uint32_t)
-	    || manifest[0] != 0xd0 || manifest[1] != 0x17
-	    || manifest[2] != 0xf6 || manifest[3] != 0x71)
-	{
-		g_pLog->warn("ManifestFetch: blob depot=%u gid=%llu bad manifest magic\n",
-		             depotId, static_cast<unsigned long long>(gid));
-		return failed();
-	}
-	if (!writeManifestFile(tmpOutPath, manifest.data(), manifest.size()))
-	{
-		g_pLog->warn("ManifestFetch: blob depot=%u gid=%llu manifest write failed\n",
-		             depotId, static_cast<unsigned long long>(gid));
-		g_pLog->notifyUser(UserMsg::LocalStorageError);
-		return failed();
-	}
-
-	if (!ManifestStore::publishDownloadedManifest(depotId, gid, tmpOutPath))
-	{
-		unlink(tmpOutPath.c_str());
-		g_pLog->warn(
-		    "ManifestFetch: blob depot=%u gid=%llu persistent publish failed\n",
-		    depotId, static_cast<unsigned long long>(gid));
-		g_pLog->notifyUser(UserMsg::LocalStorageError);
-		return failed();
-	}
-	unlink(tmpOutPath.c_str());
-
-	g_pLog->info("ManifestFetch: blob depot=%u gid=%llu staged at %s\n",
-	             depotId, static_cast<unsigned long long>(gid),
-	             targetPath.c_str());
-	return true;
+	// The luastools archive serves the whole manifest (fetchArchive above); it
+	// is the only source. When it does not hold this gid yet there is nowhere
+	// else to fetch it, so surface the miss and let Steam's own path / the
+	// resilience fallback (feats/manifestbind.cpp) proceed from a local copy.
+	return failed();
 }
 
 } // namespace
@@ -1234,111 +843,12 @@ bool fetchManifestBlobSync(uint64_t manifestGid, uint32_t appId,
 	return awaitManifestBlob(manifestGid, appId, depotId, getTimeoutSec());
 }
 
-void submit(uint64_t jobId, uint64_t manifestGid, uint32_t appId, uint32_t depotId)
-{
-	auto completion =
-		std::make_shared<std::promise<std::optional<uint64_t>>>();
-	const auto future = completion->get_future().share();
-	const int timeoutSecs = getTimeoutSec() > 0 ? getTimeoutSec() : 12;
-	auto budget = std::make_shared<JobBudget>(
-		std::chrono::seconds(timeoutSecs));
-	uint64_t sessionEpoch = 0;
-	{
-		std::lock_guard<std::mutex> lk(g_lock);
-		if (g_pending.count(jobId))
-		{
-			g_pLog->debug("ManifestFetch: duplicate submit for jobId=%llu\n",
-			              static_cast<unsigned long long>(jobId));
-			return;
-		}
-		sessionEpoch = g_sessionEpoch.load(std::memory_order_acquire);
-		g_pending.emplace(
-			jobId, PendingRequestCode{sessionEpoch, future, budget});
-	}
-	const bool accepted = requestCodeExecutor().submit(
-		[completion, manifestGid, appId, depotId, sessionEpoch, budget]
-	{
-			std::optional<uint64_t> result;
-			try
-			{
-				result = runOnce(
-					manifestGid, appId, depotId, sessionEpoch, budget);
-			}
-			catch (...) {}
-			try { completion->set_value(result); } catch (...) {}
-		});
-	if (!accepted)
-	{
-		budget->cancel();
-		try { completion->set_value(std::nullopt); } catch (...) {}
-	}
-}
-
-std::optional<uint64_t> resolve(uint64_t jobId)
-{
-	PendingRequestCode pending{};
-	{
-		std::lock_guard<std::mutex> lk(g_lock);
-		auto it = g_pending.find(jobId);
-		if (it == g_pending.end()) return std::nullopt;
-		pending = it->second;
-	}
-	if (pending.epoch != g_sessionEpoch.load(std::memory_order_acquire))
-	{
-		pending.budget->cancel();
-		return std::nullopt;
-	}
-	const int budget = getTimeoutSec() > 0 ? getTimeoutSec() : 12;
-	if (pending.future.wait_for(std::chrono::seconds(budget)) !=
-	    std::future_status::ready)
-	{
-		pending.budget->cancel();
-		std::lock_guard<std::mutex> lk(g_lock);
-		g_pending.erase(jobId);
-		g_pLog->info("ManifestFetch: jobId=%llu timed out after %ds\n",
-		             static_cast<unsigned long long>(jobId), budget);
-		g_pLog->notifyUser(UserMsg::DownloadTimedOut);
-		return std::nullopt;
-	}
-	if (pending.epoch != g_sessionEpoch.load(std::memory_order_acquire))
-	{
-		pending.budget->cancel();
-		return std::nullopt;
-	}
-	const auto result = pending.future.get();
-	{
-		std::lock_guard<std::mutex> lk(g_lock);
-		g_pending.erase(jobId);
-	}
-	return result;
-}
-
-void discard(uint64_t jobId)
-{
-	std::lock_guard<std::mutex> lk(g_lock);
-	if (const auto it = g_pending.find(jobId); it != g_pending.end())
-	{
-		it->second.budget->cancel();
-		g_pending.erase(it);
-	}
-}
-
 void resetSessionState()
 {
 	{
-		std::lock_guard lock(g_lock);
-		{
-			std::lock_guard circuitLock(g_circuitLock);
-			g_sessionEpoch.fetch_add(1, std::memory_order_acq_rel);
-			g_requestCodeCircuit.cancelCurrentAttempt();
-		}
-		for (const auto& [job, pending] : g_pending)
-			pending.budget->cancel();
-		g_pending.clear();
-	}
-	{
-		std::lock_guard lock(g_codeLock);
-		g_codeByDepotGid.clear();
+		std::lock_guard circuitLock(g_circuitLock);
+		g_sessionEpoch.fetch_add(1, std::memory_order_acq_rel);
+		g_providerCircuit.cancelCurrentAttempt();
 	}
 	{
 		std::lock_guard lock(g_missingNotifyLock);
@@ -1357,11 +867,6 @@ bool areProvidersOffline()
 	return g_providersOffline.load();
 }
 
-bool isGidNotFound(uint64_t gid)
-{
-	return isGidNotFoundInternal(gid);
-}
-
 HttpResponse archiveRequest(const std::string& method, const std::string& url,
 	                        const std::string& body, std::size_t maxBodyBytes,
 	                        long timeoutMs,
@@ -1371,11 +876,6 @@ HttpResponse archiveRequest(const std::string& method, const std::string& url,
 		return {0, {}, true, "unsupported HTTP method"};
 	return httpGet(url, nullptr, {}, method, body, maxBodyBytes, timeoutMs,
 	               keepRunning);
-}
-
-void markGidNotFound(uint64_t gid)
-{
-	markGidNotFoundInternal(gid);
 }
 
 } // namespace ManifestFetch

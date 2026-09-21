@@ -279,65 +279,14 @@ void handleSend_GetManifestRequestCode(const uint8_t* pBody, uint32_t cbBody,
 	g_pLog->info("ManifestCode send: depot=%u gid=%llu app=%u jobid=%llu\n",
 	             depotId, static_cast<unsigned long long>(gid),
 	             appId, static_cast<unsigned long long>(jobId));
-	ManifestFetch::submit(jobId, gid, appId, depotId);
 
+	// Stage the manifest from the archive so Steam finds it on disk and skips
+	// the request-code handshake entirely. We no longer answer that handshake
+	// ourselves (the archive is the manifest source).
 	ManifestFetch::submitManifestBlob(
 		gid, appId, depotId,
 		ManifestFetch::isAnyManagedDownloadActive(appId));
 }
-
-void handleRecv_GetManifestRequestCode(const uint8_t* pHdr, uint32_t cbHdr,
-                                       const uint8_t* pBody, uint32_t cbBody)
-{
-	(void)pBody;
-	CMsgProtoBufHeader hdr;
-	if (!hdr.ParseFromArray(pHdr, cbHdr))
-	{
-		g_pLog->warn("ManifestCode recv: header parse failed\n");
-		return;
-	}
-	if (!hdr.has_jobid_target())
-	{
-		g_pLog->debug("ManifestCode recv: no jobid_target\n");
-		return;
-	}
-	const uint64_t jobId = hdr.jobid_target();
-
-	auto resolved = ManifestFetch::resolve(jobId);
-	if (!resolved)
-	{
-		g_pLog->debug("ManifestCode recv: jobid=%llu no patch (cbBody=%u eresult=%d)\n",
-		              static_cast<unsigned long long>(jobId), cbBody, hdr.eresult());
-		return;
-	}
-
-	hdr.set_eresult(static_cast<int32_t>(ERESULT_OK));
-	const std::size_t hdrSize = hdr.ByteSizeLong();
-	if (hdrSize > kMaxHdrSize || !hdr.SerializeToArray(g_RxHdr, kMaxHdrSize))
-	{
-		g_pLog->warn("ManifestCode recv: header re-serialise failed (size=%zu)\n", hdrSize);
-		return;
-	}
-	g_RxHdrLen = static_cast<uint32_t>(hdrSize);
-
-	CContentServerDirectory_GetManifestRequestCode_Response resp;
-	resp.set_manifest_request_code(*resolved);
-	const std::size_t bodySize = resp.ByteSizeLong();
-	if (bodySize > kMaxBodySize || !resp.SerializeToArray(g_RxBody, kMaxBodySize))
-	{
-		g_pLog->warn("ManifestCode recv: body re-serialise failed (size=%zu)\n", bodySize);
-		return;
-	}
-	g_RxBodyLen = static_cast<uint32_t>(bodySize);
-
-	g_PatchRxHdr = true;
-	g_PatchRx    = true;
-	g_pLog->info("ManifestCode recv: jobid=%llu injected request code (orig cbBody=%u)\n",
-	             static_cast<unsigned long long>(jobId),
-	             cbBody);
-}
-
-
 
 void dispatchSend(uint32_t eMsg,
                   const uint8_t* pBody, uint32_t cbBody,
@@ -731,15 +680,6 @@ void* hkRecvPkt(void* pManager, CRemoteClientPacket* pPacket)
 }
 
 
-namespace
-{
-	constexpr int kRewritePoolSize  = 8;
-	constexpr uint32_t kMaxRewriteSize = 4096;
-	uint8_t  g_RewritePool[kRewritePoolSize][kMaxRewriteSize];
-	int      g_RewritePoolIdx = 0;
-	std::mutex g_RewriteLock;
-}
-
 bool hkBRouteMsgToJob(void* pJobMgr, void* arg2, void* pMsg, void* pJob)
 {
 	// Reject not just null but any implausible pointer before dereferencing.
@@ -808,56 +748,11 @@ bool hkBRouteMsgToJob(void* pJobMgr, void* arg2, void* pMsg, void* pJob)
 	}
 
 	const uint32_t bodyOffset = sizeof(MsgHdr) + cbProtoHdr;
+	// Feed the donor's own outstanding request-code sends (owned depots) so it
+	// can share the minted codes. We no longer inject a code into Steam's
+	// response — manifests are staged from the archive — so the message routes
+	// through unchanged.
 	resolveDonorResponse(jobIdTarget, hdr, pBuf + bodyOffset, cbBuf - bodyOffset);
-
-	auto resolved = ManifestFetch::resolve(jobIdTarget);
-	if (!resolved)
-	{
-		g_pLog->debug(
-		    "ManifestCode recv: jobid_target=%llu no patch "
-		    "(eresult=%d cbBuf=%u)\n",
-		    static_cast<unsigned long long>(jobIdTarget),
-		    hdr.eresult(), cbBuf);
-		return Hooks::CJobMgr_BRouteMsgToJob.tramp.fn(pJobMgr, arg2, pMsg, pJob);
-	}
-
-	hdr.set_eresult(static_cast<int32_t>(ERESULT_OK));
-	hdr.clear_error_message();
-	hdr.clear_target_job_name();
-
-	CContentServerDirectory_GetManifestRequestCode_Response resp;
-	resp.set_manifest_request_code(*resolved);
-
-	const std::size_t newProtoHdrLen = hdr.ByteSizeLong();
-	const std::size_t newBodyLen     = resp.ByteSizeLong();
-	const std::size_t newTotalLen    = sizeof(MsgHdr) + newProtoHdrLen + newBodyLen;
-	if (newTotalLen > cbBuf)
-	{
-		g_pLog->warn(
-		    "ManifestCode recv: rewrite needs %zu bytes but original buf is %u; pass-through\n",
-		    newTotalLen, cbBuf);
-		return Hooks::CJobMgr_BRouteMsgToJob.tramp.fn(pJobMgr, arg2, pMsg, pJob);
-	}
-
-	auto* outHdr = reinterpret_cast<MsgHdr*>(pBuf);
-	outHdr->eMsg         = hdrPtr->eMsg;
-	outHdr->headerLength = static_cast<uint32_t>(newProtoHdrLen);
-	if (!hdr.SerializeToArray(pBuf + sizeof(MsgHdr),
-	                          static_cast<int>(newProtoHdrLen))
-	    || !resp.SerializeToArray(pBuf + sizeof(MsgHdr) + newProtoHdrLen,
-	                              static_cast<int>(newBodyLen)))
-	{
-		g_pLog->warn("ManifestCode recv: SerializeToArray failed; pass-through\n");
-		return Hooks::CJobMgr_BRouteMsgToJob.tramp.fn(pJobMgr, arg2, pMsg, pJob);
-	}
-
-	*reinterpret_cast<uint32_t*>(pInner + 0x8) = static_cast<uint32_t>(newTotalLen);
-
-	g_pLog->info(
-	    "ManifestCode recv: jobid_target=%llu injected request code (cbBuf %u -> %zu in-place)\n",
-	    static_cast<unsigned long long>(jobIdTarget),
-	    cbBuf, newTotalLen);
-
 	return Hooks::CJobMgr_BRouteMsgToJob.tramp.fn(pJobMgr, arg2, pMsg, pJob);
 }
 

@@ -18,45 +18,33 @@
 
 namespace ManifestFetch
 {
-	inline const std::vector<std::string>& defaultProviderChain()
-	{
-		static const std::vector<std::string> chain = {
-			"https://manifest.opensteamtool.com/{appid}/{depotid}/{gid}",
-		};
-		return chain;
-	}
-
-	inline std::string expandProviderTemplate(std::string_view tmpl,
-	                                          uint64_t gid,
-	                                          uint32_t appId,
-	                                          uint32_t depotId)
-	{
-		std::string out;
-		out.reserve(tmpl.size() + 32);
-		for (std::size_t i = 0; i < tmpl.size();)
-		{
-			if (tmpl[i] != '{') { out.push_back(tmpl[i++]); continue; }
-			const auto end = tmpl.find('}', i + 1);
-			if (end == std::string_view::npos) { out.push_back(tmpl[i++]); continue; }
-			const auto tag = tmpl.substr(i + 1, end - i - 1);
-			if (tag == "gid") out += std::to_string(gid);
-			else if (tag == "appid") out += std::to_string(appId);
-			else if (tag == "depotid") out += std::to_string(depotId);
-			else out.append(tmpl.substr(i, end - i + 1));
-			i = end + 1;
-		}
-		return out;
-	}
-
 	inline bool appStateIsDownloading(uint32_t state) noexcept
 	{
 		return (state & (0x100u | 0x400u)) != 0;
 	}
 
-	inline bool cachedRequestCodeIsFresh(std::int64_t nowMs,
-	                                     std::int64_t storedAtMs) noexcept
+	// Availability signal fed to the provider circuit from a luastools archive
+	// fetch. `success` means the host answered (so we are online), independent
+	// of whether it held the manifest.
+	struct ArchiveOutcome
 	{
-		return nowMs >= storedAtMs && nowMs - storedAtMs < 60000;
+		bool success;
+		bool rateLimited;
+		bool transportFailure;
+	};
+
+	// Classify a luastools archive HTTP result for the offline circuit. The
+	// archive is reachable whenever it answers at all — including a 404, which
+	// only means the manifest has not been donated yet, not that we are offline.
+	// A transport error or a 5xx means the host is unreachable; 429 is a rate
+	// limit that opens the circuit immediately.
+	inline ArchiveOutcome classifyArchiveOutcome(bool networkError,
+	                                              long httpStatus) noexcept
+	{
+		if (networkError) return {false, false, true};
+		if (httpStatus == 429) return {false, true, false};
+		if (httpStatus >= 500) return {false, false, true};
+		return {true, false, false};
 	}
 
 	// The request may carry a DLC app id while only its base AddedApp has the
@@ -86,14 +74,16 @@ namespace ManifestFetch
 		return body.size() >= 16 && body.substr(0, 4) == payload
 		       && body.substr(body.size() - 4) == eof;
 	}
-	// Pure request-code circuit policy. Time is supplied by the caller in
-	// monotonic milliseconds, keeping provider cooldown behavior deterministic
-	// in host tests. An open circuit admits exactly one REAL gid after cooldown;
-	// there is no synthetic gid=0 health probe whose 404 could look healthy.
-	class RequestCodeCircuit
+	// Pure availability circuit for the sole manifest provider (the luastools
+	// archive). Time is supplied by the caller in monotonic milliseconds,
+	// keeping cooldown behavior deterministic in host tests. An open circuit
+	// admits exactly one real probe after cooldown; recovery is proven only by
+	// a reachable response, so a rate limit or transport outage can never look
+	// healthy on its own.
+	class ProviderCircuit
 	{
 	public:
-		RequestCodeCircuit(int failureThreshold, std::int64_t cooldownMs)
+		ProviderCircuit(int failureThreshold, std::int64_t cooldownMs)
 			: m_threshold(failureThreshold > 0 ? failureThreshold : 1),
 			  m_cooldownMs(cooldownMs > 0 ? cooldownMs : 1) {}
 
@@ -185,26 +175,6 @@ namespace ManifestFetch
 		std::uint64_t m_nextToken = 0;
 	};
 
-	struct ProviderOutcome
-	{
-		bool networkError = false;
-		long httpStatus = 0;
-	};
-
-	// A gid is absent only when every provider we actually reached answered
-	// 404. A 429, transport error, server error, or invalid 200 leaves the
-	// result unknown and must not poison the session-wide not-found cache.
-	inline bool isDefinitiveNotFound(
-	    const std::vector<ProviderOutcome>& outcomes)
-	{
-		if (outcomes.empty()) return false;
-		for (const auto& outcome : outcomes)
-		{
-			if (outcome.networkError || outcome.httpStatus != 404) return false;
-		}
-		return true;
-	}
-
 	namespace detail
 	{
 		inline void promoteArchiveMissBypass(std::atomic<bool>& promoted,
@@ -284,27 +254,8 @@ namespace ManifestFetch
 		std::atomic<bool> cancelled{false};
 	};
 
-	// One CDN host fetch outcome, reduced to the two facts the auth fallback
-	// policy cares about.
-	struct CdnOutcome
-	{
-		bool networkError; // curl itself failed (status is meaningless)
-		long httpStatus;   // HTTP response code when networkError == false
-	};
-
-	// Steam authenticates depots separately through GetCDNAuthToken. A 401 can
-	// therefore happen with a still-valid manifest request code. Hand that case
-	// back to Steam's authenticated downloader instead of refreshing the code.
-	inline bool requiresSteamCdnAuth(const CdnOutcome& outcome)
-	{
-		return !outcome.networkError && outcome.httpStatus == 401;
-	}
-
 	int getTimeoutSec();
 	const char* defaultTimeoutKey();
-
-	void submit(uint64_t jobId, uint64_t manifestGid,
-	            uint32_t appId, uint32_t depotId);
 
 	void submitManifestBlob(uint64_t manifestGid,
 	                        uint32_t appId, uint32_t depotId,
@@ -330,12 +281,7 @@ namespace ManifestFetch
 	bool fetchManifestBlobSync(uint64_t manifestGid, uint32_t appId,
 	                           uint32_t depotId);
 
-	std::optional<uint64_t> resolve(uint64_t jobId);
-
-	void discard(uint64_t jobId);
 	void resetSessionState();
 
 	bool areProvidersOffline();
-	bool isGidNotFound(uint64_t gid);
-	void markGidNotFound(uint64_t gid);
 }
