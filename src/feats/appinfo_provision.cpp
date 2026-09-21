@@ -805,9 +805,11 @@ SourceResult renderAppinfoBuffer(
 	if (!body.IsMap() || body.size() == 0) return SourceResult::InvalidResponse;
 
 	// Remember whether the provider supplied any concrete content before
-	// pruning. A valid token-limited response with no depot data may benefit
-	// from a secondary provider; concrete depots that are all rejected locally
-	// will not, so that result must be terminal.
+	// pruning. This still drives the IncompleteContent vs NoUsableContent split
+	// (no depots at all vs depots rejected locally), but both are now terminal:
+	// a well-formed response with no anonymous depot data is a stable property
+	// of the app, so shouldTryProviderFallback() no longer retries it against
+	// the steamcmd mirror (which reads the same anonymous product-info).
 	bool hadConcreteContent = hasUsableContentDepot(body);
 
 	// Token-locked apps (product-info access token denied to anonymous
@@ -2523,7 +2525,13 @@ bool terminalProvisionResultKnown(uint32_t appId,
 bool noteTerminalProvisionResult(uint32_t appId, SourceResult result,
 	uint32_t changeNumber, const CachePublicationToken& publication)
 {
-	if (result != SourceResult::VirtualDlc && result != SourceResult::NoUsableContent)
+	// IncompleteContent (no depot data at all) shares the NoUsableContent
+	// persistence shape: both are "no installable content" verdicts bound to
+	// the app's change number + local-input fingerprint, so they self-invalidate
+	// when Valve publishes depots or the user supplies a depot key/manifest.
+	if (result != SourceResult::VirtualDlc &&
+	    result != SourceResult::NoUsableContent &&
+	    result != SourceResult::IncompleteContent)
 		return false;
 	ProvisionTerminal::Record record{
 		.schema = ProvisionTerminal::kSchema,
@@ -2674,14 +2682,20 @@ ProvisionOutcome provisionAppDetailed(uint32_t appId,
 				        ? "concrete depots are not usable"
 				        : cmResult == SourceResult::VirtualDlc
 				            ? "DLC has no usable content depots"
-				            : "local cache write failed");
+				            : cmResult == SourceResult::IncompleteContent
+				                ? "no depot data available anonymously"
+				                : "local cache write failed");
 				// A content verdict is a property of the app, not of this
 				// attempt: repeating it costs a CM round-trip and returns the
-				// same answer. A local write failure is NOT terminal in that
-				// sense — the next pass may well succeed — so it stays
-				// retryable.
+				// same answer. IncompleteContent (token-locked/delisted: no
+				// depot data at all) is equally stable — the steamcmd mirror
+				// reads the same anonymous product-info — so persist it too and
+				// stop re-fetching it every boot. A local write failure is NOT
+				// terminal in that sense — the next pass may well succeed — so
+				// it stays retryable.
 				if (cmResult == SourceResult::NoUsableContent ||
-				    cmResult == SourceResult::VirtualDlc)
+				    cmResult == SourceResult::VirtualDlc ||
+				    cmResult == SourceResult::IncompleteContent)
 					noteTerminalProvisionResult(appId, cmResult, cn, publication);
 				if (cmResult == SourceResult::VirtualDlc)
 					return ProvisionOutcome::NotApplicable;

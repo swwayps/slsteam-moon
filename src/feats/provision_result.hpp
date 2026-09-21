@@ -99,8 +99,15 @@ inline SourceResult classifyContentResult(bool hadConcreteContent,
 
 inline bool shouldTryProviderFallback(SourceResult result)
 {
-	return result == SourceResult::InvalidResponse
-	    || result == SourceResult::IncompleteContent;
+	// Only a malformed/unparseable primary response is worth a second provider:
+	// the secondary may return a well-formed document for the same app. A
+	// well-formed response that simply carries no depot data (IncompleteContent)
+	// is a stable property of the app under anonymous access — token-locked or
+	// delisted titles. The steamcmd.net mirror reads the same anonymous
+	// product-info and returns the same empty result, so retrying it only adds
+	// a synchronous network round-trip per app to the boot path. Treat that as
+	// terminal and persist it instead (see provisionAppDetailed).
+	return result == SourceResult::InvalidResponse;
 }
 
 } // namespace AppInfoProvision

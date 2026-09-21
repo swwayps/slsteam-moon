@@ -42,8 +42,9 @@ int main()
 	      "success does not fall back");
 	CHECK(shouldTryProviderFallback(SourceResult::InvalidResponse),
 	      "missing or malformed CM response falls back");
-	CHECK(shouldTryProviderFallback(SourceResult::IncompleteContent),
-	      "valid CM response missing depot data can fall back");
+	CHECK(!shouldTryProviderFallback(SourceResult::IncompleteContent),
+	      "valid CM response with no depot data is terminal: token-locked or "
+	      "delisted apps cannot be recovered by the anonymous steamcmd mirror");
 	CHECK(!shouldTryProviderFallback(SourceResult::NoUsableContent),
 	      "concrete depots removed as unusable are terminal");
 	CHECK(!shouldTryProviderFallback(SourceResult::VirtualDlc),
