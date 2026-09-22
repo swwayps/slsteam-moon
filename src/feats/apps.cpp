@@ -316,15 +316,26 @@ bool Apps::checkAppOwnership(uint32_t appId, CAppOwnershipInfo* pInfo)
 
 void Apps::getSubscribedApps(uint32_t* appList, size_t size, uint32_t& count)
 {
+	const auto& added = g_config.addedAppIds.get();
 	if (!size || !appList)
 	{
-		count = count + g_config.addedAppIds.get().size();
+		// Probe call: report how many extra ids we would append so Steam sizes
+		// the real buffer to fit them.
+		count = count + added.size();
 		return;
 	}
 
-	for(auto& appId : g_config.addedAppIds.get())
+	// Append our ids, but never write past the caller's buffer.  `count` still
+	// advances to the true total so Steam re-queries with a larger buffer when
+	// truncated, matching Steam's own GetSubscribedApps contract.  Writing
+	// unconditionally overflowed the buffer whenever the real subscribed set
+	// plus our ids exceeded `size` — e.g. a game added (hot-reload) between the
+	// size probe and this fill — corrupting adjacent client heap.
+	for (const auto& appId : added)
 	{
-		appList[count++] = appId;
+		if (count < size)
+			appList[count] = appId;
+		++count;
 	}
 
 	applistRequested = true;
