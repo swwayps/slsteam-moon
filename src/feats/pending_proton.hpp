@@ -43,16 +43,39 @@ inline std::set<std::string> parsePlatformOsList(std::string_view text)
 	return out;
 }
 
+// Decide whether an app with surviving content must be forced onto Proton.
+//
+// A per-depot oslist is unreliable for proving native Linux support:
+// publishers frequently mis-tag a Windows-only title's content depot with
+// "windows,linux" even though no native build exists (e.g. app 2497920 depot
+// 2497921, while common.oslist is "windows,macos").  common.oslist is the
+// app-level platform list Steam itself uses to decide native vs. Proton, so
+// it is authoritative for whether native Linux exists at all; a surviving
+// depot's linux tag is trusted only to confirm that the Linux content is
+// actually present, and stands alone only when common.oslist is absent.
+//
+// Concretely, a genuine native Linux build requires BOTH a surviving depot
+// that targets Linux AND app-level Linux support.  If either is missing the
+// app can only run through Proton.
 inline bool requiresProtonMapping(
 	std::size_t keptContentDepots,
 	const std::set<std::string>& depotOs,
 	std::string_view commonOsList)
 {
 	if (keptContentDepots == 0) return false;
-	const auto effectiveOs = depotOs.empty()
-		? parsePlatformOsList(commonOsList)
-		: depotOs;
-	return !effectiveOs.empty() && effectiveOs.count("linux") == 0;
+
+	const auto commonOs = parsePlatformOsList(commonOsList);
+
+	// No per-depot platform info: fall back to the app-level list (and when
+	// that is also absent, nothing forces Proton).
+	if (depotOs.empty())
+		return !commonOs.empty() && commonOs.count("linux") == 0;
+
+	const bool depotTargetsLinux = depotOs.count("linux") != 0;
+	const bool nativeLinuxAvailable = commonOs.empty()
+		? depotTargetsLinux
+		: (depotTargetsLinux && commonOs.count("linux") != 0);
+	return !nativeLinuxAvailable;
 }
 
 // Parse one complete proton-mappings.pending record. The file format is one

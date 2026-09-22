@@ -37,9 +37,24 @@ int main()
 	CHECK(!AppInfoProvision::requiresProtonMapping(
 	          /*keptDepots=*/0, {}, "windows"),
 	      "an app without usable content is not made installable by Proton alone");
-	CHECK(!AppInfoProvision::requiresProtonMapping(
+	CHECK(AppInfoProvision::requiresProtonMapping(
 	          /*keptDepots=*/1, {"linux"}, "windows"),
-	      "depot-specific Linux metadata takes precedence over common metadata");
+	      "app metadata that excludes Linux forces Proton even for a Linux-tagged depot");
+	// Regression: a Windows/macOS-only title whose Windows depot is mis-tagged
+	// "windows,linux" (app 2497920) must still force Proton — common.oslist is
+	// authoritative over the unreliable per-depot union.
+	CHECK(AppInfoProvision::requiresProtonMapping(
+	          /*keptDepots=*/1, {"windows", "linux", "macos"}, "windows,macos"),
+	      "mis-tagged windows,linux depot does not defeat a non-Linux app list");
+	// A genuine native Linux depot with matching app-level support is untouched.
+	CHECK(!AppInfoProvision::requiresProtonMapping(
+	          /*keptDepots=*/1, {"windows", "linux"}, "windows,macos,linux"),
+	      "native Linux depot with app-level Linux support is not forced");
+	// App declares Linux but no surviving depot provides it (linux depot dropped
+	// for a missing key): only non-Linux content installs, so force Proton.
+	CHECK(AppInfoProvision::requiresProtonMapping(
+	          /*keptDepots=*/1, {"windows"}, "windows,macos,linux"),
+	      "app-level Linux without a surviving Linux depot still forces Proton");
 	std::ifstream provisionSource("src/feats/appinfo_provision.cpp");
 	const std::string provisionText(
 		(std::istreambuf_iterator<char>(provisionSource)),
