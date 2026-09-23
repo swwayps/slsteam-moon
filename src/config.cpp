@@ -343,14 +343,39 @@ bool CConfig::init()
 		const auto steamRoot = findSteamRootForConfig();
 		if (!steamRoot.empty())
 		{
+			// Create the directory when it is missing instead of skipping the
+			// watch. inotify cannot watch a path that does not exist yet and
+			// nothing re-adds it later, so on an install where no game has been
+			// added yet the FIRST add produced no event at all and needed a Steam
+			// restart. The plugin writes its scripts here regardless, so creating
+			// it is the same state a first add would have produced.
 			const auto stplug = steamRoot + "/config/stplug-in";
-			if (std::filesystem::exists(stplug))
+			std::error_code stplugError;
+			std::filesystem::create_directories(stplug, stplugError);
+			if (!watcher->addFile(stplug.c_str()))
 			{
-				watcher->addFile(stplug.c_str());
+				// Losing THIS watch is losing hot reload for adding games. The
+				// common cause is the per-user inotify watch limit, which is a
+				// host setting the user can raise, so it must not be silent.
+				g_pLog->warn(
+				    "Config watcher: cannot watch %s (%s); adding a game will "
+				    "need a Steam restart\n",
+				    stplug.c_str(),
+				    stplugError ? stplugError.message().c_str()
+				                : "inotify_add_watch failed");
 			}
 		}
+		else
+		{
+			g_pLog->warn("Config watcher: no Steam root; adding a game will need "
+			             "a Steam restart\n");
+		}
 
-		watcher->start();
+		if (!watcher->start())
+		{
+			g_pLog->warn("Config watcher: watcher thread did not start; every "
+			             "change will need a Steam restart\n");
+		}
 	}
 
 	return true;
