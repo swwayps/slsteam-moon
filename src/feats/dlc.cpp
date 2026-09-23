@@ -11,7 +11,25 @@
 
 bool DLC::shouldUnlockDlc(uint32_t appId)
 {
-	if (!g_pClientUtils || !g_pClientUtils->getAppId())
+	// Deliberately NOT gated on IClientUtils::getAppId() being non-zero.
+	//
+	// That used to require an active app context, because upstream applied the
+	// GLOBAL AppIds blacklist to every DLC query and needed a narrower trigger
+	// than "any DLC, ever". The scope check below replaced that bound, but the
+	// app-context requirement stayed — and it is only satisfied on a game's
+	// pipe. On the Steam client's own pipe getAppId() is 0, so the library and
+	// store panels never got an answer here and client-side DLC ownership fell
+	// back entirely to Steam deriving it from the package-0 license. That
+	// derivation runs before the UI renders on a cold boot, but not for a game
+	// added while Steam is already running, so a hot-added game listed its DLC
+	// as unowned until the next restart.
+	//
+	// The remaining bounds are the ones that matter and they carry no app
+	// context: the id must be a DLC discovered from a managed base app (or
+	// declared under a managed parent's DlcData), must not be excluded, and must
+	// not already hold a native license. Ticket::recvAppTicket and
+	// Apps::shouldDisableCDKey gate on the same scope with no context check.
+	if (!g_pClientUtils)
 	{
 		return false;
 	}

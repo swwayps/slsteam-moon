@@ -187,9 +187,24 @@ int main()
 	      "an explicitly excluded managed DLC is not unlocked");
 	excludedAppIds.clear();
 
+	// The Steam client's own pipe reports no active app. Requiring one here
+	// meant the library and store panels never learned that a managed DLC is
+	// owned, so a game added while Steam was running listed its DLC as unowned
+	// until the next restart. The scope bounds below are what keep this narrow,
+	// and none of them needs an app context.
 	activeApp = 0;
+	CHECK(DLC::shouldUnlockDlc(kManagedDlc),
+	      "a managed DLC is unlocked on the client pipe, with no active app");
+	CHECK(!DLC::shouldUnlockDlc(kUnmanagedDlc),
+	      "an unmanaged DLC is still refused with no active app");
+	nativeLicenseAppIds.insert(kManagedDlc);
 	CHECK(!DLC::shouldUnlockDlc(kManagedDlc),
-	      "no DLC is unlocked outside an active app context");
+	      "a natively licensed DLC is still refused with no active app");
+	nativeLicenseAppIds.erase(kManagedDlc);
+	excludedAppIds.insert(kManagedDlc);
+	CHECK(!DLC::shouldUnlockDlc(kManagedDlc),
+	      "an excluded managed DLC is still refused with no active app");
+	excludedAppIds.clear();
 
 	activeApp = kBaseApp;
 	localUserAvailable = false;
