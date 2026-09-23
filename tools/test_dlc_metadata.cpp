@@ -140,7 +140,7 @@ int main()
 		(std::istreambuf_iterator<char>(provisionSource)),
 		std::istreambuf_iterator<char>());
 	check(provisionText.find(
-		"DlcMetadata::appendChildAppIds(metadata, authoritative)") !=
+		"DlcMetadata::appendChildAppIds(metadata, children)") !=
 			std::string::npos,
 		"validated sidecars feed child ids into the live authority set");
 	std::string encoded;
