@@ -382,6 +382,32 @@ namespace SynthMark
 		return !appManagerResolved || !fullyInstalled;
 	}
 
+	// Authority for the outgoing-PICS filter, in the fail-SAFE direction.
+	//
+	// The published authority set (AppInfoState::publishAuthoritative) is the
+	// fast path, but it is only as good as the pass that fills it: that pass
+	// takes the cache lock and re-validates each pair's SHA, and every one of
+	// its failure modes silently contributes NO ids. An app that drops out of
+	// the set loses the outgoing filter, so Steam issues its own product-info
+	// request for a title the account does not own, the access token is DENIED,
+	// and the empty response overwrites the appinfo entry we spliced. The entry
+	// survives without a `common` section, so SteamUI has no name/type for it
+	// and never renders a library tile — the app is invisible on the initial
+	// add AND on every restart, because Steam re-requests (and re-denies) the
+	// now-invalid entry on each boot.
+	//
+	// `localPairPresent` is the same fact the splice itself consumes — the
+	// on-disk `picsbuffer_<appid>` pair — and answering it needs no lock, no
+	// SHA, and no publish. Either signal means "we hold local appinfo here that
+	// an empty refresh would destroy", which is exactly what the filter guards.
+	// With no pair on disk there is nothing to protect and Steam's own fetch is
+	// the only source of metadata, so the unfiltered behavior is preserved.
+	inline bool localAppInfoAuthority(bool publishedAuthoritative,
+	                                  bool localPairPresent)
+	{
+		return publishedAuthoritative || localPairPresent;
+	}
+
 	struct QuarantineRecord
 	{
 		std::filesystem::path original;

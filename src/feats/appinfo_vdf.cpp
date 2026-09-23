@@ -1323,10 +1323,19 @@ int injectValidatedMetadataAppsGuarded(
 	AtomicFile::FileIdentity inputIdentity{};
 	if (!AtomicFile::readIdentity(path, inputIdentity)) return 0;
 
+	// One bad record must not cost every other app its DLC. Aborting the batch
+	// here discarded the whole splice for every managed base, and did it without
+	// a log line. Account for the entries that are now present instead, and let
+	// the caller compare that against what it asked for.
 	bool changed = false;
+	int accounted = 0;
 	for (const MetadataApp& app : metadataApps)
 	{
-		if (app.appid == 0) return 0;
+		if (app.appid == 0)
+		{
+			g_pLog->warn("AppInfoVdf: DLC metadata record has no appid; skipped\n");
+			continue;
+		}
 		const bool alreadyPresent = std::any_of(
 			file.apps.begin(), file.apps.end(),
 			[&app](const AppEntry& entry) { return entry.appid == app.appid; });
@@ -1335,12 +1344,19 @@ int injectValidatedMetadataAppsGuarded(
 			// Never downgrade an entry supplied by Steam (or a previous complete
 			// source) to metadata-only data: it may contain owned DLC depots,
 			// launch configuration, or tokens that this safe record strips.
+			// Deliberately skipped, so it still counts as accounted for.
+			++accounted;
 			continue;
 		}
 		bool entryChanged = false;
 		if (!mergeAppImpl(file, app.appid, app.changeNumber, app.sha,
 		                  app.wireBuffer, entryChanged, error))
-			return 0;
+		{
+			g_pLog->warn("AppInfoVdf: DLC metadata merge failed for app=%u: %s\n",
+			             app.appid, error.c_str());
+			continue;
+		}
+		++accounted;
 		changed = changed || entryChanged;
 	}
 	if (changed && !publishCheckedIfUnchanged(
@@ -1350,7 +1366,7 @@ int injectValidatedMetadataAppsGuarded(
 		             error.c_str());
 		return 0;
 	}
-	return static_cast<int>(metadataApps.size());
+	return accounted;
 }
 
 #ifdef APPINFO_VDF_TESTING

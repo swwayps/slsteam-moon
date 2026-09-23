@@ -144,6 +144,21 @@ int main()
 	CHECK(!SynthMark::installStateAllowsStrip(true, true, true, true),
 	      "fully-installed local authority is not strip-eligible");
 
+	// Authority must fail SAFE: the publish pass takes the cache lock and
+	// re-validates SHAs, and every failure mode there contributes no ids. When
+	// that happens the on-disk pair still has to keep the outgoing filter
+	// armed, otherwise Steam's denied product-info refresh clobbers the spliced
+	// entry and the app loses its `common` section (invisible in the library).
+	CHECK(SynthMark::localAppInfoAuthority(true, false),
+	      "a published authority keeps protection without touching the disk");
+	CHECK(SynthMark::localAppInfoAuthority(false, true),
+	      "an on-disk pair keeps protection when the published set misses it");
+	CHECK(!SynthMark::localAppInfoAuthority(false, false),
+	      "with no local appinfo there is nothing to protect");
+	CHECK(SynthMark::installStateAllowsStrip(
+	          SynthMark::localAppInfoAuthority(false, true), true, true, false),
+	      "an authority miss on a not-yet-installed app is still strip-eligible");
+
 	// Runtime protection must never expire into a destructive empty response.
 	// The AppInfoState skip bit prevents the updater retry loop; this outgoing
 	// filter remains the final authority boundary if Steam asks anyway.
@@ -158,6 +173,12 @@ int main()
 	CHECK(appsText.find("AppInfoState::isAuthoritative(appId)") !=
 	          std::string::npos,
 	      "outgoing PICS requests protect every locally authoritative appinfo");
+	CHECK(appsText.find("SynthMark::localAppInfoAuthority(") !=
+	          std::string::npos,
+	      "the outgoing filter falls back to the on-disk pair, never to unprotected");
+	CHECK(appsText.find("AppInfoProvision::cachePairMtimeSecs(appId) > 0") !=
+	          std::string::npos,
+	      "the fallback probes the pair without taking the cache lock");
 
 	std::ifstream picsSource("src/feats/pics.cpp");
 	const std::string picsText(
@@ -173,6 +194,32 @@ int main()
 		std::istreambuf_iterator<char>());
 	CHECK(hotReloadText.find("locallyAuthoritativeApps") != std::string::npos,
 	      "hot reload publishes normalized caches as locally authoritative");
+
+	// A hot add must not be able to withdraw protection from apps it has
+	// nothing to do with: the authority publish has to precede the live splice,
+	// so a failed transaction leaves the already-spliced entries protected.
+	std::ifstream provisionSource("src/feats/appinfo_provision.cpp");
+	const std::string provisionText(
+		(std::istreambuf_iterator<char>(provisionSource)),
+		std::istreambuf_iterator<char>());
+	const auto publishAt = provisionText.find("AppInfoState::publishAuthoritative(");
+	const auto spliceAt = provisionText.find("AppInfoVdf::injectCachedApps(");
+	CHECK(publishAt != std::string::npos && spliceAt != std::string::npos,
+	      "runtime publish still publishes authority and splices appinfo");
+	CHECK(publishAt < spliceAt,
+	      "runtime publish arms authority before attempting the live splice");
+	CHECK(provisionText.find("cacheLock.heldByAnother()") != std::string::npos,
+	      "authority defers only on real cache contention, never on a dead lock");
+
+	// The live splice is the hot-add path: an unusable lock must not abort it,
+	// because the conditional publish already guards against a competing writer.
+	std::ifstream vdfSource("src/feats/appinfo_vdf.cpp");
+	const std::string vdfText(
+		(std::istreambuf_iterator<char>(vdfSource)),
+		std::istreambuf_iterator<char>());
+	CHECK(vdfText.find("lock.heldByAnother()") != std::string::npos &&
+	          vdfText.find("cacheLock.heldByAnother()") != std::string::npos,
+	      "live splice skips on contention only, not on an untrustworthy lock");
 
 	// --- app/depot relation tracking ---------------------------------------
 

@@ -196,8 +196,14 @@ namespace
 			fullyInstalled = (g_pClientAppManager->getAppInstallState(appId) &
 			                  APPSTATE_FULLY_INSTALLED) != 0;
 		}
-		return SynthMark::installStateAllowsStrip(
+		// cachePairMtimeSecs() is a two-stat probe of the on-disk pair; it takes
+		// no lock and cannot be withdrawn by a validation miss, so it keeps the
+		// filter armed when the published set is incomplete.
+		const bool locallyAuthoritative = SynthMark::localAppInfoAuthority(
 		    AppInfoState::isAuthoritative(appId),
+		    AppInfoProvision::cachePairMtimeSecs(appId) > 0);
+		return SynthMark::installStateAllowsStrip(
+		    locallyAuthoritative,
 		    g_config.isAddedAppId(appId), appManagerResolved, fullyInstalled);
 	}
 

@@ -3528,6 +3528,19 @@ std::vector<std::uint32_t> publishRuntimeAppInfo(
 
 	const std::unordered_set<std::uint32_t> scoped(
 		selected.begin(), selected.end());
+
+	// Publish the full managed authority set BEFORE the splice, matching the
+	// ordering HotReload::publishAppInfoScopes already uses. The set arms the
+	// outgoing-PICS filter that keeps Steam from replacing a spliced record with
+	// an empty, token-denied refresh, and it protects every managed app that
+	// already has an appinfo entry on disk — none of which depends on this
+	// splice succeeding. Publishing after the splice meant one failed live
+	// transaction withdrew that protection from unrelated apps, so Steam wiped
+	// their `common` section and the library stopped rendering them at all.
+	const auto managed = g_config.managedAppIds.get();
+	AppInfoState::publishAuthoritative(locallyAuthoritativeApps(
+		managed, g_config.addedAppIds.get()));
+
 	if (AppInfoVdf::injectCachedApps(appinfoVdfPath, scoped) == 0)
 	{
 		g_pLog->warn(
@@ -3536,14 +3549,6 @@ std::vector<std::uint32_t> publishRuntimeAppInfo(
 			selected.size());
 		return {};
 	}
-
-	// Publish the full managed authority set before Steam reads the just-spliced
-	// record so the derived CAppData skip byte persists. This includes complete
-	// provider-normalized entries: Steam may deny their account access token
-	// even though the anonymous CM source returned complete public metadata.
-	const auto managed = g_config.managedAppIds.get();
-	AppInfoState::publishAuthoritative(locallyAuthoritativeApps(
-		managed, g_config.addedAppIds.get()));
 
 	const AppInfoReload::Result reloaded =
 		AppInfoState::reloadFromDisk(selected);

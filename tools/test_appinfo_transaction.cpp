@@ -402,5 +402,39 @@ int main()
 	assert(readAll(racedBootAppinfo) == "steam writer");
 	assert(!hasScopedValidationArtifact(root + "/appcache"));
 
+	// One unusable DLC metadata record must not cost every other app its DLC.
+	// This used to abort the whole batch and return 0 without a log line.
+	const auto partialMetadataAppinfo = root + "/appcache/partial-metadata.vdf";
+	createEmptyAppInfo(partialMetadataAppinfo);
+	{
+		const std::string goodWire = wireFor(515151);
+		const auto emptyBaseline = readAll(partialMetadataAppinfo);
+		const std::vector<AppInfoVdf::MetadataApp> mixed = {
+			{0, 11, sha1Of(goodWire), goodWire},        // no appid: skipped
+			{3001, 12, std::string(4, 'x'), goodWire},  // sha not 20 bytes: skipped
+			{3002, 13, sha1Of(goodWire), goodWire},     // usable
+		};
+		// Only the usable record is accounted for, and it really landed.
+		assert(AppInfoVdf::injectValidatedMetadataApps(
+			partialMetadataAppinfo, mixed) == 1);
+		const auto afterPartial = readAll(partialMetadataAppinfo);
+		assert(afterPartial != emptyBaseline);
+		// Replaying the same batch is idempotent: 3002 now counts as already
+		// present and the unusable records are still skipped, not retried into
+		// the file.
+		assert(AppInfoVdf::injectValidatedMetadataApps(
+			partialMetadataAppinfo, mixed) == 1);
+		assert(readAll(partialMetadataAppinfo) == afterPartial);
+
+		// The rejected record on its own changes nothing and reports nothing
+		// accounted, so a caller can still tell a fully failed batch apart.
+		const auto rejectedOnlyAppinfo = root + "/appcache/rejected-only.vdf";
+		createEmptyAppInfo(rejectedOnlyAppinfo);
+		const auto rejectedBaseline = readAll(rejectedOnlyAppinfo);
+		assert(AppInfoVdf::injectValidatedMetadataApps(
+			rejectedOnlyAppinfo,
+			{{3001, 12, std::string(4, 'x'), goodWire}}) == 0);
+		assert(readAll(rejectedOnlyAppinfo) == rejectedBaseline);
+	}
 	return 0;
 }
