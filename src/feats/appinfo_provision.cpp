@@ -2246,8 +2246,12 @@ AuthContribution computeAuthContribution(
 	}
 	else if (managed)
 	{
+		// Only real contention is a reason to defer: reading the pair under an
+		// unusable lock path is still a read, and treating "no trustworthy lock
+		// here" as "not authoritative" silently disarmed the outgoing-PICS
+		// filter for the app on every publish.
 		ProcessLock::FileLock cacheLock(cacheLockPath(), false);
-		if (!cacheLock.acquired())
+		if (cacheLock.heldByAnother())
 		{
 			out.memoizable = false;
 			return out;
@@ -3602,7 +3606,10 @@ bool acquireDlcMetadataLiveCommitGuard(void* opaque) noexcept
 		auto& guard = *static_cast<DlcMetadataLiveCommitGuard*>(opaque);
 		guard.publicationLock = std::unique_lock<std::mutex>(g_cachePublicationMu);
 		guard.cacheLock.emplace(cacheLockPath(), false);
-		if (!guard.cacheLock->acquired()) return false;
+		// Refuse the commit only when another owner really holds the cache. An
+		// unusable lock path is not evidence of a competing writer, and treating
+		// it as one abandoned the live DLC splice on every hot add.
+		if (guard.cacheLock->heldByAnother()) return false;
 		const auto managed = g_config.managedAppIds.get();
 		for (const DlcMetadataWork* item : guard.work)
 		{

@@ -14,6 +14,7 @@
 #include <cassert>
 #include <cstdint>
 #include <ctime>
+#include <fcntl.h>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
@@ -369,5 +370,37 @@ int main()
 	AppInfoProvision::testCacheMarkerAllowsRead = false;
 	assert(AppInfoVdf::injectAllCached(invalidatedAppinfo) == 0);
 	AppInfoProvision::testCacheMarkerAllowsRead = true;
+
+	// The boot splice is what makes a managed app visible on the next start, so
+	// a lock path we cannot vouch for must not cost the whole pass. A
+	// group/other-accessible lock file is not a private file of ours, carries no
+	// ownership information, and therefore is not evidence of a competing
+	// writer: the splice has to proceed.
+	const auto untrustedLockAppinfo = root + "/appcache/untrusted-lock.vdf";
+	createEmptyAppInfo(untrustedLockAppinfo);
+	{
+		const auto lockPath = untrustedLockAppinfo + ".slssteam.lock";
+		const int lockFd = open(lockPath.c_str(), O_CREAT | O_RDWR, 0666);
+		assert(lockFd >= 0);
+		close(lockFd);
+		assert(AppInfoVdf::injectAllCached(untrustedLockAppinfo) == 2);
+		std::filesystem::remove(lockPath);
+	}
+
+	// Proceeding without a trusted lock is only safe because the boot splice
+	// publishes conditionally now: a writer that wins the identity race keeps
+	// its file, and we report failure instead of clobbering it.
+	const auto racedBootAppinfo = root + "/appcache/raced-boot.vdf";
+	createEmptyAppInfo(racedBootAppinfo);
+#ifdef APPINFO_VDF_TESTING
+	AppInfoVdf::setBeforeScopedPublishHook([&] {
+		std::string raceError;
+		assert(AtomicFile::write(racedBootAppinfo, "steam writer", raceError));
+	});
+#endif
+	assert(AppInfoVdf::injectAllCached(racedBootAppinfo) == 0);
+	assert(readAll(racedBootAppinfo) == "steam writer");
+	assert(!hasScopedValidationArtifact(root + "/appcache"));
+
 	return 0;
 }

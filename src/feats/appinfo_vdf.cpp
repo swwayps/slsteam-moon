@@ -1079,8 +1079,13 @@ int injectAllCached(const std::string& path)
 	const auto cacheDir = g_config.getDir() + "/cache";
 	if (!std::filesystem::exists(cacheDir)) return 0;
 
+	// Contention is the only reason to stand down. This is the boot splice: it
+	// is the single thing that makes a managed app visible on the next start, so
+	// an untrustworthy lock path must not silently cost the whole pass. The
+	// publish below is conditional on the file identity captured after the read,
+	// so proceeding without a trusted lock cannot clobber a competing writer.
 	ProcessLock::FileLock lock(appInfoLockPath(path));
-	if (!lock.acquired())
+	if (lock.heldByAnother())
 	{
 		g_pLog->info("AppInfoVdf: another writer owns %s; skipping cache splice\n",
 		              appInfoLockPath(path).c_str());
@@ -1088,7 +1093,7 @@ int injectAllCached(const std::string& path)
 	}
 
 	ProcessLock::FileLock cacheLock(AppInfoProvision::cacheLockPath(), false);
-	if (!cacheLock.acquired())
+	if (cacheLock.heldByAnother())
 	{
 		g_pLog->info("AppInfoVdf: unable to lock provision cache; skipping cache splice\n");
 		return 0;
@@ -1100,6 +1105,13 @@ int injectAllCached(const std::string& path)
 	{
 		g_pLog->warn("AppInfoVdf: refusing to modify %s: %s\n",
 		             path.c_str(), readError.c_str());
+		return 0;
+	}
+	AtomicFile::FileIdentity inputIdentity{};
+	if (!AtomicFile::readIdentity(path, inputIdentity))
+	{
+		g_pLog->warn("AppInfoVdf: cannot identify %s for the cache splice\n",
+		             path.c_str());
 		return 0;
 	}
 
@@ -1175,8 +1187,12 @@ int injectAllCached(const std::string& path)
 	}
 	if (changed)
 	{
+		// Keep the rollback snapshot readWithRecovery() restores from, then
+		// publish conditionally. The unconditional write this replaced was the
+		// reason the lock had to be treated as mandatory here.
 		std::string writeError;
-		if (!publishChecked(path, file, writeError))
+		if (!snapshotBeforeWrite(path, writeError) ||
+			!publishCheckedIfUnchanged(path, inputIdentity, file, writeError))
 		{
 			g_pLog->warn("AppInfoVdf: transaction aborted after %d entries: %s\n",
 			             injected, writeError.c_str());
@@ -1195,16 +1211,41 @@ int injectCachedApps(const std::string& path,
 {
 	if (requestedApps.empty()) return 0;
 
+	// Skip only for real contention. An unusable lock path used to abort the
+	// whole live splice silently, which left the hot-added app without an
+	// appinfo entry until the next Steam restart. The write below is a
+	// compare-and-swap on the file identity, so proceeding without a trusted
+	// lock cannot corrupt the file: a competing writer changes the identity and
+	// the publish aborts cleanly instead.
 	ProcessLock::FileLock lock(appInfoLockPath(path));
-	if (!lock.acquired()) return 0;
+	if (lock.heldByAnother())
+	{
+		g_pLog->info("AppInfoVdf: another writer owns %s; skipping live splice\n",
+		             appInfoLockPath(path).c_str());
+		return 0;
+	}
 	ProcessLock::FileLock cacheLock(AppInfoProvision::cacheLockPath(), false);
-	if (!cacheLock.acquired()) return 0;
+	if (cacheLock.heldByAnother())
+	{
+		g_pLog->info("AppInfoVdf: provision cache is busy; skipping live splice\n");
+		return 0;
+	}
 
 	AppInfoFile file;
 	std::string readError;
-	if (!readWithRecovery(path, file, readError)) return 0;
+	if (!readWithRecovery(path, file, readError))
+	{
+		g_pLog->warn("AppInfoVdf: cannot read %s for the live splice: %s\n",
+		             path.c_str(), readError.c_str());
+		return 0;
+	}
 	AtomicFile::FileIdentity inputIdentity{};
-	if (!AtomicFile::readIdentity(path, inputIdentity)) return 0;
+	if (!AtomicFile::readIdentity(path, inputIdentity))
+	{
+		g_pLog->warn("AppInfoVdf: cannot identify %s for the live splice\n",
+		             path.c_str());
+		return 0;
+	}
 
 	const auto managed = g_config.managedAppIds.get();
 	const auto cacheDir = g_config.getDir() + "/cache";
@@ -1217,11 +1258,20 @@ int injectCachedApps(const std::string& path,
 			std::to_string(appId) + ".yaml";
 		CachedBuffer cb;
 		std::string err;
-		if (!loadCachedBuffer(metaPath, appId, cb, err)) continue;
+		if (!loadCachedBuffer(metaPath, appId, cb, err))
+		{
+			g_pLog->warn("AppInfoVdf: live splice rejected cache pair for "
+			             "app=%u: %s\n", appId, err.c_str());
+			continue;
+		}
 		bool entryChanged = false;
 		if (!mergeAppImpl(file, cb.appid, cb.change_number, cb.sha, cb.buffer,
 		                  entryChanged, err))
+		{
+			g_pLog->warn("AppInfoVdf: live splice could not merge app=%u: %s\n",
+			             appId, err.c_str());
 			continue;
+		}
 		++injected;
 		changed = changed || entryChanged;
 	}
@@ -1255,8 +1305,16 @@ int injectValidatedMetadataAppsGuarded(
 {
 	if (metadataApps.empty()) return 0;
 
+	// Contention is the only reason to stand down; the publish below is a
+	// compare-and-swap on the file identity, so an untrustworthy lock path does
+	// not have to cost us the transaction.
 	ProcessLock::FileLock lock(appInfoLockPath(path));
-	if (!lock.acquired()) return 0;
+	if (lock.heldByAnother())
+	{
+		g_pLog->info("AppInfoVdf: another writer owns %s; skipping DLC metadata "
+		             "splice\n", appInfoLockPath(path).c_str());
+		return 0;
+	}
 	if (guard != nullptr && !guard(context)) return 0;
 
 	AppInfoFile file;

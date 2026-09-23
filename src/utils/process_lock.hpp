@@ -89,6 +89,11 @@ public:
 	//                     regular file of ours), so the caller MUST proceed.
 	// Skipping in the second case is what turned a lock file into an off switch.
 	bool usable() const { return usable_; }
+	// The single question a caller of a guarded section should ask. Testing
+	// `!acquired()` conflates the two cases above, and answering "skip" for the
+	// second one is what makes an unusable lock path a silent off switch for
+	// whatever the lock guards.
+	bool heldByAnother() const { return !acquired() && usable(); }
 	int fd() const { return fd_; }
 	const std::string& path() const { return path_; }
 
