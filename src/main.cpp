@@ -343,7 +343,19 @@ static void setup()
 		AppInfoProvision::flushPendingProtonMappings();
 
 		const auto candidate = AppInfoVdf::findExistingPath();
-		if (!candidate.empty())
+		if (candidate.empty())
+		{
+			// Provisioning, the appinfo splice and the DLC metadata splice all
+			// live inside this block, so an undiscoverable appinfo.vdf silently
+			// skipped every step that makes a managed app visible. Steam has not
+			// been bootstrapped (no appcache yet) or its root is not one of the
+			// supported layouts; either way the user needs to know why nothing
+			// happened.
+			g_pLog->warn(
+			    "AppInfoProvision: no Steam appinfo cache found; managed games "
+			    "cannot be prepared this boot (open Steam once to create it)\n");
+		}
+		else
 		{
 			const auto preinitAction =
 			    AppInfoProvision::preinitProvisionAction(asyncProvision);

@@ -4033,9 +4033,14 @@ DlcInjectionIds collectDlcAppIdsForAddedApps(bool* complete)
 		std::string wire;
 		if (!readValidatedCacheBufferLocked(appId, wire, validationDiag))
 		{
+			// Deliberately fail closed for the whole snapshot: the collected set
+			// REPLACES package 0's extra ids, so publishing it without this app
+			// would revoke DLC that is already injected. But one app blocking DLC
+			// for the entire fleet has to be visible, not a debug line.
 			if (g_pLog)
-				g_pLog->debug(
-				    "AppInfoProvision: DLC snapshot rejected cache pair for app=%u: %s\n",
+				g_pLog->info(
+				    "AppInfoProvision: DLC snapshot rejected cache pair for app=%u "
+				    "(%s); DLC injection stays on its previous set this pass\n",
 				    appId, validationDiag.c_str());
 			return {};
 		}
