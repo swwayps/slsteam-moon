@@ -12,11 +12,6 @@ namespace Steam
 	Plat_Realloc_t Plat_Realloc;
 }
 
-void Steam::free(void* mem)
-{
-	Plat_Free(mem);
-}
-
 bool Steam::init()
 {
 	void* tier0 = dlopen("libtier0_s.so", RTLD_NOW);

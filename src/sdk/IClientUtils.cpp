@@ -1,10 +1,11 @@
 #include "IClientUtils.hpp"
 
+#include "steam.hpp"
+
 #include "../hooks.hpp"
 #include "../patterns.hpp"
 
 #include "libmem/libmem.h"
-#include "steam.hpp"
 
 
 HSteamPipe IClientUtils::getCurrentSteamPipe()

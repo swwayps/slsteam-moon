@@ -1,6 +1,7 @@
 #pragma once
 
 #include "protobufs/enums.pb.h"
+
 #include "steam.hpp"
 
 #include <cstdint>

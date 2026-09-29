@@ -10,6 +10,7 @@
 #include "../feats/compatlive.hpp"
 
 #include "libmem/libmem.h"
+#include "steam.hpp"
 
 #include <array>
 
