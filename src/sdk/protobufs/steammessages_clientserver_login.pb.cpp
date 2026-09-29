@@ -118,6 +118,7 @@ constexpr CMsgClientLogon::CMsgClientLogon(
   , launcher_type_(0u)
   , ui_mode_(0u)
   , chat_mode_(0u)
+  , gaming_device_type_(0u)
   , rtime32_account_creation_(0u)
   , should_remember_password_(false)
   , was_converted_deprecated_msg_(false)
@@ -133,11 +134,7 @@ constexpr CMsgClientLogon::CMsgClientLogon(
   , supports_rate_limit_response_(false)
   , disable_partner_autogrants_(false)
   , is_chrome_os_(false)
-  , priority_reason_(0)
-  , is_steam_box_deprecated_(false)
-  , is_steam_deck_deprecated_(false)
-  , is_tesla_deprecated_(false)
-  , gaming_device_type_(0u){}
+  , priority_reason_(0){}
 struct CMsgClientLogonDefaultTypeInternal {
   constexpr CMsgClientLogonDefaultTypeInternal()
     : _instance(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized{}) {}
@@ -1435,7 +1432,7 @@ class CMsgClientLogon::_Internal {
     (*has_bits)[0] |= 1073741824u;
   }
   static void set_has_should_remember_password(HasBits* has_bits) {
-    (*has_bits)[1] |= 128u;
+    (*has_bits)[1] |= 256u;
   }
   static void set_has_wine_version(HasBits* has_bits) {
     (*has_bits)[0] |= 2u;
@@ -1479,7 +1476,7 @@ class CMsgClientLogon::_Internal {
     (*has_bits)[0] |= 16u;
   }
   static void set_has_rtime32_account_creation(HasBits* has_bits) {
-    (*has_bits)[1] |= 64u;
+    (*has_bits)[1] |= 128u;
   }
   static void set_has_account_name(HasBits* has_bits) {
     (*has_bits)[0] |= 32u;
@@ -1494,16 +1491,16 @@ class CMsgClientLogon::_Internal {
     (*has_bits)[0] |= 256u;
   }
   static void set_has_was_converted_deprecated_msg(HasBits* has_bits) {
-    (*has_bits)[1] |= 256u;
+    (*has_bits)[1] |= 512u;
   }
   static void set_has_anon_user_target_account_name(HasBits* has_bits) {
     (*has_bits)[0] |= 512u;
   }
   static void set_has_resolved_user_steam_id(HasBits* has_bits) {
-    (*has_bits)[1] |= 2048u;
+    (*has_bits)[1] |= 4096u;
   }
   static void set_has_eresult_sentryfile(HasBits* has_bits) {
-    (*has_bits)[1] |= 4096u;
+    (*has_bits)[1] |= 8192u;
   }
   static void set_has_sha_sentryfile(HasBits* has_bits) {
     (*has_bits)[0] |= 1024u;
@@ -1512,16 +1509,16 @@ class CMsgClientLogon::_Internal {
     (*has_bits)[0] |= 2048u;
   }
   static void set_has_otp_type(HasBits* has_bits) {
-    (*has_bits)[1] |= 8192u;
+    (*has_bits)[1] |= 16384u;
   }
   static void set_has_otp_value(HasBits* has_bits) {
-    (*has_bits)[1] |= 16384u;
+    (*has_bits)[1] |= 32768u;
   }
   static void set_has_otp_identifier(HasBits* has_bits) {
     (*has_bits)[0] |= 4096u;
   }
   static void set_has_steam2_ticket_request(HasBits* has_bits) {
-    (*has_bits)[1] |= 512u;
+    (*has_bits)[1] |= 1024u;
   }
   static void set_has_sony_psn_ticket(HasBits* has_bits) {
     (*has_bits)[0] |= 8192u;
@@ -1530,16 +1527,16 @@ class CMsgClientLogon::_Internal {
     (*has_bits)[0] |= 16384u;
   }
   static void set_has_create_new_psn_linked_account_if_needed(HasBits* has_bits) {
-    (*has_bits)[1] |= 1024u;
+    (*has_bits)[1] |= 2048u;
   }
   static void set_has_sony_psn_name(HasBits* has_bits) {
     (*has_bits)[0] |= 32768u;
   }
   static void set_has_game_server_app_id(HasBits* has_bits) {
-    (*has_bits)[1] |= 32768u;
+    (*has_bits)[1] |= 65536u;
   }
   static void set_has_steamguard_dont_remember_computer(HasBits* has_bits) {
-    (*has_bits)[1] |= 131072u;
+    (*has_bits)[1] |= 262144u;
   }
   static void set_has_machine_name(HasBits* has_bits) {
     (*has_bits)[0] |= 65536u;
@@ -1551,44 +1548,35 @@ class CMsgClientLogon::_Internal {
     (*has_bits)[0] |= 262144u;
   }
   static void set_has_client_instance_id(HasBits* has_bits) {
-    (*has_bits)[1] |= 65536u;
+    (*has_bits)[1] |= 131072u;
   }
   static void set_has_two_factor_code(HasBits* has_bits) {
     (*has_bits)[0] |= 524288u;
   }
   static void set_has_supports_rate_limit_response(HasBits* has_bits) {
-    (*has_bits)[1] |= 262144u;
+    (*has_bits)[1] |= 524288u;
   }
   static void set_has_web_logon_nonce(HasBits* has_bits) {
     (*has_bits)[0] |= 1048576u;
   }
   static void set_has_priority_reason(HasBits* has_bits) {
-    (*has_bits)[1] |= 2097152u;
+    (*has_bits)[1] |= 4194304u;
   }
   static const ::CMsgClientSecret& embedded_client_secret(const CMsgClientLogon* msg);
   static void set_has_embedded_client_secret(HasBits* has_bits) {
     (*has_bits)[0] |= 16777216u;
   }
   static void set_has_disable_partner_autogrants(HasBits* has_bits) {
-    (*has_bits)[1] |= 524288u;
+    (*has_bits)[1] |= 1048576u;
   }
   static void set_has_access_token(HasBits* has_bits) {
     (*has_bits)[0] |= 2097152u;
   }
   static void set_has_is_chrome_os(HasBits* has_bits) {
-    (*has_bits)[1] |= 1048576u;
-  }
-  static void set_has_is_steam_box_deprecated(HasBits* has_bits) {
-    (*has_bits)[1] |= 4194304u;
-  }
-  static void set_has_is_steam_deck_deprecated(HasBits* has_bits) {
-    (*has_bits)[1] |= 8388608u;
-  }
-  static void set_has_is_tesla_deprecated(HasBits* has_bits) {
-    (*has_bits)[1] |= 16777216u;
+    (*has_bits)[1] |= 2097152u;
   }
   static void set_has_gaming_device_type(HasBits* has_bits) {
-    (*has_bits)[1] |= 33554432u;
+    (*has_bits)[1] |= 64u;
   }
 };
 
@@ -1748,8 +1736,8 @@ CMsgClientLogon::CMsgClientLogon(const CMsgClientLogon& from)
     embedded_client_secret_ = nullptr;
   }
   ::memcpy(&protocol_version_, &from.protocol_version_,
-    static_cast<size_t>(reinterpret_cast<char*>(&gaming_device_type_) -
-    reinterpret_cast<char*>(&protocol_version_)) + sizeof(gaming_device_type_));
+    static_cast<size_t>(reinterpret_cast<char*>(&priority_reason_) -
+    reinterpret_cast<char*>(&protocol_version_)) + sizeof(priority_reason_));
   // @@protoc_insertion_point(copy_constructor:CMsgClientLogon)
 }
 
@@ -1778,8 +1766,8 @@ web_logon_nonce_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptySt
 access_token_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
 ::memset(reinterpret_cast<char*>(this) + static_cast<size_t>(
     reinterpret_cast<char*>(&obfuscated_private_ip_) - reinterpret_cast<char*>(this)),
-    0, static_cast<size_t>(reinterpret_cast<char*>(&gaming_device_type_) -
-    reinterpret_cast<char*>(&obfuscated_private_ip_)) + sizeof(gaming_device_type_));
+    0, static_cast<size_t>(reinterpret_cast<char*>(&priority_reason_) -
+    reinterpret_cast<char*>(&obfuscated_private_ip_)) + sizeof(priority_reason_));
 }
 
 CMsgClientLogon::~CMsgClientLogon() {
@@ -1926,23 +1914,18 @@ void CMsgClientLogon::Clear() {
   cached_has_bits = _has_bits_[1];
   if (cached_has_bits & 0x000000ffu) {
     ::memset(&deprecated_public_ip_, 0, static_cast<size_t>(
-        reinterpret_cast<char*>(&should_remember_password_) -
-        reinterpret_cast<char*>(&deprecated_public_ip_)) + sizeof(should_remember_password_));
+        reinterpret_cast<char*>(&rtime32_account_creation_) -
+        reinterpret_cast<char*>(&deprecated_public_ip_)) + sizeof(rtime32_account_creation_));
   }
   if (cached_has_bits & 0x0000ff00u) {
-    ::memset(&was_converted_deprecated_msg_, 0, static_cast<size_t>(
-        reinterpret_cast<char*>(&game_server_app_id_) -
-        reinterpret_cast<char*>(&was_converted_deprecated_msg_)) + sizeof(game_server_app_id_));
+    ::memset(&should_remember_password_, 0, static_cast<size_t>(
+        reinterpret_cast<char*>(&otp_value_) -
+        reinterpret_cast<char*>(&should_remember_password_)) + sizeof(otp_value_));
   }
-  if (cached_has_bits & 0x00ff0000u) {
-    ::memset(&client_instance_id_, 0, static_cast<size_t>(
-        reinterpret_cast<char*>(&is_steam_deck_deprecated_) -
-        reinterpret_cast<char*>(&client_instance_id_)) + sizeof(is_steam_deck_deprecated_));
-  }
-  if (cached_has_bits & 0x03000000u) {
-    ::memset(&is_tesla_deprecated_, 0, static_cast<size_t>(
-        reinterpret_cast<char*>(&gaming_device_type_) -
-        reinterpret_cast<char*>(&is_tesla_deprecated_)) + sizeof(gaming_device_type_));
+  if (cached_has_bits & 0x007f0000u) {
+    ::memset(&game_server_app_id_, 0, static_cast<size_t>(
+        reinterpret_cast<char*>(&priority_reason_) -
+        reinterpret_cast<char*>(&game_server_app_id_)) + sizeof(priority_reason_));
   }
   _has_bits_.Clear();
   _internal_metadata_.Clear<std::string>();
@@ -2313,14 +2296,6 @@ const char* CMsgClientLogon::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPAC
           CHK_(ptr);
         } else goto handle_unusual;
         continue;
-      // optional bool is_steam_box_deprecated = 99;
-      case 99:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 24)) {
-          _Internal::set_has_is_steam_box_deprecated(&_has_bits_);
-          is_steam_box_deprecated_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
-          CHK_(ptr);
-        } else goto handle_unusual;
-        continue;
       // optional uint64 client_instance_id = 100;
       case 100:
         if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 32)) {
@@ -2376,14 +2351,6 @@ const char* CMsgClientLogon::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPAC
           CHK_(ptr);
         } else goto handle_unusual;
         continue;
-      // optional bool is_steam_deck_deprecated = 107;
-      case 107:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 88)) {
-          _Internal::set_has_is_steam_deck_deprecated(&_has_bits_);
-          is_steam_deck_deprecated_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
-          CHK_(ptr);
-        } else goto handle_unusual;
-        continue;
       // optional string access_token = 108;
       case 108:
         if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 98)) {
@@ -2397,14 +2364,6 @@ const char* CMsgClientLogon::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPAC
         if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 104)) {
           _Internal::set_has_is_chrome_os(&_has_bits_);
           is_chrome_os_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
-          CHK_(ptr);
-        } else goto handle_unusual;
-        continue;
-      // optional bool is_tesla_deprecated = 110;
-      case 110:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 112)) {
-          _Internal::set_has_is_tesla_deprecated(&_has_bits_);
-          is_tesla_deprecated_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
           CHK_(ptr);
         } else goto handle_unusual;
         continue;
@@ -2489,7 +2448,7 @@ failure:
 
   cached_has_bits = _has_bits_[1];
   // optional bool should_remember_password = 8 [default = false];
-  if (cached_has_bits & 0x00000080u) {
+  if (cached_has_bits & 0x00000100u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(8, this->_internal_should_remember_password(), target);
   }
@@ -2583,7 +2542,7 @@ failure:
 
   cached_has_bits = _has_bits_[1];
   // optional fixed32 rtime32_account_creation = 43;
-  if (cached_has_bits & 0x00000040u) {
+  if (cached_has_bits & 0x00000080u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteFixed32ToArray(43, this->_internal_rtime32_account_creation(), target);
   }
@@ -2615,7 +2574,7 @@ failure:
 
   cached_has_bits = _has_bits_[1];
   // optional bool was_converted_deprecated_msg = 70 [default = false];
-  if (cached_has_bits & 0x00000100u) {
+  if (cached_has_bits & 0x00000200u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(70, this->_internal_was_converted_deprecated_msg(), target);
   }
@@ -2629,13 +2588,13 @@ failure:
 
   cached_has_bits = _has_bits_[1];
   // optional fixed64 resolved_user_steam_id = 81;
-  if (cached_has_bits & 0x00000800u) {
+  if (cached_has_bits & 0x00001000u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteFixed64ToArray(81, this->_internal_resolved_user_steam_id(), target);
   }
 
   // optional int32 eresult_sentryfile = 82;
-  if (cached_has_bits & 0x00001000u) {
+  if (cached_has_bits & 0x00002000u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteInt32ToArray(82, this->_internal_eresult_sentryfile(), target);
   }
@@ -2655,13 +2614,13 @@ failure:
 
   cached_has_bits = _has_bits_[1];
   // optional int32 otp_type = 85;
-  if (cached_has_bits & 0x00002000u) {
+  if (cached_has_bits & 0x00004000u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteInt32ToArray(85, this->_internal_otp_type(), target);
   }
 
   // optional uint32 otp_value = 86;
-  if (cached_has_bits & 0x00004000u) {
+  if (cached_has_bits & 0x00008000u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteUInt32ToArray(86, this->_internal_otp_value(), target);
   }
@@ -2675,7 +2634,7 @@ failure:
 
   cached_has_bits = _has_bits_[1];
   // optional bool steam2_ticket_request = 88;
-  if (cached_has_bits & 0x00000200u) {
+  if (cached_has_bits & 0x00000400u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(88, this->_internal_steam2_ticket_request(), target);
   }
@@ -2695,7 +2654,7 @@ failure:
 
   cached_has_bits = _has_bits_[1];
   // optional bool create_new_psn_linked_account_if_needed = 92 [default = false];
-  if (cached_has_bits & 0x00000400u) {
+  if (cached_has_bits & 0x00000800u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(92, this->_internal_create_new_psn_linked_account_if_needed(), target);
   }
@@ -2709,13 +2668,13 @@ failure:
 
   cached_has_bits = _has_bits_[1];
   // optional int32 game_server_app_id = 94;
-  if (cached_has_bits & 0x00008000u) {
+  if (cached_has_bits & 0x00010000u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteInt32ToArray(94, this->_internal_game_server_app_id(), target);
   }
 
   // optional bool steamguard_dont_remember_computer = 95;
-  if (cached_has_bits & 0x00020000u) {
+  if (cached_has_bits & 0x00040000u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(95, this->_internal_steamguard_dont_remember_computer(), target);
   }
@@ -2740,14 +2699,8 @@ failure:
   }
 
   cached_has_bits = _has_bits_[1];
-  // optional bool is_steam_box_deprecated = 99;
-  if (cached_has_bits & 0x00400000u) {
-    target = stream->EnsureSpace(target);
-    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(99, this->_internal_is_steam_box_deprecated(), target);
-  }
-
   // optional uint64 client_instance_id = 100;
-  if (cached_has_bits & 0x00010000u) {
+  if (cached_has_bits & 0x00020000u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteUInt64ToArray(100, this->_internal_client_instance_id(), target);
   }
@@ -2761,7 +2714,7 @@ failure:
 
   cached_has_bits = _has_bits_[1];
   // optional bool supports_rate_limit_response = 102;
-  if (cached_has_bits & 0x00040000u) {
+  if (cached_has_bits & 0x00080000u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(102, this->_internal_supports_rate_limit_response(), target);
   }
@@ -2775,7 +2728,7 @@ failure:
 
   cached_has_bits = _has_bits_[1];
   // optional int32 priority_reason = 104;
-  if (cached_has_bits & 0x00200000u) {
+  if (cached_has_bits & 0x00400000u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteInt32ToArray(104, this->_internal_priority_reason(), target);
   }
@@ -2791,15 +2744,9 @@ failure:
 
   cached_has_bits = _has_bits_[1];
   // optional bool disable_partner_autogrants = 106;
-  if (cached_has_bits & 0x00080000u) {
+  if (cached_has_bits & 0x00100000u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(106, this->_internal_disable_partner_autogrants(), target);
-  }
-
-  // optional bool is_steam_deck_deprecated = 107;
-  if (cached_has_bits & 0x00800000u) {
-    target = stream->EnsureSpace(target);
-    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(107, this->_internal_is_steam_deck_deprecated(), target);
   }
 
   cached_has_bits = _has_bits_[0];
@@ -2811,19 +2758,13 @@ failure:
 
   cached_has_bits = _has_bits_[1];
   // optional bool is_chrome_os = 109;
-  if (cached_has_bits & 0x00100000u) {
+  if (cached_has_bits & 0x00200000u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(109, this->_internal_is_chrome_os(), target);
   }
 
-  // optional bool is_tesla_deprecated = 110;
-  if (cached_has_bits & 0x01000000u) {
-    target = stream->EnsureSpace(target);
-    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(110, this->_internal_is_tesla_deprecated(), target);
-  }
-
   // optional uint32 gaming_device_type = 111;
-  if (cached_has_bits & 0x02000000u) {
+  if (cached_has_bits & 0x00000040u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteUInt32ToArray(111, this->_internal_gaming_device_type(), target);
   }
@@ -3119,124 +3060,107 @@ size_t CMsgClientLogon::ByteSizeLong() const {
           this->_internal_chat_mode());
     }
 
-    // optional fixed32 rtime32_account_creation = 43;
+    // optional uint32 gaming_device_type = 111;
     if (cached_has_bits & 0x00000040u) {
-      total_size += 2 + 4;
+      total_size += 2 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::UInt32Size(
+          this->_internal_gaming_device_type());
     }
 
-    // optional bool should_remember_password = 8 [default = false];
+    // optional fixed32 rtime32_account_creation = 43;
     if (cached_has_bits & 0x00000080u) {
-      total_size += 1 + 1;
+      total_size += 2 + 4;
     }
 
   }
   if (cached_has_bits & 0x0000ff00u) {
-    // optional bool was_converted_deprecated_msg = 70 [default = false];
+    // optional bool should_remember_password = 8 [default = false];
     if (cached_has_bits & 0x00000100u) {
-      total_size += 2 + 1;
+      total_size += 1 + 1;
     }
 
-    // optional bool steam2_ticket_request = 88;
+    // optional bool was_converted_deprecated_msg = 70 [default = false];
     if (cached_has_bits & 0x00000200u) {
       total_size += 2 + 1;
     }
 
-    // optional bool create_new_psn_linked_account_if_needed = 92 [default = false];
+    // optional bool steam2_ticket_request = 88;
     if (cached_has_bits & 0x00000400u) {
       total_size += 2 + 1;
     }
 
-    // optional fixed64 resolved_user_steam_id = 81;
+    // optional bool create_new_psn_linked_account_if_needed = 92 [default = false];
     if (cached_has_bits & 0x00000800u) {
+      total_size += 2 + 1;
+    }
+
+    // optional fixed64 resolved_user_steam_id = 81;
+    if (cached_has_bits & 0x00001000u) {
       total_size += 2 + 8;
     }
 
     // optional int32 eresult_sentryfile = 82;
-    if (cached_has_bits & 0x00001000u) {
+    if (cached_has_bits & 0x00002000u) {
       total_size += 2 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::Int32Size(
           this->_internal_eresult_sentryfile());
     }
 
     // optional int32 otp_type = 85;
-    if (cached_has_bits & 0x00002000u) {
+    if (cached_has_bits & 0x00004000u) {
       total_size += 2 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::Int32Size(
           this->_internal_otp_type());
     }
 
     // optional uint32 otp_value = 86;
-    if (cached_has_bits & 0x00004000u) {
+    if (cached_has_bits & 0x00008000u) {
       total_size += 2 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::UInt32Size(
           this->_internal_otp_value());
     }
 
+  }
+  if (cached_has_bits & 0x007f0000u) {
     // optional int32 game_server_app_id = 94;
-    if (cached_has_bits & 0x00008000u) {
+    if (cached_has_bits & 0x00010000u) {
       total_size += 2 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::Int32Size(
           this->_internal_game_server_app_id());
     }
 
-  }
-  if (cached_has_bits & 0x00ff0000u) {
     // optional uint64 client_instance_id = 100;
-    if (cached_has_bits & 0x00010000u) {
+    if (cached_has_bits & 0x00020000u) {
       total_size += 2 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::UInt64Size(
           this->_internal_client_instance_id());
     }
 
     // optional bool steamguard_dont_remember_computer = 95;
-    if (cached_has_bits & 0x00020000u) {
-      total_size += 2 + 1;
-    }
-
-    // optional bool supports_rate_limit_response = 102;
     if (cached_has_bits & 0x00040000u) {
       total_size += 2 + 1;
     }
 
-    // optional bool disable_partner_autogrants = 106;
+    // optional bool supports_rate_limit_response = 102;
     if (cached_has_bits & 0x00080000u) {
       total_size += 2 + 1;
     }
 
-    // optional bool is_chrome_os = 109;
+    // optional bool disable_partner_autogrants = 106;
     if (cached_has_bits & 0x00100000u) {
       total_size += 2 + 1;
     }
 
-    // optional int32 priority_reason = 104;
+    // optional bool is_chrome_os = 109;
     if (cached_has_bits & 0x00200000u) {
+      total_size += 2 + 1;
+    }
+
+    // optional int32 priority_reason = 104;
+    if (cached_has_bits & 0x00400000u) {
       total_size += 2 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::Int32Size(
           this->_internal_priority_reason());
-    }
-
-    // optional bool is_steam_box_deprecated = 99;
-    if (cached_has_bits & 0x00400000u) {
-      total_size += 2 + 1;
-    }
-
-    // optional bool is_steam_deck_deprecated = 107;
-    if (cached_has_bits & 0x00800000u) {
-      total_size += 2 + 1;
-    }
-
-  }
-  if (cached_has_bits & 0x03000000u) {
-    // optional bool is_tesla_deprecated = 110;
-    if (cached_has_bits & 0x01000000u) {
-      total_size += 2 + 1;
-    }
-
-    // optional uint32 gaming_device_type = 111;
-    if (cached_has_bits & 0x02000000u) {
-      total_size += 2 +
-        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::UInt32Size(
-          this->_internal_gaming_device_type());
     }
 
   }
@@ -3388,73 +3312,61 @@ void CMsgClientLogon::MergeFrom(const CMsgClientLogon& from) {
       chat_mode_ = from.chat_mode_;
     }
     if (cached_has_bits & 0x00000040u) {
-      rtime32_account_creation_ = from.rtime32_account_creation_;
+      gaming_device_type_ = from.gaming_device_type_;
     }
     if (cached_has_bits & 0x00000080u) {
-      should_remember_password_ = from.should_remember_password_;
+      rtime32_account_creation_ = from.rtime32_account_creation_;
     }
     _has_bits_[1] |= cached_has_bits;
   }
   if (cached_has_bits & 0x0000ff00u) {
     if (cached_has_bits & 0x00000100u) {
-      was_converted_deprecated_msg_ = from.was_converted_deprecated_msg_;
+      should_remember_password_ = from.should_remember_password_;
     }
     if (cached_has_bits & 0x00000200u) {
-      steam2_ticket_request_ = from.steam2_ticket_request_;
+      was_converted_deprecated_msg_ = from.was_converted_deprecated_msg_;
     }
     if (cached_has_bits & 0x00000400u) {
-      create_new_psn_linked_account_if_needed_ = from.create_new_psn_linked_account_if_needed_;
+      steam2_ticket_request_ = from.steam2_ticket_request_;
     }
     if (cached_has_bits & 0x00000800u) {
-      resolved_user_steam_id_ = from.resolved_user_steam_id_;
+      create_new_psn_linked_account_if_needed_ = from.create_new_psn_linked_account_if_needed_;
     }
     if (cached_has_bits & 0x00001000u) {
-      eresult_sentryfile_ = from.eresult_sentryfile_;
+      resolved_user_steam_id_ = from.resolved_user_steam_id_;
     }
     if (cached_has_bits & 0x00002000u) {
-      otp_type_ = from.otp_type_;
+      eresult_sentryfile_ = from.eresult_sentryfile_;
     }
     if (cached_has_bits & 0x00004000u) {
-      otp_value_ = from.otp_value_;
+      otp_type_ = from.otp_type_;
     }
     if (cached_has_bits & 0x00008000u) {
+      otp_value_ = from.otp_value_;
+    }
+    _has_bits_[1] |= cached_has_bits;
+  }
+  if (cached_has_bits & 0x007f0000u) {
+    if (cached_has_bits & 0x00010000u) {
       game_server_app_id_ = from.game_server_app_id_;
     }
-    _has_bits_[1] |= cached_has_bits;
-  }
-  if (cached_has_bits & 0x00ff0000u) {
-    if (cached_has_bits & 0x00010000u) {
+    if (cached_has_bits & 0x00020000u) {
       client_instance_id_ = from.client_instance_id_;
     }
-    if (cached_has_bits & 0x00020000u) {
+    if (cached_has_bits & 0x00040000u) {
       steamguard_dont_remember_computer_ = from.steamguard_dont_remember_computer_;
     }
-    if (cached_has_bits & 0x00040000u) {
+    if (cached_has_bits & 0x00080000u) {
       supports_rate_limit_response_ = from.supports_rate_limit_response_;
     }
-    if (cached_has_bits & 0x00080000u) {
+    if (cached_has_bits & 0x00100000u) {
       disable_partner_autogrants_ = from.disable_partner_autogrants_;
     }
-    if (cached_has_bits & 0x00100000u) {
+    if (cached_has_bits & 0x00200000u) {
       is_chrome_os_ = from.is_chrome_os_;
     }
-    if (cached_has_bits & 0x00200000u) {
-      priority_reason_ = from.priority_reason_;
-    }
     if (cached_has_bits & 0x00400000u) {
-      is_steam_box_deprecated_ = from.is_steam_box_deprecated_;
-    }
-    if (cached_has_bits & 0x00800000u) {
-      is_steam_deck_deprecated_ = from.is_steam_deck_deprecated_;
-    }
-    _has_bits_[1] |= cached_has_bits;
-  }
-  if (cached_has_bits & 0x03000000u) {
-    if (cached_has_bits & 0x01000000u) {
-      is_tesla_deprecated_ = from.is_tesla_deprecated_;
-    }
-    if (cached_has_bits & 0x02000000u) {
-      gaming_device_type_ = from.gaming_device_type_;
+      priority_reason_ = from.priority_reason_;
     }
     _has_bits_[1] |= cached_has_bits;
   }
@@ -3499,8 +3411,8 @@ void CMsgClientLogon::InternalSwap(CMsgClientLogon* other) {
   web_logon_nonce_.Swap(&other->web_logon_nonce_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
   access_token_.Swap(&other->access_token_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
-      PROTOBUF_FIELD_OFFSET(CMsgClientLogon, gaming_device_type_)
-      + sizeof(CMsgClientLogon::gaming_device_type_)
+      PROTOBUF_FIELD_OFFSET(CMsgClientLogon, priority_reason_)
+      + sizeof(CMsgClientLogon::priority_reason_)
       - PROTOBUF_FIELD_OFFSET(CMsgClientLogon, obfuscated_private_ip_)>(
           reinterpret_cast<char*>(&obfuscated_private_ip_),
           reinterpret_cast<char*>(&other->obfuscated_private_ip_));

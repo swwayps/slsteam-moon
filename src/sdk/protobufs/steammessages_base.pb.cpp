@@ -400,16 +400,21 @@ constexpr CPackageReservationStatus::CPackageReservationStatus(
   ::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized)
   : reservation_country_code_(&::PROTOBUF_NAMESPACE_ID::internal::fixed_address_empty_string)
   , notificaton_token_(&::PROTOBUF_NAMESPACE_ID::internal::fixed_address_empty_string)
+  , user_waitlist_token_(&::PROTOBUF_NAMESPACE_ID::internal::fixed_address_empty_string)
+  , queue_waitlist_token_(&::PROTOBUF_NAMESPACE_ID::internal::fixed_address_empty_string)
   , packageid_(0u)
   , reservation_state_(0)
   , queue_position_(0)
   , total_queue_size_(0)
-  , expired_(false)
   , time_expires_(0u)
   , time_reserved_(0u)
   , rtime_estimated_notification_(0u)
   , queue_head_position_at_reservation_(0)
-  , queue_head_position_now_(0){}
+  , queue_head_position_now_(0)
+  , expired_(false)
+  , position_is_waitlist_(false)
+  , queue_in_waitlist_(false)
+  , reservation_type_(false){}
 struct CPackageReservationStatusDefaultTypeInternal {
   constexpr CPackageReservationStatusDefaultTypeInternal()
     : _instance(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized{}) {}
@@ -9704,40 +9709,55 @@ class CPackageReservationStatus::_Internal {
  public:
   using HasBits = decltype(std::declval<CPackageReservationStatus>()._has_bits_);
   static void set_has_packageid(HasBits* has_bits) {
-    (*has_bits)[0] |= 4u;
-  }
-  static void set_has_reservation_state(HasBits* has_bits) {
-    (*has_bits)[0] |= 8u;
-  }
-  static void set_has_queue_position(HasBits* has_bits) {
     (*has_bits)[0] |= 16u;
   }
-  static void set_has_total_queue_size(HasBits* has_bits) {
+  static void set_has_reservation_state(HasBits* has_bits) {
     (*has_bits)[0] |= 32u;
+  }
+  static void set_has_queue_position(HasBits* has_bits) {
+    (*has_bits)[0] |= 64u;
+  }
+  static void set_has_total_queue_size(HasBits* has_bits) {
+    (*has_bits)[0] |= 128u;
   }
   static void set_has_reservation_country_code(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
   }
   static void set_has_expired(HasBits* has_bits) {
-    (*has_bits)[0] |= 64u;
+    (*has_bits)[0] |= 8192u;
   }
   static void set_has_time_expires(HasBits* has_bits) {
-    (*has_bits)[0] |= 128u;
-  }
-  static void set_has_time_reserved(HasBits* has_bits) {
     (*has_bits)[0] |= 256u;
   }
-  static void set_has_rtime_estimated_notification(HasBits* has_bits) {
+  static void set_has_time_reserved(HasBits* has_bits) {
     (*has_bits)[0] |= 512u;
+  }
+  static void set_has_rtime_estimated_notification(HasBits* has_bits) {
+    (*has_bits)[0] |= 1024u;
   }
   static void set_has_notificaton_token(HasBits* has_bits) {
     (*has_bits)[0] |= 2u;
   }
   static void set_has_queue_head_position_at_reservation(HasBits* has_bits) {
-    (*has_bits)[0] |= 1024u;
+    (*has_bits)[0] |= 2048u;
   }
   static void set_has_queue_head_position_now(HasBits* has_bits) {
-    (*has_bits)[0] |= 2048u;
+    (*has_bits)[0] |= 4096u;
+  }
+  static void set_has_position_is_waitlist(HasBits* has_bits) {
+    (*has_bits)[0] |= 16384u;
+  }
+  static void set_has_user_waitlist_token(HasBits* has_bits) {
+    (*has_bits)[0] |= 4u;
+  }
+  static void set_has_queue_in_waitlist(HasBits* has_bits) {
+    (*has_bits)[0] |= 32768u;
+  }
+  static void set_has_queue_waitlist_token(HasBits* has_bits) {
+    (*has_bits)[0] |= 8u;
+  }
+  static void set_has_reservation_type(HasBits* has_bits) {
+    (*has_bits)[0] |= 65536u;
   }
 };
 
@@ -9761,19 +9781,31 @@ CPackageReservationStatus::CPackageReservationStatus(const CPackageReservationSt
     notificaton_token_.Set(::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::EmptyDefault{}, from._internal_notificaton_token(), 
       GetArena());
   }
+  user_waitlist_token_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  if (from._internal_has_user_waitlist_token()) {
+    user_waitlist_token_.Set(::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::EmptyDefault{}, from._internal_user_waitlist_token(), 
+      GetArena());
+  }
+  queue_waitlist_token_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  if (from._internal_has_queue_waitlist_token()) {
+    queue_waitlist_token_.Set(::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::EmptyDefault{}, from._internal_queue_waitlist_token(), 
+      GetArena());
+  }
   ::memcpy(&packageid_, &from.packageid_,
-    static_cast<size_t>(reinterpret_cast<char*>(&queue_head_position_now_) -
-    reinterpret_cast<char*>(&packageid_)) + sizeof(queue_head_position_now_));
+    static_cast<size_t>(reinterpret_cast<char*>(&reservation_type_) -
+    reinterpret_cast<char*>(&packageid_)) + sizeof(reservation_type_));
   // @@protoc_insertion_point(copy_constructor:CPackageReservationStatus)
 }
 
 void CPackageReservationStatus::SharedCtor() {
 reservation_country_code_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
 notificaton_token_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+user_waitlist_token_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+queue_waitlist_token_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
 ::memset(reinterpret_cast<char*>(this) + static_cast<size_t>(
     reinterpret_cast<char*>(&packageid_) - reinterpret_cast<char*>(this)),
-    0, static_cast<size_t>(reinterpret_cast<char*>(&queue_head_position_now_) -
-    reinterpret_cast<char*>(&packageid_)) + sizeof(queue_head_position_now_));
+    0, static_cast<size_t>(reinterpret_cast<char*>(&reservation_type_) -
+    reinterpret_cast<char*>(&packageid_)) + sizeof(reservation_type_));
 }
 
 CPackageReservationStatus::~CPackageReservationStatus() {
@@ -9786,6 +9818,8 @@ void CPackageReservationStatus::SharedDtor() {
   GOOGLE_DCHECK(GetArena() == nullptr);
   reservation_country_code_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   notificaton_token_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  user_waitlist_token_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  queue_waitlist_token_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
 }
 
 void CPackageReservationStatus::ArenaDtor(void* object) {
@@ -9805,24 +9839,31 @@ void CPackageReservationStatus::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _has_bits_[0];
-  if (cached_has_bits & 0x00000003u) {
+  if (cached_has_bits & 0x0000000fu) {
     if (cached_has_bits & 0x00000001u) {
       reservation_country_code_.ClearNonDefaultToEmpty();
     }
     if (cached_has_bits & 0x00000002u) {
       notificaton_token_.ClearNonDefaultToEmpty();
     }
+    if (cached_has_bits & 0x00000004u) {
+      user_waitlist_token_.ClearNonDefaultToEmpty();
+    }
+    if (cached_has_bits & 0x00000008u) {
+      queue_waitlist_token_.ClearNonDefaultToEmpty();
+    }
   }
-  if (cached_has_bits & 0x000000fcu) {
+  if (cached_has_bits & 0x000000f0u) {
     ::memset(&packageid_, 0, static_cast<size_t>(
-        reinterpret_cast<char*>(&time_expires_) -
-        reinterpret_cast<char*>(&packageid_)) + sizeof(time_expires_));
+        reinterpret_cast<char*>(&total_queue_size_) -
+        reinterpret_cast<char*>(&packageid_)) + sizeof(total_queue_size_));
   }
-  if (cached_has_bits & 0x00000f00u) {
-    ::memset(&time_reserved_, 0, static_cast<size_t>(
-        reinterpret_cast<char*>(&queue_head_position_now_) -
-        reinterpret_cast<char*>(&time_reserved_)) + sizeof(queue_head_position_now_));
+  if (cached_has_bits & 0x0000ff00u) {
+    ::memset(&time_expires_, 0, static_cast<size_t>(
+        reinterpret_cast<char*>(&queue_in_waitlist_) -
+        reinterpret_cast<char*>(&time_expires_)) + sizeof(queue_in_waitlist_));
   }
+  reservation_type_ = false;
   _has_bits_.Clear();
   _internal_metadata_.Clear<std::string>();
 }
@@ -9931,6 +9972,46 @@ const char* CPackageReservationStatus::_InternalParse(const char* ptr, ::PROTOBU
           CHK_(ptr);
         } else goto handle_unusual;
         continue;
+      // optional bool position_is_waitlist = 13;
+      case 13:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 104)) {
+          _Internal::set_has_position_is_waitlist(&has_bits);
+          position_is_waitlist_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
+      // optional string user_waitlist_token = 14;
+      case 14:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 114)) {
+          auto str = _internal_mutable_user_waitlist_token();
+          ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
+      // optional bool queue_in_waitlist = 15;
+      case 15:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 120)) {
+          _Internal::set_has_queue_in_waitlist(&has_bits);
+          queue_in_waitlist_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
+      // optional string queue_waitlist_token = 16;
+      case 16:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 130)) {
+          auto str = _internal_mutable_queue_waitlist_token();
+          ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
+      // optional bool reservation_type = 17;
+      case 17:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 136)) {
+          _Internal::set_has_reservation_type(&has_bits);
+          reservation_type_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
       default: {
       handle_unusual:
         if ((tag & 7) == 4 || tag == 0) {
@@ -9962,25 +10043,25 @@ failure:
 
   cached_has_bits = _has_bits_[0];
   // optional uint32 packageid = 1;
-  if (cached_has_bits & 0x00000004u) {
+  if (cached_has_bits & 0x00000010u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteUInt32ToArray(1, this->_internal_packageid(), target);
   }
 
   // optional int32 reservation_state = 2;
-  if (cached_has_bits & 0x00000008u) {
+  if (cached_has_bits & 0x00000020u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteInt32ToArray(2, this->_internal_reservation_state(), target);
   }
 
   // optional int32 queue_position = 3;
-  if (cached_has_bits & 0x00000010u) {
+  if (cached_has_bits & 0x00000040u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteInt32ToArray(3, this->_internal_queue_position(), target);
   }
 
   // optional int32 total_queue_size = 4;
-  if (cached_has_bits & 0x00000020u) {
+  if (cached_has_bits & 0x00000080u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteInt32ToArray(4, this->_internal_total_queue_size(), target);
   }
@@ -9992,25 +10073,25 @@ failure:
   }
 
   // optional bool expired = 6;
-  if (cached_has_bits & 0x00000040u) {
+  if (cached_has_bits & 0x00002000u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(6, this->_internal_expired(), target);
   }
 
   // optional uint32 time_expires = 7;
-  if (cached_has_bits & 0x00000080u) {
+  if (cached_has_bits & 0x00000100u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteUInt32ToArray(7, this->_internal_time_expires(), target);
   }
 
   // optional uint32 time_reserved = 8;
-  if (cached_has_bits & 0x00000100u) {
+  if (cached_has_bits & 0x00000200u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteUInt32ToArray(8, this->_internal_time_reserved(), target);
   }
 
   // optional uint32 rtime_estimated_notification = 9;
-  if (cached_has_bits & 0x00000200u) {
+  if (cached_has_bits & 0x00000400u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteUInt32ToArray(9, this->_internal_rtime_estimated_notification(), target);
   }
@@ -10022,15 +10103,45 @@ failure:
   }
 
   // optional int32 queue_head_position_at_reservation = 11;
-  if (cached_has_bits & 0x00000400u) {
+  if (cached_has_bits & 0x00000800u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteInt32ToArray(11, this->_internal_queue_head_position_at_reservation(), target);
   }
 
   // optional int32 queue_head_position_now = 12;
-  if (cached_has_bits & 0x00000800u) {
+  if (cached_has_bits & 0x00001000u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteInt32ToArray(12, this->_internal_queue_head_position_now(), target);
+  }
+
+  // optional bool position_is_waitlist = 13;
+  if (cached_has_bits & 0x00004000u) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(13, this->_internal_position_is_waitlist(), target);
+  }
+
+  // optional string user_waitlist_token = 14;
+  if (cached_has_bits & 0x00000004u) {
+    target = stream->WriteStringMaybeAliased(
+        14, this->_internal_user_waitlist_token(), target);
+  }
+
+  // optional bool queue_in_waitlist = 15;
+  if (cached_has_bits & 0x00008000u) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(15, this->_internal_queue_in_waitlist(), target);
+  }
+
+  // optional string queue_waitlist_token = 16;
+  if (cached_has_bits & 0x00000008u) {
+    target = stream->WriteStringMaybeAliased(
+        16, this->_internal_queue_waitlist_token(), target);
+  }
+
+  // optional bool reservation_type = 17;
+  if (cached_has_bits & 0x00010000u) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(17, this->_internal_reservation_type(), target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -10065,77 +10176,106 @@ size_t CPackageReservationStatus::ByteSizeLong() const {
           this->_internal_notificaton_token());
     }
 
-    // optional uint32 packageid = 1;
+    // optional string user_waitlist_token = 14;
     if (cached_has_bits & 0x00000004u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_user_waitlist_token());
+    }
+
+    // optional string queue_waitlist_token = 16;
+    if (cached_has_bits & 0x00000008u) {
+      total_size += 2 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_queue_waitlist_token());
+    }
+
+    // optional uint32 packageid = 1;
+    if (cached_has_bits & 0x00000010u) {
       total_size += 1 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::UInt32Size(
           this->_internal_packageid());
     }
 
     // optional int32 reservation_state = 2;
-    if (cached_has_bits & 0x00000008u) {
+    if (cached_has_bits & 0x00000020u) {
       total_size += 1 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::Int32Size(
           this->_internal_reservation_state());
     }
 
     // optional int32 queue_position = 3;
-    if (cached_has_bits & 0x00000010u) {
+    if (cached_has_bits & 0x00000040u) {
       total_size += 1 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::Int32Size(
           this->_internal_queue_position());
     }
 
     // optional int32 total_queue_size = 4;
-    if (cached_has_bits & 0x00000020u) {
+    if (cached_has_bits & 0x00000080u) {
       total_size += 1 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::Int32Size(
           this->_internal_total_queue_size());
     }
 
-    // optional bool expired = 6;
-    if (cached_has_bits & 0x00000040u) {
-      total_size += 1 + 1;
-    }
-
+  }
+  if (cached_has_bits & 0x0000ff00u) {
     // optional uint32 time_expires = 7;
-    if (cached_has_bits & 0x00000080u) {
+    if (cached_has_bits & 0x00000100u) {
       total_size += 1 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::UInt32Size(
           this->_internal_time_expires());
     }
 
-  }
-  if (cached_has_bits & 0x00000f00u) {
     // optional uint32 time_reserved = 8;
-    if (cached_has_bits & 0x00000100u) {
+    if (cached_has_bits & 0x00000200u) {
       total_size += 1 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::UInt32Size(
           this->_internal_time_reserved());
     }
 
     // optional uint32 rtime_estimated_notification = 9;
-    if (cached_has_bits & 0x00000200u) {
+    if (cached_has_bits & 0x00000400u) {
       total_size += 1 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::UInt32Size(
           this->_internal_rtime_estimated_notification());
     }
 
     // optional int32 queue_head_position_at_reservation = 11;
-    if (cached_has_bits & 0x00000400u) {
+    if (cached_has_bits & 0x00000800u) {
       total_size += 1 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::Int32Size(
           this->_internal_queue_head_position_at_reservation());
     }
 
     // optional int32 queue_head_position_now = 12;
-    if (cached_has_bits & 0x00000800u) {
+    if (cached_has_bits & 0x00001000u) {
       total_size += 1 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::Int32Size(
           this->_internal_queue_head_position_now());
     }
 
+    // optional bool expired = 6;
+    if (cached_has_bits & 0x00002000u) {
+      total_size += 1 + 1;
+    }
+
+    // optional bool position_is_waitlist = 13;
+    if (cached_has_bits & 0x00004000u) {
+      total_size += 1 + 1;
+    }
+
+    // optional bool queue_in_waitlist = 15;
+    if (cached_has_bits & 0x00008000u) {
+      total_size += 1 + 1;
+    }
+
   }
+  // optional bool reservation_type = 17;
+  if (cached_has_bits & 0x00010000u) {
+    total_size += 2 + 1;
+  }
+
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     total_size += _internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size();
   }
@@ -10166,39 +10306,54 @@ void CPackageReservationStatus::MergeFrom(const CPackageReservationStatus& from)
       _internal_set_notificaton_token(from._internal_notificaton_token());
     }
     if (cached_has_bits & 0x00000004u) {
-      packageid_ = from.packageid_;
+      _internal_set_user_waitlist_token(from._internal_user_waitlist_token());
     }
     if (cached_has_bits & 0x00000008u) {
-      reservation_state_ = from.reservation_state_;
+      _internal_set_queue_waitlist_token(from._internal_queue_waitlist_token());
     }
     if (cached_has_bits & 0x00000010u) {
-      queue_position_ = from.queue_position_;
+      packageid_ = from.packageid_;
     }
     if (cached_has_bits & 0x00000020u) {
-      total_queue_size_ = from.total_queue_size_;
+      reservation_state_ = from.reservation_state_;
     }
     if (cached_has_bits & 0x00000040u) {
-      expired_ = from.expired_;
+      queue_position_ = from.queue_position_;
     }
     if (cached_has_bits & 0x00000080u) {
-      time_expires_ = from.time_expires_;
+      total_queue_size_ = from.total_queue_size_;
     }
     _has_bits_[0] |= cached_has_bits;
   }
-  if (cached_has_bits & 0x00000f00u) {
+  if (cached_has_bits & 0x0000ff00u) {
     if (cached_has_bits & 0x00000100u) {
-      time_reserved_ = from.time_reserved_;
+      time_expires_ = from.time_expires_;
     }
     if (cached_has_bits & 0x00000200u) {
-      rtime_estimated_notification_ = from.rtime_estimated_notification_;
+      time_reserved_ = from.time_reserved_;
     }
     if (cached_has_bits & 0x00000400u) {
-      queue_head_position_at_reservation_ = from.queue_head_position_at_reservation_;
+      rtime_estimated_notification_ = from.rtime_estimated_notification_;
     }
     if (cached_has_bits & 0x00000800u) {
+      queue_head_position_at_reservation_ = from.queue_head_position_at_reservation_;
+    }
+    if (cached_has_bits & 0x00001000u) {
       queue_head_position_now_ = from.queue_head_position_now_;
     }
+    if (cached_has_bits & 0x00002000u) {
+      expired_ = from.expired_;
+    }
+    if (cached_has_bits & 0x00004000u) {
+      position_is_waitlist_ = from.position_is_waitlist_;
+    }
+    if (cached_has_bits & 0x00008000u) {
+      queue_in_waitlist_ = from.queue_in_waitlist_;
+    }
     _has_bits_[0] |= cached_has_bits;
+  }
+  if (cached_has_bits & 0x00010000u) {
+    _internal_set_reservation_type(from._internal_reservation_type());
   }
 }
 
@@ -10219,9 +10374,11 @@ void CPackageReservationStatus::InternalSwap(CPackageReservationStatus* other) {
   swap(_has_bits_[0], other->_has_bits_[0]);
   reservation_country_code_.Swap(&other->reservation_country_code_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
   notificaton_token_.Swap(&other->notificaton_token_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+  user_waitlist_token_.Swap(&other->user_waitlist_token_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+  queue_waitlist_token_.Swap(&other->queue_waitlist_token_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
-      PROTOBUF_FIELD_OFFSET(CPackageReservationStatus, queue_head_position_now_)
-      + sizeof(CPackageReservationStatus::queue_head_position_now_)
+      PROTOBUF_FIELD_OFFSET(CPackageReservationStatus, reservation_type_)
+      + sizeof(CPackageReservationStatus::reservation_type_)
       - PROTOBUF_FIELD_OFFSET(CPackageReservationStatus, packageid_)>(
           reinterpret_cast<char*>(&packageid_),
           reinterpret_cast<char*>(&other->packageid_));
