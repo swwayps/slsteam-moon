@@ -1015,12 +1015,6 @@ namespace Patterns
 			nullptr,
 			"Patterns::CSteamEngine::GetServerPipe"
 		};
-		Pattern_t Init
-		{
-			"CSteamEngine::Init",
-			"E8 ? ? ? ? 83 C4 10 8D 83 ? ? ? ? 83 EC 0C 89 AB",
-			SigFollowMode::Relative
-		};
 		Pattern_t SetAppIdForCurrentPipe
 		{
 			"CSteamEngine::SetAppIdForCurrentPipe",

@@ -102,7 +102,6 @@ namespace Hooks
 
 	typedef void(*CCMInterface_RecvPkt_t)(void*, CNetPacket*);
 
-	typedef void(*CSteamEngine_Init_t)(void*);
 	typedef uint32_t(*CSteamEngine_ProcessIPCFrame_t)(void*, HSteamPipe, CUtlBuffer*, CUtlBuffer*);
 	typedef uint32_t(*CSteamEngine_SetAppIdForCurrentPipe_t)(void*, uint32_t, bool);
 
@@ -158,7 +157,6 @@ namespace Hooks
 	extern DetourHook<IClientUser_RunIPCFrame_t> IClientUser_RunIPCFrame;
 	extern DetourHook<IClientUserStats_RunIPCFrame_t> IClientUserStats_RunIPCFrame;
 
-	extern DetourHook<CSteamEngine_Init_t> CSteamEngine_Init;
 	extern DetourHook<CSteamEngine_ProcessIPCFrame_t> CSteamEngine_ProcessIPCFrame;
 	extern DetourHook<CSteamEngine_SetAppIdForCurrentPipe_t> CSteamEngine_SetAppIdForCurrentPipe;
 

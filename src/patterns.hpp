@@ -75,7 +75,6 @@ namespace Patterns
 	namespace CSteamEngine
 	{
 		extern Pattern_t GetServerPipe;
-		extern Pattern_t Init;
 		extern Pattern_t SetAppIdForCurrentPipe;
 		extern Pattern_t ProcessIPCFrame;
 		extern Pattern_t Offset_ClientUtils;

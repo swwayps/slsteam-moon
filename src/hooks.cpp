@@ -519,14 +519,6 @@ static uint32_t hkSteamEngine_ProcessIPCFrame(
 	return ret;
 }
 
-static void hkSteamEngine_Init(void* pSteamEngine)
-{
-	Hooks::CSteamEngine_Init.tramp.fn(pSteamEngine);
-
-	g_pSteamEngine = reinterpret_cast<CSteamEngine*>(pSteamEngine);
-	g_pLog->debugOnce("g_pSteamEngine at %p\n", pSteamEngine);
-}
-
 static uint32_t hkSteamEngine_SetAppIdForCurrentPipe(void* pSteamEngine, uint32_t appId, bool a2)
 {
 	FakeAppIds::setAppIdForCurrentPipe(appId);
@@ -599,9 +591,8 @@ static uint32_t hkUser_CheckAppOwnership(void* pClientUser, uint32_t appId, AppO
 {
 	// Cache the local CUser* as a timing-independent fallback for
 	// getLocalUser().  This hook fires early and constantly with the
-	// pipe-0 user, so it covers the case where the one-shot
-	// CSteamEngine::Init call happened before our hooks were placed
-	// (LD_PRELOAD injection) and g_pSteamEngine is therefore null.
+	// pipe-0 user, so it covers the time before the first
+	// ProcessIPCFrame captures g_pSteamEngine.
 	if (pClientUser != nullptr)
 	{
 		g_pLocalUser = reinterpret_cast<CUser*>(pClientUser);
@@ -1484,7 +1475,6 @@ namespace Hooks
 	DetourHook<CSteamMatchmakingServers_GetServerDetails_t> CSteamMatchmakingServers_GetServerDetails;
 	DetourHook<CSteamMatchmakingServers_RequestInternetServerList_t> CSteamMatchmakingServers_RequestInternetServerList;
 
-	DetourHook<CSteamEngine_Init_t> CSteamEngine_Init;
 	DetourHook<CSteamEngine_ProcessIPCFrame_t> CSteamEngine_ProcessIPCFrame;
 	DetourHook<CSteamEngine_SetAppIdForCurrentPipe_t> CSteamEngine_SetAppIdForCurrentPipe;
 
@@ -1545,7 +1535,6 @@ bool Hooks::setup()
 
 		&& IClientFriends_GetFriendGamePlayed.setup(Patterns::IClientFriends::GetFriendGamePlayed, &hkClientFriends_GetFriendGamePlayed)
 
-		&& CSteamEngine_Init.setup(Patterns::CSteamEngine::Init, &hkSteamEngine_Init)
 		&& CSteamEngine_ProcessIPCFrame.setup(Patterns::CSteamEngine::ProcessIPCFrame, &hkSteamEngine_ProcessIPCFrame)
 		&& CSteamEngine_SetAppIdForCurrentPipe.setup(Patterns::CSteamEngine::SetAppIdForCurrentPipe, &hkSteamEngine_SetAppIdForCurrentPipe)
 
@@ -1632,7 +1621,6 @@ void Hooks::place()
 	CRemoteClientManager_RecvPkt.place();
 	CJobMgr_BRouteMsgToJob.place();
 	CDepotDownloadMgr_BYldRequestDepotManifest.place();
-	CSteamEngine_Init.place();
 	CSteamEngine_ProcessIPCFrame.place();
 	CSteamEngine_SetAppIdForCurrentPipe.place();
 
@@ -1704,7 +1692,6 @@ void Hooks::remove()
 	CRemoteClientManager_RecvPkt.remove();
 	CJobMgr_BRouteMsgToJob.remove();
 	CDepotDownloadMgr_BYldRequestDepotManifest.remove();
-	CSteamEngine_Init.remove();
 	CSteamEngine_ProcessIPCFrame.remove();
 	CSteamEngine_SetAppIdForCurrentPipe.remove();
 
