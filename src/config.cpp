@@ -393,7 +393,6 @@ CConfig::~CConfig()
 	}
 }
 
-
 void CConfig::setError(const ELoadError err, const char* keyName)
 {
 	const auto prev = __loadErrors.get();

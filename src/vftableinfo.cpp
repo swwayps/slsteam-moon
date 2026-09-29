@@ -310,11 +310,13 @@ void VFTIndexes::dump(const std::string& name, const std::map<std::string, unsig
 
 bool VFTIndexes::init()
 {
+	bool success = true;
+
 	for(const auto& fn : functions())
 	{
 		if (!fn->init())
 		{
-			return false;
+			success = false;
 		}
 	}
 
@@ -326,5 +328,5 @@ bool VFTIndexes::init()
 		}
 	}
 
-	return true;
+	return success;
 }

@@ -605,7 +605,7 @@ void Decompiler::__parseFunction
 			continue;
 		}
 
-		if (!leaOffset)
+		if (leaOffset == LM_ADDRESS_BAD)
 		{
 			continue;
 		}
@@ -671,10 +671,27 @@ std::map<std::string, unsigned int> Decompiler::parseInterfaceMapBase(const char
 
 		for(const auto& ref : refs)
 		{
-			const auto& str = strings[ref.first];
+			auto str = strings[ref.first];
 			if (strstr(interface, str.c_str()))
 			{
 				continue;
+			}
+
+			if (functionMap.contains(str))
+			{
+				//Some functions are overloaded, so we append a 2, 3, etc
+				unsigned int idx = 2;
+				for(;;)
+				{
+					auto indexedStr = str + std::to_string(idx);
+					if (!functionMap.contains(indexedStr))
+					{
+						str = indexedStr;
+						break;
+					}
+
+					idx++;
+				}
 			}
 
 			//I would love to add a break statement after this.

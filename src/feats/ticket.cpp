@@ -31,7 +31,7 @@ std::unordered_map<AppId_t, Ticket::SavedTicket> Ticket::encryptedTicketMap = st
 std::string Ticket::getTicketDir()
 {
 	std::ostringstream ss;
-	ss << g_config.getDir().c_str() << "/cache";
+	ss << g_config.getDir() << "/cache";
 
 	const auto dir = ss.str();
 	if (!std::filesystem::exists(dir.c_str()))

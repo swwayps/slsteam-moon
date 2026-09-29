@@ -52,8 +52,7 @@ struct AppOwnershipInfo_t {
     int32_t masterSubscriptionAppId;
     uint32_t trialTime;
     uint32_t numLicenses;
-    char region[2];
-    uint8_t field7_0x1A[2];
+    char region[4]; //Client copies this like a DWORD, so even though CountryCodes are only 2 bytes 4 seems to be correct
     uint32_t purchaseTime;
     uint32_t realOwner;
     bool ownsLicense;

@@ -690,8 +690,8 @@ static uint32_t hkUser_GetSubscribedApps(void* pClientUser, uint32_t* pAppList, 
 
 static bool hkUserAppManager_BuildDepotDependency
 (
-	void* a0,
-	uint32_t appId,
+	void* pClientAppManager,
+	AppId_t appId,
 	void* a2,
 	CUtlVector<DepotInfo_t>* depots,
 	CUtlVector<DepotInfo_t>* sharedDepots,
@@ -700,8 +700,8 @@ static bool hkUserAppManager_BuildDepotDependency
 	bool* a7
 )
 {
-	const bool success = Hooks::CUserAppManager_BuildDepotDependency.tramp.fn(a0, appId, a2, depots, sharedDepots, a5, pBuildId, a7);
-	g_pLog->debug("%s(%p, %u) -> %i\n", Hooks::CUserAppManager_BuildDepotDependency.name.c_str(), a0, appId, success);
+	const bool success = Hooks::CUserAppManager_BuildDepotDependency.tramp.fn(pClientAppManager, appId, a2, depots, sharedDepots, a5, pBuildId, a7);
+	g_pLog->debug("%s(%p, %u) -> %i\n", Hooks::CUserAppManager_BuildDepotDependency.name.c_str(), pClientAppManager, appId, success);
 
 	Apps::buildDepotDependency(appId, depots, sharedDepots);
 
@@ -994,7 +994,7 @@ static bool hkClientUser_BLoggedOn(void* pClientUser)
 	return ret;
 }
 
-static uint32_t hkClientUser_BUpdateOwnershipTicket(void* pClientUser, uint32_t appId, bool staleOnly)
+static uint32_t hkClientUser_BUpdateAppOwnershipTicket(void* pClientUser, AppId_t appId, bool staleOnly)
 {
 	const auto cached = Ticket::getCachedTicket(appId);
 	CUser* user = getLocalUser();
@@ -1277,9 +1277,21 @@ static void hkCGameInfoDialog_ServerResponded(void* pGameInfoDialog, gameserverd
 	Hooks::CGameInfoDialog_ServerResponded.tramp.fn(pGameInfoDialog, details);
 }
 
-static bool hkClientConfigStoreMap_SetString(void* pConfigStoreMap, uint32_t a1, const char* key, const char* value)
+static bool hkClientConfigStore_SetString(void* pClientConfigStore, uint32_t store, const char* key, const char* value)
 {
-	const bool success = Hooks::IClientConfigStoreMap_SetString.tramp.fn(pConfigStoreMap, a1, key, value);
+	const bool success = Hooks::IClientConfigStore_SetString.tramp.fn(pClientConfigStore, store, key, value);
+
+	//g_pLog->debug
+	//(
+	//	"%s(%p, %u, %s, %s) -> %u\n",
+
+	//	Hooks::IClientConfigStore_SetString.name.c_str(),
+	//	pClientConfigStore,
+	//	store,
+	//	key,
+	//	value,
+	//	success
+	//);
 
 	if (success)
 	{
@@ -1294,6 +1306,7 @@ namespace Hooks
 	static bool playerStatsHookReady = false;
 	static bool depotOverrideHookReady = false;
 	static bool cloudToggleHookReady = false;
+	static bool configStoreHookReady = false;
 
 	DetourHook<TraceIPC_t> TraceIPC;
 
@@ -1334,7 +1347,7 @@ namespace Hooks
 	VFTHook<IClientApps_GetDLCCount_t> IClientApps_GetDLCCount("IClientApps::GetDLCCount");
 	VFTHook<IClientApps_GetAppData_t> IClientApps_GetAppData("IClientApps::GetAppData");
 
-	DetourHook<IClientConfigStoreMap_SetString_t> IClientConfigStoreMap_SetString;
+	DetourHook<IClientConfigStore_SetString_t> IClientConfigStore_SetString;
 
 	DetourHook<IClientRemoteStorage_IsCloudEnabledForApp_t> IClientRemoteStorage_IsCloudEnabledForApp;
 
@@ -1411,7 +1424,7 @@ void Hooks::placeVFTHooks()
 		auto vft = std::make_shared<lm_vmt_t>();
 		LM_VmtNew(*reinterpret_cast<lm_address_t**>(clientUser), vft.get());
 		IClientUser_BLoggedOn.setup(vft, VFTIndexes::IClientUser::BLoggedOn, &hkClientUser_BLoggedOn);
-		IClientUser_BUpdateAppOwnershipTicket.setup(vft, VFTIndexes::IClientUser::BUpdateAppOwnershipTicket, hkClientUser_BUpdateOwnershipTicket);
+		IClientUser_BUpdateAppOwnershipTicket.setup(vft, VFTIndexes::IClientUser::BUpdateAppOwnershipTicket, hkClientUser_BUpdateAppOwnershipTicket);
 		IClientUser_GetAppOwnershipTicketExtendedData.setup(vft, VFTIndexes::IClientUser::GetAppOwnershipTicketExtendedData, hkClientUser_GetAppOwnershipTicketExtendedData);
 		IClientUser_IsUserSubscribedAppInTicket.setup(vft, VFTIndexes::IClientUser::IsUserSubscribedAppInTicket, &hkClientUser_IsUserSubscribedAppInTicket);
 		IClientUser_RequiresLegacyCDKey.setup(vft, VFTIndexes::IClientUser::RequiresLegacyCDKey, hkClientUser_RequiresLegacyCDKey);
@@ -1462,8 +1475,7 @@ bool Hooks::setup()
 
 		&& CSteamEngine_ProcessIPCFrame.setup(Patterns::CSteamEngine::ProcessIPCFrame, &hkSteamEngine_ProcessIPCFrame)
 		&& CSteamEngine_SetAppIdForCurrentPipe.setup(Patterns::CSteamEngine::SetAppIdForCurrentPipe, &hkSteamEngine_SetAppIdForCurrentPipe)
-		&& CGameInfoDialog_ServerResponded.setup(VFTIndexes::CGameInfoDialog::ServerResponded, hkCGameInfoDialog_ServerResponded)
-		&& IClientConfigStoreMap_SetString.setup(VFTIndexes::IClientConfigStoreMap::SetString, &hkClientConfigStoreMap_SetString);
+		&& CGameInfoDialog_ServerResponded.setup(VFTIndexes::CGameInfoDialog::ServerResponded, hkCGameInfoDialog_ServerResponded);
 
 
 
@@ -1508,6 +1520,26 @@ bool Hooks::setup()
 	if (!cloudToggleHookReady)
 	{
 		g_pLog->warn("IsCloudEnabledForApp hook unavailable; DisableCloud disabled\n");
+	}
+
+	// The private app list is read from CConfigStore's own SetString slot
+	// (upstream b8ef92f), which also sees stores that skip the IPC proxy.
+	// Only the presence title redaction rides it.
+	{
+		const auto& entry = VFTIndexes::IClientConfigStoreMap::SetString;
+		const auto store = Decompiler::vftables.find("12CConfigStore");
+		if (store != Decompiler::vftables.end())
+		{
+			const auto& slots = store->second.functions;
+			configStoreHookReady = entry.index < slots.size()
+				&& IClientConfigStore_SetString.setup(
+					entry.getPrintName().c_str(), slots[entry.index],
+					hkClientConfigStore_SetString);
+		}
+	}
+	if (!configStoreHookReady)
+	{
+		g_pLog->warn("ConfigStore SetString hook unavailable; private apps are not redacted\n");
 	}
 
 	Hooks::place();
@@ -1586,7 +1618,10 @@ void Hooks::place()
 
 	CGameInfoDialog_ServerResponded.place();
 
-	IClientConfigStoreMap_SetString.place();
+	if (configStoreHookReady)
+	{
+		IClientConfigStore_SetString.place();
+	}
 }
 
 void Hooks::remove()
@@ -1658,7 +1693,11 @@ void Hooks::remove()
 	IClientUser_RequiresLegacyCDKey.remove();
 
 	CGameInfoDialog_ServerResponded.remove();
-	IClientConfigStoreMap_SetString.remove();
+	if (configStoreHookReady)
+	{
+		IClientConfigStore_SetString.remove();
+		configStoreHookReady = false;
+	}
 
 	IClientAppManager_BIsDlcEnabled.remove();
 	IClientAppManager_GetAppUpdateInfo.remove();
