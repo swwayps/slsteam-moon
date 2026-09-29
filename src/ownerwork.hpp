@@ -6,7 +6,7 @@
 // A controlled VM run proved that the inotify config-watcher pthread executes
 // Steam-owned calls itself (the resolved `CUtlMemoryGrow` while appending to
 // package 0's live CUtlVector, and Steam's `NotifyLicensesUpdated`) while the
-// latched owner thread of `IClientUtils::RunIPCFrame` is a different thread.
+// latched owner thread (the one dispatching IClientUtils IPC) is a different thread.
 // The same run did NOT reproduce any client failure and did NOT observe the
 // hypothesised overlap with an in-flight owner frame, so nothing here is
 // claimed to fix anything. What it does is remove an unwanted execution site:
@@ -156,9 +156,9 @@ namespace OwnerWork
 	// Steam memory.
 	void init();
 
-	// Latch the owner IPC thread. Called from the hooked
-	// IClientUtils::RunIPCFrame — the dispatcher whose thread the VM run
-	// measured — and only the first call has an effect.
+	// Latch the owner IPC thread. Called from ProcessIPCFrame on IClientUtils
+	// calls — the dispatcher whose thread the VM run measured — and only the
+	// first call has an effect.
 	void latchOwnerThread();
 
 	bool ownerLatched();
@@ -180,7 +180,7 @@ namespace OwnerWork
 		return appId != 0;
 	}
 
-	// Drain point. Cheap enough to call from every hooked RunIPCFrame: it
+	// Drain point. Cheap enough to call on every RunInterface frame: it
 	// returns immediately unless this thread is the latched owner AND work is
 	// pending. Never re-enters itself.
 	void drainOnOwnerFrame();

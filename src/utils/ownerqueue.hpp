@@ -10,7 +10,7 @@
 // reconcile calls Steam's `NotifyLicensesUpdated`. A runtime trace on a
 // controlled VM confirmed this: those Steam-owned calls executed on the
 // watcher pthread while the latched owner thread of
-// `IClientUtils::RunIPCFrame` was a different thread.
+// IClientUtils IPC dispatch was a different thread.
 //
 // That is an unwanted execution site regardless of whether it ever causes a
 // user-visible failure: it is off-owner mutation of Steam-owned state. This

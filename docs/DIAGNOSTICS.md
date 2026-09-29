@@ -55,10 +55,9 @@ owner IPC frame was in flight or started during it. Comparing `overlaps` across
 
 ### Frame accounting covers every dispatcher
 
-`ipc_depth` / `ipc_frames` are accounted by **all** hooked `RunIPCFrame`
-dispatchers (`IClientUtils`, `IClientApps`, `IClientAppManager`,
-`IClientRemoteStorage`, `IClientUGC`, `IClientUser`, `IClientUserStats`), not
-just `IClientUtils`. An earlier build only guarded `IClientUtils`, so a drain
+`ipc_depth` / `ipc_frames` are accounted around **every** RunInterface frame in
+`CSteamEngine::ProcessIPCFrame`, whatever the interface, not just
+`IClientUtils` calls. An earlier build only guarded `IClientUtils`, so a drain
 that happened inside another dispatcher's frame was recorded as `ipc_depth=0`
 and the overlap counters under-reported real owner activity.
 

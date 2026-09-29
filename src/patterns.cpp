@@ -2,7 +2,6 @@
 
 #include "globals.hpp"
 #include "memhlp.hpp"
-#include "feats/ipcframe.hpp"
 #include "pattern_catalog.hpp"
 #include "pattern_cache.hpp"
 #include "runtime_attestation.hpp"
@@ -131,7 +130,6 @@ namespace
 
 	std::optional<lm_address_t> localCatalogAddress(
 		const Pattern_t& pattern,
-		bool logInvalid,
 		lm_address_t* matchAddressOut
 	)
 	{
@@ -141,20 +139,11 @@ namespace
 
 		const auto reject = [&](const char* message) -> std::optional<lm_address_t>
 		{
-			// The structural IPC-root probe runs before the embedded signature is
-			// normalized.  A failed non-logging probe is therefore provisional:
-			// let autoResolveIpcFrameRoots adjust the root and recheck the local
-			// catalog during the definitive Pattern_t::find() pass.  Normal
-			// resolving (logInvalid=true) remains transactional.
-			if (logInvalid)
-			{
-				state.catalog.reset();
-				state.writeEligible = true;
-				state.dirty = true;
-			}
-			if (logInvalid)
-				g_pLog->warn("Local pattern cache for '%s' rejected: %s; using embedded resolver\n",
-				             pattern.name.c_str(), message);
+			state.catalog.reset();
+			state.writeEligible = true;
+			state.dirty = true;
+			g_pLog->warn("Local pattern cache for '%s' rejected: %s; using embedded resolver\n",
+			             pattern.name.c_str(), message);
 			return std::nullopt;
 		};
 		const PatternCache::Locator* entry = state.catalog->entry(pattern.symbol);
@@ -243,11 +232,10 @@ namespace
 
 	std::optional<lm_address_t> catalogAddress(
 		const Pattern_t& pattern,
-		bool logInvalid,
-		lm_address_t* matchAddressOut = nullptr
+		lm_address_t* matchAddressOut
 	)
 	{
-		if (const auto local = localCatalogAddress(pattern, logInvalid, matchAddressOut))
+		if (const auto local = localCatalogAddress(pattern, matchAddressOut))
 			return local;
 		const PatternCatalog::Catalog* catalog = catalogFor(pattern);
 		if (catalog == nullptr)
@@ -257,18 +245,16 @@ namespace
 			return std::nullopt;
 		if (entry->required != !pattern.optional)
 		{
-			if (logInvalid)
-				g_pLog->warn("Pattern catalog policy mismatch for '%s'; using embedded resolver\n",
-				             pattern.name.c_str());
+			g_pLog->warn("Pattern catalog policy mismatch for '%s'; using embedded resolver\n",
+			             pattern.name.c_str());
 			return std::nullopt;
 		}
 		if (entry->signature != pattern.pattern ||
 			entry->followMode != followModeName(pattern.followMode))
 		{
-			if (logInvalid)
-				g_pLog->warn(
-					"Pattern catalog resolver mismatch for '%s'; using embedded resolver\n",
-					pattern.name.c_str());
+			g_pLog->warn(
+				"Pattern catalog resolver mismatch for '%s'; using embedded resolver\n",
+				pattern.name.c_str());
 			return std::nullopt;
 		}
 
@@ -283,9 +269,8 @@ namespace
 		                     && (segment.prot & LM_PROT_XR) == LM_PROT_XR;
 		if (!inside || !executable)
 		{
-			if (logInvalid)
-				g_pLog->warn("Pattern catalog RVA for '%s' is not executable; using embedded resolver\n",
-				             pattern.name.c_str());
+			g_pLog->warn("Pattern catalog RVA for '%s' is not executable; using embedded resolver\n",
+			             pattern.name.c_str());
 			return std::nullopt;
 		}
 		return candidate;
@@ -579,7 +564,7 @@ bool Pattern_t::find()
 	lm_module_t& targetModule = module ? *module : g_modSteamClient;
 	matchAddress = LM_ADDRESS_BAD;
 	lm_address_t cachedMatch = LM_ADDRESS_BAD;
-	if (const auto trusted = catalogAddress(*this, true, &cachedMatch))
+	if (const auto trusted = catalogAddress(*this, &cachedMatch))
 	{
 		address = *trusted;
 		matchAddress = cachedMatch;
@@ -661,150 +646,6 @@ bool Pattern_t::find()
 	return resolved;
 }
 
-// Re-derive the volatile dispatch-tree root of every IClient*::RunIPCFrame in
-// one pass over the steamclient module's executable segments, then point each
-// pattern's seed at the nearest live root.  Pure decision logic lives in
-// feats/ipcframe.hpp (host-unit-tested); this only walks live memory.
-static void autoResolveIpcFrameRoots()
-{
-	const std::array<Pattern_t*, 6> targets =
-	{
-		&Patterns::IClientApps::RunIPCFrame,
-		&Patterns::IClientAppManager::RunIPCFrame,
-		&Patterns::IClientRemoteStorage::RunIPCFrame,
-		&Patterns::IClientUGC::RunIPCFrame,
-		&Patterns::IClientUserStats::RunIPCFrame,
-		&Patterns::IClientUser::RunIPCFrame,
-	};
-	std::array<bool, targets.size()> catalogResolved {};
-	for (size_t i = 0; i < targets.size(); ++i)
-		catalogResolved[i] = catalogAddress(*targets[i], false).has_value();
-
-	struct Ctx
-	{
-		std::vector<IpcFrame::Cand> cands;
-	} ctx;
-
-	// Collect candidates from executable segments belonging to steamclient.
-	// IpcFrame::scan bounds every read by the segment size, so this never
-	// touches a guard page (same safety contract as MemHlp::patternScan).
-	const auto enumSegments = [](lm_segment_t* seg, lm_void_t* arg) -> lm_bool_t
-	{
-		auto* c = reinterpret_cast<Ctx*>(arg);
-		if ((seg->prot & LM_PROT_XR) != LM_PROT_XR)
-			return LM_TRUE;
-		// Restrict to the steamclient module's address range.
-		if (seg->base + seg->size <= g_modSteamClient.base)
-			return LM_TRUE;
-		if (seg->base >= g_modSteamClient.base + g_modSteamClient.size)
-			return LM_TRUE;
-
-		const auto local = IpcFrame::scan(reinterpret_cast<const uint8_t*>(seg->base), seg->size);
-		for (const auto& cand : local)
-			c->cands.push_back({
-				static_cast<size_t>(seg->base) + cand.offset,
-				cand.root,
-				cand.available,
-			});
-		return LM_TRUE;
-	};
-	if (!IpcFrame::scanWhenCatalogIncomplete(catalogResolved, [&]
-	{
-		LM_EnumSegments(enumSegments, &ctx);
-	}))
-	{
-		return;
-	}
-
-	if (ctx.cands.empty())
-	{
-		g_pLog->debug("IpcFrame: no RunIPCFrame candidates found; keeping embedded roots\n");
-		return;
-	}
-
-	for (size_t i = 0; i < targets.size(); ++i)
-	{
-		Pattern_t* p = targets[i];
-		// A validated exact-SHA catalog is authoritative for this locator.  Do
-		// not mutate or scan the embedded fallback unless the catalog entry is
-		// absent or fails executable-range validation.
-		if (catalogResolved[i])
-			continue;
-		const uint32_t seed = IpcFrame::parseTrailingRoot(p->pattern);
-		size_t idx = IpcFrame::resolveConfident(ctx.cands, seed, IpcFrame::kMaxRootDrift);
-
-		// Guarded structural fallback for an interface whose dispatch median
-		// jumped beyond kMaxRootDrift.  RemoteStorage did this earlier; a later
-		// beta made UserStats do it too (root 0x876D658x -> 0x85E5D66B, ~1.9M
-		// away, so the nearest-root band cannot reach it).  Each such interface
-		// is identified by a set of high-24-bit cmp-id pivots: the top three
-		// bytes of several of its dispatch ids stay stable across builds even
-		// when the low byte and the median drift.  Require >= minMatches pivots
-		// present in EXACTLY ONE candidate; none or more than one keeps the
-		// embedded root (find() then fails loud rather than mis-hooking).
-		const auto resolveByPivots =
-			[&](const uint32_t* pivots, size_t count, size_t minMatches) -> size_t
-		{
-			size_t hit = SIZE_MAX;
-			size_t qualifying = 0;
-			for (size_t i = 0; i < ctx.cands.size(); ++i)
-			{
-				const auto& cand = ctx.cands[i];
-				if (IpcFrame::countHighPivots(
-					reinterpret_cast<const uint8_t*>(cand.offset), cand.available,
-					pivots, count) >= minMatches)
-				{
-					hit = i;
-					++qualifying;
-				}
-			}
-			return (qualifying == 1) ? hit : SIZE_MAX;
-		};
-
-		if (idx == SIZE_MAX && p == &Patterns::IClientRemoteStorage::RunIPCFrame)
-		{
-			static constexpr uint32_t remoteStoragePivots[] =
-			{
-				0x396376, 0x5DB472, 0x84692E, 0x8694E9, 0x8712DD,
-				0xC0F5C7, 0xDB2410, 0xE82BD7, 0xF5841E, 0xFD3CA9,
-			};
-			idx = resolveByPivots(
-				remoteStoragePivots, std::size(remoteStoragePivots), 4);
-		}
-		if (idx == SIZE_MAX && p == &Patterns::IClientUserStats::RunIPCFrame)
-		{
-			static constexpr uint32_t userStatsPivots[] =
-			{
-				0x84EDDC, 0x85DE33, 0x85E5D6, 0xF7452C,
-				0xF991AC, 0xF9B9E3, 0xFF7DFB, 0xFF94F2,
-			};
-			idx = resolveByPivots(
-				userStatsPivots, std::size(userStatsPivots), 4);
-		}
-		if (idx == SIZE_MAX)
-		{
-			// No confident match: drift too large, or an ambiguous neighbour.
-			// Keep the embedded root; find() then either still matches it or
-			// fails loudly as a required pattern (no silent mis-hook).
-			continue;
-		}
-
-		const uint32_t found = ctx.cands[idx].root;
-		if (found != seed)
-		{
-			// Auto-resolving root drift is the designed steady state on new
-			// client builds, not a problem — keep it out of the normal log and
-			// surface it only when ExtendedLogging is explicitly enabled.
-			if (g_config.extendedLogging.get())
-				g_pLog->debug(
-					"IpcFrame: %s root drifted 0x%08X -> 0x%08X; auto-resolved\n",
-					p->name.c_str(), seed, found);
-			IpcFrame::setTrailingRoot(p->pattern, found);
-		}
-	}
-}
-
-
 bool Patterns::init()
 {
 	bool found = true;
@@ -849,13 +690,6 @@ bool Patterns::init()
 
 	loadActiveCatalogs();
 
-	// Self-heal the IClient*::RunIPCFrame signatures before scanning.  Their
-	// only volatile byte is the dispatch-tree root message id, which drifts
-	// when Steam adds/removes interface methods (the 2026-06-23 update broke
-	// all four this way).  Re-derive each root structurally so a constant-only
-	// drift no longer needs a code change; on any failure the embedded root is
-	// kept verbatim (no regression).
-	autoResolveIpcFrameRoots();
 	for(auto& pattern : patterns())
 	{
 		if (!pattern->find())
@@ -1276,78 +1110,6 @@ namespace Patterns
 		};
 	}
 
-	namespace IClientAppManager
-	{
-		Pattern_t RunIPCFrame
-		{
-			"IClientAppManager::RunIPCFrame",
-			"E8 ? ? ? ? 8B 85 ? ? ? ? 83 C4 10 3D B7 85 0A 7A",
-			SigFollowMode::PrologueUpwards,
-			std::vector<uint8_t> { 0x56, 0x57, 0xe5, 0x89, 0x55 }
-		};
-	}
-
-	namespace IClientApps
-	{
-		Pattern_t RunIPCFrame
-		{
-			"IClientApps::RunIPCFrame",
-			"E8 ? ? ? ? 8B 85 ? ? ? ? 83 C4 10 3D 37 9C 88 A6",
-			SigFollowMode::PrologueUpwards,
-			std::vector<uint8_t> { 0x56, 0x57, 0xe5, 0x89, 0x55 }
-		};
-	}
-
-	namespace IClientRemoteStorage
-	{
-		Pattern_t RunIPCFrame
-		{
-			"IClientRemoteStorage::RunIPCFrame",
-			// Seed root refreshed to a current dispatch median (0x8712DD65) so
-			// the nearest-root fast path resolves directly on recent builds; the
-			// stale 0x872FE86C only ever resolved via the pivot fallback.  The
-			// high-24 pivot fingerprint (autoResolveIpcFrameRoots) remains as the
-			// safety net for a future median jump.
-			"E8 ? ? ? ? 8B 85 ? ? ? ? 83 C4 10 3D 65 DD 12 87",
-			SigFollowMode::PrologueUpwards,
-			std::vector<uint8_t> { 0x56, 0x57, 0xe5, 0x89, 0x55 }
-		};
-	}
-
-	namespace IClientUser
-	{
-		Pattern_t RunIPCFrame
-		{
-			"IClientUser::RunIPCFrame",
-			"E8 ? ? ? ? 8B 85 ? ? ? ? 83 C4 10 3D 10 A3 86 73",
-			SigFollowMode::PrologueUpwards,
-			std::vector<uint8_t> { 0x56, 0x57, 0xe5, 0x89, 0x55 }
-		};
-
-	}
-
-	namespace IClientUGC
-	{
-		Pattern_t RunIPCFrame
-		{
-			"IClientUGC::RunIPCFrame",
-			"E8 ? ? ? ? 8B 85 ? ? ? ? 83 C4 10 3D 62 0C D2 71",
-			SigFollowMode::PrologueUpwards,
-			std::vector<uint8_t> { 0x56, 0x57, 0xe5, 0x89, 0x55 }
-		};
-	}
-
-	namespace IClientUserStats
-	{
-		Pattern_t RunIPCFrame
-		{
-			"IClientUserStats::RunIPCFrame",
-			"E8 ? ? ? ? 8B 85 ? ? ? ? 83 C4 10 3D 8F 65 6D 87",
-			SigFollowMode::PrologueUpwards,
-			std::vector<uint8_t> { 0x56, 0x57, 0xe5, 0x89, 0x55 }
-		};
-	}
-
 	namespace CPackageInfoCache
 	{
 		Pattern_t LoadPackage
@@ -1492,13 +1254,6 @@ namespace Patterns
 
 	namespace IClientUtils
 	{
-		Pattern_t RunIPCFrame
-		{
-			"IClientUtils::RunIPCFrame",
-			"83 EC 08 89 F3 50 57 E8 ? ? ? ? 58 FF B5 ? ? ? ? E8 ? ? ? ? 58 8D 45",
-			SigFollowMode::PrologueUpwards,
-			std::vector<uint8_t> { 0x56, 0x57, 0xe5, 0x89, 0x55 }
-		};
 		Pattern_t Offset_GetPipeIndex
 		{
 			"IClientUtils::m_PipeIndex",

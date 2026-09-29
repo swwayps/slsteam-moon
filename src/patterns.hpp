@@ -16,11 +16,7 @@ public:
 	// display names are not sufficient because a few legacy entries deliberately
 	// use the name of the Steam function they locate instead of their C++ symbol.
 	const std::string symbol;
-	// Not const: the structural RunIPCFrame resolver (autoResolveIpcFrameRoots
-	// in patterns.cpp) rewrites the trailing root byte of the IClient*
-	// dispatch patterns in place before find() runs, to absorb Steam-update
-	// id drift.  Every other pattern is left untouched.
-	std::string pattern;
+	const std::string pattern;
 	const MemHlp::SigFollowMode followMode;
 	std::vector<int16_t> prologue;
 
@@ -110,37 +106,6 @@ namespace Patterns
 		extern Pattern_t BuildDepotDependency;
 	}
 
-	namespace IClientAppManager
-	{
-		extern Pattern_t RunIPCFrame;
-	}
-
-	namespace IClientApps
-	{
-		extern Pattern_t RunIPCFrame;
-	}
-
-	namespace IClientRemoteStorage
-	{
-		extern Pattern_t RunIPCFrame;
-	}
-
-	namespace IClientUser
-	{
-		extern Pattern_t RunIPCFrame;
-
-	}
-
-	namespace IClientUGC
-	{
-		extern Pattern_t RunIPCFrame;
-	}
-
-	namespace IClientUserStats
-	{
-		extern Pattern_t RunIPCFrame;
-	}
-
 	namespace CPackageInfoCache
 	{
 		extern Pattern_t LoadPackage;
@@ -168,7 +133,6 @@ namespace Patterns
 
 	namespace IClientUtils
 	{
-		extern Pattern_t RunIPCFrame;
 		extern Pattern_t Offset_GetPipeIndex;
 	}
 

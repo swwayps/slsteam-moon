@@ -104,7 +104,7 @@ namespace AffTrace
 		MarkLicenseChanged,     // resolved CUser package-change marker
 		ProcessLicenseUpdates,  // resolved CUser pending-update processor
 		NotifyLicensesUpdated,  // Steam NotifyLicensesUpdated
-		RunIpcFrame,            // IClientUtils::RunIPCFrame
+		RunIpcFrame,            // IClientUtils IPC call (owner latch)
 		Drain,                  // owner-thread queue drain
 	};
 
@@ -506,8 +506,8 @@ namespace AffTrace
 
 	// ---- call-site helpers ---------------------------------------------
 
-	// Latch the owner IPC thread once per process (from the hooked
-	// IClientUtils::RunIPCFrame, which is the dispatcher the VM run measured).
+	// Latch the owner IPC thread once per process (from ProcessIPCFrame on an
+	// IClientUtils call, the dispatcher the VM run measured).
 	inline void latchOwner()
 	{
 		if (!enabled())
@@ -616,11 +616,11 @@ namespace AffTrace
 	// RAII owner-IPC-frame accounting, so the depth counter cannot drift if a
 	// frame leaves through an unexpected path. Inert when tracing is off.
 	//
-	// Installed on EVERY hooked RunIPCFrame dispatcher, not just IClientUtils.
-	// The first VM run only guarded IClientUtils, so `ipc_depth`/`ipc_frames`
-	// — and therefore HOUR_ROLLUP.overlaps — under-reported real owner-frame
-	// activity: the successful drain came from another dispatcher and was
-	// recorded with ipc_depth=0. Counting is gated on actually being the
+	// Installed around every RunInterface frame in ProcessIPCFrame, not just
+	// IClientUtils calls. The first VM run only guarded IClientUtils, so
+	// `ipc_depth`/`ipc_frames` — and therefore HOUR_ROLLUP.overlaps —
+	// under-reported real owner-frame activity: the successful drain came from
+	// another dispatcher and was recorded with ipc_depth=0. Counting is gated on actually being the
 	// latched owner thread, so a dispatcher that runs elsewhere still cannot
 	// pollute the owner-frame counters. The enter/exit decision is taken once,
 	// in the constructor, so the pair can never become unbalanced if the owner
