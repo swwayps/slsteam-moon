@@ -28,7 +28,7 @@ struct AppLicensesChanged_t
 	uint32_t count;							//0x8
 	uint32_t apps[MAX_APPS_PER_CALLBACK];	//0xC
 	uint64_t appsAdded;						//0x10C
-}; //0x110
+}; //0x114
 
 struct AppOwnershipInfo_t {
     int32_t subId;

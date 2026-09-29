@@ -1434,11 +1434,11 @@ static void hkClientUser_RunIPCFrame(void* pClientUser, void* a1, void* a2, void
 {
 	static std::once_flag attestationOnce;
 	attestHookInvocation(attestationOnce, Hooks::IClientUser_RunIPCFrame.name);
-	g_pClientUser = reinterpret_cast<IClientUser*>(pClientUser);
 
 	static bool hooked = false;
 	if (!hooked)
 	{
+		g_pClientUser = reinterpret_cast<IClientUser*>(pClientUser);
 		std::shared_ptr<lm_vmt_t> vft = std::make_shared<lm_vmt_t>();
 		LM_VmtNew(*reinterpret_cast<lm_address_t**>(pClientUser), vft.get());
 
