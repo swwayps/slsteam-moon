@@ -18,7 +18,7 @@
 #include "sdk/CSteamMatchmakingServers.hpp"
 #include "sdk/CUtl.hpp"
 #include "sdk/CUser.hpp"
-#include "sdk/steam.hpp"
+#include "sdk/types.hpp"
 #include "sdk/IClientAppManager.hpp"
 #include "sdk/IClientApps.hpp"
 #include "sdk/IClientFriends.hpp"
@@ -1174,6 +1174,13 @@ static bool hkClientUser_GetEncryptedAppTicket(void* pClientUser, void* pTicket,
 	return success;
 }
 
+static bool hkClientUser_GetLegacyCDKey(void* pClientUser, AppId_t appId, char* pChKey, uint32_t keySize)
+{
+	Apps::getLegacyCDKey(appId);
+
+	return Hooks::IClientUser_GetLegacyCDKey.originalFn.fn(pClientUser, appId, pChKey, keySize);
+}
+
 static uint8_t hkClientUser_IsUserSubscribedAppInTicket(void* pClientUser, uint64_t steamId, AppId_t appId)
 {
 	const uint8_t ticketState = Hooks::IClientUser_IsUserSubscribedAppInTicket.originalFn.fn(pClientUser, steamId, appId);
@@ -1262,38 +1269,6 @@ static CSteamId hkClientUser_GetSteamId(const CSteamId& steamId)
 	return ticket.steamId;
 }
 
-static bool hkClientUser_RequiresLegacyCDKey(void* pClientUser, uint32_t appId, uint32_t* a2)
-{
-	LOG_TRACE("Calling original\n");
-	const bool requiresKey = Hooks::IClientUser_RequiresLegacyCDKey.originalFn.fn(pClientUser, appId, a2);
-	g_pLog->debugOnce
-	(
-		"%s(%p, %u, %p) -> %i\n",
-
-		Hooks::IClientUser_RequiresLegacyCDKey.name.c_str(),
-		pClientUser,
-		appId,
-		reinterpret_cast<void*>(a2),
-		requiresKey
-	);
-
-	if (Apps::shouldDisableCDKey(appId))
-	{
-		g_pLog->infoOnce("Disable CD Key for %u\n", appId);
-		// Zero the out-param before short-circuiting so the caller reads a
-		// defined "no key" value (matches LumaCore's RequiresLegacyCDKey
-		// suppression); leaving it untouched can let a stale value drive
-		// the install-script %CDKEY% substitution.
-		if (a2 != nullptr)
-		{
-			*a2 = 0;
-		}
-		return false;
-	}
-
-	return requiresKey;
-}
-
 static void hkCGameInfoDialog_ServerResponded(void* pGameInfoDialog, gameserverdetails_t* details)
 {
 	FakeAppIds::pingResponse(details);
@@ -1380,8 +1355,8 @@ namespace Hooks
 	VFTHook<IClientUser_BUpdateAppOwnershipTicket_t> IClientUser_BUpdateAppOwnershipTicket;
 	VFTHook<IClientUser_GetAppOwnershipTicketExtendedData_t> IClientUser_GetAppOwnershipTicketExtendedData;
 	VFTHook<IClientUser_IsUserSubscribedAppInTicket_t> IClientUser_IsUserSubscribedAppInTicket;
-	VFTHook<IClientUser_RequiresLegacyCDKey_t> IClientUser_RequiresLegacyCDKey;
 	VFTHook<IClientUser_GetEncryptedAppTicket_t> IClientUser_GetEncryptedAppTicket("IClientUser::GetEncryptedAppTicket");
+	VFTHook<IClientUser_GetLegacyCDKey_t> IClientUser_GetLegacyCDKey;
 
 	VFTHook<IClientUtils_GetAppId_t> IClientUtils_GetAppId("IClientUtils::GetAppId");
 	VFTHook<IClientUtils_GetOfflineMode_t> IClientUtils_GetOfflineMode("IClientUtils::GetOfflineMode");
@@ -1452,14 +1427,14 @@ void Hooks::placeVFTHooks()
 		IClientUser_BUpdateAppOwnershipTicket.setup(vft, VFTIndexes::IClientUser::BUpdateAppOwnershipTicket, hkClientUser_BUpdateAppOwnershipTicket);
 		IClientUser_GetAppOwnershipTicketExtendedData.setup(vft, VFTIndexes::IClientUser::GetAppOwnershipTicketExtendedData, hkClientUser_GetAppOwnershipTicketExtendedData);
 		IClientUser_IsUserSubscribedAppInTicket.setup(vft, VFTIndexes::IClientUser::IsUserSubscribedAppInTicket, &hkClientUser_IsUserSubscribedAppInTicket);
-		IClientUser_RequiresLegacyCDKey.setup(vft, VFTIndexes::IClientUser::RequiresLegacyCDKey, hkClientUser_RequiresLegacyCDKey);
 		IClientUser_GetEncryptedAppTicket.setup(vft, VFTIndexes::IClientUser::GetEncryptedAppTicket, hkClientUser_GetEncryptedAppTicket);
+		IClientUser_GetLegacyCDKey.setup(vft, VFTIndexes::IClientUser::GetLegacyCDKey, hkClientUser_GetLegacyCDKey);
 		IClientUser_BLoggedOn.place();
 		IClientUser_BUpdateAppOwnershipTicket.place();
 		IClientUser_GetAppOwnershipTicketExtendedData.place();
 		IClientUser_IsUserSubscribedAppInTicket.place();
-		IClientUser_RequiresLegacyCDKey.place();
 		IClientUser_GetEncryptedAppTicket.place();
+		IClientUser_GetLegacyCDKey.place();
 		g_pLog->debug("IClientUser->vft at %p\n", vft->vtable);
 	}
 	{
@@ -1741,8 +1716,8 @@ void Hooks::remove()
 	IClientUser_BUpdateAppOwnershipTicket.remove();
 	IClientUser_GetAppOwnershipTicketExtendedData.remove();
 	IClientUser_GetEncryptedAppTicket.remove();
+	IClientUser_GetLegacyCDKey.remove();
 	IClientUser_IsUserSubscribedAppInTicket.remove();
-	IClientUser_RequiresLegacyCDKey.remove();
 
 	CGameInfoDialog_ServerResponded.remove();
 	if (configStoreHookReady)

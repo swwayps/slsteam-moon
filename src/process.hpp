@@ -1,7 +1,7 @@
 #pragma once
 
 #include "log.hpp"
-#include "sdk/steam.hpp"
+#include "sdk/types.hpp"
 
 #include <cstdint>
 #include <elf.h>

@@ -117,7 +117,7 @@ test-fakeappid-presence: obj/sdk/protobufs/encrypted_app_ticket.pb.o \
 	/tmp/test_fakeappid_presence
 
 test-fakeappid-wiring:
-	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror \
+	$(CXX) -m32 -std=c++20 -Wall -Wextra -Wpedantic -Werror \
 		tools/test_fakeappid_wiring.cpp -o /tmp/test_fakeappid_wiring
 	/tmp/test_fakeappid_wiring
 
@@ -211,8 +211,8 @@ clean-libs:
 		"tools/schema-grabber/obj"
 
 clean-tools:
-	$(MAKE) -C tools/schema-grabber clean
-	$(MAKE) -C tools/ticket-grabber clean
+	-$(MAKE) -C tools/schema-grabber clean
+	-$(MAKE) -C tools/ticket-grabber clean
 
 install:
 	sh setup.sh install

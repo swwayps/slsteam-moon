@@ -661,10 +661,18 @@ bool CConfig::loadSettings()
 	fakeAppIds = getMap<uint32_t, uint32_t>(node, "FakeAppIds");
 	manifestIds = getMap<uint32_t, uint64_t>(node, "ManifestIds");
 	appTokens = getMap<uint32_t, uint64_t>(node, "AppTokens");
+	// getMap only logs numeric values, so keys stay out of the log.
+	cdKeys = getMap<uint32_t, std::string>(node, "CDKeys");
 	achievementOwners = getMap<uint32_t, uint64_t>(node, "AchievementOwners");
 	gameTitles = getMap<uint32_t, std::string>(node, "GameTitles");
 	subscriptionTimestamps = getMap<uint32_t, uint32_t>(node, "SubscriptionTimestamps");
 	steamIdOverride = getMap<AppId_t, uint64_t>(node, "SteamIdOverride");
+
+	//Do not log the keys themself
+	for (const auto& key : cdKeys.get())
+	{
+		LOG_CUSTOM(k_ELogLevelInfo | k_ELogLevelOnce, "Added CDKey for %u\n", key.first);
+	}
 
 	//Do not warn for these (yet?)
 	const auto idleStatusNode = node["IdleStatus"];

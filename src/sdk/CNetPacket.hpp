@@ -1,6 +1,7 @@
 #pragma once
 
 #include "steam.hpp"
+#include "types.hpp"
 
 #include "protobufs/enums_clientserver.pb.h"
 #include "protobufs/steammessages_base.pb.h"

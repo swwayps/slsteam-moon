@@ -273,6 +273,11 @@ namespace VFTIndexes
 			"14IClientUserMap",
 			"GetEncryptedAppTicket"
 		};
+		VFTableInfo_t GetLegacyCDKey
+		{
+			"14IClientUserMap",
+			"GetLegacyCDKey"
+		};
 		VFTableInfo_t GetSteamID
 		{
 			"14IClientUserMap",
@@ -283,10 +288,10 @@ namespace VFTIndexes
 			"14IClientUserMap",
 			"IsUserSubscribedAppInTicket"
 		};
-		VFTableInfo_t RequiresLegacyCDKey
+		VFTableInfo_t SetLegacyCDKey
 		{
 			"14IClientUserMap",
-			"RequiresLegacyCDKey"
+			"SetLegacyCDKey"
 		};
 	}
 

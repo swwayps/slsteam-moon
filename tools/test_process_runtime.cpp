@@ -1,4 +1,4 @@
-#include "../src/sdk/steam.hpp"
+#include "../src/sdk/types.hpp"
 #include "../src/config.hpp"
 #include "../src/log.hpp"
 #include "../src/process.hpp"

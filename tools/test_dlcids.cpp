@@ -136,7 +136,7 @@ int main()
 
 	// 6) Default injection keeps depot-tagged ids in package 0, admits only
 	// advertised ids with known content, and still records every DLC id for
-	// local legacy-key suppression.
+	// app-local DLC coverage (ownership and legacy keys).
 	{
 		AppInfoProvision::DlcAppIds sources;
 		sources.depotTagged = {100};

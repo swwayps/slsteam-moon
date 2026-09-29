@@ -1,6 +1,6 @@
 #pragma once
 
-#include "steam.hpp"
+#include "types.hpp"
 
 #include <cstdint>
 

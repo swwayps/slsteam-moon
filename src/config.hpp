@@ -2,8 +2,7 @@
 
 #include "mtvar.hpp"
 #include "log.hpp"
-#include "sdk/steam.hpp"
-#include "sdk/CSteamID.hpp"
+#include "sdk/types.hpp"
 #include "feats/manifestpins.hpp"
 #include "feats/librarydates.hpp"
 
@@ -98,6 +97,7 @@ public:
 	MTVariable<std::unordered_set<uint32_t>> installedAppIds;
 	MTVariable<std::unordered_map<uint32_t, CDlcData>> dlcData;
 	MTVariable<std::unordered_map<uint32_t, uint64_t>> appTokens;
+	MTVariable<std::unordered_map<uint32_t, std::string>> cdKeys;
 	MTVariable<std::unordered_set<uint32_t>> fakeOffline;
 	MTVariable<std::unordered_map<uint32_t, uint32_t>> fakeAppIds;
 	MTVariable<std::unordered_map<uint32_t, uint64_t>> manifestIds;

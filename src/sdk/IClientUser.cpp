@@ -1,6 +1,8 @@
 #include "IClientUser.hpp"
 
 #include "../hooks.hpp"
+#include "../memhlp.hpp"
+#include "../vftableinfo.hpp"
 
 
 uint32_t IClientUser::getAppOwnershipTicketExtendeData
@@ -15,4 +17,9 @@ uint32_t IClientUser::getAppOwnershipTicketExtendeData
 )
 {
 	return Hooks::IClientUser_GetAppOwnershipTicketExtendedData.originalFn.fn(this, appId, pTicket, ticketSize, pOffAppId, pOffSteamId, pOffSig, pSigSize);
+}
+
+bool IClientUser::setLegacyCDKey(const AppId_t appId, const char* key)
+{
+	return MemHlp::callVFunc<bool(*)(void*, AppId_t, const char*)>(VFTIndexes::IClientUser::SetLegacyCDKey.index, this, appId, key);
 }

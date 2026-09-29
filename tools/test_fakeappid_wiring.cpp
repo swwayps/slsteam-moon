@@ -1,5 +1,4 @@
-#include "../src/sdk/CUtl.hpp"
-#include "../src/sdk/steam.hpp"
+#include "../src/sdk/CSteamEngine.hpp"
 
 #include <cstdio>
 #include <fstream>

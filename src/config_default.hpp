@@ -51,6 +51,11 @@ DlcData:
 #Used to retrieve ProductInfo from Steam servers for some games
 AppTokens:
 
+#Legacy CD keys required by some games
+#Unless explicitly specified SLSsteam will generate a random 4 * 4 key using A-Z + 0-9 seeded by your accountId + appId
+#If you want to delete injected CD keys delete cdk_[number] from your localconfig.vdf
+CDKeys:
+
 #Fake Steam being offline for specified AppIds. Same format as AppIds
 FakeOffline:
 

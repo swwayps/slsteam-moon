@@ -27,6 +27,7 @@ namespace Apps
 
 	void buildDepotDependency(uint32_t appId, CUtlVector<DepotInfo_t>* depots, CUtlVector<DepotInfo_t>* sharedDepots);
 	bool checkAppOwnership(uint32_t appId, AppOwnershipInfo_t* info);
+	void getLegacyCDKey(uint32_t appId);
 	void getSubscribedApps(uint32_t* appList, uint32_t size, uint32_t& count);
 
 	// Publish the two independent sources behind the managed-DLC membership
@@ -37,7 +38,6 @@ namespace Apps
 	bool isAddedAppDlcId(uint32_t appId);
 
 	bool shouldDisableCloud(uint32_t appId);
-	bool shouldDisableCDKey(uint32_t appId);
 	bool shouldDisableUpdates(uint32_t appId);
 
 	void sendAndRecvLastPlayedTimes(const char* name, CPlayer_GetLastPlayedTimes_Response* recv);

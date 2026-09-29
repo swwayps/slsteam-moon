@@ -1,6 +1,6 @@
 #include "IClientUtils.hpp"
 
-#include "steam.hpp"
+#include "types.hpp"
 
 #include "../hooks.hpp"
 #include "../patterns.hpp"

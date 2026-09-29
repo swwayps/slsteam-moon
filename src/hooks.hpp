@@ -1,6 +1,6 @@
 #pragma once
 
-#include "sdk/steam.hpp"
+#include "sdk/types.hpp"
 #include "sdk/protobufs/enums_clientserver.pb.h"
 
 #include "libmem/libmem.h"
@@ -115,8 +115,8 @@ namespace Hooks
 	typedef uint32_t(*IClientUser_BUpdateAppOwnershipTicket_t)(void*, uint32_t, bool);
 	typedef uint32_t(*IClientUser_GetAppOwnershipTicketExtendedData_t)(void*, uint32_t, void*, uint32_t, uint32_t*, uint32_t*, uint32_t*, uint32_t*);
 	typedef bool(*IClientUser_GetEncryptedAppTicket_t)(void*, void*, uint32_t, uint32_t*);
+	typedef bool(*IClientUser_GetLegacyCDKey_t)(void*, uint32_t, char*, uint32_t);
 	typedef uint8_t(*IClientUser_IsUserSubscribedAppInTicket_t)(void*, uint64_t, uint32_t);
-	typedef bool(*IClientUser_RequiresLegacyCDKey_t)(void*, uint32_t, uint32_t*);
 
 	typedef bool(*IClientUtils_GetOfflineMode_t)(void*);
 
@@ -184,8 +184,8 @@ namespace Hooks
 	extern VFTHook<IClientUser_BUpdateAppOwnershipTicket_t> IClientUser_BUpdateAppOwnershipTicket;
 	extern VFTHook<IClientUser_GetAppOwnershipTicketExtendedData_t> IClientUser_GetAppOwnershipTicketExtendedData;
 	extern VFTHook<IClientUser_GetEncryptedAppTicket_t> IClientUser_GetEncryptedAppTicket;
+	extern VFTHook<IClientUser_GetLegacyCDKey_t> IClientUser_GetLegacyCDKey;
 	extern VFTHook<IClientUser_IsUserSubscribedAppInTicket_t> IClientUser_IsUserSubscribedAppInTicket;
-	extern VFTHook<IClientUser_RequiresLegacyCDKey_t> IClientUser_RequiresLegacyCDKey;
 
 	extern VFTHook<IClientUtils_GetAppId_t> IClientUtils_GetAppId;
 	extern VFTHook<IClientUtils_GetOfflineMode_t> IClientUtils_GetOfflineMode;

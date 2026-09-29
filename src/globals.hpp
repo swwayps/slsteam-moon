@@ -1,6 +1,6 @@
 #pragma once
 
-#include "sdk/CSteamID.hpp"
+#include "sdk/types.hpp"
 
 #include "libmem/libmem.h"
 

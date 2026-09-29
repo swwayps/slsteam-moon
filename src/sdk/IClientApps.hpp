@@ -2,7 +2,7 @@
 
 #include "protobufs/enums.pb.h"
 
-#include "steam.hpp"
+#include "types.hpp"
 
 #include <cstdint>
 #include <vector>

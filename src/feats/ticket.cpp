@@ -10,7 +10,7 @@
 #include "../sdk/CProtoBufMsgBase.hpp"
 #include "../sdk/CSteamEngine.hpp"
 #include "../sdk/CUser.hpp"
-#include "../sdk/steam.hpp"
+#include "../sdk/types.hpp"
 #include "../sdk/IClientUtils.hpp"
 
 #include "base64/base64.hpp"

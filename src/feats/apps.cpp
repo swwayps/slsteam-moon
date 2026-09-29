@@ -10,6 +10,7 @@
 #include "../sdk/CUtl.hpp"
 #include "../sdk/IClientApps.hpp"
 #include "../sdk/IClientAppManager.hpp"
+#include "../sdk/IClientUser.hpp"
 
 #include "../config.hpp"
 #include "../globals.hpp"
@@ -22,6 +23,7 @@
 
 #include <charconv>
 #include <cstdlib>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <ctime>
@@ -359,6 +361,77 @@ bool Apps::checkAppOwnership(uint32_t appId, AppOwnershipInfo_t* pInfo)
 	return true;
 }
 
+void Apps::getLegacyCDKey(uint32_t appId)
+{
+	// Package 0 makes every managed app read as subscribed, so Steam's own
+	// answer cannot tell them from a real license. Only managed apps and their
+	// DLC without a native license get a key; owned titles keep Steam's.
+	if (!(g_config.isAddedAppId(appId) || isAddedAppDlcId(appId)) ||
+	    StatsPolicy::hasNativeLicense(appId))
+	{
+		return;
+	}
+
+	CUser* user = getLocalUser();
+	if (user == nullptr)
+	{
+		return;
+	}
+
+	std::string newKey;
+
+	const auto keys = g_config.cdKeys.get();
+	if (keys.contains(appId))
+	{
+		newKey = keys.at(appId);
+		LOG_DEBUG("Using key from config for %u\n", appId);
+	}
+	else
+	{
+		constexpr const char* CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+		static const unsigned int CHARS_SIZE = strlen(CHARS);
+
+		//Some games use 5 SEGMENT_CHARS/5 SEGMENT_NUM or a mix of both
+		//4 * 4 is the most common one though
+		constexpr unsigned int SEGMENT_CHARS = 4;
+		constexpr unsigned int SEGMENT_NUM = 4;
+
+		constexpr unsigned int SEGMENT_SIZE = SEGMENT_CHARS + 1; //AAAA-, BBBB-, etc
+		constexpr unsigned int KEY_SIZE = SEGMENT_SIZE * SEGMENT_NUM - 1; //Do not end with -
+		
+		//Don't forget null terminator since we
+		//do not pass a size argument to SetLegacyCDKey
+		newKey.resize(KEY_SIZE + 1);
+
+		srand(g_currentSteamId.steamId.accountId + appId);
+
+		for (unsigned int i = 0; i < KEY_SIZE; i++)
+		{
+			if ((i + 1) % SEGMENT_SIZE == 0)
+			{
+				newKey[i] = '-';
+				continue;
+			}
+
+			const unsigned int num = rand() % CHARS_SIZE;
+			newKey[i] = CHARS[num];
+		}
+
+		newKey[newKey.size() - 1] = '\0';
+		LOG_DEBUG("Generated random key %s for %u\n", newKey.c_str(), appId);
+	}
+
+	const auto clientUser = user->getClientUser();
+
+	//Wrapper function for CUser::SetLegacyCDKey, which gets called
+	//from CCMInterface when a legacy cd key packet arrives
+	//Injecting them only in GetLegacyCDKey doesn't work right, so we set it instead
+	if (!clientUser->setLegacyCDKey(appId, newKey.c_str()))
+	{
+		LOG_ERROR("Failed to set CDKey for %u\n", appId);
+	}
+}
+
 void Apps::getSubscribedApps(uint32_t* appList, size_t size, uint32_t& count)
 {
 	const auto& added = g_config.addedAppIds.get();
@@ -396,37 +469,6 @@ bool Apps::shouldDisableCloud(uint32_t appId)
 	// Steam's own ownership answer is never consulted: it flips to "not owned"
 	// for genuinely owned apps while the client rebuilds its license set.
 	return g_config.disableCloud.get() && g_config.isAddedAppId(appId);
-}
-
-bool Apps::shouldDisableCDKey(uint32_t appId)
-{
-	// AdditionalApps are injected as owned, so a launch-time legacy-key
-	// request (GettingLegacyKey) hits Valve's backend, which validates
-	// ownership server-side and answers AccessDenied (EResult 15) — the
-	// launch then fails before Proton is ever spawned (visible as
-	// "LaunchApp failed with GettingLegacyKey with 15" in console_log).
-	// Suppress the legacy-key requirement for AddedApps so Steam skips
-	// that doomed step and proceeds to launch, mirroring how the mask is
-	// dropped for cloud.  The game's own activation DRM (EA/Uplay) is a
-	// separate layer handled outside this hook.
-	//
-	// Crucially this must also cover the base app's DLC appids: Steam
-	// queries RequiresLegacyCDKey across the whole app+DLC set at launch,
-	// and a single owned DLC whose appinfo still carries hadthirdpartycdkey
-	// (e.g. Far Cry 4's season-pass DLC 332220-332232/343700/348080/353870)
-	// re-arms GettingLegacyKey and fails the base app's launch even after
-	// the base app itself is suppressed.
-	if (g_config.isAddedAppId(appId) || Apps::isAddedAppDlcId(appId))
-	{
-		return true;
-	}
-
-	CUser* user = getLocalUser();
-	if (user == nullptr)
-	{
-		return false;
-	}
-	return !user->isSubscribed(appId);
 }
 
 bool Apps::shouldDisableUpdates(uint32_t appId)

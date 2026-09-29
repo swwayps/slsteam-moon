@@ -9,7 +9,7 @@
 #include "../sdk/CProtoBufMsgBase.hpp"
 #include "../sdk/CSteamEngine.hpp"
 #include "../sdk/CUser.hpp"
-#include "../sdk/steam.hpp"
+#include "../sdk/types.hpp"
 
 #include <cstdint>
 #include <cstring>
