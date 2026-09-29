@@ -363,16 +363,3 @@ bool Ticket::recvAppTicket(CMsgClientGetAppOwnershipTicketResponse* msg)
 	return false;
 }
 
-void Ticket::recvMsg(CProtoBufMsgBase* msg)
-{
-	switch(msg->type)
-	{
-		case EMSG_APPOWNERSHIPTICKET_RESPONSE:
-			recvAppTicket(msg->getBody<CMsgClientGetAppOwnershipTicketResponse>());
-			break;
-
-		case EMSG_ENCRYPTED_APPTICKET_RESPONSE:
-			recvEncryptedAppTicket(msg->getBody<CMsgClientRequestEncryptedAppTicketResponse>());
-			break;
-	}
-}

@@ -32,11 +32,8 @@ std::vector<uint8_t> rewriteRequest(bool modern, const uint8_t* data,
 	uint32_t size, const CMsgProtoBufHeader& header);
 std::optional<std::vector<uint8_t>> rewriteResponse(bool modern, const uint8_t* data,
 	uint32_t size, CMsgProtoBufHeader& header);
-void recvMessage(const CProtoBufMsgBase* msg);
-
-// Transport-agnostic form used by the CNetPacket CM-receive path, which has
-// the login/logoff/license eMsg and the parsed header's steamid but no
-// CProtoBufMsgBase. Behaviour matches the CProtoBufMsgBase overload.
+// Called by the CM-receive dispatch with the login/logoff/license eMsg and
+// the parsed header's steamid.
 void recvMessage(uint32_t type, bool hasSteamId, uint64_t steamId);
 
 	constexpr const char* GET_PLAYER_STATS_SERVICE_NAME = "Player.GetUserStats#1";

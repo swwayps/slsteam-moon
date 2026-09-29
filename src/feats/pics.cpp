@@ -635,7 +635,7 @@ void recvProductInfoResponse(CMsgClientPICSProductInfoResponse* resp)
 		//   - manifest ALREADY on disk at planning -> Steam SKIPS BYld and goes
 		//     straight to Downloading -> success.
 		// So the blobs must be on disk before we return. This runs on a genuine
-		// Steam worker thread (the InitFromPacket detour).
+		// Steam worker thread (the CCMInterface::RecvPkt detour).
 		//
 		// We used to create one std::async thread for EVERY target, including
 		// manifests restoreToDepotcache had already made ready. Large depot
@@ -841,22 +841,6 @@ void recvChangesSinceResponse(CMsgClientPICSChangesSinceResponse* resp)
 	{
 		const std::string appinfoVdfPath = AppInfoVdf::findExistingPath();
 		AppInfoProvision::refreshInBackground(appinfoVdfPath, refreshRequests);
-	}
-}
-
-void recvMsg(CProtoBufMsgBase* msg)
-{
-	if (!msg) return;
-	switch (msg->type)
-	{
-		case EMSG_PICS_PRODUCTINFO_RESPONSE:
-			recvProductInfoResponse(msg->getBody<CMsgClientPICSProductInfoResponse>());
-			break;
-		case EMSG_PICS_CHANGES_RESPONSE:
-			recvChangesSinceResponse(msg->getBody<CMsgClientPICSChangesSinceResponse>());
-			break;
-		default:
-			break;
 	}
 }
 

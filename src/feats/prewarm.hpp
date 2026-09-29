@@ -26,7 +26,7 @@
 // a real re-fetch when Steam purged it.
 //
 // CRITICAL: the background worker must be started
-// from a real Steam worker thread (the PICS InitFromPacket recv path),
+// from a real Steam worker thread (the PICS CCMInterface::RecvPkt recv path),
 // NEVER from the LD_AUDIT load()/setup() path.
 //
 // This header holds the PURE, dependency-free decision logic so it can be
@@ -458,7 +458,7 @@ inline std::vector<DepotGid> extractWorkshopManifests(const std::string& acf,
 
 // Start the background pre-warm worker exactly once.  Idempotent and
 // thread-safe: safe to call from every PICS recv.  MUST be called only
-// from a real Steam worker thread (the PICS InitFromPacket recv path),
+// from a real Steam worker thread (the PICS CCMInterface::RecvPkt recv path),
 // NEVER from load()/setup().  No-op if there are no
 // AddedApps.  Returns immediately; the actual staging runs on its own
 // detached thread.

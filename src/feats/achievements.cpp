@@ -170,17 +170,6 @@ void Achievements::recvMessage(uint32_t type, bool hasSteamId, uint64_t steamId)
 	// than allowing the previously selected owner's progress through unchanged.
 }
 
-void Achievements::recvMessage(const CProtoBufMsgBase* msg)
-{
-	if (!msg) return;
-	// Gate on type BEFORE touching msg->header: on the newer client an
-	// untracked message can reach here with a header pointer that is not safe
-	// to dereference, and only 751/757/780 ever need the header at all.
-	if (msg->type != 751 && msg->type != 757 && msg->type != 780) return;
-	const bool hasSteamId = msg->header && msg->header->has_steamid();
-	recvMessage(msg->type, hasSteamId, hasSteamId ? msg->header->steamid() : 0);
-}
-
 std::unordered_map<uint32_t, std::unordered_set<uint64_t>> Achievements::ownerBlacklist;
 
 

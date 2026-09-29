@@ -11,7 +11,6 @@
 
 class CMsgClientGetAppOwnershipTicketResponse;
 class CMsgClientRequestEncryptedAppTicketResponse;
-class CProtoBufMsgBase;
 
 namespace Ticket
 {
@@ -95,9 +94,7 @@ public:
 
 	// Return true iff the response message was rewritten in place (a cached
 	// encrypted ticket was substituted, or eresult was stamped OK), so the
-	// CNetPacket CM-receive path knows to reserialize the packet. The classic
-	// CProtoBufMsgBase path mutates the arena body directly and ignores this.
+	// CM-receive dispatch knows to reserialize the packet.
 	bool recvEncryptedAppTicket(CMsgClientRequestEncryptedAppTicketResponse* msg);
 	bool recvAppTicket(CMsgClientGetAppOwnershipTicketResponse* msg);
-	void recvMsg(CProtoBufMsgBase* msg);
 }

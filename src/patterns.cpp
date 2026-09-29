@@ -828,7 +828,6 @@ bool Patterns::init()
 	CUser::ProcessPendingLicenseUpdates.optional = true;
 	CUser::NotifyLicensesUpdated.optional = true;
 	CUser::Offset_CompatManager.optional = true;
-	CCMInterface::RecvPkt.optional = true;
 	CAppInfoCache::GetOrAddAppData.optional = true;
 	CAppInfoCache::ThreadedReadFromDisk.optional = true;
 	CAppInfoCache::SkipFlagReference.optional = true;
@@ -1025,12 +1024,6 @@ namespace Patterns
 
 	namespace CProtoBufMsgBase
 	{
-		Pattern_t InitFromPacket
-		{
-			"CProtoBufMsgBase::InitFromPacket",
-			"E8 ? ? ? ? 58 8B 45 ? 8B 8D",
-			SigFollowMode::Relative
-		};
 		Pattern_t Send
 		{
 			"CProtoBufMsgBase::Send",

@@ -101,9 +101,8 @@ namespace DepotKey
 	// Steam's ConfigStore writers can publish a competing snapshot.
 	void disableShaderCache();
 
-	// Hook callbacks — called from hooks.cpp inside the existing
-	// CProtoBufMsgBase_Send / _InitFromPacket detours.
-	void recvMsg(CProtoBufMsgBase* msg);
+	// Hook callback — called from hooks.cpp inside the CProtoBufMsgBase_Send
+	// detour.
 	void sendMsg(CProtoBufMsgBase* msg);
 
 	// RecvAction + classifyRecv (the pure substitution decision) live in

@@ -347,42 +347,6 @@ static uint32_t hkClientUnifiedServiceTransport_SendAndRecvMsg(CClientUnifiedSer
 	return ret;
 }
 
-static void hkProtoBufMsgBase_InitFromPacket(CProtoBufMsgBase* pMsg, void* pSrc)
-{
-	Hooks::CProtoBufMsgBase_InitFromPacket.tramp.fn(pMsg, pSrc);
-
-	if (!pSrc)
-	{
-		return;
-	}
-
-	g_pLog->debug("Received ProtoBufMsg of type %u with type %s\n", pMsg->type, MemHlp::getTypeName(pMsg));
-
-	// On the newer client these CM messages are dispatched from
-	// CCMInterface::RecvPkt as CNetPacket frames instead (hkCMInterface_RecvPkt
-	// -> CmRecv::dispatchNetPacket).  The transport latch keeps exactly one of
-	// the two paths authoritative so a message is never handled twice; this
-	// classic path stays live for a client that still delivers CM messages
-	// through InitFromPacket.
-	if (CmRecv::isTracked(pMsg->type) && !CmRecv::claim(CmRecv::Transport::Classic))
-	{
-		return;
-	}
-
-	Achievements::recvMessage(pMsg);
-	if (pMsg->type == 780)
-		ManifestDonor::onLicenseList(pMsg->getBody<CMsgClientLicenseList>());
-	else if (pMsg->type == 757)
-	{
-		ManifestDonor::onLoggedOff();
-		ManifestCode::resetSession();
-	}
-	DepotKey::recvMsg(pMsg);
-	Misc::recvMsg(pMsg);
-	PICS::recvMsg(pMsg);
-	Ticket::recvMsg(pMsg);
-}
-
 static void hkCMInterface_RecvPkt(void* pCMInterface, CNetPacket* pNetPacket)
 {
 	// Settle the packet field layout from the first live Steam-owned packet
@@ -417,15 +381,10 @@ static void hkCMInterface_RecvPkt(void* pCMInterface, CNetPacket* pNetPacket)
 		}
 
 		// Route the CM protobuf frame through the message features (depot key,
-		// PICS, ticket, wallet/email, license list, login-state).  The newer
-		// client delivers these here instead of via
-		// CProtoBufMsgBase::InitFromPacket; the transport latch makes the two
-		// paths mutually exclusive.  dispatchNetPacket may rewrite the packet
-		// body in place before Steam processes it.
-		if (CmRecv::isTracked(type) && CmRecv::claim(CmRecv::Transport::NetPkt))
-		{
-			CmRecv::dispatchNetPacket(pNetPacket);
-		}
+		// PICS, ticket, wallet/email, license list, login-state).
+		// dispatchNetPacket may rewrite the packet body in place before Steam
+		// processes it.
+		CmRecv::dispatchNetPacket(pNetPacket);
 	}
 
 	Hooks::CCMInterface_RecvPkt.tramp.fn(pCMInterface, pNetPacket);
@@ -1496,7 +1455,6 @@ static void patchRetn(lm_address_t address)
 
 namespace Hooks
 {
-	static bool familyShareHookReady = false;
 	static bool playerStatsHookReady = false;
 	static bool depotOverrideHookReady = false;
 
@@ -1514,7 +1472,6 @@ namespace Hooks
 	DetourHook<CAPIJob_SendAndRecv_t> CAPIJob_SendAndRecv;
 	DetourHook<CClientUnifiedServiceMethod_SendAndRecvMsg_t> CClientUnifiedServiceMethod_SendAndRecvMsg;
 
-	DetourHook<CProtoBufMsgBase_InitFromPacket_t> CProtoBufMsgBase_InitFromPacket;
 	DetourHook<CCMInterface_RecvPkt_t> CCMInterface_RecvPkt;
 	DetourHook<CProtoBufMsgBase_Send_t> CProtoBufMsgBase_Send;
 
@@ -1571,7 +1528,7 @@ bool Hooks::setup()
 	bool succeeded =
 		TraceIPC.setup(Patterns::TraceIPC, &hkTraceIPC)
 
-		&& CProtoBufMsgBase_InitFromPacket.setup(Patterns::CProtoBufMsgBase::InitFromPacket, &hkProtoBufMsgBase_InitFromPacket)
+		&& CCMInterface_RecvPkt.setup(Patterns::CCMInterface::RecvPkt, &hkCMInterface_RecvPkt)
 		&& CProtoBufMsgBase_Send.setup(Patterns::CProtoBufMsgBase::Send, &hkProtoBufMsgBase_Send)
 
 		&& CWebSocketConnection_BBuildAndAsyncSendFrame.setup(Patterns::CWebSocketConnection::BBuildAndAsyncSendFrame, &ManifestCode::hkBBuildAndAsyncSendFrame)
@@ -1609,13 +1566,6 @@ bool Hooks::setup()
 
 		&& ISteamMatchmakingPingResponse_ServerResponded.setup(Patterns::ISteamMatchmakingPingResponse::ServerResponded, hkSteamMatchmakingPingResponse_ServerResponded);
 
-	familyShareHookReady = CCMInterface_RecvPkt.setup(
-		Patterns::CCMInterface::RecvPkt, &hkCMInterface_RecvPkt);
-	if (!familyShareHookReady)
-	{
-		g_pLog->warn(
-			"Family Share receive hook unavailable; message filtering disabled\n");
-	}
 
 	// CAPIJob::GetPlayerStats is a debug-only observation hook, and its pattern
 	// is optional (Patterns::init).  It must NOT sit in the mandatory
@@ -1683,11 +1633,7 @@ void Hooks::place()
 		CAPIJob_GetPlayerStats.place();
 	}
 
-	CProtoBufMsgBase_InitFromPacket.place();
-	if (familyShareHookReady)
-	{
-		CCMInterface_RecvPkt.place();
-	}
+	CCMInterface_RecvPkt.place();
 	CProtoBufMsgBase_Send.place();
 
 	CRemoteClientManager_RecvPkt.place();
@@ -1766,12 +1712,7 @@ void Hooks::remove()
 		playerStatsHookReady = false;
 	}
 
-	CProtoBufMsgBase_InitFromPacket.remove();
-	if (familyShareHookReady)
-	{
-		CCMInterface_RecvPkt.remove();
-		familyShareHookReady = false;
-	}
+	CCMInterface_RecvPkt.remove();
 	CProtoBufMsgBase_Send.remove();
 
 	CWebSocketConnection_BBuildAndAsyncSendFrame.remove();

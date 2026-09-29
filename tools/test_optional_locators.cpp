@@ -8,8 +8,10 @@
 //   CUser::ProcessPendingLicenseUpdates  PackagePatch loses the runtime license
 //                                        refresh, so adding a game needs a
 //                                        Steam restart again.
-//   CCMInterface::RecvPkt                Family Share message filtering turns
-//                                        off.
+//   CCMInterface::RecvPkt                required now (sole CM receive path);
+//                                        kept here because its frame layout
+//                                        has drifted before and a miss now
+//                                        fails the load.
 //   CSteamApp::OwnershipFlagsReference    LibraryRemoval cannot derive the
 //                                        ownership-flags field offset, so
 //                                        visual library removal turns off.

@@ -96,7 +96,6 @@ namespace Hooks
 	typedef uint32_t(*CAPIJob_SendAndRecv_t)(CAPIJob*, CProtoBufMsgBase*, uint32_t, uint32_t, CProtoBufMsgBase*, uint32_t);
 	typedef uint32_t(*CClientUnifiedServiceMethod_SendAndRecvMsg_t)(CClientUnifiedServiceTransport*, const char*, void*, void*, void*);
 
-	typedef void(*CProtoBufMsgBase_InitFromPacket_t)(CProtoBufMsgBase*, void*);
 	typedef void(*CCMInterface_RecvPkt_t)(void*, CNetPacket*);
 	typedef uint32_t(*CProtoBufMsgBase_Send_t)(CProtoBufMsgBase*);
 
@@ -138,7 +137,6 @@ namespace Hooks
 	extern DetourHook<CAPIJob_SendAndRecv_t> CAPIJob_SendAndRecv;
 	extern DetourHook<CClientUnifiedServiceMethod_SendAndRecvMsg_t> CClientUnifiedServiceMethod_SendAndRecvMsg;
 
-	extern DetourHook<CProtoBufMsgBase_InitFromPacket_t> CProtoBufMsgBase_InitFromPacket;
 	extern DetourHook<CCMInterface_RecvPkt_t> CCMInterface_RecvPkt;
 	extern DetourHook<CProtoBufMsgBase_Send_t> CProtoBufMsgBase_Send;
 

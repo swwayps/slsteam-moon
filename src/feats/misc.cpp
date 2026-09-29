@@ -45,16 +45,3 @@ bool Misc::recvEmailInfo(CMsgClientEmailAddrInfo* body)
 	return true;
 }
 
-void Misc::recvMsg(CProtoBufMsgBase *msg)
-{
-	switch(msg->type)
-	{
-		case EMSG_WALLET_INFO_UPDATE:
-			recvWalletInfo(msg->getBody<CMsgClientWalletInfoUpdate>());
-			break;
-
-		case EMSG_EMAIL_ADDRESS_INFO:
-			recvEmailInfo(msg->getBody<CMsgClientEmailAddrInfo>());
-			break;
-	}
-}

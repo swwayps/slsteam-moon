@@ -10,8 +10,6 @@
 #include "pics.hpp"
 #include "ticket.hpp"
 
-#include "../log.hpp"
-
 #include "../sdk/CNetPacket.hpp"
 #include "../sdk/CProtoBufMsgBase.hpp"
 #include "../sdk/protobufs/steammessages_base.pb.h"
@@ -19,51 +17,14 @@
 #include "../sdk/protobufs/steammessages_clientserver_2.pb.h"
 #include "../sdk/protobufs/steammessages_clientserver_appinfo.pb.h"
 
-#include <atomic>
 
 namespace
 {
-	// Server pushes not present in the SLSsteam EMsg enum but handled by the
-	// classic InitFromPacket dispatch (Achievements login-state + donor reset).
+	// Server pushes not present in the SLSsteam EMsg enum (Achievements
+	// login-state + donor reset).
 	constexpr uint32_t kEMsgClientLogOnResponse = 751;
 	constexpr uint32_t kEMsgClientLoggedOff     = 757;
 	constexpr uint32_t kEMsgClientLicenseList   = 780;
-
-	std::atomic<CmRecv::Transport> g_transport{CmRecv::Transport::Unknown};
-}
-
-bool CmRecv::isTracked(uint32_t eMsg)
-{
-	switch (eMsg)
-	{
-		case kEMsgClientLogOnResponse:
-		case kEMsgClientLoggedOff:
-		case kEMsgClientLicenseList:
-		case EMSG_APPOWNERSHIPTICKET_RESPONSE:
-		case EMSG_ENCRYPTED_APPTICKET_RESPONSE:
-		case EMSG_GET_DEPOT_DECRYPTION_KEY_RESPONSE:
-		case EMSG_WALLET_INFO_UPDATE:
-		case EMSG_EMAIL_ADDRESS_INFO:
-		case EMSG_PICS_PRODUCTINFO_RESPONSE:
-		case EMSG_PICS_CHANGES_RESPONSE:
-			return true;
-		default:
-			return false;
-	}
-}
-
-bool CmRecv::claim(Transport who)
-{
-	Transport expected = Transport::Unknown;
-	if (g_transport.compare_exchange_strong(expected, who))
-	{
-		g_pLog->info(
-			"CmRecv: CM message transport latched to %s\n",
-			who == Transport::NetPkt ? "CNetPacket (CCMInterface::RecvPkt)"
-			                         : "classic (CProtoBufMsgBase::InitFromPacket)");
-		return true;
-	}
-	return g_transport.load() == who;
 }
 
 void CmRecv::dispatchNetPacket(CNetPacket* pkt)
@@ -71,8 +32,8 @@ void CmRecv::dispatchNetPacket(CNetPacket* pkt)
 	if (!pkt) return;
 	const uint32_t eMsg = pkt->getProtoBufType();
 
-	// Login-state invalidation for 751/757/780 — mirror the classic
-	// InitFromPacket ordering (Achievements first, then per-type handling).
+	// Login-state invalidation for 751/757/780 (Achievements first, then
+	// per-type handling).
 	if (eMsg == kEMsgClientLogOnResponse ||
 	    eMsg == kEMsgClientLoggedOff ||
 	    eMsg == kEMsgClientLicenseList)

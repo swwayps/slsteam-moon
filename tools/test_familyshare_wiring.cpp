@@ -1,4 +1,5 @@
-// Source-contract coverage for the optional Family Share receive hook.
+// Source-contract coverage for the CM receive hook, which carries the
+// Family Share choke.
 #include <cctype>
 #include <fstream>
 #include <iostream>
@@ -48,35 +49,35 @@ int main()
 	const std::string hooks = withoutWhitespace(readFile("src/hooks.cpp"));
 	const std::string patterns = withoutWhitespace(readFile("src/patterns.cpp"));
 
-	expect(
-		hooks.find("&&CCMInterface_RecvPkt.setup(") == std::string::npos,
-		"Family Share setup is outside the mandatory hook chain");
-	expect(
-		hooks.find(
-			"familyShareHookReady=CCMInterface_RecvPkt.setup(")
-			!= std::string::npos,
-		"optional setup result is retained");
+	// CCMInterface::RecvPkt is the only CM receive transport: it carries the
+	// Family Share choke and every CM message feature, so it must be part of
+	// the mandatory hook chain instead of an optional extra.
 	expect(
 		hooks.find(
-			"if(familyShareHookReady){CCMInterface_RecvPkt.place();}")
+			"&&CCMInterface_RecvPkt.setup(Patterns::CCMInterface::RecvPkt,&hkCMInterface_RecvPkt)")
 			!= std::string::npos,
-		"optional hook placement is guarded");
+		"CM receive setup is part of the mandatory hook chain");
 	expect(
-		hooks.find(
-			"if(familyShareHookReady){CCMInterface_RecvPkt.remove();"
-			"familyShareHookReady=false;}")
-			!= std::string::npos,
-		"optional hook removal is guarded and resets state");
+		hooks.find("familyShareHookReady") == std::string::npos,
+		"no optional readiness flag remains");
+	expect(
+		hooks.find("CCMInterface_RecvPkt.place();") != std::string::npos,
+		"CM receive hook is placed");
+	expect(
+		hooks.find("CCMInterface_RecvPkt.remove();") != std::string::npos,
+		"CM receive hook is removed on teardown");
+	expect(
+		hooks.find("CProtoBufMsgBase_InitFromPacket") == std::string::npos,
+		"the classic InitFromPacket transport is gone");
 	expect(
 		patterns.find("CCMInterface::RecvPkt.optional=true;")
-			!= std::string::npos,
-		"Family Share locator is marked optional before catalog loading");
-
+			== std::string::npos,
+		"CM receive locator is required");
 	if (failures != 0)
 	{
-		std::cerr << failures << " Family Share wiring check(s) failed\n";
+		std::cerr << failures << " CM receive wiring check(s) failed\n";
 		return 1;
 	}
-	std::cout << "Family Share hook wiring is optional and guarded\n";
+	std::cout << "CM receive hook wiring is mandatory\n";
 	return 0;
 }

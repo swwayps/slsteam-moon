@@ -600,18 +600,6 @@ void sendDepotKey(CMsgClientGetDepotDecryptionKey* req)
 	              req->app_id(), req->depot_id());
 }
 
-void recvMsg(CProtoBufMsgBase* msg)
-{
-	switch (msg->type)
-	{
-		case EMSG_GET_DEPOT_DECRYPTION_KEY_RESPONSE:
-			recvDepotKey(msg->getBody<CMsgClientGetDepotDecryptionKeyResponse>());
-			break;
-		default:
-			break;
-	}
-}
-
 void sendMsg(CProtoBufMsgBase* msg)
 {
 	switch (msg->type)

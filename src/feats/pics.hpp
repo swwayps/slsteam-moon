@@ -30,13 +30,11 @@
 #include <utility>
 #include <vector>
 
-class CProtoBufMsgBase;
 class CMsgClientPICSProductInfoResponse;
 class CMsgClientPICSChangesSinceResponse;
 
 namespace PICS
 {
-	void recvMsg(CProtoBufMsgBase* msg);
 	void recvProductInfoResponse(CMsgClientPICSProductInfoResponse* resp);
 	void recvChangesSinceResponse(CMsgClientPICSChangesSinceResponse* resp);
 
