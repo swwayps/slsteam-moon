@@ -191,7 +191,7 @@ MaxManagedApps: 4096
 DisableUpdates: yes
 
 #Changes your Persona's Name clientsidedly
-FakeName:
+FakeName: ""
 
 #Changes your account's E-Mail clientsided. Leave blank to disable
 FakeEmail: ""
