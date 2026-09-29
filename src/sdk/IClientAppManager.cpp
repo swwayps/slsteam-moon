@@ -5,19 +5,19 @@
 
 #include <cstdint>
 
-bool IClientAppManager::installApp(uint32_t appId, uint32_t librarIndex)
+bool IClientAppManager::installApp(const AppId_t appId, const uint32_t librarIndex)
 {
-	return MemHlp::callVFunc<bool(*)(void*, uint32_t, uint32_t, uint8_t)>(VFTIndexes::IClientAppManager::InstallApp, this, appId, librarIndex, 0);
+	return MemHlp::callVFunc<bool(*)(void*, AppId_t, uint32_t, uint8_t)>(VFTIndexes::IClientAppManager::InstallApp, this, appId, librarIndex, 0);
 }
 
-uint32_t IClientAppManager::uninstallApp(uint32_t appId)
+uint32_t IClientAppManager::uninstallApp(const AppId_t appId)
 {
-	return MemHlp::callVFunc<uint32_t(*)(void*, uint32_t)>(VFTIndexes::IClientAppManager::UninstallApp, this, appId);
+	return MemHlp::callVFunc<uint32_t(*)(void*, AppId_t)>(VFTIndexes::IClientAppManager::UninstallApp, this, appId);
 }
 
-EAppState IClientAppManager::getAppInstallState(uint32_t appId)
+EAppState IClientAppManager::getAppInstallState(const AppId_t appId)
 {
-	return MemHlp::callVFunc<EAppState(*)(void*, uint32_t)>(VFTIndexes::IClientAppManager::GetAppInstallState, this, appId);
+	return MemHlp::callVFunc<EAppState(*)(void*, AppId_t)>(VFTIndexes::IClientAppManager::GetAppInstallState, this, appId);
 }
 
 IClientAppManager* g_pClientAppManager;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "sdk/steam.hpp"
+#include "sdk/protobufs/enums_clientserver.pb.h"
 
 #include "libmem/libmem.h"
 
@@ -93,7 +94,7 @@ namespace Hooks
 	typedef void(*IClientUserStats_RunIPCFrame_t)(void*, void*, void*, void*);
 
 	typedef uint32_t(*CAPIJob_GetPlayerStats_t)(void*);
-	typedef uint32_t(*CAPIJob_SendAndRecv_t)(CAPIJob*, CProtoBufMsgBase*, uint32_t, uint32_t, CProtoBufMsgBase*, uint32_t);
+	typedef uint32_t(*CAPIJob_SendAndRecv_t)(CAPIJob*, CProtoBufMsgBase*, uint32_t, uint32_t, CProtoBufMsgBase*, EMsg);
 	typedef uint32_t(*CClientUnifiedServiceMethod_SendAndRecvMsg_t)(CClientUnifiedServiceTransport*, const char*, void*, void*, void*);
 
 	typedef void(*CCMInterface_RecvPkt_t)(void*, CNetPacket*);

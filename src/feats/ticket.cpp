@@ -10,7 +10,7 @@
 #include "../sdk/CProtoBufMsgBase.hpp"
 #include "../sdk/CSteamEngine.hpp"
 #include "../sdk/CUser.hpp"
-#include "../sdk/EResult.hpp"
+#include "../sdk/steam.hpp"
 #include "../sdk/IClientUtils.hpp"
 
 #include "base64/base64.hpp"
@@ -305,7 +305,7 @@ bool Ticket::saveEncryptedTicketToCache(CMsgClientRequestEncryptedAppTicketRespo
 
 bool Ticket::recvEncryptedAppTicket(CMsgClientRequestEncryptedAppTicketResponse* msg)
 {
-	if (msg->eresult() == ERESULT_OK)
+	if (msg->eresult() == k_EResultOK)
 	{
 		saveEncryptedTicketToCache(msg);
 		return false;
@@ -324,7 +324,7 @@ bool Ticket::recvEncryptedAppTicket(CMsgClientRequestEncryptedAppTicketResponse*
 
 bool Ticket::recvAppTicket(CMsgClientGetAppOwnershipTicketResponse* msg)
 {
-	if(msg->eresult() == ERESULT_OK)
+	if(msg->eresult() == k_EResultOK)
 	{
 		saveTicketToCache(msg);
 		return false;
@@ -349,7 +349,7 @@ bool Ticket::recvAppTicket(CMsgClientGetAppOwnershipTicketResponse* msg)
 	if (Ticket::shouldStampAppOwnershipTicket(
 			g_config.isAddedAppId(appId), Apps::isAddedAppDlcId(appId)))
 	{
-		msg->set_eresult(static_cast<int32_t>(ERESULT_OK));
+		msg->set_eresult(static_cast<int32_t>(k_EResultOK));
 		// One-time log so we don't spam every retry.  Note: do NOT
 		// use infoOnce here — a bug in CLog dedup-thread interaction
 		// has caused crashes in the past.  A plain `info` is safe;

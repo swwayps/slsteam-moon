@@ -14,7 +14,7 @@
 #include "../hooks.hpp"
 #include "../log.hpp"
 
-#include "../sdk/EResult.hpp"
+#include "../sdk/steam.hpp"
 #include "../sdk/CNetPacket.hpp"
 #include "../sdk/CProtoBufMsgBase.hpp"
 #include "../sdk/protobufs/steammessages_base.pb.h"
@@ -292,7 +292,7 @@ void dispatchSend(uint32_t eMsg,
                   const uint8_t* pBody, uint32_t cbBody,
                   const uint8_t* pHdr,  uint32_t cbHdr)
 {
-	if (eMsg == EMSG_REQUEST_USERSTATS)
+	if (eMsg == k_EMsgClientGetUserStats)
 	{
 		if (cbHdr > kMaxHdrSize) return;
 		CMsgProtoBufHeader hdr;
@@ -350,7 +350,7 @@ bool resolveDonorResponse(uint64_t job, const CMsgProtoBufHeader& header,
 	if (!originated && !passive) return false;
 
 	uint64_t code = 0;
-	if (header.has_eresult() && header.eresult() == ERESULT_OK)
+	if (header.has_eresult() && header.eresult() == k_EResultOK)
 	{
 		CContentServerDirectory_GetManifestRequestCode_Response response;
 		if (response.ParseFromArray(pBody, cbBody) &&
@@ -382,7 +382,7 @@ void dispatchRecv(uint32_t eMsg,
 			resolveDonorResponse(header.jobid_target(), header, pBody, cbBody);
 		}
 	}
-	if (eMsg == EMSG_REQUEST_USERSTATS_RESPONSE || eMsg == kEMsgServiceMethodResponse)
+	if (eMsg == k_EMsgClientGetUserStatsResponse || eMsg == kEMsgServiceMethodResponse)
 	{
 		CMsgProtoBufHeader header;
 		if (!header.ParseFromArray(pHdr, cbHdr)) return;

@@ -14,7 +14,7 @@ namespace Updater
 
 	std::string getCacheFilePath();
 	std::string loadFromCache();
-	void saveToCache(std::string yaml);
+	void saveToCache(const std::string yaml);
 
 	bool init();
 	bool verifySafeModeHash();

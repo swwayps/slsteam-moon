@@ -266,13 +266,13 @@ void FakeAppIds::sendMsg(CNetPacket* packet)
 {
 	switch(packet->getProtoBufType())
 	{
-		case EMSG_GAMESPLAYED:
-		case EMSG_GAMESPLAYED_NO_DATABLOB:
-		case EMSG_GAMESPLAYED_WITH_DATABLOB:
+		case k_EMsgClientGamesPlayed:
+		case k_EMsgClientGamesPlayedNoDataBlob:
+		case k_EMsgClientGamesPlayedWithDataBlob:
 			sendGamesPlayed(packet);
 			break;
 
-		case EMSG_RICH_PRESENCE_UPLOAD:
+		case k_EMsgClientRichPresenceUpload:
 			sendRichPresenceUpload(packet);
 			break;
 

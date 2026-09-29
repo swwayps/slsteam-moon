@@ -1,36 +1,38 @@
 #pragma once
 
+#include "steam.hpp"
+
 #include <cstdint>
 
 enum EAppState : uint32_t
 {
-	APPSTATE_INVALID = 0x0,
-	APPSTATE_UNINSTALLED = 0x1,
-	APPSTATE_UPDATE_REQUIRED = 0x2,
-	APPSTATE_FULLY_INSTALLED = 0x4,
-	APPSTATE_UPDATE_QUEUED = 0x8,
-	APPSTATE_UPDATE_OPTIONAL = 0x10,
-	APPSTATE_FILES_MISSING = 0x20,
-	APPSTATE_SHARED_ONLY = 0x40,
-	APPSTATE_FILES_CORRUPT = 0x80,
-	APPSTATE_UPDATE_RUNNING = 0x100,
-	APPSTATE_UPDATE_PAUSED = 0x200,
-	APPSTATE_UPDATE_STARTED = 0x400,
-	APPSTATE_UNINSTALLING = 0x800,
-	APPSTATE_BACKUP_RUNNING = 0x1000,
-	APPSTATE_APP_RUNNING = 0x2000,
-	APPSTATE_COMPONENT_IN_USE = 0x4000,
-	APPSTATE_MOVING_FOLDER = 0x8000,
-	APPSTATE_TERMINATING = 0x10000,
-	APPSTATE_PREFETCHING_INFO = 0x20000,
-	APPSTATE_PEER_SERVER = 0x40000,
-	APPSTATE_UPDATED_DISABLED_BY_APP = 0x80000,
+	k_EAppStateInvalid = 0x0,
+	k_EAppStateUninstalled = 0x1,
+	k_EAppStateUpdateRequired = 0x2,
+	k_EAppStateFullyInstalled = 0x4,
+	k_EAppStateUpdateQueued = 0x8,
+	k_EAppStateUpdateOptional = 0x10,
+	k_EAppStateFilesMissing = 0x20,
+	k_EAppStateSharedOnly = 0x40,
+	k_EAppStateFilesCorrupt = 0x80,
+	k_EAppStateUpdateRunning = 0x100,
+	k_EAppStateUpdatePaused = 0x200,
+	k_EAppStateUpdateStarted = 0x400,
+	k_EAppStateUninstalling = 0x800,
+	k_EAppStateBackupRunning = 0x1000,
+	k_EAppStateAppRunning = 0x2000,
+	k_EAppStateComponentInUse = 0x4000,
+	k_EAppStateMovingFolder = 0x8000,
+	k_EAppStateTerminating = 0x10000,
+	k_EAppStatePrefetchingInfo = 0x20000,
+	k_EAppStatePeerServer = 0x40000,
+	k_EAppStateUpdatedDisabledbyapp = 0x80000
 };
 
 struct DepotInfo_t
 {
-	uint32_t depotId;		//0x0
-	uint32_t appId;			//0x4
+	AppId_t depotId;		//0x0
+	AppId_t appId;			//0x4
 	uint64_t manifestId;	//0x8
 	char __pad0x10[0x10];	//0x10
 }; //0x20
@@ -38,9 +40,9 @@ struct DepotInfo_t
 class IClientAppManager
 {
 public:
-	bool installApp(uint32_t appId, uint32_t librarIndex);
-	uint32_t uninstallApp(uint32_t appId);
-	EAppState getAppInstallState(uint32_t appId);
+	bool installApp(const AppId_t appId, const uint32_t librarIndex);
+	uint32_t uninstallApp(const AppId_t appId);
+	EAppState getAppInstallState(const AppId_t appId);
 };
 
 extern IClientAppManager* g_pClientAppManager;

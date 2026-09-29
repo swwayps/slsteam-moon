@@ -17,7 +17,7 @@
 #include "sdk/CSteamMatchmakingServers.hpp"
 #include "sdk/CUtl.hpp"
 #include "sdk/CUser.hpp"
-#include "sdk/EResult.hpp"
+#include "sdk/steam.hpp"
 #include "sdk/IClientAppManager.hpp"
 #include "sdk/IClientApps.hpp"
 #include "sdk/IClientFriends.hpp"
@@ -288,7 +288,7 @@ static uint32_t hkCAPIJob_GetPlayerStats(void* pAPIJob)
 	return res;
 }
 
-static uint32_t hkAPIJob_SendAndRecv(CAPIJob* pAPIJob, CProtoBufMsgBase* send, uint32_t a2, uint32_t timeOut, CProtoBufMsgBase* recv, uint32_t targetType)
+static uint32_t hkAPIJob_SendAndRecv(CAPIJob* pAPIJob, CProtoBufMsgBase* send, uint32_t a2, uint32_t timeOut, CProtoBufMsgBase* recv, EMsg targetType)
 {
 	uint32_t ret = Achievements::sendAndRecvGetUserStats(pAPIJob, send, timeOut, recv, targetType);
 
@@ -324,7 +324,7 @@ static uint32_t hkClientUnifiedServiceTransport_SendAndRecvMsg(CClientUnifiedSer
 		reinterpret_cast<CPlayer_GetUserStats_Response*>(recv)
 	);
 
-	if (ret == ERESULT_NO_RESULT)
+	if (ret == k_EResultNoResult)
 	{
 		ret = Hooks::CClientUnifiedServiceMethod_SendAndRecvMsg.tramp.fn(pUnifiedServiceTransport, name, send, recv, arg4);
 	}

@@ -2,6 +2,7 @@
 
 #include "steam.hpp"
 
+#include "protobufs/enums_clientserver.pb.h"
 #include "protobufs/steammessages_base.pb.h"
 
 #include "../log.hpp"
@@ -18,7 +19,7 @@ class CNetPacketBody
 {
 public:
 
-	EMsg type;
+	ENetPacket type;
 	uint32_t headerSize;
 	//Header[headerSize]
 	// Body[CNetPacket->size - headerSize - sizeof(CNetPacketBody)]
@@ -43,7 +44,7 @@ class CNetPacket
 public:
 
 	constexpr static unsigned int PROTOBUF_TYPE_MASK = 0x80000000;
-	constexpr static unsigned int INVALID_MESSAGE_TYPE = 0xFFFFFFFF;
+	constexpr static ENetPacket INVALID_MESSAGE_TYPE = INVALID_NETPACKET_TYPE;
 	// A CM packet is at most a few MB in practice; anything larger is a mis-read
 	// `size` field, not a real packet.
 	constexpr static uint32_t MAX_PLAUSIBLE_SIZE = 100u * 1024 * 1024;
@@ -134,7 +135,7 @@ public:
 	// Reports INVALID for an implausible body/size (defense-in-depth: even if
 	// the detected layout is somehow wrong, a mis-read pointer is never
 	// dereferenced — the client degrades to a safe no-op instead of crashing).
-	EMsg getType() const
+	ENetPacket getType() const
 	{
 		CNetPacketBody* b = body();
 		if (!plausibleBody(b))
@@ -152,7 +153,7 @@ public:
 
 	EMsg getProtoBufType() const
 	{
-		return getType() & ~PROTOBUF_TYPE_MASK;
+		return static_cast<EMsg>(getType() & ~PROTOBUF_TYPE_MASK);
 	}
 
 	bool deserializeHeader(CMsgProtoBufHeader& header) const;

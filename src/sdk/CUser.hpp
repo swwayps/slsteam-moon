@@ -1,6 +1,6 @@
 #pragma once
 
-#include "EResult.hpp"
+#include "steam.hpp"
 
 #include <cstdint>
 
@@ -9,6 +9,16 @@ enum class ECallbackType : uint32_t
 	LicensesUpdate_t = 0x7d,
 	AppOwnershipTicketReceived_t = 0xf907c,
 	AppLicensesChanged_t = 0xf90be
+};
+
+enum EReleaseState
+{
+	k_EAppReleaseStateUnknown = 0x0,
+	k_EAppReleaseStateUnavailable = 0x1,
+	k_EAppReleaseStatePrerelease = 0x2,
+	k_EAppReleaseStatePreloadonly = 0x3,
+	k_EAppReleaseStateReleased = 0x4,
+	k_EAppReleaseStateDisabled = 0x5
 };
 
 struct AppOwnershipTicketReceived_t

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "steam.hpp"
+
 #include <cstdint>
 
 
@@ -9,9 +11,9 @@ public:
 
 	uint32_t getAppOwnershipTicketExtendeData
 	(
-		uint32_t appId,
+		const AppId_t appId,
 		void* pTicket,
-		uint32_t ticketSize,
+		const uint32_t ticketSize,
 		uint32_t* pOffAppId,
 		uint32_t* pOffSteamId,
 		uint32_t* pOffSig,

@@ -43,7 +43,7 @@ int Curl::getString(const char* url, std::string& out)
 		nullptr
 	};
 
-	pid_t pid = fork();
+	const pid_t pid = fork();
 	if (pid == -1)
 	{
 		g_pLog->debug("Failed to fork!\n");

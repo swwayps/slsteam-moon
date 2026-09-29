@@ -1,5 +1,7 @@
 #pragma once
 
+#include "sdk/steam.hpp"
+
 #include <cstdint>
 #include <fstream>
 #include <string>
@@ -16,7 +18,7 @@ namespace SLSAPI
 	extern std::string contractPath;
 	struct InstallCommand_t
 	{
-		uint32_t appId;
+		AppId_t appId;
 		uint32_t libraryIndex;
 	};
 
@@ -26,7 +28,7 @@ namespace SLSAPI
 
 	extern std::mutex executionMutex;
 	extern std::vector<InstallCommand_t> installs;
-	extern std::vector<uint32_t> uninstalls;
+	extern std::vector<AppId_t> uninstalls;
 
 	bool isEnabled();
 	void onFileChange();

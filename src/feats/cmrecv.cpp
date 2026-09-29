@@ -62,7 +62,7 @@ void CmRecv::dispatchNetPacket(CNetPacket* pkt)
 			break;
 		}
 
-		case EMSG_GET_DEPOT_DECRYPTION_KEY_RESPONSE:
+		case k_EMsgClientGetDepotDecryptionKeyResponse:
 		{
 			auto body = pkt->deserializeBody<CMsgClientGetDepotDecryptionKeyResponse>();
 			if (DepotKey::recvDepotKey(&body))
@@ -70,7 +70,7 @@ void CmRecv::dispatchNetPacket(CNetPacket* pkt)
 			break;
 		}
 
-		case EMSG_APPOWNERSHIPTICKET_RESPONSE:
+		case k_EMsgClientGetAppOwnershipTicketResponse:
 		{
 			auto body = pkt->deserializeBody<CMsgClientGetAppOwnershipTicketResponse>();
 			if (Ticket::recvAppTicket(&body))
@@ -78,7 +78,7 @@ void CmRecv::dispatchNetPacket(CNetPacket* pkt)
 			break;
 		}
 
-		case EMSG_ENCRYPTED_APPTICKET_RESPONSE:
+		case k_EMsgClientRequestEncryptedAppTicketResponse:
 		{
 			auto body = pkt->deserializeBody<CMsgClientRequestEncryptedAppTicketResponse>();
 			if (Ticket::recvEncryptedAppTicket(&body))
@@ -86,7 +86,7 @@ void CmRecv::dispatchNetPacket(CNetPacket* pkt)
 			break;
 		}
 
-		case EMSG_WALLET_INFO_UPDATE:
+		case k_EMsgClientWalletInfoUpdate:
 		{
 			auto body = pkt->deserializeBody<CMsgClientWalletInfoUpdate>();
 			if (Misc::recvWalletInfo(&body))
@@ -94,7 +94,7 @@ void CmRecv::dispatchNetPacket(CNetPacket* pkt)
 			break;
 		}
 
-		case EMSG_EMAIL_ADDRESS_INFO:
+		case k_EMsgClientEmailAddrInfo:
 		{
 			auto body = pkt->deserializeBody<CMsgClientEmailAddrInfo>();
 			if (Misc::recvEmailInfo(&body))
@@ -102,7 +102,7 @@ void CmRecv::dispatchNetPacket(CNetPacket* pkt)
 			break;
 		}
 
-		case EMSG_PICS_PRODUCTINFO_RESPONSE:
+		case k_EMsgClientPICSProductInfoResponse:
 		{
 			// Observe-only: the handler reads the response (cache repair,
 			// background refresh scheduling) and never rewrites it for Steam.
@@ -111,7 +111,7 @@ void CmRecv::dispatchNetPacket(CNetPacket* pkt)
 			break;
 		}
 
-		case EMSG_PICS_CHANGES_RESPONSE:
+		case k_EMsgClientPICSChangesSinceResponse:
 		{
 			auto body = pkt->deserializeBody<CMsgClientPICSChangesSinceResponse>();
 			const int before = body.app_changes_size();

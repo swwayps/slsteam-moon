@@ -31,7 +31,7 @@ CServerPipe* CSteamEngine::getServerPipe(const HSteamPipe pipe)
 	return fn(this, pipe);
 }
 
-CUser* CSteamEngine::getUser(uint32_t index)
+CUser* CSteamEngine::getUser(const uint32_t index)
 {
 	const static auto offset = *reinterpret_cast<lm_address_t*>(Patterns::CSteamEngine::Offset_User.address + 0x2);
 	const auto vec = reinterpret_cast<const CUtlVector<CUser*>*>(this + offset);
@@ -53,7 +53,7 @@ IClientUtils* CSteamEngine::getUtils()
 	return reinterpret_cast<IClientUtils*>(this + offset);
 }
 
-void CSteamEngine::setAppIdForCurrentPipe(uint32_t appId)
+void CSteamEngine::setAppIdForCurrentPipe(const AppId_t appId)
 {
 	//Last argument needs to be 0, otherwise steam crashes.
 	//Might be only 1 when steam first sets it, then 0

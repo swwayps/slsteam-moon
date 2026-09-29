@@ -2,6 +2,7 @@
 
 #include "steam.hpp"
 
+#include "protobufs/enums_clientserver.pb.h"
 #include "protobufs/steammessages_base.pb.h"
 #include "protobufs/encrypted_app_ticket.pb.h"
 #include "protobufs/steammessages_clientserver.pb.h"
@@ -13,46 +14,28 @@
 
 #include <cstdint>
 
-enum EMsgType : EMsg
-{
-	EMSG_SERVICE_METHOD = 146,
-	EMSG_SERVICE_METHOD_RESPONSE = 147,
-	EMSG_GAMESPLAYED_NO_DATABLOB = 715,
-	EMSG_GAMESPLAYED = 742,
-	EMSG_REQUEST_USERSTATS = 818,
-	EMSG_REQUEST_USERSTATS_RESPONSE = 819,
-	EMSG_APPOWNERSHIPTICKET_RESPONSE = 858,
-	// Depot decryption key request/response
-	EMSG_GET_DEPOT_DECRYPTION_KEY = 5438,
-	EMSG_GET_DEPOT_DECRYPTION_KEY_RESPONSE = 5439,
-	EMSG_ENCRYPTED_APPTICKET_RESPONSE = 5527,
-	EMSG_WALLET_INFO_UPDATE = 5528,
-	EMSG_GAMESPLAYED_WITH_DATABLOB = 5410,
-	EMSG_EMAIL_ADDRESS_INFO = 5456,
-	EMSG_RICH_PRESENCE_UPLOAD = 7501,
-	EMSG_PICS_PRODUCTINFO_REQUEST = 8903,
-	EMSG_PICS_PRODUCTINFO_RESPONSE = 8904,
-	EMSG_PICS_ACCESSTOKEN_RESPONSE = 8906,
-	EMSG_PICS_CHANGES_RESPONSE = 8902,
-	EMSG_SHARED_LIBRARY_STOP_PLAYING = 9406,
-};
 
 enum EGameFlags
 {
 	//1 << 0 is set for spacewar, not other mp games. idk
-	EGAMEFLAG_JOINABLE = 1 << 1, //Or in Server, etc
-	EGAMEFLAG_MULTIPLAYER = 1 << 13,
+	k_EGameFlagJoinable = 1 << 1,
+	k_EGameFlagMultiplayer = 1 << 13,
 };
 
 class CProtoBufMsgBase
 {
 public:
 	char __pad_0x0[0x14];		//0x0
-	uint16_t type;				//0x14
-	char __pad_0x16[0x6];		//0x16
+	ENetPacket type;			//0x14
+	char __pad_0x16[0x4];		//0x18
 	CMsgProtoBufHeader* header; //0x1C
 	void* __pBody;				//0x20
 	char __pad_0x24[0x8];		//0x24
+	
+	constexpr EMsg getProtoBufType() const
+	{
+		return static_cast<EMsg>(type & ~PROTOBUF_TYPE_MASK);
+	}
 	
 	template<typename T> constexpr T* getBody() const
 	{

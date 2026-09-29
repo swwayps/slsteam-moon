@@ -109,7 +109,7 @@ void preserveShortcut(uint64_t gameId)
 		sizeof(CNetPacketBody) + headerSize + messageSize);
 	auto* bytes = static_cast<uint8_t*>(std::malloc(packetSize));
 	auto* body = reinterpret_cast<CNetPacketBody*>(bytes);
-	body->type = EMSG_GAMESPLAYED | CNetPacket::PROTOBUF_TYPE_MASK;
+	body->type = k_EMsgClientGamesPlayed | CNetPacket::PROTOBUF_TYPE_MASK;
 	body->headerSize = headerSize;
 	header.SerializeToArray(bytes + sizeof(CNetPacketBody), headerSize);
 	message.SerializeToArray(

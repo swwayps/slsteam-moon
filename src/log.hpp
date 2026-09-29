@@ -78,7 +78,7 @@ class CLog
 			return;
 		}
 
-		size_t size = snprintf(nullptr, 0, msg, args...) + 1; //Allocate one more byte for zero termination
+		const size_t size = snprintf(nullptr, 0, msg, args...) + 1; //Allocate one more byte for zero termination
 		std::string formatted;
 		formatted.resize(size);
 		snprintf(formatted.data(), size, msg, args...);

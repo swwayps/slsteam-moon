@@ -93,7 +93,7 @@ test-manifest-zip:
 	/tmp/test_manifest_zip
 
 test-achievements:
-	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror -pthread tools/test_achievements.cpp -o /tmp/test_achievements
+	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror -isystem include -pthread tools/test_achievements.cpp -o /tmp/test_achievements
 	/tmp/test_achievements
 
 test-achievement-scope: obj/sdk/protobufs/steammessages_clientserver_userstats.pb.o obj/sdk/protobufs/steammessages_base.pb.o

@@ -906,7 +906,7 @@ bool CConfig::shouldExcludeAppId(uint32_t appId, bool ignoreAdditionalApps)
 
 		if (!ignoreAdditionalApps)
 		{
-			//Might be worth to check for APPTYPE_DLC, but knowing Valve & individual gamedevs
+			//Might be worth to check for k_EAppTypeDLC, but knowing Valve & individual gamedevs
 			//surely not every DLC will be tagged as such
 			char chParent[16];
 			const int len = g_pClientApps ? g_pClientApps->getAppData(appId, "parent", chParent, sizeof(chParent)) : 0;

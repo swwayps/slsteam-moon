@@ -1,5 +1,9 @@
 #pragma once
 
+#include "../sdk/protobufs/enums_clientserver.pb.h"
+
+#include "../sdk/steam.hpp"
+
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -38,10 +42,10 @@ void recvMessage(uint32_t type, bool hasSteamId, uint64_t steamId);
 
 	constexpr const char* GET_PLAYER_STATS_SERVICE_NAME = "Player.GetUserStats#1";
 
-	extern std::unordered_map<uint32_t, std::unordered_set<uint64_t>> ownerBlacklist;
+	extern std::unordered_map<AppId_t, std::unordered_set<uint64_t>> ownerBlacklist;
 
-	std::string getReviewUrl(uint32_t appId);
-	std::unordered_set<uint64_t> getReviewersForGame(uint32_t appId);
+	std::string getReviewUrl(const AppId_t appId);
+	std::unordered_set<uint64_t> getReviewersForGame(const AppId_t appId);
 
 	//CPlayer_GetUserStats
 	uint32_t sendAndRecvGetPlayerStats
@@ -52,5 +56,5 @@ void recvMessage(uint32_t type, bool hasSteamId, uint64_t steamId);
 		CPlayer_GetUserStats_Response* recv
 	);
 	//GetUserStats
-	uint32_t sendAndRecvGetUserStats(CAPIJob* job, CProtoBufMsgBase* send, const uint32_t timeOut, CProtoBufMsgBase* recv, const uint32_t targetType);
+	uint32_t sendAndRecvGetUserStats(CAPIJob* job, CProtoBufMsgBase* send, const uint32_t timeOut, CProtoBufMsgBase* recv, const EMsg targetType);
 }

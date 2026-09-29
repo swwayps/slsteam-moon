@@ -15,7 +15,7 @@
 
 #include "../sdk/CNetPacket.hpp"
 #include "../sdk/CProtoBufMsgBase.hpp"
-#include "../sdk/EResult.hpp"
+#include "../sdk/steam.hpp"
 
 #include "base64/base64.hpp"
 #include "yaml-cpp/emitter.h"
@@ -524,7 +524,7 @@ bool recvDepotKey(CMsgClientGetDepotDecryptionKeyResponse* resp)
 	}
 
 	const uint32_t depotId = resp->depot_id();
-	const bool eresultOk = resp->eresult() == ERESULT_OK;
+	const bool eresultOk = resp->eresult() == k_EResultOK;
 	const bool okKeyIs32 = resp->depot_encryption_key().size() == 32;
 
 	// The cache lookup is only needed on the error path; defer it so a normal
@@ -559,7 +559,7 @@ bool recvDepotKey(CMsgClientGetDepotDecryptionKeyResponse* resp)
 			g_pLog->infoOnce("DepotKey: substituting cached key for depot %u (Steam said eresult=%u)\n",
 			             depotId, resp->eresult());
 			CMsgClientGetDepotDecryptionKeyResponse fresh;
-			fresh.set_eresult(ERESULT_OK);
+			fresh.set_eresult(k_EResultOK);
 			fresh.set_depot_id(depotId);
 			fresh.set_depot_encryption_key(cached.key);
 			resp->ParseFromString(fresh.SerializeAsString());
@@ -572,7 +572,7 @@ bool recvDepotKey(CMsgClientGetDepotDecryptionKeyResponse* resp)
 			g_pLog->infoOnce("DepotKey: synthesising zero key for AdditionalApps depot %u (Steam said eresult=%u)\n",
 			             depotId, resp->eresult());
 			CMsgClientGetDepotDecryptionKeyResponse fresh;
-			fresh.set_eresult(ERESULT_OK);
+			fresh.set_eresult(k_EResultOK);
 			fresh.set_depot_id(depotId);
 			fresh.set_depot_encryption_key(zeroKey);
 			resp->ParseFromString(fresh.SerializeAsString());
@@ -605,7 +605,7 @@ void sendMsg(CNetPacket* packet)
 {
 	// Observe only: remember which app asked for the key so the response can
 	// be cached against it. The outgoing frame is never rewritten.
-	if (!packet || packet->getProtoBufType() != EMSG_GET_DEPOT_DECRYPTION_KEY)
+	if (!packet || packet->getProtoBufType() != k_EMsgClientGetDepotDecryptionKey)
 		return;
 	auto req = packet->deserializeBody<CMsgClientGetDepotDecryptionKey>();
 	sendDepotKey(&req);

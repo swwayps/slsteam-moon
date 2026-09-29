@@ -8,7 +8,6 @@
 #include "../sdk/CSteamEngine.hpp"
 #include "../sdk/CUser.hpp"
 #include "../sdk/CUtl.hpp"
-#include "../sdk/EReleaseState.hpp"
 #include "../sdk/IClientApps.hpp"
 #include "../sdk/IClientAppManager.hpp"
 
@@ -193,7 +192,7 @@ namespace
 		if (appManagerResolved)
 		{
 			fullyInstalled = (g_pClientAppManager->getAppInstallState(appId) &
-			                  APPSTATE_FULLY_INSTALLED) != 0;
+			                  k_EAppStateFullyInstalled) != 0;
 		}
 		// cachePairMtimeSecs() is a two-stat probe of the on-disk pair; it takes
 		// no lock and cannot be withdrawn by a validation miss, so it keeps the
@@ -227,7 +226,7 @@ bool Apps::unlockApp(uint32_t appId, AppOwnershipInfo_t* info, const CSteamId& o
 	info->licensePending = false;
 	info->licenseLocked = false;
 
-	info->releaseState = ERELEASESTATE_RELEASED;
+	info->releaseState = k_EAppReleaseStateReleased;
 	info->ownsLicense = true;
 
 	info->lowViolence = false;
@@ -455,7 +454,7 @@ bool Apps::shouldDisableUpdates(uint32_t appId)
 	if (g_pClientAppManager != nullptr)
 	{
 		const EAppState state = g_pClientAppManager->getAppInstallState(appId);
-		if (!(state & APPSTATE_FULLY_INSTALLED))
+		if (!(state & k_EAppStateFullyInstalled))
 		{
 			return false;  // allow the install/download to start
 		}
@@ -593,7 +592,7 @@ void Apps::sendGamesPlayed(CNetPacket* pkt)
 			{
 				game->set_owner_id(1);
 			}
-			//game->set_game_flags(EGAMEFLAG_MULTIPLAYER);
+			//game->set_game_flags(k_EGameFlagMultiplayer);
 		}
 	}
 
@@ -662,14 +661,16 @@ void Apps::sendMsg(CNetPacket *pkt)
 {
 	switch(pkt->getProtoBufType())
 	{
-		case EMSG_PICS_PRODUCTINFO_REQUEST:
+		case k_EMsgClientPICSProductInfoRequest:
 			sendPICSInfoRequest(pkt);
 			break;
 
-		case EMSG_GAMESPLAYED:
-		case EMSG_GAMESPLAYED_NO_DATABLOB:
-		case EMSG_GAMESPLAYED_WITH_DATABLOB:
+		case k_EMsgClientGamesPlayed:
+		case k_EMsgClientGamesPlayedNoDataBlob:
+		case k_EMsgClientGamesPlayedWithDataBlob:
 			sendGamesPlayed(pkt);
+			break;
+		default:
 			break;
 	}
 }
