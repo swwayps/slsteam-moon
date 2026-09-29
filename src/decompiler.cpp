@@ -541,27 +541,33 @@ void Decompiler::__parseFunction
 				return;
 			}
 
-			if (branchesTaken.contains(branch))
-			{
-				continue;
-			}
+			const bool taken = branchesTaken.contains(branch);
 
+			//g_pLog->debug("Taking branch %s %s at %p to %p\n", instr.mnemonic, instr.op_str, instr.address, branch);
 			branchesTaken.emplace(branch);
 
 			if (strcmp(instr.mnemonic, "jmp") == 0)
 			{
+				//Explored already, so we abort
+				if (taken)
+				{
+					return;
+				}
 				addr = branch;
 			}
 			else
 			{
-				__parseFunction(branch, references, branchesTaken, thunkReg, leaOffset);
+				if (!taken)
+				{
+					__parseFunction(branch, references, branchesTaken, thunkReg, leaOffset);
+				}
 			}
 
-			//g_pLog->debug("Taking branch at %p to %p\n", instr.address, addr);
 			continue;
 		}
-		else if(strcmp(instr.mnemonic, "ret") == 0)
+		else if(strcmp(instr.mnemonic, "ret") == 0 || strcmp(instr.mnemonic, "retn") == 0)
 		{
+			//g_pLog->debug("Hit ret instruction at %p, stopping\n", instr.address);
 			return;
 		}
 
@@ -630,6 +636,7 @@ std::map<std::string, unsigned int> Decompiler::parseInterfaceMapBase(const char
 
 	for(unsigned int i = 0; i < vft.functions.size(); i++)
 	{
+		//g_pLog->debug("Decompiling %u\n", i);
 		const lm_address_t fn = vft.functions[i];
 
 		auto refs = std::unordered_map<lm_address_t, unsigned int>();
