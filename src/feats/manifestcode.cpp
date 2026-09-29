@@ -568,6 +568,7 @@ bool hkBBuildAndAsyncSendFrame(void* pConnection,
 			{
 				Apps::sendMsg(&packet);
 				FakeAppIds::sendMsg(&packet);
+				DepotKey::sendMsg(&packet);
 			}
 			pubData = reinterpret_cast<uint8_t*>(packet.body());
 			cubData = packet.sizeBytes();

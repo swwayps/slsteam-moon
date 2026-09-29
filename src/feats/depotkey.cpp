@@ -13,6 +13,7 @@
 #include "../utils/atomic_file.hpp"
 #include "../utils/process_lock.hpp"
 
+#include "../sdk/CNetPacket.hpp"
 #include "../sdk/CProtoBufMsgBase.hpp"
 #include "../sdk/EResult.hpp"
 
@@ -600,16 +601,14 @@ void sendDepotKey(CMsgClientGetDepotDecryptionKey* req)
 	              req->app_id(), req->depot_id());
 }
 
-void sendMsg(CProtoBufMsgBase* msg)
+void sendMsg(CNetPacket* packet)
 {
-	switch (msg->type)
-	{
-		case EMSG_GET_DEPOT_DECRYPTION_KEY:
-			sendDepotKey(msg->getBody<CMsgClientGetDepotDecryptionKey>());
-			break;
-		default:
-			break;
-	}
+	// Observe only: remember which app asked for the key so the response can
+	// be cached against it. The outgoing frame is never rewritten.
+	if (!packet || packet->getProtoBufType() != EMSG_GET_DEPOT_DECRYPTION_KEY)
+		return;
+	auto req = packet->deserializeBody<CMsgClientGetDepotDecryptionKey>();
+	sendDepotKey(&req);
 }
 
 } // namespace DepotKey

@@ -37,7 +37,7 @@
 #include <string>
 #include <vector>
 
-class CProtoBufMsgBase;
+class CNetPacket;
 
 namespace DepotKey
 {
@@ -101,9 +101,9 @@ namespace DepotKey
 	// Steam's ConfigStore writers can publish a competing snapshot.
 	void disableShaderCache();
 
-	// Hook callback — called from hooks.cpp inside the CProtoBufMsgBase_Send
-	// detour.
-	void sendMsg(CProtoBufMsgBase* msg);
+	// Called from the CWebSocketConnection::BBuildAndAsyncSendFrame detour
+	// for every outgoing CM protobuf frame.
+	void sendMsg(CNetPacket* packet);
 
 	// RecvAction + classifyRecv (the pure substitution decision) live in
 	// depotkey_recv_policy.hpp so they can be unit-tested without protobuf.

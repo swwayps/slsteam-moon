@@ -1022,15 +1022,6 @@ namespace Patterns
 		};
 	}
 
-	namespace CProtoBufMsgBase
-	{
-		Pattern_t Send
-		{
-			"CProtoBufMsgBase::Send",
-			"E8 ? ? ? ? 59 5A 50 56 E8 ? ? ? ? 83 C4 0C",
-			SigFollowMode::Relative
-		};
-	};
 
 	namespace CSteamEngine
 	{

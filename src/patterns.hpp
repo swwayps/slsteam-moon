@@ -71,11 +71,6 @@ namespace Patterns
 		extern Pattern_t GetPlayerStats;
 	}
 
-	namespace CProtoBufMsgBase
-	{
-		extern Pattern_t Send;
-	};
-
 	namespace CCMInterface
 	{
 		extern Pattern_t RecvPkt;

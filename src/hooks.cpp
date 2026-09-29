@@ -392,16 +392,6 @@ static void hkCMInterface_RecvPkt(void* pCMInterface, CNetPacket* pNetPacket)
 
 static CSteamId hkClientUser_GetSteamId(const CSteamId& steamId);
 
-static uint32_t hkProtoBufMsgBase_Send(CProtoBufMsgBase* pMsg)
-{
-	DepotKey::sendMsg(pMsg);
-
-	const uint32_t ret = Hooks::CProtoBufMsgBase_Send.tramp.fn(pMsg);
-	g_pLog->debug("Sending ProtoBufMsg of type %u with type %s\n", pMsg->type, MemHlp::getTypeName(pMsg));
-
-	return ret;
-}
-
 static uint32_t hkSteamEngine_ProcessIPCFrame(
 	void* pSteamEngine,
 	HSteamPipe hPipe,
@@ -1473,7 +1463,6 @@ namespace Hooks
 	DetourHook<CClientUnifiedServiceMethod_SendAndRecvMsg_t> CClientUnifiedServiceMethod_SendAndRecvMsg;
 
 	DetourHook<CCMInterface_RecvPkt_t> CCMInterface_RecvPkt;
-	DetourHook<CProtoBufMsgBase_Send_t> CProtoBufMsgBase_Send;
 
 	DetourHook<CWebSocketConnection_BBuildAndAsyncSendFrame_t> CWebSocketConnection_BBuildAndAsyncSendFrame;
 	DetourHook<CRemoteClientManager_RecvPkt_t> CRemoteClientManager_RecvPkt;
@@ -1529,7 +1518,6 @@ bool Hooks::setup()
 		TraceIPC.setup(Patterns::TraceIPC, &hkTraceIPC)
 
 		&& CCMInterface_RecvPkt.setup(Patterns::CCMInterface::RecvPkt, &hkCMInterface_RecvPkt)
-		&& CProtoBufMsgBase_Send.setup(Patterns::CProtoBufMsgBase::Send, &hkProtoBufMsgBase_Send)
 
 		&& CWebSocketConnection_BBuildAndAsyncSendFrame.setup(Patterns::CWebSocketConnection::BBuildAndAsyncSendFrame, &ManifestCode::hkBBuildAndAsyncSendFrame)
 		&& CRemoteClientManager_RecvPkt.setup(Patterns::CRemoteClientManager::RecvPkt, &ManifestCode::hkRecvPkt)
@@ -1634,7 +1622,6 @@ void Hooks::place()
 	}
 
 	CCMInterface_RecvPkt.place();
-	CProtoBufMsgBase_Send.place();
 
 	CRemoteClientManager_RecvPkt.place();
 	CJobMgr_BRouteMsgToJob.place();
@@ -1713,7 +1700,6 @@ void Hooks::remove()
 	}
 
 	CCMInterface_RecvPkt.remove();
-	CProtoBufMsgBase_Send.remove();
 
 	CWebSocketConnection_BBuildAndAsyncSendFrame.remove();
 	CRemoteClientManager_RecvPkt.remove();

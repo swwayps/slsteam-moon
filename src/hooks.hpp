@@ -97,7 +97,6 @@ namespace Hooks
 	typedef uint32_t(*CClientUnifiedServiceMethod_SendAndRecvMsg_t)(CClientUnifiedServiceTransport*, const char*, void*, void*, void*);
 
 	typedef void(*CCMInterface_RecvPkt_t)(void*, CNetPacket*);
-	typedef uint32_t(*CProtoBufMsgBase_Send_t)(CProtoBufMsgBase*);
 
 	typedef void(*CSteamEngine_Init_t)(void*);
 	typedef uint32_t(*CSteamEngine_ProcessIPCFrame_t)(void*, HSteamPipe, CUtlBuffer*, CUtlBuffer*);
@@ -138,7 +137,6 @@ namespace Hooks
 	extern DetourHook<CClientUnifiedServiceMethod_SendAndRecvMsg_t> CClientUnifiedServiceMethod_SendAndRecvMsg;
 
 	extern DetourHook<CCMInterface_RecvPkt_t> CCMInterface_RecvPkt;
-	extern DetourHook<CProtoBufMsgBase_Send_t> CProtoBufMsgBase_Send;
 
 	extern DetourHook<CWebSocketConnection_BBuildAndAsyncSendFrame_t> CWebSocketConnection_BBuildAndAsyncSendFrame;
 	extern DetourHook<CRemoteClientManager_RecvPkt_t> CRemoteClientManager_RecvPkt;
