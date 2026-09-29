@@ -17,6 +17,7 @@ constexpr uint32_t realDate = 1700000000;
 int failures = 0;
 bool excluded = false;
 bool nativeLicense = false;
+CSteamId denuvoOwner;
 IClientApps clientApps;
 
 void check(bool condition, const char* message)
@@ -39,7 +40,7 @@ AppOwnershipInfo_t checkDate(int32_t packageId, uint32_t date,
 }
 
 CConfig g_config;
-uint32_t g_currentSteamId = 7;
+CSteamId g_currentSteamId(7);
 IClientApps* g_pClientApps = &clientApps;
 std::unique_ptr<CLog> g_pLog = std::make_unique<CLog>("");
 CConfig::~CConfig() = default;
@@ -48,7 +49,7 @@ CLog::~CLog() = default;
 LogLevel CLog::getMinLevel() { return LogLevel::Warn; }
 bool CConfig::isAddedAppId(uint32_t id) { return addedAppIds.contains(id); }
 bool CConfig::shouldExcludeAppId(uint32_t, bool) { return excluded; }
-CSteamId CConfig::getDenuvoGameOwner(const AppId_t) { return CSteamId(); }
+CSteamId CConfig::getDenuvoGameOwner(const AppId_t) { return denuvoOwner; }
 EAppType IClientApps::getAppType(uint32_t) { return k_EAppTypeGame; }
 namespace StatsPolicy { bool hasNativeLicense(uint32_t) { return nativeLicense; } }
 
@@ -104,6 +105,20 @@ int main()
 	check(checkDate(0, packageDate).purchaseTime == packageDate,
 	      "excluded apps remain untouched");
 	excluded = false;
+
+	// DenuvoGames keys may be 32-bit account ids or full 64-bit SteamIDs.
+	AppOwnershipInfo_t info{};
+	denuvoOwner = CSteamId(7);
+	check(Apps::checkAppOwnership(appId, &info),
+	      "a DenuvoGames entry keyed by the current account id still unlocks");
+	denuvoOwner = CSteamId(0x0110000100000007ULL);
+	check(Apps::checkAppOwnership(appId, &info),
+	      "a DenuvoGames entry keyed by the current 64-bit id still unlocks");
+	denuvoOwner = CSteamId(8);
+	check(!Apps::checkAppOwnership(appId, &info),
+	      "a DenuvoGames entry owned by another account is left untouched");
+	denuvoOwner = CSteamId();
+
 	g_config.addedAppIds.set({});
 	check(checkDate(0, packageDate, false).purchaseTime == packageDate,
 	      "an unmanaged app keeps its package date");
