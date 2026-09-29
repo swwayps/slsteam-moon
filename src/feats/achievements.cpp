@@ -170,6 +170,7 @@ void Achievements::recvMessage(uint32_t type, bool hasSteamId, uint64_t steamId)
 	// than allowing the previously selected owner's progress through unchanged.
 }
 
+std::unordered_map<AppId_t, uint64_t> Achievements::preferredOwners;
 std::unordered_map<AppId_t, std::unordered_set<uint64_t>> Achievements::ownerBlacklist;
 
 std::string Achievements::getReviewUrl(const AppId_t appId)
@@ -239,6 +240,40 @@ std::unordered_set<uint64_t> Achievements::getReviewersForGame(const AppId_t app
 	return list;
 }
 
+
+uint32_t Achievements::tryGetPlayerStats
+(
+	CClientUnifiedServiceTransport* serviceTransport,
+	const char* serviceName,
+	CPlayer_GetUserStats_Request* send,
+	CPlayer_GetUserStats_Response* recv,
+	const uint64_t steamId
+)
+{
+	g_pLog->debug("CPlayer_GetUserStats_Request->set_steamid(%llu)\n", steamId);
+	send->set_steamid(steamId);
+	uint32_t res = serviceTransport->sendAndRecvMsg(serviceName, send, recv);
+
+	const AppId_t appId = send->appid();
+
+	if (res == k_EResultFailure)
+	{
+		ownerBlacklist[appId].emplace(steamId);
+		return k_EResultNoResult;
+	}
+	else if (res != k_EResultOK)
+	{
+		return k_EResultNoResult;
+	}
+
+	recv->clear_crc_stats();
+	recv->clear_stats();
+
+	preferredOwners[appId] = steamId;
+	g_pLog->debug("Using steamId %llu for %u\n", steamId, appId);
+	return k_EResultOK;
+}
+
 uint32_t Achievements::sendAndRecvGetPlayerStats
 (
 	CClientUnifiedServiceTransport* serviceTransport,
@@ -258,38 +293,71 @@ uint32_t Achievements::sendAndRecvGetPlayerStats
 		return k_EResultNoResult;
 	}
 
-	const auto reviewers = getReviewersForGame(send->appid());
-
+	const AppId_t appId = send->appid();
 	send->clear_crc_stats();
+
+	//Prefer last successfull owner to skip review fetch. Fixes stutters caused
+	//by review fetching in games that spam stat requests
+	if (preferredOwners.contains(appId))
+	{
+		const uint32_t res = tryGetPlayerStats(serviceTransport, GET_PLAYER_STATS_SERVICE_NAME, send, recv, preferredOwners.at(appId));
+		if (res == k_EResultOK)
+		{
+			return res;
+		}
+
+		preferredOwners.erase(send->appid());
+	}
+
+	const auto reviewers = getReviewersForGame(send->appid());
 
 	for(const auto& id : reviewers)
 	{
-		send->set_steamid(id);
-		g_pLog->debug("CPlayer_GetUserStats_Request->set_steamid(%llu)\n", id);
-
-		const auto res = serviceTransport->sendAndRecvMsg(GET_PLAYER_STATS_SERVICE_NAME, send, recv);
-
-		if (res != k_EResultOK)
+		const uint32_t res = tryGetPlayerStats(serviceTransport, serviceName, send, recv, id);
+		if (res == k_EResultOK)
 		{
-			if (res == k_EResultFailure)
-			{
-				//Only blacklist confirmed failures, exclude NO_CONNECTION and whatever else could happen
-				ownerBlacklist[send->appid()].emplace(id);
-			}
-
-			continue;
+			return res;
 		}
-
-		//Clear stats so steam merges them for us
-		recv->clear_crc_stats();
-		recv->clear_stats();
-
-		g_pLog->debug("Using schema from %llu for %u\n", id, send->appid());
-		return k_EResultOK;
 	}
 
-	g_pLog->debug("No schemas for %u found! Falling back to offline cache\n", send->appid());
+	g_pLog->debug("No schemas for %u found! Falling back to offline cache\n", appId);
 	return k_EResultNoConnection;
+}
+
+uint32_t Achievements::tryGetUserStats(CAPIJob* job, CProtoBufMsgBase* send, const uint32_t timeOut, CProtoBufMsgBase* recv, const EMsg targetType, const uint64_t steamId)
+{
+	const auto sendBdy = send->getBody<CMsgClientGetUserStats>();
+
+	g_pLog->debug("CMsgClientGetUserStats->set_steam_id_for_user(%llu)\n", steamId);
+	sendBdy->set_steam_id_for_user(steamId);
+
+	const uint32_t ret = job->sendAndRecv(send, timeOut, recv, targetType);
+	if (!ret)
+	{
+		return 0;
+	}
+
+	const AppId_t appId = sendBdy->game_id();
+	const auto recvBdy = recv->getBody<CMsgClientGetUserStatsResponse>();
+
+	if (recvBdy->eresult() == k_EResultFailure)
+	{
+		ownerBlacklist[appId].emplace(steamId);
+		return 0;
+	}
+
+	if (recvBdy->eresult() != k_EResultOK)
+	{
+		return 0;
+	}
+
+	recvBdy->clear_achievement_blocks();
+	recvBdy->clear_crc_stats();
+	recvBdy->clear_stats();
+
+	g_pLog->debug("Using steamId %llu for %u\n", steamId, appId);
+	preferredOwners[appId] = steamId;
+	return ret;
 }
 
 uint32_t Achievements::sendAndRecvGetUserStats(CAPIJob* job, CProtoBufMsgBase* send, const uint32_t timeOut, CProtoBufMsgBase* recv, const EMsg targetType)
@@ -306,43 +374,34 @@ uint32_t Achievements::sendAndRecvGetUserStats(CAPIJob* job, CProtoBufMsgBase* s
 		return 0;
 	}
 
-	const auto recvBdy = recv->getBody<CMsgClientGetUserStatsResponse>();
-	const auto reviewers = getReviewersForGame(sendBdy->game_id());
-
+	const AppId_t appId = sendBdy->game_id();
 	sendBdy->clear_crc_stats();
+
+	if (preferredOwners.contains(appId))
+	{
+		uint32_t ret = tryGetUserStats(job, send, timeOut, recv, targetType, preferredOwners.at(appId));
+		if (ret)
+		{
+			return ret;
+		}
+
+		//Prefered owner failed, erase then fallthrough to trying reviewers
+		preferredOwners.erase(appId);
+	}
+
+	const auto reviewers = getReviewersForGame(sendBdy->game_id());
 
 	for(const auto& id : reviewers)
 	{
-		sendBdy->set_steam_id_for_user(id);
-		g_pLog->debug("CMsgClientGetUserStats->set_steam_id_for_user(%llu)\n", id);
-
-		const uint32_t ret = job->sendAndRecv(send, timeOut, recv, targetType);
-		if (!ret)
+		const uint32_t ret = tryGetUserStats(job, send, timeOut, recv, targetType, id);
+		if (ret)
 		{
-			continue;
+			return ret;
 		}
-
-		if (recvBdy->eresult() != k_EResultOK)
-		{
-			if (recvBdy->eresult() == k_EResultFailure)
-			{
-				//Only blacklist confirmed failures, exclude NO_CONNECTION and whatever else could happen
-				ownerBlacklist[recvBdy->game_id()].emplace(id);
-			}
-
-			continue;
-		}
-		
-		recvBdy->clear_achievement_blocks();
-		recvBdy->clear_crc_stats();
-		recvBdy->clear_stats();
-
-		g_pLog->debug("Using schema from %llu for %u\n", id, recvBdy->game_id());
-
-		return ret;
 	}
 
-	g_pLog->debug("No schemas for %u found! Falling back to offline cache\n", sendBdy->game_id());
+	const auto recvBdy = recv->getBody<CMsgClientGetUserStatsResponse>();
 	recvBdy->set_eresult(k_EResultNoConnection);
+	g_pLog->debug("No schemas for %u found! Falling back to offline cache\n", appId);
 	return 1;
 }

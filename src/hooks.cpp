@@ -291,8 +291,6 @@ void VFTHook<T>::setup(std::shared_ptr<lm_vmt_t> vft, const VFTableInfo_t& info,
 __attribute__((hot))
 static void hkTraceIPC(const char* iface, const char* fn)
 {
-	Hooks::TraceIPC.tramp.fn(iface, fn);
-
 	if (g_config.extendedLogging.get())
 	{
 		g_pLog->debug
@@ -304,6 +302,8 @@ static void hkTraceIPC(const char* iface, const char* fn)
 			fn
 		);
 	}
+
+	Hooks::TraceIPC.tramp.fn(iface, fn);
 }
 
 static uint32_t hkCAPIJob_GetPlayerStats(void* pAPIJob)
@@ -1307,6 +1307,7 @@ namespace Hooks
 	static bool depotOverrideHookReady = false;
 	static bool cloudToggleHookReady = false;
 	static bool configStoreHookReady = false;
+	static bool friendGameHookReady = false;
 
 	DetourHook<TraceIPC_t> TraceIPC;
 
@@ -1471,7 +1472,6 @@ bool Hooks::setup()
 		&& CUser_GetSubscribedApps.setup(Patterns::CUser::GetSubscribedApps, &hkUser_GetSubscribedApps)
 		&& CUser_PostCallbackToAppId.setup(Patterns::CUser::PostCallbackToAppId, &hkUser_PostCallbackToAppId)
 
-		&& IClientFriends_GetFriendGamePlayed.setup(Patterns::IClientFriends::GetFriendGamePlayed, &hkClientFriends_GetFriendGamePlayed)
 
 		&& CSteamEngine_ProcessIPCFrame.setup(Patterns::CSteamEngine::ProcessIPCFrame, &hkSteamEngine_ProcessIPCFrame)
 		&& CSteamEngine_SetAppIdForCurrentPipe.setup(Patterns::CSteamEngine::SetAppIdForCurrentPipe, &hkSteamEngine_SetAppIdForCurrentPipe)
@@ -1526,7 +1526,7 @@ bool Hooks::setup()
 	// (upstream b8ef92f), which also sees stores that skip the IPC proxy.
 	// Only the presence title redaction rides it.
 	{
-		const auto& entry = VFTIndexes::IClientConfigStoreMap::SetString;
+		const auto& entry = VFTIndexes::IClientConfigStore::SetString;
 		const auto store = Decompiler::vftables.find("12CConfigStore");
 		if (store != Decompiler::vftables.end())
 		{
@@ -1540,6 +1540,27 @@ bool Hooks::setup()
 	if (!configStoreHookReady)
 	{
 		g_pLog->warn("ConfigStore SetString hook unavailable; private apps are not redacted\n");
+	}
+
+	// Friends' games are translated back from FakeAppIds on CUserFriends' own
+	// slot (upstream 50eed0d): game processes reach the implementation over
+	// IPC, never the in-process IClientFriendsMap proxy. Only the lobby
+	// translation rides it.
+	{
+		const auto& entry = VFTIndexes::IClientFriends::GetFriendGamePlayed;
+		const auto friends = Decompiler::vftables.find("12CUserFriends");
+		if (friends != Decompiler::vftables.end())
+		{
+			const auto& slots = friends->second.functions;
+			friendGameHookReady = entry.index < slots.size()
+				&& IClientFriends_GetFriendGamePlayed.setup(
+					entry.getPrintName().c_str(), slots[entry.index],
+					hkClientFriends_GetFriendGamePlayed);
+		}
+	}
+	if (!friendGameHookReady)
+	{
+		g_pLog->warn("GetFriendGamePlayed hook unavailable; FakeAppIds lobbies keep the fake id\n");
 	}
 
 	Hooks::place();
@@ -1610,7 +1631,10 @@ void Hooks::place()
 		IClientRemoteStorage_IsCloudEnabledForApp.place();
 	}
 
-	IClientFriends_GetFriendGamePlayed.place();
+	if (friendGameHookReady)
+	{
+		IClientFriends_GetFriendGamePlayed.place();
+	}
 
 	CWebSocketConnection_BBuildAndAsyncSendFrame.place();
 
@@ -1680,7 +1704,11 @@ void Hooks::remove()
 	}
 	CUser_PostCallbackToAppId.remove();
 
-	IClientFriends_GetFriendGamePlayed.remove();
+	if (friendGameHookReady)
+	{
+		IClientFriends_GetFriendGamePlayed.remove();
+		friendGameHookReady = false;
+	}
 
 	IClientAppManager_BCanRemotePlayTogether.remove();
 

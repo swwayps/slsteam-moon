@@ -75,9 +75,14 @@ namespace VFTIndexes
 		extern VFTableInfo_t SpecifyCompatTool;
 	}
 
-	namespace IClientConfigStoreMap
+	namespace IClientConfigStore
 	{
 		extern VFTableInfo_t SetString;
+	}
+
+	namespace IClientFriends
+	{
+		extern VFTableInfo_t GetFriendGamePlayed;
 	}
 
 	namespace IClientEngine

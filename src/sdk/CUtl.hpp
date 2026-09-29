@@ -48,18 +48,24 @@ public:
 
 class CUtlBuffer
 {
+	typedef int(*CUtlBuffer_Function1_t)(void*);
+	typedef bool(*CUtlBuffer_Resize_t)(void*, int32_t);
+
 public:
 
-	CUtlMemory<uint8_t> mem;	//0x0
-	int32_t get;				//0xC
-	int32_t put;				//0x10
-	int32_t offset;				//0x14
-	uint32_t flags;				//0x1A
-	uint8_t __pad0x1B[0x8];		//0x1B
+	CUtlMemory<uint8_t> mem;			//0x0
+	int32_t get;						//0xC
+	int32_t put;						//0x10
+	int32_t offset;						//0x14
+	uint32_t flags;						//0x18
+	CUtlBuffer_Function1_t fn1C;		//0x1C
+	int32_t field20;					//0x20
+	CUtlBuffer_Resize_t resize;			//0x24
+	int32_t field28;					//0x28
 
 	constexpr bool hasBytes(const std::size_t count) const
 	{
 		return mem.base && put >= 0 &&
 			static_cast<std::size_t>(put) >= count;
 	}
-}; //0x24
+}; //0x2C

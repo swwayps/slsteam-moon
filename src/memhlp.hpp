@@ -119,30 +119,30 @@ namespace MemHlp
 			return false;
 		}
 
-		size_t size = snprintf(nullptr, 0, fmt, args...) + 1;
-		char* code = reinterpret_cast<char*>(malloc(size));
-		snprintf(code, size, fmt, args...);
+		const size_t size = snprintf(nullptr, 0, fmt, args...) + 1;
+		std::string code;
+		code.resize(size);
+		snprintf(code.data(), size, fmt, args...);
 
 		static lm_inst_t inst;
 		//TODO: Potentially replace with LM_AssembleEx and only allocate memory as needed
 		bool success = false;
 
-		if (!LM_Assemble(code, &inst))
+		if (!LM_Assemble(code.c_str(), &inst))
 		{
-			g_pLog->debug("Failed to assemble %s!\n", code);
+			g_pLog->debug("Failed to assemble %s!\n", code.c_str());
 		}
 		else if (!LM_WriteMemory(address, inst.bytes, inst.size))
 		{
-			g_pLog->debug("Failed to write %s to %p!\n", code, address);
+			g_pLog->debug("Failed to write %s to %p!\n", code.c_str(), address);
 		}
 		else
 		{
-			g_pLog->debug("Wrote %s to %p with %i bytes\n", code, address, inst.size);
+			g_pLog->debug("Wrote %s to %p with %i bytes\n", code.c_str(), address, inst.size);
 			address += inst.size;
 			success = true;
 		}
 
-		free(code);
 		return success;
 	}
 

@@ -210,12 +210,21 @@ namespace VFTIndexes
 		};
 	}
 
-	namespace IClientConfigStoreMap
+	namespace IClientConfigStore
 	{
 		VFTableInfo_t SetString
 		{
 			"21IClientConfigStoreMap",
 			"SetString"
+		};
+	}
+
+	namespace IClientFriends
+	{
+		VFTableInfo_t GetFriendGamePlayed
+		{
+			"17IClientFriendsMap",
+			"GetFriendGamePlayed"
 		};
 	}
 
