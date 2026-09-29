@@ -190,6 +190,13 @@ public:
 			return defVal;
 		}
 
+		// An empty `Key:` is a null node, which yaml-cpp converts to the
+		// string "null" (so an empty FakeName: would rename the persona).
+		if (node[name].IsNull())
+		{
+			return defVal;
+		}
+
 		// Use yaml-cpp's NON-THROWING conversion (the as<T>(fallback) overload):
 		// it returns defVal on a bad/out-of-range scalar instead of throwing
 		// YAML::TypedBadConversion<T>.  We can NOT rely on catching that throw:
