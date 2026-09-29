@@ -30,7 +30,7 @@ std::unordered_map<AppId_t, Ticket::SavedTicket> Ticket::encryptedTicketMap = st
 
 std::string Ticket::getTicketDir()
 {
-	std::stringstream ss;
+	std::ostringstream ss;
 	ss << g_config.getDir().c_str() << "/cache";
 
 	const auto dir = ss.str();
@@ -44,7 +44,7 @@ std::string Ticket::getTicketDir()
 
 std::string Ticket::getTicketPath(uint32_t appId)
 {
-	std::stringstream ss;
+	std::ostringstream ss;
 	ss << getTicketDir().c_str() << "/ticket_" << appId << ".yaml";
 
 	return ss.str();
@@ -207,7 +207,7 @@ void Ticket::getTicketOwnershipExtendedData(uint32_t appId)
 
 std::string Ticket::getEncryptedTicketPath(uint32_t appId)
 {
-	std::stringstream ss;
+	std::ostringstream ss;
 	ss << getTicketDir().c_str() << "/encryptedTicket_" << appId << ".yaml";
 
 	return ss.str();

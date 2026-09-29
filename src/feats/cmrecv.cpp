@@ -10,6 +10,7 @@
 #include "pics.hpp"
 #include "ticket.hpp"
 
+#include "../config.hpp"
 #include "../sdk/CNetPacket.hpp"
 #include "../sdk/CProtoBufMsgBase.hpp"
 #include "../sdk/protobufs/steammessages_base.pb.h"
@@ -98,6 +99,16 @@ void CmRecv::dispatchNetPacket(CNetPacket* pkt)
 		{
 			auto body = pkt->deserializeBody<CMsgClientEmailAddrInfo>();
 			if (Misc::recvEmailInfo(&body))
+				pkt->serialize(body);
+			break;
+		}
+		case k_EMsgClientPersonaState:
+		{
+			// Only deserialized when FakeName is set: persona updates are frequent.
+			if (g_config.fakeName.get().empty())
+				break;
+			auto body = pkt->deserializeBody<CMsgClientPersonaState>();
+			if (Misc::recvPersonaState(&body))
 				pkt->serialize(body);
 			break;
 		}

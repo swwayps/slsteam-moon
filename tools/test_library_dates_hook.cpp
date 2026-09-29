@@ -48,7 +48,7 @@ CLog::~CLog() = default;
 LogLevel CLog::getMinLevel() { return LogLevel::Warn; }
 bool CConfig::isAddedAppId(uint32_t id) { return addedAppIds.contains(id); }
 bool CConfig::shouldExcludeAppId(uint32_t, bool) { return excluded; }
-uint32_t CConfig::getDenuvoGameOwner(uint32_t) { return 0; }
+CSteamId CConfig::getDenuvoGameOwner(const AppId_t) { return CSteamId(); }
 EAppType IClientApps::getAppType(uint32_t) { return k_EAppTypeGame; }
 namespace StatsPolicy { bool hasNativeLicense(uint32_t) { return nativeLicense; } }
 

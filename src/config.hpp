@@ -3,6 +3,7 @@
 #include "mtvar.hpp"
 #include "log.hpp"
 #include "sdk/steam.hpp"
+#include "sdk/CSteamID.hpp"
 #include "feats/manifestpins.hpp"
 #include "feats/librarydates.hpp"
 
@@ -83,7 +84,7 @@ public:
 		MissingKey,
 		ParsingException
 	};
-	MTVariable<ELoadError> __loadErrors;
+	MTVariable<std::string> __loadErrors;
 
 	MTVariable<std::unordered_set<uint32_t>> appIds;
 	// Apps sourced from stplug-in/luaappids and eligible for appinfo fetching.
@@ -114,7 +115,7 @@ public:
 	MTVariable<std::unordered_set<uint32_t>> lockedApps;
 	MTVariable<ManifestPins::PinMap> manifestPinsByApp;
 
-	MTVariable<std::unordered_map<uint32_t, std::unordered_set<uint32_t>>> denuvoGames;
+	MTVariable<std::unordered_map<uint64_t, std::unordered_set<AppId_t>>> denuvoGames;
 	MTVariable<std::unordered_map<AppId_t, uint64_t>> steamIdOverride;
 
 	MTVariable<bool> disableFamilyLock;
@@ -142,6 +143,7 @@ public:
 	MTVariable<uint64_t> achievementOwnerId;
 	MTVariable<std::unordered_map<uint32_t, uint64_t>> achievementOwners;
 	MTVariable<bool> disableUpdates;
+	MTVariable<std::string> fakeName;
 	MTVariable<std::string> fakeEmail;
 	MTVariable<int32_t> fakeWalletBalance;
 	MTVariable<unsigned int> logLevel;
@@ -175,7 +177,7 @@ public:
 	std::unordered_set<uint32_t> discoverStPluginAppIds();
 	std::unordered_set<uint32_t> loadLuaAppIdsYaml();
 
-	void setError(ELoadError err);
+	void setError(const ELoadError err, const char* keyName);
 	bool loadSettings();
 
 	template<typename T>
@@ -184,7 +186,7 @@ public:
 		if (!node[name])
 		{
 			//g_pLog->notifyLong("Missing %s in configfile! Using default", name);
-			setError(ELoadError::MissingKey);
+			setError(ELoadError::MissingKey, name);
 			return defVal;
 		}
 
@@ -209,7 +211,7 @@ public:
 		if (!node)
 		{
 			//g_pLog->notifyLong("Missing %s in configfile! Using default", name);
-			setError(ELoadError::MissingKey);
+			setError(ELoadError::MissingKey, name);
 			return list;
 		}
 
@@ -229,7 +231,7 @@ public:
 			catch(...)
 			{
 				//g_pLog->notify("Failed to parse %s!", name);
-				setError(ELoadError::ParsingException);
+				setError(ELoadError::ParsingException, name);
 			}
 		}
 
@@ -245,7 +247,7 @@ public:
 		if (!node)
 		{
 			//g_pLog->notifyLong("Missing %s in configfile! Using default", name);
-			setError(ELoadError::MissingKey);
+			setError(ELoadError::MissingKey, name);
 			return map;
 		}
 
@@ -271,7 +273,7 @@ public:
 			catch(...)
 			{
 				//g_pLog->notify("Failed to parse %s!", name);
-				setError(ELoadError::ParsingException);
+				setError(ELoadError::ParsingException, name);
 			}
 		}
 
@@ -297,7 +299,7 @@ public:
 	void purgePinsForApps(const std::unordered_set<uint32_t>& appIds);
 
 	bool shouldExcludeAppId(uint32_t appId, bool ignoreAdditionalApps = false);
-	uint32_t getDenuvoGameOwner(uint32_t appId);
+	CSteamId getDenuvoGameOwner(const AppId_t appId);
 };
 
 extern CConfig g_config;

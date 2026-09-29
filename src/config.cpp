@@ -25,7 +25,6 @@
 #include <cerrno>
 #include <cmath>
 #include <cstdint>
-#include <cstdio>
 #include <cstdlib>
 #include <ctime>
 #include <filesystem>
@@ -97,7 +96,7 @@ std::string CConfig::getDir()
 
 std::string CConfig::getPath()
 {
-	return getDir().append("/config.yaml");
+	return getDir() + "/config.yaml";
 }
 
 std::string CConfig::getLuaAppIdsPath()
@@ -239,17 +238,16 @@ bool CConfig::createFile()
 			g_pLog->debug("Created config directory at %s\n", dir.c_str());
 		}
 
-		FILE* file = fopen(path.c_str(), "w");
-		if (!file)
+		auto config = std::ofstream(path);
+		if (!config.is_open())
 		{
 			g_pLog->notify("Unable to create config at %s!\n", path.c_str());
 			g_pLog->notifyUser(UserMsg::ConfigWriteFailed);
 			return false;
 		}
 
-		fputs(defaultConfig, file);
-		fflush(file);
-		fclose(file);
+		config << defaultConfig;
+		config.close();
 	}
 
 	return true;
@@ -396,14 +394,35 @@ CConfig::~CConfig()
 }
 
 
-void CConfig::setError(ELoadError err)
+void CConfig::setError(const ELoadError err, const char* keyName)
 {
-	if (__loadErrors.get() > err)
+	const auto prev = __loadErrors.get();
+	std::ostringstream msg;
+
+	if (!prev.size())
 	{
-		return;
+		msg << "Config loading errors:\n";
+	}
+	else
+	{
+		msg << prev << "\n";
 	}
 
-	__loadErrors = err;
+	switch(err)
+	{
+		case ELoadError::MissingKey:
+			msg << "Missing " << keyName;
+			break;
+	
+		case ELoadError::ParsingException:
+			msg << "Failed to parse " << keyName;
+			break;
+
+		default:
+			break;
+	}
+
+	__loadErrors = msg.str();
 }
 
 bool CConfig::loadSettings()
@@ -453,7 +472,7 @@ bool CConfig::loadSettings()
 		}
 	}
 
-	__loadErrors = ELoadError::None;
+	__loadErrors = std::string("");
 	// Configuration-authored DLC scope is a replace-only snapshot. Revoke the
 	// previous one before parsing so a removed or malformed block cannot retain
 	// stale local entitlements during a hot reload.
@@ -479,6 +498,7 @@ bool CConfig::loadSettings()
 	warnHashMissmatch = getSetting<bool>(node, "WarnHashMissmatch", false);
 	notifyInit = getSetting<bool>(node, "NotifyInit", true);
 	api = getSetting<bool>(node, "API", true);
+	fakeName = getSetting<std::string>(node, "FakeName", "");
 	fakeEmail = getSetting<std::string>(node, "FakeEmail", "");
 	fakeWalletBalance = getSetting<int32_t>(node, "FakeWalletBalance", 0);
 	disableCloud = getSetting<bool>(node, "DisableCloud", true);
@@ -527,14 +547,14 @@ bool CConfig::loadSettings()
 		"Config: DisableFamilyShareLock=%i DisableParentalRestrictions=%i "
 		"UseWhitelist=%i SafeMode=%i "
 		"Notifications=%i WarnHashMissmatch=%i NotifyInit=%i API=%i "
-		"FakeEmail=%s FakeWalletBalance=%i DisableCloud=%i DisableUpdates=%i Donate=%i "
+		"FakeName=%s FakeEmail=%s FakeWalletBalance=%i DisableCloud=%i DisableUpdates=%i Donate=%i "
 		"InjectAllAdvertisedDlc=%i Achievements=%i PatternCache=%i "
 		"AsyncProvision=%i ExtendedLogging=%i AutoUpdateApps=%i LogLevel=%u "
 		"MaxSchemaTries=%u DumpClientInterfaces=%i\n",
 		disableFamilyLock.get(), disableParentalRestrictions.get(),
 		useWhiteList.get(),
 		safeMode.get(), notifications.get(), warnHashMissmatch.get(),
-		notifyInit.get(), api.get(), fakeEmail.get().c_str(),
+		notifyInit.get(), api.get(), fakeName.get().c_str(), fakeEmail.get().c_str(),
 		fakeWalletBalance.get(), disableCloud.get(), disableUpdates.get(),
 		donate.get().enabled,
 		injectAllAdvertisedDlc.get(),
@@ -667,7 +687,7 @@ bool CConfig::loadSettings()
 		catch(...)
 		{
 			//g_pLog->warn("Failed to parse IdleStatus!");A
-			setError(ELoadError::ParsingException);
+			setError(ELoadError::ParsingException, "IdleStatus");
 		}
 	}
 
@@ -701,7 +721,7 @@ bool CConfig::loadSettings()
 			catch(...)
 			{
 				//g_pLog->notify("Failed to parse DlcData!");
-				setError(ELoadError::ParsingException);
+				setError(ELoadError::ParsingException, "DlcData");
 				break;
 			}
 		}
@@ -720,7 +740,7 @@ bool CConfig::loadSettings()
 	else
 	{
 		//g_pLog->notify("Missing DlcData entry in config!");
-		setError(ELoadError::MissingKey);
+		setError(ELoadError::MissingKey, "DlcData");
 	}
 
 	const auto denuvoGamesNode = node["DenuvoGames"];
@@ -732,8 +752,8 @@ bool CConfig::loadSettings()
 		{
 			try
 			{
-				const uint32_t steamId = steamIdNode.first.as<uint32_t>();
-				_denuvoGames[steamId] = std::unordered_set<uint32_t>();
+				const uint64_t steamId = steamIdNode.first.as<uint64_t>();
+				_denuvoGames[steamId] = std::unordered_set<AppId_t>();
 
 				for (auto& appIdNode : steamIdNode.second)
 				{
@@ -747,7 +767,7 @@ bool CConfig::loadSettings()
 			catch (...)
 			{
 				//g_pLog->notify("Failed to parse DenuvoGames!");
-				setError(ELoadError::ParsingException);
+				setError(ELoadError::ParsingException, "DenuvoGames");
 			}
 		}
 
@@ -756,7 +776,7 @@ bool CConfig::loadSettings()
 	else
 	{
 		//g_pLog->notify("Missing DenuvoGames entry in config!");
-		setError(ELoadError::MissingKey);
+		setError(ELoadError::MissingKey, "DenuvoGames");
 	}
 
 	// ManifestPins: nested  appid -> { locked, depots: {depot: "gid"} }.
@@ -817,7 +837,7 @@ bool CConfig::loadSettings()
 				}
 				catch (...)
 				{
-					setError(ELoadError::ParsingException);
+					setError(ELoadError::ParsingException, "ManifestPins");
 				}
 			}
 		}
@@ -831,17 +851,10 @@ bool CConfig::loadSettings()
 		lockedApps.set(ManifestPins::lockedAppSet(pinMap));
 	}
 
-	switch(__loadErrors.get())
+	const auto errors = __loadErrors.get();
+	if (errors.size())
 	{
-		case ELoadError::MissingKey:
-			g_pLog->notify("Issues during config loading encountered! Missing key(s)");
-			break;
-		case ELoadError::ParsingException:
-			g_pLog->notify("Issues during config loading encountered! Parsing error(s)");
-			break;
-
-		default:
-			break;
+		g_pLog->notify("%s\n", errors.c_str());
 	}
 
 	return true;
@@ -936,18 +949,18 @@ bool CConfig::shouldExcludeAppId(uint32_t appId, bool ignoreAdditionalApps)
 	return exclude;
 }
 
-uint32_t CConfig::getDenuvoGameOwner(uint32_t appId)
+CSteamId CConfig::getDenuvoGameOwner(const AppId_t appId)
 {
 	for(const auto& tpl : denuvoGames.get())
 	{
 		if (tpl.second.contains(appId))
 		{
 			//g_pLog->once("%u is DenuvoGame\n", appId);
-			return tpl.first;
+			return CSteamId(tpl.first);
 		}
 	}
 
-	return 0;
+	return CSteamId();
 }
 
 CConfig g_config = CConfig();

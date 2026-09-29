@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <map>
+#include <unordered_set>
 #include <vector>
 
 class CNetPacket;
@@ -16,6 +17,7 @@ struct DepotInfo_t;
 namespace Apps
 {
 	extern bool applistRequested;
+	extern std::unordered_set<uint32_t> privateApps;
 
 	bool unlockApp(uint32_t appId, AppOwnershipInfo_t* info, const CSteamId& ownerId);
 	bool unlockApp(uint32_t appId, AppOwnershipInfo_t* info);
@@ -39,4 +41,6 @@ namespace Apps
 	void sendGamesPlayed(CNetPacket* packet);
 	void sendPICSInfoRequest(CNetPacket* packet);
 	void sendMsg(CNetPacket* packet);
+
+	void setConfigStoreString(const char* key, const char* value);
 };

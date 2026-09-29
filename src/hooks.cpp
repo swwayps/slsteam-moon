@@ -863,8 +863,6 @@ static unsigned int hkClientApps_GetDLCCount(void* pClientApps, uint32_t appId)
 		count
 	);
 	
-	appId = FakeAppIds::getRealAppIdForCurrentPipe();
-
 	const uint32_t override = DLC::getDlcCount(appId);
 	if (override)
 	{
@@ -876,8 +874,6 @@ static unsigned int hkClientApps_GetDLCCount(void* pClientApps, uint32_t appId)
 
 static bool hkClientApps_GetDLCDataByIndex(void* pClientApps, uint32_t appId, int dlcIndex, uint32_t* pDlcId, bool* pIsAvailable, char* pChDlcName, size_t dlcNameLen)
 {
-	appId = FakeAppIds::getRealAppIdForCurrentPipe();
-
 	bool ret = DLC::getDlcDataByIndex(
 		appId, dlcIndex, pDlcId, pIsAvailable, pChDlcName, dlcNameLen);
 	if (!ret)
@@ -1281,6 +1277,18 @@ static void hkCGameInfoDialog_ServerResponded(void* pGameInfoDialog, gameserverd
 	Hooks::CGameInfoDialog_ServerResponded.tramp.fn(pGameInfoDialog, details);
 }
 
+static bool hkClientConfigStoreMap_SetString(void* pConfigStoreMap, uint32_t a1, const char* key, const char* value)
+{
+	const bool success = Hooks::IClientConfigStoreMap_SetString.tramp.fn(pConfigStoreMap, a1, key, value);
+
+	if (success)
+	{
+		Apps::setConfigStoreString(key, value);
+	}
+
+	return success;
+}
+
 namespace Hooks
 {
 	static bool playerStatsHookReady = false;
@@ -1325,6 +1333,8 @@ namespace Hooks
 	VFTHook<IClientApps_GetDLCDataByIndex_t> IClientApps_GetDLCDataByIndex("IClientApps::GetDLCDataByIndex");
 	VFTHook<IClientApps_GetDLCCount_t> IClientApps_GetDLCCount("IClientApps::GetDLCCount");
 	VFTHook<IClientApps_GetAppData_t> IClientApps_GetAppData("IClientApps::GetAppData");
+
+	DetourHook<IClientConfigStoreMap_SetString_t> IClientConfigStoreMap_SetString;
 
 	DetourHook<IClientRemoteStorage_IsCloudEnabledForApp_t> IClientRemoteStorage_IsCloudEnabledForApp;
 
@@ -1452,10 +1462,11 @@ bool Hooks::setup()
 
 		&& CSteamEngine_ProcessIPCFrame.setup(Patterns::CSteamEngine::ProcessIPCFrame, &hkSteamEngine_ProcessIPCFrame)
 		&& CSteamEngine_SetAppIdForCurrentPipe.setup(Patterns::CSteamEngine::SetAppIdForCurrentPipe, &hkSteamEngine_SetAppIdForCurrentPipe)
+		&& CGameInfoDialog_ServerResponded.setup(VFTIndexes::CGameInfoDialog::ServerResponded, hkCGameInfoDialog_ServerResponded)
+		&& IClientConfigStoreMap_SetString.setup(VFTIndexes::IClientConfigStoreMap::SetString, &hkClientConfigStoreMap_SetString);
 
 
 
-		&& CGameInfoDialog_ServerResponded.setup(VFTIndexes::CGameInfoDialog::ServerResponded, hkCGameInfoDialog_ServerResponded);
 
 
 	// CAPIJob::GetPlayerStats is a debug-only observation hook, and its pattern
@@ -1574,6 +1585,8 @@ void Hooks::place()
 
 
 	CGameInfoDialog_ServerResponded.place();
+
+	IClientConfigStoreMap_SetString.place();
 }
 
 void Hooks::remove()
@@ -1645,6 +1658,7 @@ void Hooks::remove()
 	IClientUser_RequiresLegacyCDKey.remove();
 
 	CGameInfoDialog_ServerResponded.remove();
+	IClientConfigStoreMap_SetString.remove();
 
 	IClientAppManager_BIsDlcEnabled.remove();
 	IClientAppManager_GetAppUpdateInfo.remove();

@@ -90,7 +90,13 @@ class CLog
 		// which renders a friendly, localized, throttled message from the
 		// usermsg.hpp catalog instead.
 
-		const auto lock = std::unique_lock(mutex);
+		const auto lock = std::lock_guard(mutex);
+
+		//Prevent crashes from queued operations
+		if (!ofstream.is_open())
+		{
+			return;
+		}
 
 		if (lvl == LogLevel::Once)
 		{

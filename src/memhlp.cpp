@@ -373,7 +373,7 @@ bool MemHlp::fixPICThunkCall(const char* name, lm_address_t fn, lm_address_t tra
 
 		if(!LM_Assemble(newInstr, &inst))
 		{
-			printf("Unable to assemble instruction %s!\n", newInstr);
+			g_pLog->debug("Unable to assemble instruction %s!\n", newInstr);
 			return false;
 		}
 

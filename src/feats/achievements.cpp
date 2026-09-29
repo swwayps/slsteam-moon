@@ -174,7 +174,7 @@ std::unordered_map<AppId_t, std::unordered_set<uint64_t>> Achievements::ownerBla
 
 std::string Achievements::getReviewUrl(const AppId_t appId)
 {
-	std::stringstream url;
+	std::ostringstream url;
 	url << "https://store.steampowered.com/appreviews/" << appId
 		<< "?json=1&filter=recent&language=all&purchase_type=all&num_per_page="
 		<< g_config.maxSchemaTries.get();

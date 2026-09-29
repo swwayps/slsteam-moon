@@ -46,7 +46,6 @@ namespace SchemaGrabber
         public const string ReviewUrl = "https://store.steampowered.com/appreviews/{appId}?json=1&filter=recent&language=all&purchase_type=all&num_per_page=10";
 
         public readonly string GuardDataDir = Path.Combine(Environment.CurrentDirectory, "Sentries");
-        public readonly string TicketDir = Path.Combine(Environment.CurrentDirectory, "Tickets");
 
         public string GetSteamDir()
         {

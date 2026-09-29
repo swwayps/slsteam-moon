@@ -97,7 +97,7 @@ namespace TicketGrabber
             var filePath = Path.Combine(TicketDir, $"{prefix}_{appId}.yaml");
             File.WriteAllLines(filePath,
             [
-                $"steamId: {User.SteamID.AccountID}",
+                $"steamId: {User.SteamID.ConvertToUInt64()}",
                 $"{prefix}: {b64Ticket}"
             ]);
             Console.WriteLine($"Saved {filePath}");

@@ -53,7 +53,7 @@ struct AppOwnershipInfo_t {
     uint32_t trialTime;
     uint32_t numLicenses;
     char region[2];
-    char field7_0x1A[2];
+    uint8_t field7_0x1A[2];
     uint32_t purchaseTime;
     uint32_t realOwner;
     bool ownsLicense;

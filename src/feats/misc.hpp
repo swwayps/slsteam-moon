@@ -2,6 +2,7 @@
 
 class CMsgClientWalletInfoUpdate;
 class CMsgClientEmailAddrInfo;
+class CMsgClientPersonaState;
 
 namespace Misc
 {
@@ -11,4 +12,5 @@ namespace Misc
 	// rewrote the message, so the caller knows to reserialize the packet.
 	bool recvWalletInfo(CMsgClientWalletInfoUpdate* body);
 	bool recvEmailInfo(CMsgClientEmailAddrInfo* body);
+	bool recvPersonaState(CMsgClientPersonaState* body);
 }

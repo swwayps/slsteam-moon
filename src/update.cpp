@@ -249,7 +249,7 @@ std::string Updater::loadFromCache()
 	g_pLog->debug("Loading updates.ymal from disk!\n");
 
 	std::ifstream fstream = std::ifstream(path.c_str());
-	std::stringstream buf;
+	std::ostringstream buf;
 	buf << fstream.rdbuf();
 
 	fstream.close();

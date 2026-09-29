@@ -210,6 +210,15 @@ namespace VFTIndexes
 		};
 	}
 
+	namespace IClientConfigStoreMap
+	{
+		VFTableInfo_t SetString
+		{
+			"21IClientConfigStoreMap",
+			"SetString"
+		};
+	}
+
 	namespace IClientRemoteStorage
 	{
 		VFTableInfo_t IsCloudEnabledForApp

@@ -65,6 +65,8 @@ int Curl::getString(const char* url, std::string& out)
 
 		execve("/bin/curl", const_cast<char**>(args), const_cast<char**>(env));
 		execve("/usr/bin/curl", const_cast<char**>(args), const_cast<char**>(env));
+		//NixOS
+		execve("/run/current-system/sw/bin/curl", const_cast<char**>(args), const_cast<char**>(env));
 
 		g_pLog->debug("Failed to execv curl!\n");
 		exit(1);

@@ -30,7 +30,7 @@ struct VFTable
 	std::map<unsigned int, VFTable> subclasses;
 
 	void init(const lm_address_t addr, const lm_module_t& mod);
-	unsigned int analzye();
+	unsigned int analyze();
 };
 
 

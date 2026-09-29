@@ -2,6 +2,7 @@
 
 #include "../sdk/CProtoBufMsgBase.hpp"
 #include "../config.hpp"
+#include "../globals.hpp"
 
 #include "fakeappid.hpp"
 
@@ -45,3 +46,25 @@ bool Misc::recvEmailInfo(CMsgClientEmailAddrInfo* body)
 	return true;
 }
 
+bool Misc::recvPersonaState(CMsgClientPersonaState* body)
+{
+	const auto name = g_config.fakeName.get();
+	if (name.empty() || !body)
+	{
+		return false;
+	}
+
+	for (int i = 0; i < body->friends_size(); i++)
+	{
+		auto* person = body->mutable_friends(i);
+		if (person->friendid() != g_currentSteamId.steamId64)
+		{
+			continue;
+		}
+
+		person->set_player_name(name);
+		g_pLog->debug("Faked self persona\n");
+		return true;
+	}
+	return false;
+}

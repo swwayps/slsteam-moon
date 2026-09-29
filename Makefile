@@ -51,6 +51,7 @@ endif
 
 .PHONY: all build rebuild clean install release test-ascii test-cmwire test-cmclient-loader test-clientcompat test-dlcids test-dlc-scope test-dlc-metadata test-config-path test-config-discovery test-filewatcher-burst test-provision-notice test-mtvar-contains test-synthmark test-appinfostate test-pattern-catalog test-pattern-cache test-pattern-refresh test-process-lock test-process-runtime test-atomic-file test-cache-pair test-appinfo-transaction test-appinfo-reload test-audit-symbols test-audit-policy test-memhlp-target test-memhlp-prologue test-memhlp-pic test-utils-sha test-provision-cache test-provision-refresh test-provision-result test-provision-terminal test-pending-proton test-provision-schedule test-provision-pass test-runtime-dependencies test-thread-start test-steamstub-warmup test-steamstub-launchopt test-boundedexecutor test-steamless-prewarm test-depotkey-scope test-curl-timeout test-contentserverdirectory test-manifest-index test-manifestselection test-manifeststore-io test-hotreload-inputs test-hotreload-package test-ownerqueue test-hotreload-capabilities test-libraryremoval test-pics test-prewarm-backoff test-yaml-runtime test-manifestpin-patterns test-optional-locators test-patternscan test-manifest-zip test-fakeappid-presence test-fakeappid-wiring test-ticket test-familyshare test-familyshare-wiring
 .NOTPARALLEL: clean rebuild
+.PHONY: uninstall clean-libs clean-tools schema-grabber ticket-grabber
 .PHONY: test-library-dates test-library-dates-hook test-depot-overrides
 .PHONY: test-vftableinfo-registry test-owner-frame-wiring
 .PHONY: test-achievements test-achievement-scope test-stats-audit
@@ -148,9 +149,10 @@ bin/SLSsteam.so: $(objs) $(libs)
 
 # Audit-side helper that redirects libcurl loading to a system copy.
 # Loaded ahead of SLSsteam.so via $LD_AUDIT.
-bin/library-inject.so: tools/library-inject/main.cpp
+bin/library-inject.so: tools/library-inject/main.cpp tools/library-inject/Makefile
 	@mkdir -p bin
-	$(CXX) -O3 -m32 -fPIC -shared -std=c++20 $< -o $@
+	$(MAKE) -C tools/library-inject
+	ln -f tools/library-inject/library-inject.so bin/library-inject.so
 
 PATTERN_PUBLIC_KEY_HEX = $(shell tr -d '[:space:]' < res/pattern-public-key.hex 2>/dev/null)
 
@@ -170,8 +172,12 @@ bin/pattern-refresh: tools/pattern-refresh/main.cpp \
 		tools/pattern-refresh/main.cpp tools/pattern-refresh/catalog.cpp \
 		src/pattern_catalog.cpp -lcurl -lcrypto -lpthread -o $@
 
-tools/schema-grabber/bin/Release/net9.0/linux-x64/publish/schema-grabber:
-	sh tools/schema-grabber/build.sh
+# .NET helpers, not part of the default build.
+schema-grabber:
+	$(MAKE) -C tools/schema-grabber
+
+ticket-grabber:
+	$(MAKE) -C tools/ticket-grabber
 
 -include $(deps)
 obj/update.o: src/update.cpp res/version.txt
@@ -190,11 +196,28 @@ obj/%.o : src/%.cpp
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -isysteminclude -MMD -MP -c $< -o $@
 
-clean:
-	rm -rf obj/ bin/ dist/
+clean: clean-libs clean-tools
+clean-libs:
+	rm -rvf \
+		"obj/" \
+		"bin/" \
+		"dist/" \
+		"zips/" \
+		"tools/library-inject/library-inject.so" \
+		"tools/ticket-grabber/bin" \
+		"tools/ticket-grabber/obj" \
+		"tools/schema-grabber/bin" \
+		"tools/schema-grabber/obj"
+
+clean-tools:
+	$(MAKE) -C tools/schema-grabber clean
+	$(MAKE) -C tools/ticket-grabber clean
 
 install:
 	sh setup.sh install
+
+uninstall:
+	sh setup.sh uninstall
 
 # Unit test for cmwire.hpp's protobuf-backed helpers (Task 3).  Links the
 # already-compiled protobuf objects + libprotobuf-lite.a, matching the

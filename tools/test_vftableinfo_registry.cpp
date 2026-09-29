@@ -21,7 +21,7 @@ CConfig::~CConfig() = default;
 
 std::unordered_map<std::string, VFTable> Decompiler::vftables;
 std::map<std::string, unsigned int> Decompiler::parseInterfaceMapBase(const char*) { return {}; }
-unsigned int VFTable::analzye() { return 0; }
+unsigned int VFTable::analyze() { return 0; }
 
 namespace
 {

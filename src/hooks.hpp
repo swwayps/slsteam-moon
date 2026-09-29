@@ -164,6 +164,7 @@ namespace Hooks
 	typedef bool(*IClientApps_GetDLCDataByIndex_t)(void*, uint32_t, int, uint32_t*, bool*, char*, size_t);
 	typedef int32_t(*IClientApps_GetAppData_t)(void*, uint32_t, const char*, char*, uint32_t);
 	typedef bool(*IClientRemoteStorage_IsCloudEnabledForApp_t)(void*, uint32_t);
+	typedef bool(*IClientConfigStoreMap_SetString_t)(void*, uint32_t, const char*, const char*);
 	typedef uint32_t(*IClientUtils_GetAppId_t)(void*);
 
 	extern VFTHook<IClientAppManager_BCanRemotePlayTogether_t> IClientAppManager_BCanRemotePlayTogether;
@@ -177,13 +178,14 @@ namespace Hooks
 	extern VFTHook<IClientApps_GetAppData_t> IClientApps_GetAppData;
 
 	extern DetourHook<IClientRemoteStorage_IsCloudEnabledForApp_t> IClientRemoteStorage_IsCloudEnabledForApp;
+	extern DetourHook<IClientConfigStoreMap_SetString_t> IClientConfigStoreMap_SetString;
 
 	extern VFTHook<IClientUser_BLoggedOn_t> IClientUser_BLoggedOn;
 	extern VFTHook<IClientUser_BUpdateAppOwnershipTicket_t> IClientUser_BUpdateAppOwnershipTicket;
 	extern VFTHook<IClientUser_GetAppOwnershipTicketExtendedData_t> IClientUser_GetAppOwnershipTicketExtendedData;
+	extern VFTHook<IClientUser_GetEncryptedAppTicket_t> IClientUser_GetEncryptedAppTicket;
 	extern VFTHook<IClientUser_IsUserSubscribedAppInTicket_t> IClientUser_IsUserSubscribedAppInTicket;
 	extern VFTHook<IClientUser_RequiresLegacyCDKey_t> IClientUser_RequiresLegacyCDKey;
-	extern VFTHook<IClientUser_GetEncryptedAppTicket_t> IClientUser_GetEncryptedAppTicket;
 
 	extern VFTHook<IClientUtils_GetAppId_t> IClientUtils_GetAppId;
 	extern VFTHook<IClientUtils_GetOfflineMode_t> IClientUtils_GetOfflineMode;

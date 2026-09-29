@@ -25,7 +25,7 @@ void VFTable::init(const lm_address_t addr, const lm_module_t& mod)
 	this->subclasses = std::map<unsigned int, VFTable>();
 }
 
-unsigned int VFTable::analzye()
+unsigned int VFTable::analyze()
 {
 	//*(address + 0) = 0
 	//*(address + sizeof(lm_address_t)) = TypeInfo*
@@ -61,7 +61,7 @@ unsigned int VFTable::analzye()
 
 	for(auto& sub : subclasses)
 	{
-		sub.second.analzye();
+		sub.second.analyze();
 	}
 
 	return functions.size();

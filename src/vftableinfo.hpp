@@ -75,6 +75,11 @@ namespace VFTIndexes
 		extern VFTableInfo_t SpecifyCompatTool;
 	}
 
+	namespace IClientConfigStoreMap
+	{
+		extern VFTableInfo_t SetString;
+	}
+
 	namespace IClientEngine
 	{
 		extern VFTableInfo_t GetClientUser;

@@ -124,7 +124,7 @@ CLog* CLog::createDefaultLog()
 	const char* home = getenv("HOME");
 	if (home)
 	{
-		std::stringstream ss;
+		std::ostringstream ss;
 		ss << home << "/.SLSsteam.log";
 
 		return new CLog(ss.str().c_str());
