@@ -1,68 +1,101 @@
 #include "curl.hpp"
-#include "cainfo.hpp"
+
 #include "log.hpp"
 
-#include <curl/curl.h>
-#include <curl/easy.h>
-#include <dlfcn.h>
+#include <cstdlib>
+#include <sstream>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
-typedef CURL* (*curl_easy_init_t)();
-typedef CURLcode (*curl_easy_setopt_t)(CURL *curl, CURLoption option, ...);
-typedef CURLcode (*curl_easy_perform_t)(CURL *curl);
-typedef void (*curl_easy_cleanup_t)(CURL *curl);
-
-static curl_easy_init_t p_curl_easy_init = nullptr;
-static curl_easy_setopt_t p_curl_easy_setopt = nullptr;
-static curl_easy_perform_t p_curl_easy_perform = nullptr;
-static curl_easy_cleanup_t p_curl_easy_cleanup = nullptr;
-
-static bool load_curl() {
-	if (p_curl_easy_init) return true;
-
-	void* handle = dlopen("libcurl.so.4", RTLD_NOLOAD | RTLD_LAZY);
-	if (!handle) handle = dlopen("libcurl.so.4", RTLD_LAZY);
-	if (!handle) handle = RTLD_DEFAULT;
-
-	p_curl_easy_init = (curl_easy_init_t)dlsym(handle, "curl_easy_init");
-	p_curl_easy_setopt = (curl_easy_setopt_t)dlsym(handle, "curl_easy_setopt");
-	p_curl_easy_perform = (curl_easy_perform_t)dlsym(handle, "curl_easy_perform");
-	p_curl_easy_cleanup = (curl_easy_cleanup_t)dlsym(handle, "curl_easy_cleanup");
-
-	return p_curl_easy_init && p_curl_easy_setopt && p_curl_easy_perform && p_curl_easy_cleanup;
-}
-
-static size_t writeCallback(const char* content, size_t size, size_t memberSize, std::string* data)
-{
-	data->append(content, size * memberSize);
-	return size * memberSize;
-}
-
+//Spawn an external instance of curl, read it's stdout into out and return it's exit code
+//It's necessary because SteamOS seems broken. Curling certain URLs
+//will crash inside libssl.3.so (might have to do with broken certs, idk for sure).
 int Curl::getString(const char* url, std::string& out)
 {
-	if (!load_curl()) return -1;
+	g_pLog->debug("Curl::getString(%s)\n", url);
 
-	CURL* curl = p_curl_easy_init();
-	if (!curl) return -1;
+	int pipefd[2];
 
-	p_curl_easy_setopt(curl, CURLOPT_URL, url);
-	p_curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
-	p_curl_easy_setopt(curl, CURLOPT_WRITEDATA, &out);
-	// Pin the system trust store so TLS verification works even when the
-	// libcurl Steam loads can't find a CA bundle on its compiled-in default
-	// (SteamOS/Arch). No-op when nothing is found -> curl keeps its default.
-	if (const char* f = ca::bundleFile()) p_curl_easy_setopt(curl, CURLOPT_CAINFO, f);
-	if (const char* d = ca::bundleDir())  p_curl_easy_setopt(curl, CURLOPT_CAPATH, d);
-	// Signal-free timeouts: this can be called off the main thread, and
-	// libcurl's default SIGALRM/siglongjmp timeout path is not thread-safe
-	// (it aborts via __longjmp_chk when the signal lands on another
-	// thread's stack).  See ManifestFetch::httpGet for the full rationale.
-	p_curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
-	p_curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
-	p_curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L);
+	if (pipe(pipefd) == -1)
+	{
+		g_pLog->debug("Failed to create pipe!\n");
+		return 1;
+	}
 
-	auto res = p_curl_easy_perform(curl);
+	g_pLog->debug("Created pipe %i : %i\n", pipefd[0], pipefd[1]);
 
-	p_curl_easy_cleanup(curl);
+	constexpr static const char* env[] =
+	{
+		"PATH='/usr/bin:/bin'",
+		nullptr
+	};
 
-	return res;
+	// Bounded like the in-process libcurl client this replaced: a stalled
+	// server must not hold the calling Steam thread (connect 5 s, total 10 s).
+	const char* args[] =
+	{
+		"-s",
+		"--connect-timeout", "5",
+		"--max-time", "10",
+		url,
+		nullptr
+	};
+
+	pid_t pid = fork();
+	if (pid == -1)
+	{
+		g_pLog->debug("Failed to fork!\n");
+		return 1;
+	}
+
+	if (pid == 0)
+	{
+		if (dup2(pipefd[1], STDOUT_FILENO) == -1)
+		{
+			g_pLog->debug("Failed to dup2!\n");
+			exit(1);
+		}
+
+		//No need for reading
+		close(pipefd[0]);
+		close(pipefd[1]);
+
+		execve("/bin/curl", const_cast<char**>(args), const_cast<char**>(env));
+		execve("/usr/bin/curl", const_cast<char**>(args), const_cast<char**>(env));
+
+		g_pLog->debug("Failed to execv curl!\n");
+		exit(1);
+	}
+
+	//No need for writing
+	close(pipefd[1]);
+
+	g_pLog->debug("Child PID %i\n", pid);
+
+	std::ostringstream bufSS;
+	char buf[128];
+	int numRead;
+
+	while((numRead = read(pipefd[0], buf, sizeof(buf))) > 0)
+	{
+		bufSS << std::string(buf, numRead);
+	}
+
+	int status;
+	if(waitpid(pid, &status, 0) == -1)
+	{
+		return 1;
+	}
+
+	if(!WIFEXITED(status))
+	{
+		return 1;
+	}
+
+	g_pLog->debug("Exit Status: %i\n", status);
+
+	out = bufSS.str();
+
+	return status;
 }

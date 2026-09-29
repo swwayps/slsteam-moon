@@ -27,12 +27,13 @@ enum EAppState : uint32_t
 	APPSTATE_UPDATED_DISABLED_BY_APP = 0x80000,
 };
 
-struct AppStateInfo_t
+struct DepotInfo_t
 {
-	char __pad0x0[0x8];		//0x0
-	uint32_t state;			//0x8
-	char __pad_0xC[0x4];    //0xC
-}; //0x10
+	uint32_t depotId;		//0x0
+	uint32_t appId;			//0x4
+	uint64_t manifestId;	//0x8
+	char __pad0x10[0x10];	//0x10
+}; //0x20
 
 class IClientAppManager
 {

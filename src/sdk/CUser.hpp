@@ -4,8 +4,6 @@
 
 #include <cstdint>
 
-class CAppOwnershipInfo;
-
 enum class ECallbackType : uint32_t
 {
 	LicensesUpdate_t = 0x7d,
@@ -32,10 +30,43 @@ struct AppLicensesChanged_t
 	uint64_t appsAdded;						//0x10C
 }; //0x110
 
+struct AppOwnershipInfo_t {
+    int32_t subId;
+    int32_t releaseState;
+    uint32_t owner;
+    int32_t masterSubscriptionAppId;
+    uint32_t trialTime;
+    uint32_t numLicenses;
+    char region[2];
+    char field7_0x1A[2];
+    uint32_t purchaseTime;
+    uint32_t realOwner;
+    bool ownsLicense;
+    bool licenseExpired;
+    bool field12_0x26;
+    bool lowViolence;
+    bool freeLicense;
+    bool regionRestricted;
+    bool fromFreeWeekend;
+    bool licenseLocked;
+    bool licensePending;
+    bool retailLicense;
+    bool autoGrant;
+    bool licensePermanent;
+    bool field21_0x30;
+    bool field22_0x31;
+    bool siteLicense;
+    bool field24_0x33;
+    bool field25_0x34;
+    bool familyShared;
+    bool field27_0x36;
+    bool field28_0x37;
+}; //0x38
+
 class CUser
 {
 public:
-	bool checkAppOwnership(uint32_t appId, CAppOwnershipInfo* pInfo);
+	bool checkAppOwnership(uint32_t appId, AppOwnershipInfo_t* pInfo);
 	bool isSubscribed(uint32_t appId);
 
 	void postCallback(ECallbackType type, void* pCallback, uint32_t callbackSize);

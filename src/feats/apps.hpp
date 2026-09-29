@@ -4,18 +4,24 @@
 #include <map>
 #include <vector>
 
-class CAppOwnershipInfo;
 class CNetPacket;
+class CPlayer_GetLastPlayedTimes_Response;
 class CSteamId;
+
+template<typename T> class CUtlVector;
+
+struct AppOwnershipInfo_t;
+struct DepotInfo_t;
 
 namespace Apps
 {
 	extern bool applistRequested;
 
-	bool unlockApp(uint32_t appId, CAppOwnershipInfo* info, const CSteamId& ownerId);
-	bool unlockApp(uint32_t appId, CAppOwnershipInfo* info);
+	bool unlockApp(uint32_t appId, AppOwnershipInfo_t* info, const CSteamId& ownerId);
+	bool unlockApp(uint32_t appId, AppOwnershipInfo_t* info);
 
-	bool checkAppOwnership(uint32_t appId, CAppOwnershipInfo* info);
+	void buildDepotDependency(uint32_t appId, CUtlVector<DepotInfo_t>* depots, CUtlVector<DepotInfo_t>* sharedDepots);
+	bool checkAppOwnership(uint32_t appId, AppOwnershipInfo_t* info);
 	void getSubscribedApps(uint32_t* appList, uint32_t size, uint32_t& count);
 
 	// Publish the two independent sources behind the managed-DLC membership
@@ -29,6 +35,7 @@ namespace Apps
 	bool shouldDisableCDKey(uint32_t appId);
 	bool shouldDisableUpdates(uint32_t appId);
 
+	void sendAndRecvLastPlayedTimes(const char* name, CPlayer_GetLastPlayedTimes_Response* recv);
 	void sendGamesPlayed(CNetPacket* packet);
 	void sendPICSInfoRequest(CNetPacket* packet);
 	void sendMsg(CNetPacket* packet);

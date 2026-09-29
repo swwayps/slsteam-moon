@@ -3,7 +3,6 @@
 #include "packagepatch.hpp"
 #include "../config.hpp"
 #include "../globals.hpp"
-#include "../sdk/CAppOwnershipInfo.hpp"
 #include "../sdk/CUser.hpp"
 #include "../sdk/CSteamEngine.hpp"
 
@@ -16,7 +15,7 @@ void StatsPolicy::setAccount(uint32_t id) { state.setAccount(id); }
 void StatsPolicy::invalidate() { state.invalidate(); }
 uint32_t StatsPolicy::account() { return state.account(); }
 StatsPolicy::Context StatsPolicy::context() { return state.context(); }
-void StatsPolicy::observe(Context context, uint32_t app, bool success, const CAppOwnershipInfo* info)
+void StatsPolicy::observe(Context context, uint32_t app, bool success, const AppOwnershipInfo_t* info)
 {
 	if (!info || !g_config.isAddedAppId(app)) return;
 	state.observe(context.account, app, success, info->subId,
@@ -55,7 +54,7 @@ uint64_t StatsPolicy::localEpoch(uint32_t app, uint32_t id, bool refresh)
 		if (context.account != id) return 0;
 		auto* user = getLocalUser();
 		if (!user) return 0;
-		CAppOwnershipInfo info{};
+		AppOwnershipInfo_t info{};
 		info.subId = -1;
 		const bool success = user->checkAppOwnership(app, &info);
 		state.observe(id, app, success, info.subId, info.ownsLicense,

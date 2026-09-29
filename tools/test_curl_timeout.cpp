@@ -1,6 +1,11 @@
 // TDD regression test for bounded Curl::getString requests.
+//
+// Curl::getString runs the system curl binary, so the stall is only exercised
+// where one is installed; without it the call fails fast, which the checks
+// below also accept.
 
 #include "curl.hpp"
+#include "log.hpp"
 
 #include <chrono>
 #include <cstdio>
@@ -11,6 +16,11 @@
 #include <sys/socket.h>
 #include <thread>
 #include <unistd.h>
+
+std::unique_ptr<CLog> g_pLog = std::make_unique<CLog>("");
+CLog::CLog(const char*) {}
+CLog::~CLog() = default;
+LogLevel CLog::getMinLevel() { return LogLevel::Warn; }
 
 namespace
 {
@@ -73,6 +83,8 @@ int main()
 		("http://127.0.0.1:" + std::to_string(port) + "/stall").c_str(),
 		response);
 	const auto elapsed = std::chrono::steady_clock::now() - started;
+	// Wake the server if no request ever arrived (no curl binary installed).
+	shutdown(listener, SHUT_RDWR);
 	server.join();
 
 	check(result != 0, "stalled request reports a curl error");

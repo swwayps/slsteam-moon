@@ -99,6 +99,8 @@ public:
 	MTVariable<std::unordered_map<uint32_t, uint64_t>> appTokens;
 	MTVariable<std::unordered_set<uint32_t>> fakeOffline;
 	MTVariable<std::unordered_map<uint32_t, uint32_t>> fakeAppIds;
+	MTVariable<std::unordered_map<uint32_t, uint64_t>> manifestIds;
+	MTVariable<std::unordered_set<uint32_t>> depotBlacklist;
 	MTVariable<FakeGame_t> idleStatus;
 	MTVariable<std::unordered_map<uint32_t, std::string>> gameTitles;
 	MTVariable<std::unordered_map<uint32_t, uint32_t>> subscriptionTimestamps;
@@ -139,6 +141,7 @@ public:
 	MTVariable<bool> achievements;
 	MTVariable<uint64_t> achievementOwnerId;
 	MTVariable<std::unordered_map<uint32_t, uint64_t>> achievementOwners;
+	MTVariable<bool> disableUpdates;
 	MTVariable<std::string> fakeEmail;
 	MTVariable<int32_t> fakeWalletBalance;
 	MTVariable<unsigned int> logLevel;

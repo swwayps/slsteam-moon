@@ -119,6 +119,11 @@ namespace Patterns
 		extern Pattern_t ShaReference;
 	}
 
+	namespace CUserAppManager
+	{
+		extern Pattern_t BuildDepotDependency;
+	}
+
 	namespace IClientAppManager
 	{
 		extern Pattern_t RunIPCFrame;

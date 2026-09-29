@@ -10,7 +10,6 @@
 #include "vftableinfo.hpp"
 
 #include "sdk/CAPIJob.hpp"
-#include "sdk/CAppOwnershipInfo.hpp"
 #include "sdk/CClientUnifiedServiceTransport.hpp"
 #include "sdk/CNetPacket.hpp"
 #include "sdk/CProtoBufMsgBase.hpp"
@@ -329,6 +328,8 @@ static uint32_t hkClientUnifiedServiceTransport_SendAndRecvMsg(CClientUnifiedSer
 		ret = Hooks::CClientUnifiedServiceMethod_SendAndRecvMsg.tramp.fn(pUnifiedServiceTransport, name, send, recv, arg4);
 	}
 
+	Apps::sendAndRecvLastPlayedTimes(name, reinterpret_cast<CPlayer_GetLastPlayedTimes_Response*>(recv));
+
 	g_pLog->debug
 	(
 		"%s(%p, %s, %s, %s, %p) -> %u\n",
@@ -628,7 +629,7 @@ static uint32_t hkSteamMatchmakingServers_RequestInternetServerList(void* pSteam
 }
 
 __attribute__((hot))
-static uint32_t hkUser_CheckAppOwnership(void* pClientUser, uint32_t appId, CAppOwnershipInfo* pOwnershipInfo)
+static uint32_t hkUser_CheckAppOwnership(void* pClientUser, uint32_t appId, AppOwnershipInfo_t* pOwnershipInfo)
 {
 	// Cache the local CUser* as a timing-independent fallback for
 	// getLocalUser().  This hook fires early and constantly with the
@@ -690,6 +691,26 @@ static uint32_t hkUser_GetSubscribedApps(void* pClientUser, uint32_t* pAppList, 
 	);
 
 	return count;
+}
+
+static bool hkUserAppManager_BuildDepotDependency
+(
+	void* a0,
+	uint32_t appId,
+	void* a2,
+	CUtlVector<DepotInfo_t>* depots,
+	CUtlVector<DepotInfo_t>* sharedDepots,
+	void* a5,
+	uint32_t* pBuildId,
+	bool* a7
+)
+{
+	const bool success = Hooks::CUserAppManager_BuildDepotDependency.tramp.fn(a0, appId, a2, depots, sharedDepots, a5, pBuildId, a7);
+	g_pLog->debug("%s(%p, %u) -> %i\n", Hooks::CUserAppManager_BuildDepotDependency.name.c_str(), a0, appId, success);
+
+	Apps::buildDepotDependency(appId, depots, sharedDepots);
+
+	return success;
 }
 
 static uint32_t hkUser_PostCallbackToAppId(void* pUser, uint32_t appId, uint32_t type, void* pCallback, uint32_t callbackSize)
@@ -1475,6 +1496,7 @@ namespace Hooks
 {
 	static bool familyShareHookReady = false;
 	static bool playerStatsHookReady = false;
+	static bool depotOverrideHookReady = false;
 
 	DetourHook<TraceIPC_t> TraceIPC;
 
@@ -1508,6 +1530,7 @@ namespace Hooks
 
 	DetourHook<CUser_CheckAppOwnership_t> CUser_CheckAppOwnership;
 	DetourHook<CUser_GetSubscribedApps_t> CUser_GetSubscribedApps;
+	DetourHook<CUserAppManager_BuildDepotDependency_t> CUserAppManager_BuildDepotDependency;
 	DetourHook<CUser_PostCallbackToAppId_t> CUser_PostCallbackToAppId;
 
 	DetourHook<IClientFriends_GetFriendGamePlayed_t> IClientFriends_GetFriendGamePlayed;
@@ -1603,6 +1626,16 @@ bool Hooks::setup()
 	playerStatsHookReady = CAPIJob_GetPlayerStats.setup(
 		Patterns::CAPIJob::GetPlayerStats, &hkCAPIJob_GetPlayerStats);
 
+	// Only the DepotBlacklist and ManifestIds keys ride this detour, so an
+	// unresolved locator disables those two keys instead of every hook.
+	depotOverrideHookReady = CUserAppManager_BuildDepotDependency.setup(
+		Patterns::CUserAppManager::BuildDepotDependency, hkUserAppManager_BuildDepotDependency);
+	if (!depotOverrideHookReady)
+	{
+		g_pLog->warn(
+			"BuildDepotDependency hook unavailable; DepotBlacklist and ManifestIds disabled\n");
+	}
+
 	Hooks::place();
 
 	// AppInfoState keeps this non-owning Store* in its hot path.  The static
@@ -1667,6 +1700,10 @@ void Hooks::place()
 
 	CUser_CheckAppOwnership.place();
 	CUser_GetSubscribedApps.place();
+	if (depotOverrideHookReady)
+	{
+		CUserAppManager_BuildDepotDependency.place();
+	}
 	CUser_PostCallbackToAppId.place();
 
 	IClientFriends_GetFriendGamePlayed.place();
@@ -1748,6 +1785,11 @@ void Hooks::remove()
 
 	CUser_CheckAppOwnership.remove();
 	CUser_GetSubscribedApps.remove();
+	if (depotOverrideHookReady)
+	{
+		CUserAppManager_BuildDepotDependency.remove();
+		depotOverrideHookReady = false;
+	}
 	CUser_PostCallbackToAppId.remove();
 
 	IClientFriends_GetFriendGamePlayed.remove();

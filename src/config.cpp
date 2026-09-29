@@ -4,6 +4,9 @@
 #include "afftrace.hpp"
 #include "confload.hpp"
 #include "config_default.hpp"
+
+#include "sdk/IClientApps.hpp"
+
 #include "filewatcher.hpp"
 #include "log.hpp"
 
@@ -506,6 +509,7 @@ bool CConfig::loadSettings()
 	injectAllAdvertisedDlc = getSetting<bool>(node, "InjectAllAdvertisedDlc", false);
 	achievements = getSetting<bool>(node, "Achievements", true);
 	achievementOwnerId = getSetting<uint64_t>(node, "AchievementOwnerId", 76561198028121353ULL);
+	disableUpdates = getSetting<bool>(node, "DisableUpdates", true);
 	extendedLogging = getSetting<bool>(node, "ExtendedLogging", false);
 	patternCache = getSetting<bool>(node, "PatternCache", true);
 	asyncProvision = getSetting<bool>(node, "AsyncProvision", true);
@@ -521,7 +525,7 @@ bool CConfig::loadSettings()
 		"Config: DisableFamilyShareLock=%i DisableParentalRestrictions=%i "
 		"UseWhitelist=%i SafeMode=%i "
 		"Notifications=%i WarnHashMissmatch=%i NotifyInit=%i API=%i "
-		"FakeEmail=%s FakeWalletBalance=%i DisableCloud=%i Donate=%i "
+		"FakeEmail=%s FakeWalletBalance=%i DisableCloud=%i DisableUpdates=%i Donate=%i "
 		"InjectAllAdvertisedDlc=%i Achievements=%i PatternCache=%i "
 		"AsyncProvision=%i ExtendedLogging=%i AutoUpdateApps=%i LogLevel=%u "
 		"MaxSchemaTries=%u\n",
@@ -529,7 +533,8 @@ bool CConfig::loadSettings()
 		useWhiteList.get(),
 		safeMode.get(), notifications.get(), warnHashMissmatch.get(),
 		notifyInit.get(), api.get(), fakeEmail.get().c_str(),
-		fakeWalletBalance.get(), disableCloud.get(), donate.get().enabled,
+		fakeWalletBalance.get(), disableCloud.get(), disableUpdates.get(),
+		donate.get().enabled,
 		injectAllAdvertisedDlc.get(),
 		achievements.get(), patternCache.get(), asyncProvision.get(),
 		extendedLogging.get(), autoUpdateApps.get(), logLevel.get(),
@@ -630,8 +635,10 @@ bool CConfig::loadSettings()
 	}
 
 	fakeOffline = getList<uint32_t>(node, "FakeOffline");
+	depotBlacklist = getList<uint32_t>(node, "DepotBlacklist");
 
 	fakeAppIds = getMap<uint32_t, uint32_t>(node, "FakeAppIds");
+	manifestIds = getMap<uint32_t, uint64_t>(node, "ManifestIds");
 	appTokens = getMap<uint32_t, uint64_t>(node, "AppTokens");
 	achievementOwners = getMap<uint32_t, uint64_t>(node, "AchievementOwners");
 	gameTitles = getMap<uint32_t, std::string>(node, "GameTitles");
@@ -893,8 +900,30 @@ bool CConfig::shouldExcludeAppId(uint32_t appId, bool ignoreAdditionalApps)
 	}
 	else
 	{
+		const bool whitelist = useWhiteList.get();
 		bool found = appIds.get().contains(appId);
-		exclude = (!isAddedAppId(appId) || ignoreAdditionalApps) && ((useWhiteList.get() && !found) || (!useWhiteList.get() && found));
+		exclude = (!isAddedAppId(appId) || ignoreAdditionalApps) && ((whitelist && !found) || (!whitelist && found));
+
+		//Might be worth to check for APPTYPE_DLC, but knowing Valve & individual gamedevs
+		//surely not every DLC will be tagged as such
+		char chParent[16];
+		const int len = g_pClientApps ? g_pClientApps->getAppData(appId, "parent", chParent, sizeof(chParent)) : 0;
+		if (len > 0)
+		{
+			//g_pLog->debug("AppId %i, parent %s (%i)\n", appId, chParent, len);
+			uint32_t parentId = std::stoul(chParent);
+
+			if (whitelist && !shouldExcludeAppId(parentId, true))
+			{
+				//g_pLog->debug("Override exclude %i with false, because parent %u isn't excluded\n", exclude, parentId);
+				exclude = false;
+			}
+			else if(!whitelist && shouldExcludeAppId(parentId, true))
+			{
+				//g_pLog->debug("Override exclude %i with true, because parent %u is excluded\n", exclude, parentId);
+				exclude = true;
+			}
+		}
 	}
 
 	g_pLog->debugOnce("shouldExcludeAppId(%u) -> %i\n", appId, exclude);

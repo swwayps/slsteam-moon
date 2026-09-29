@@ -9,11 +9,15 @@
 #include <string>
 
 class CAPIJob;
-class CAppOwnershipInfo;
 class CClientUnifiedServiceTransport;
 class CProtoBufMsgBase;
 class CUtlBuffer;
 
+template<typename T>
+class CUtlVector;
+
+struct AppOwnershipInfo_t;
+struct DepotInfo_t;
 struct gameserverdetails_t;
 struct GamePlayed_t;
 
@@ -103,10 +107,13 @@ namespace Hooks
 	typedef gameserverdetails_t*(*CSteamMatchmakingServers_GetServerDetails_t)(void*, uint32_t, uint32_t);
 	typedef uint32_t(*CSteamMatchmakingServers_RequestInternetServerList_t)(void*, uint32_t, uint32_t, uint32_t, uint32_t);
 
-	typedef uint32_t(*CUser_CheckAppOwnership_t)(void*, uint32_t, CAppOwnershipInfo*);
+	typedef uint32_t(*CUser_CheckAppOwnership_t)(void*, uint32_t, AppOwnershipInfo_t*);
 	typedef uint32_t(*CUser_GetSubscribedApps_t)(void*, uint32_t*, uint32_t, uint8_t);
 	typedef uint32_t(*CUser_PostCallbackToAppId_t)(void*, uint32_t, uint32_t, void*, uint32_t);
 	typedef uint32_t(*IClientFriends_GetFriendGamePlayed_t)(void*, uint64_t, GamePlayed_t*);
+
+	typedef bool(*CUserAppManager_BuildDepotDependency_t)(void*, uint32_t, void*, CUtlVector<DepotInfo_t>*, CUtlVector<DepotInfo_t>*, void*, uint32_t*, bool*);
+
 	typedef bool(*IClientAppManager_BCanRemotePlayTogether_t)(void*, uint32_t);
 
 	typedef bool(*IClientUser_BLoggedOn_t)(void*);
@@ -160,6 +167,8 @@ namespace Hooks
 	extern DetourHook<CUser_PostCallbackToAppId_t> CUser_PostCallbackToAppId;
 
 	extern DetourHook<IClientFriends_GetFriendGamePlayed_t> IClientFriends_GetFriendGamePlayed;
+
+	extern DetourHook<CUserAppManager_BuildDepotDependency_t> CUserAppManager_BuildDepotDependency;
 
 	extern DetourHook<IClientAppManager_BCanRemotePlayTogether_t> IClientAppManager_BCanRemotePlayTogether;
 

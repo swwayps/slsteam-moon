@@ -1,7 +1,7 @@
 // Link the real app-ownership handler; stub only its Steam/config boundaries.
 #include "../src/config.hpp"
 #include "../src/feats/apps.hpp"
-#include "../src/sdk/CAppOwnershipInfo.hpp"
+#include "../src/sdk/CUser.hpp"
 #include "../src/sdk/IClientApps.hpp"
 
 #include <cstdio>
@@ -25,10 +25,10 @@ void check(bool condition, const char* message)
 	if (!condition) ++failures;
 }
 
-CAppOwnershipInfo checkDate(int32_t packageId, uint32_t date,
+AppOwnershipInfo_t checkDate(int32_t packageId, uint32_t date,
                            bool ownsLicense = true)
 {
-	CAppOwnershipInfo info{};
+	AppOwnershipInfo_t info{};
 	info.subId = packageId;
 	info.purchaseTime = date;
 	info.ownsLicense = ownsLicense;
@@ -78,7 +78,7 @@ int main()
 	g_config.addedAppIds.set({appId, newerAppId});
 	check(g_config.libraryDates.refresh(temp, "", {appId, newerAppId}, addedDate + 200, error),
 	      "a later game receives a separate inclusion date");
-	CAppOwnershipInfo newer{};
+	AppOwnershipInfo_t newer{};
 	newer.subId = 0;
 	newer.ownsLicense = true;
 	newer.purchaseTime = packageDate;

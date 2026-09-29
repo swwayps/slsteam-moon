@@ -1,6 +1,6 @@
 # Maintainer: Ace! _SL/S <acesls@protonmail.com>
 pkgname="slssteam-git"
-pkgver=20260705144737
+pkgver=20260714131044
 pkgrel=1
 pkgdesc="Steamclient Mod - Pre release"
 arch=("i686" "x86_64")
@@ -37,7 +37,7 @@ pkgver() {
 
 build() {
 	cd "$srcdir/SLSsteam"
-	make
+	make build
 }
 
 package() {

@@ -8,10 +8,9 @@
 #include "../src/config.hpp"
 #include "../src/feats/apps.hpp"
 #include "../src/feats/dlc.hpp"
-#include "../src/feats/fakeappid.hpp"
-#include "../src/sdk/CAppOwnershipInfo.hpp"
 #include "../src/sdk/CSteamEngine.hpp"
 #include "../src/sdk/CUser.hpp"
+#include "../src/sdk/IClientUtils.hpp"
 
 #include <cstdint>
 #include <cstdio>
@@ -37,10 +36,12 @@ bool localUserAvailable = true;
 		else { std::printf("ok:   %s\n", message); }                         \
 	} while (0)
 
+IClientUtils clientUtils;
 CUser localUser;
 }
 
 CConfig g_config;
+IClientUtils* g_pClientUtils = &clientUtils;
 CSteamEngine* g_pSteamEngine = nullptr;
 CUser* g_pLocalUser = nullptr;
 
@@ -51,7 +52,7 @@ bool CConfig::shouldExcludeAppId(std::uint32_t appId, bool)
 	return excludedAppIds.contains(appId);
 }
 
-AppId_t FakeAppIds::getRealAppIdForCurrentPipe(const bool)
+std::uint32_t IClientUtils::getAppId()
 {
 	return activeApp;
 }
@@ -74,7 +75,7 @@ bool hasNativeLicense(std::uint32_t appId)
 }
 }
 
-bool Apps::unlockApp(std::uint32_t, CAppOwnershipInfo*)
+bool Apps::unlockApp(std::uint32_t, AppOwnershipInfo_t*)
 {
 	return true;
 }
@@ -158,11 +159,6 @@ int main()
 	excludedAppIds.insert(kManagedDlc);
 	CHECK(!DLC::shouldUnlockDlc(kManagedDlc),
 	      "an explicitly excluded managed DLC is not unlocked");
-	excludedAppIds.clear();
-
-	excludedAppIds.insert(kBaseApp);
-	CHECK(!DLC::shouldUnlockDlc(kManagedDlc),
-	      "excluding the running game keeps its managed DLC locked");
 	excludedAppIds.clear();
 
 	activeApp = 0;

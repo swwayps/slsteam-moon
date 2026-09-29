@@ -836,6 +836,7 @@ bool Patterns::init()
 	CDepotDownloadMgr::ProcessDepotManifest.optional = true;
 	CDepotDownloadMgr::PrepareDepotDownload.optional = true;
 	CDepotDownloadMgr::BuildDepotDependency.optional = true;
+	CUserAppManager::BuildDepotDependency.optional = true;
 	CDepotDownloadMgr::EvaluateConfigChanges.optional = true;
 	CDepotDownloadMgr::OnChunkUnpackedStack.optional = true;
 	CDepotDownloadMgr::OnChunkUnpackedReg.optional = true;
@@ -1297,6 +1298,16 @@ namespace Patterns
 			"CAppInfoCache::ShaReference",
 			"8D 40 1C 50 E8 ? ? ? ? 83 C4 10 85 C0 75 10 0F B6 4C 24 1E 80 7E 10 00 0F 44 C8 88 4C 24 1E",
 			SigFollowMode::None
+		};
+	}
+
+	namespace CUserAppManager
+	{
+		Pattern_t BuildDepotDependency
+		{
+			"CUserAppManager::BuildDepotDependency",
+			"E8 ? ? ? ? 88 45 A3 83 C4 ? 84 C0 74 ?",
+			SigFollowMode::Relative
 		};
 	}
 

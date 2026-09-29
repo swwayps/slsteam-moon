@@ -1,13 +1,13 @@
 #include "CUser.hpp"
 
-#include "CAppOwnershipInfo.hpp"
+#include "CUser.hpp"
 #include "EResult.hpp"
 
 #include "../hooks.hpp"
 #include "../patterns.hpp"
 
 
-bool CUser::checkAppOwnership(uint32_t appId, CAppOwnershipInfo* pInfo)
+bool CUser::checkAppOwnership(uint32_t appId, AppOwnershipInfo_t* pInfo)
 {
 	const auto original = Hooks::CUser_CheckAppOwnership.tramp.fn;
 	return original && original(this, appId, pInfo);
@@ -15,7 +15,7 @@ bool CUser::checkAppOwnership(uint32_t appId, CAppOwnershipInfo* pInfo)
 
 bool CUser::isSubscribed(uint32_t appId)
 {
-	CAppOwnershipInfo info {};
+	AppOwnershipInfo_t info {};
 	if (!checkAppOwnership(appId, &info))
 	{
 		return false;

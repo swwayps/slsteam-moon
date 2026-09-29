@@ -6,7 +6,7 @@
 #include <unordered_set>
 #include <vector>
 
-struct CAppOwnershipInfo;
+struct AppOwnershipInfo_t;
 
 namespace StatsPolicy
 {
@@ -131,7 +131,7 @@ void setAccount(uint32_t account);
 void invalidate();
 uint32_t account();
 Context context();
-void observe(Context context, uint32_t app, bool success, const CAppOwnershipInfo* info);
+void observe(Context context, uint32_t app, bool success, const AppOwnershipInfo_t* info);
 // Passive evidence from Steam's original CheckAppOwnership result. Missing or
 // invalidated evidence returns false, preserving the managed install path.
 bool hasNativeLicense(uint32_t app);

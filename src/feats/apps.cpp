@@ -3,11 +3,11 @@
 
 #include "stats_policy.hpp"
 
-#include "../sdk/CAppOwnershipInfo.hpp"
 #include "../sdk/CNetPacket.hpp"
 #include "../sdk/CProtoBufMsgBase.hpp"
 #include "../sdk/CSteamEngine.hpp"
 #include "../sdk/CUser.hpp"
+#include "../sdk/CUtl.hpp"
 #include "../sdk/EReleaseState.hpp"
 #include "../sdk/IClientApps.hpp"
 #include "../sdk/IClientAppManager.hpp"
@@ -214,7 +214,7 @@ namespace
 
 bool Apps::applistRequested;
 
-bool Apps::unlockApp(uint32_t appId, CAppOwnershipInfo* info, const CSteamId& ownerId)
+bool Apps::unlockApp(uint32_t appId, AppOwnershipInfo_t* info, const CSteamId& ownerId)
 {
 	//Changing the purchased field is enough, but just for nicety in the Steamclient UI we change the owner too
 	info->owner = ownerId.accountId();
@@ -243,12 +243,48 @@ bool Apps::unlockApp(uint32_t appId, CAppOwnershipInfo* info, const CSteamId& ow
 	return true;
 }
 
-bool Apps::unlockApp(uint32_t appId, CAppOwnershipInfo* info)
+bool Apps::unlockApp(uint32_t appId, AppOwnershipInfo_t* info)
 {
 	return unlockApp(appId, info, g_currentSteamId);
 }
 
-bool Apps::checkAppOwnership(uint32_t appId, CAppOwnershipInfo* pInfo)
+void Apps::buildDepotDependency(uint32_t appId, CUtlVector<DepotInfo_t>* depots, CUtlVector<DepotInfo_t>* sharedDepots)
+{
+	g_pLog->debug("Vec Alloc %u, Grow %u, Size %u\n", depots->memory.alloc, depots->memory.growSize, depots->size);
+
+	const auto depotBlacklist = g_config.depotBlacklist.get();
+	const auto manifestOverrides = g_config.manifestIds.get();
+
+	for(unsigned int i = 0; i < depots->size; i++)
+	{
+		const auto depot = depots->at(i);
+
+		if (depotBlacklist.contains(depot->depotId))
+		{
+			g_pLog->debug("Removing %u with %llu\n", depot->depotId, depot->manifestId);
+			depots->swap(i, depots->size - 1);
+			depots->size--;
+		}
+
+		if (manifestOverrides.contains(depot->depotId))
+		{
+			const uint64_t oldId = depot->manifestId;
+			depot->manifestId = manifestOverrides.at(depot->depotId);
+			g_pLog->debug("Overrode %u's manifest %llu with %llu\n", depot->depotId, oldId, depot->manifestId);
+		}
+
+		g_pLog->debug("Depot %u for %u -> %llu\n", depot->depotId, depot->appId, depot->manifestId);
+	}
+
+	for(unsigned int i = 0; i < sharedDepots->size; i++)
+	{
+		const auto depot = sharedDepots->at(i);
+		g_pLog->debug("Shared Depot %u for %u -> %llu\n", depot->depotId, depot->appId, depot->manifestId);
+	}
+
+}
+
+bool Apps::checkAppOwnership(uint32_t appId, AppOwnershipInfo_t* pInfo)
 {
 	if (!applistRequested || !pInfo || !g_currentSteamId.isSet())
 	{
@@ -382,6 +418,11 @@ bool Apps::shouldDisableCDKey(uint32_t appId)
 
 bool Apps::shouldDisableUpdates(uint32_t appId)
 {
+	if (!g_config.disableUpdates.get())
+	{
+		return false;
+	}
+
 	const bool added = g_config.isAddedAppId(appId);
 	if (!added)
 	{
@@ -442,6 +483,27 @@ bool Apps::shouldDisableUpdates(uint32_t appId)
 	                 appId, atPinned ? "" : " NOT",
 	                 atPinned ? "frozen" : "allowed (apply pin)");
 	return atPinned;
+}
+
+void Apps::sendAndRecvLastPlayedTimes(const char* name, CPlayer_GetLastPlayedTimes_Response* recv)
+{
+	if (strcmp(name, "Player.ClientGetLastPlayedTimes#1") != 0)
+	{
+		return;
+	}
+
+	const auto apps = g_config.addedAppIds.get();
+	for (int i = recv->games_size() - 1; i >= 0; i--)
+	{
+		auto game = recv->mutable_games(i);
+		if (!apps.contains(game->appid()))
+		{
+			continue;
+		}
+
+		g_pLog->debug("Removed serverside PlayTime for %u\n", game->appid());
+		recv->mutable_games()->DeleteSubrange(i, 1);
+	}
 }
 
 void Apps::sendGamesPlayed(CNetPacket* pkt)

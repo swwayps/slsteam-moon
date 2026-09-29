@@ -32,7 +32,8 @@ DisableParentalRestrictions: no
 #Switches to whitelist instead of the default blacklist
 UseWhitelist: no
 
-#List of AppIds to ex-/include
+#List of AppIds to ex-/include. Either specify each DLC you want to in-/exclude individually
+#or add the DLC's parent AppId (the Game's one) to allow unlocking all of their child AppIds
 AppIds:
 
 
@@ -59,6 +60,13 @@ FakeOffline:
 #will most likely cause undefined behaviour
 #Requires access to /proc to read processes' real AppId from their environment (most distros allow this by default)
 FakeAppIds:
+
+#Override Depot manifest IDs
+#Use this to download older game versions or to lock a game to a specific version
+ManifestIds:
+
+#Never download these depots
+DepotBlacklist:
 
 #Custom ingame statuses. Set AppId to 0 to disable
 IdleStatus:
@@ -176,6 +184,11 @@ AsyncProvision: yes
 # on disk and activate as soon as the set shrinks or you raise this value.
 # Set to 0 to disable the limit entirely.
 MaxManagedApps: 4096
+
+#Disable updates for AppIds on AdditionalApps
+#Only works for unowned games, since those do not get any depots from CUserAppManager::BuildDepotDependency.
+#For owned games use ManifestIds
+DisableUpdates: yes
 
 #Changes your account's E-Mail clientsided. Leave blank to disable
 FakeEmail: ""

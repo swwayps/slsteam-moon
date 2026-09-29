@@ -4,7 +4,6 @@
 #include "../src/feats/stats_policy.hpp"
 #include "../src/feats/playerstats.hpp"
 #include "../src/sdk/CProtoBufMsgBase.hpp"
-#include "../src/sdk/CAppOwnershipInfo.hpp"
 #include "../src/sdk/CUser.hpp"
 #include <cstdio>
 #include <memory>
@@ -14,7 +13,7 @@ constexpr uint32_t app = 12345;
 constexpr uint64_t self = 76561198000000001ULL, other = self + 1;
 int failures = 0;
 bool injected = true, available = true, success = false, excluded = false;
-CAppOwnershipInfo info{};
+AppOwnershipInfo_t info{};
 CUser user;
 uint64_t nextJob = 100;
 void check(bool ok, const char* label) {
@@ -75,7 +74,7 @@ LogLevel CLog::getMinLevel() { return LogLevel::Warn; }
 bool CConfig::isAddedAppId(uint32_t id) { return addedAppIds.contains(id); }
 bool CConfig::shouldExcludeAppId(uint32_t, bool) { return excluded; }
 CUser* getLocalUser() { return available ? &user : nullptr; }
-bool CUser::checkAppOwnership(uint32_t, CAppOwnershipInfo* out) { *out = info; return success; }
+bool CUser::checkAppOwnership(uint32_t, AppOwnershipInfo_t* out) { *out = info; return success; }
 namespace PackagePatch { bool isInjectedAppId(uint32_t) { return injected; } }
 
 int main() {
