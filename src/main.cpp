@@ -8,6 +8,7 @@
 #include "audit_policy.hpp"
 #include "audit_symbols.hpp"
 #include "config.hpp"
+#include "decompiler.hpp"
 #include "globals.hpp"
 #include "hooks.hpp"
 #include "log.hpp"
@@ -33,6 +34,7 @@
 #include "feats/manifestcode.hpp"
 #include "feats/steamstub.hpp"
 #include "feats/stats_policy.hpp"
+#include "vftableinfo.hpp"
 
 #include "libmem/libmem.h"
 
@@ -631,6 +633,17 @@ static void load()
 	{
 		g_pLog->warn("Failed to find steam exports!\n");
 		return;
+	}
+
+	{
+		BootProf::Span vftProfile(g_pLog.get(), "vftable_scan");
+		Decompiler::parseModule(g_modSteamClient);
+		if (!VFTIndexes::init())
+		{
+			g_pLog->warn("Failed to parse VFTables! Aborting...\n");
+			g_pLog->notifyUser(UserMsg::InitializationFailed);
+			return;
+		}
 	}
 
 	{

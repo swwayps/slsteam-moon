@@ -12,12 +12,12 @@ void IClientCompat::specifyCompatTool(
 	int priority)
 {
 	MemHlp::callVFunc<void(*)(void*, std::uint32_t, const char*, const char*, int)>(
-		VFTIndexes::IClientCompat::SpecifyCompatTool,
+		VFTIndexes::IClientCompat::SpecifyCompatTool.index,
 		this, appId, name, config, priority);
 }
 
 const char* IClientCompat::getCompatToolName(std::uint32_t appId)
 {
 	return MemHlp::callVFunc<const char*(*)(void*, std::uint32_t)>(
-		VFTIndexes::IClientCompat::GetCompatToolName, this, appId);
+		VFTIndexes::IClientCompat::GetCompatToolName.index, this, appId);
 }

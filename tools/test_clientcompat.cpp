@@ -93,12 +93,22 @@ std::vector<std::size_t> findCompatOffsetSignature(const std::string& image)
 }
 }
 
+// The registry resolves these slots by name from IClientCompatMap at boot
+// (1 and 4 on the 2026-09 client, 4 and 7 before); the wrapper is tested
+// against the slot it is handed.
+VFTableInfo_t::VFTableInfo_t(const char* type, const char* function, unsigned int slot)
+	: typeName(type), functionName(function), address(0), index(slot) {}
+namespace VFTIndexes::IClientCompat
+{
+VFTableInfo_t GetCompatToolName{"16IClientCompatMap", "GetCompatToolName", 4};
+VFTableInfo_t SpecifyCompatTool{"16IClientCompatMap", "SpecifyCompatTool", 1};
+}
 int main(int argc, char** argv)
 {
 	void* vtable[8]{};
-	vtable[VFTIndexes::IClientCompat::SpecifyCompatTool] =
+	vtable[VFTIndexes::IClientCompat::SpecifyCompatTool.index] =
 		reinterpret_cast<void*>(&fakeSpecifyCompatTool);
-	vtable[VFTIndexes::IClientCompat::GetCompatToolName] =
+	vtable[VFTIndexes::IClientCompat::GetCompatToolName.index] =
 		reinterpret_cast<void*>(&fakeGetCompatToolName);
 	FakeCompat fake;
 	fake.vtable = vtable;
@@ -106,14 +116,14 @@ int main(int argc, char** argv)
 
 	compat->specifyCompatTool(582010, "proton-cachyos", "", 250);
 	check(fake.specifyCalls == 1 && fake.specifiedAppId == 582010,
-	      "vtable index 4 dispatches SpecifyCompatTool for the requested app");
+	      "the registry slot dispatches SpecifyCompatTool for the requested app");
 	check(fake.specifiedName == "proton-cachyos" &&
 	      fake.specifiedConfig.empty() && fake.specifiedPriority == 250,
 	      "SpecifyCompatTool preserves name, config, and priority ABI arguments");
 
 	fake.defaultMapping = "proton-cachyos";
 	check(std::string(compat->getCompatToolName(0)) == "proton-cachyos",
-	      "vtable index 7 reads the default compatibility mapping");
+	      "the registry slot reads the default compatibility mapping");
 
 	fake.appMapping = "GE-Proton";
 	const auto existing = CompatLive::step(compat, 582010, false);

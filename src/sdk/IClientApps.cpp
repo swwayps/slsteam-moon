@@ -10,7 +10,7 @@ int32_t IClientApps::getAppData(uint32_t appId, const char* name, const char* pC
 {
 	return MemHlp::callVFunc<uint32_t(*)(void*, uint32_t, const char*, const char*, uint32_t)>
 	(
-		 VFTIndexes::IClientApps::GetAppData,
+		 VFTIndexes::IClientApps::GetAppData.index,
 		 this,
 		 appId,
 		 name,
@@ -23,7 +23,7 @@ uint32_t IClientApps::getAppDataSection(uint32_t appId, EAppInfoSection section,
 {
 	return MemHlp::callVFunc<uint32_t(*)(void*, uint32_t, uint32_t, const char*, uint32_t, uint8_t)>
 	(
-		 VFTIndexes::IClientApps::GetAppDataSection,
+		 VFTIndexes::IClientApps::GetAppDataSection.index,
 		 this,
 		 appId,
 		 section,
@@ -42,7 +42,7 @@ bool IClientApps::requestAppInfoUpdate(const std::vector<uint32_t>& appIds)
 	}
 	return MemHlp::callVFunc<
 		bool(*)(void*, const uint32_t*, int)>(
-			VFTIndexes::IClientApps::RequestAppInfoUpdate,
+			VFTIndexes::IClientApps::RequestAppInfoUpdate.index,
 			this,
 			appIds.data(),
 			static_cast<int>(appIds.size()));
@@ -50,7 +50,7 @@ bool IClientApps::requestAppInfoUpdate(const std::vector<uint32_t>& appIds)
 
 EAppType IClientApps::getAppType(uint32_t appId)
 {
-	return MemHlp::callVFunc<EAppType(*)(void*, uint32_t)>(VFTIndexes::IClientApps::GetAppType, this, appId);
+	return MemHlp::callVFunc<EAppType(*)(void*, uint32_t)>(VFTIndexes::IClientApps::GetAppType.index, this, appId);
 }
 
 IClientApps* g_pClientApps;

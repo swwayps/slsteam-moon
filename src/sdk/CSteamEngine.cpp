@@ -105,9 +105,9 @@ IClientCompat* getLocalClientCompat()
 		return nullptr;
 	}
 
-	for (const int index : {
-		VFTIndexes::IClientCompat::SpecifyCompatTool,
-		VFTIndexes::IClientCompat::GetCompatToolName})
+	for (const unsigned int index : {
+		VFTIndexes::IClientCompat::SpecifyCompatTool.index,
+		VFTIndexes::IClientCompat::GetCompatToolName.index})
 	{
 		lm_address_t target = 0;
 		const lm_address_t slot = vtable +

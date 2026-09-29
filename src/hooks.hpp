@@ -23,6 +23,7 @@ struct gameserverdetails_t;
 struct GamePlayed_t;
 
 struct Pattern_t;
+struct VFTableInfo_t;
 
 struct CNetPacket;
 struct CRemoteClientPacket;
@@ -62,7 +63,8 @@ public:
 	virtual void place();
 	virtual void remove();
 
-	bool setup(Pattern_t pattern, T hookFn);
+	bool setup(const Pattern_t& pattern, T hookFn);
+	bool setup(const VFTableInfo_t& info, T hookFn);
 };
 
 template<typename T>
@@ -74,11 +76,12 @@ public:
 	bool hooked;
 
 	VFTHook(const char* name);
+	VFTHook();
 
 	virtual void place();
 	virtual void remove();
 
-	void setup(std::shared_ptr<lm_vmt_t> vft, unsigned int index, T hookFn);
+	void setup(std::shared_ptr<lm_vmt_t> vft, const VFTableInfo_t& info, T hookFn);
 };
 
 namespace Hooks
@@ -169,11 +172,6 @@ namespace Hooks
 
 	extern DetourHook<IClientAppManager_BCanRemotePlayTogether_t> IClientAppManager_BCanRemotePlayTogether;
 
-	extern DetourHook<IClientUser_BLoggedOn_t> IClientUser_BLoggedOn;
-	extern DetourHook<IClientUser_BUpdateAppOwnershipTicket_t> IClientUser_BUpdateAppOwnershipTicket;
-	extern DetourHook<IClientUser_GetAppOwnershipTicketExtendedData_t> IClientUser_GetAppOwnershipTicketExtendedData;
-	extern DetourHook<IClientUser_IsUserSubscribedAppInTicket_t> IClientUser_IsUserSubscribedAppInTicket;
-	extern DetourHook<IClientUser_RequiresLegacyCDKey_t> IClientUser_RequiresLegacyCDKey;
 
 	typedef bool(*IClientAppManager_BIsDlcEnabled_t)(void*, uint32_t, uint32_t, void*);
 	typedef bool(*IClientAppManager_GetAppUpdateInfo_t)(void*, uint32_t, uint32_t*);
@@ -196,6 +194,11 @@ namespace Hooks
 
 	extern VFTHook<IClientRemoteStorage_IsCloudEnabledForApp_t> IClientRemoteStorage_IsCloudEnabledForApp;
 
+	extern VFTHook<IClientUser_BLoggedOn_t> IClientUser_BLoggedOn;
+	extern VFTHook<IClientUser_BUpdateAppOwnershipTicket_t> IClientUser_BUpdateAppOwnershipTicket;
+	extern VFTHook<IClientUser_GetAppOwnershipTicketExtendedData_t> IClientUser_GetAppOwnershipTicketExtendedData;
+	extern VFTHook<IClientUser_IsUserSubscribedAppInTicket_t> IClientUser_IsUserSubscribedAppInTicket;
+	extern VFTHook<IClientUser_RequiresLegacyCDKey_t> IClientUser_RequiresLegacyCDKey;
 	extern VFTHook<IClientUser_GetEncryptedAppTicket_t> IClientUser_GetEncryptedAppTicket;
 
 	extern VFTHook<IClientUtils_GetAppId_t> IClientUtils_GetAppId;

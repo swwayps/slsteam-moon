@@ -14,7 +14,7 @@ uint32_t IClientUser::getAppOwnershipTicketExtendeData
 	uint32_t* pSigSize
 )
 {
-	return Hooks::IClientUser_GetAppOwnershipTicketExtendedData.tramp.fn(this, appId, pTicket, ticketSize, pOffAppId, pOffSteamId, pOffSig, pSigSize);
+	return Hooks::IClientUser_GetAppOwnershipTicketExtendedData.originalFn.fn(this, appId, pTicket, ticketSize, pOffAppId, pOffSteamId, pOffSig, pSigSize);
 }
 
 

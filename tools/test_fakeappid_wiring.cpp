@@ -1,6 +1,5 @@
 #include "../src/sdk/CUtl.hpp"
 #include "../src/sdk/steam.hpp"
-#include "../src/vftableinfo.hpp"
 
 #include <cstdio>
 #include <fstream>
@@ -53,6 +52,7 @@ int main()
 	const std::string patterns = read("src/patterns.cpp");
 	const std::string ticket = read("src/feats/ticket.cpp");
 	const std::string process = read("src/process.hpp");
+	const std::string registry = read("src/vftableinfo.cpp");
 
 	expect(hooks.find("createAndPlaceSteamIdHook") == std::string::npos,
 	       "legacy naked SteamID hook is removed");
@@ -78,7 +78,13 @@ int main()
 	       "encrypted-ticket hook has one placement path");
 	expect(occurrences(hooks, "IClientUser_GetEncryptedAppTicket.remove();") == 1,
 	       "encrypted-ticket hook has one teardown path");
-	static_assert(VFTIndexes::IClientUser::GetEncryptedAppTicket == 121);
+	expect(registry.find(
+		"VFTableInfo_t GetEncryptedAppTicket\n"
+		"\t\t{\n"
+		"\t\t\t\"14IClientUserMap\",\n"
+		"\t\t\t\"GetEncryptedAppTicket\"\n"
+		"\t\t};") != std::string::npos,
+	       "encrypted-ticket slot is resolved by name from IClientUserMap");
 	expect(occurrences(
 		hooks, "CWebSocketConnection_BBuildAndAsyncSendFrame.remove();") == 1,
 	       "WebSocket detour has one teardown path");

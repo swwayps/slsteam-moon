@@ -5,5 +5,5 @@
 
 uint32_t CClientUnifiedServiceTransport::sendAndRecvMsg(const char* name, void* send, void* recv)
 {
-	return Hooks::CClientUnifiedServiceMethod_SendAndRecvMsg.tramp.fn(this, name, send, recv, nullptr);
+	return Hooks::CClientUnifiedServiceMethod_SendAndRecvMsg.originalFn.fn(this, name, send, recv, nullptr);
 }

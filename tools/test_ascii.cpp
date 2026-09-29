@@ -26,6 +26,7 @@ int main()
 			(ch >= 'a' && ch <= 'z');
 		const bool hexDigit = digit || (ch >= 'A' && ch <= 'F') ||
 			(ch >= 'a' && ch <= 'f');
+		const bool printable = ch >= ' ' && ch <= '~';
 		const unsigned char lowered = ch >= 'A' && ch <= 'Z'
 			? static_cast<unsigned char>(ch + ('a' - 'A')) : ch;
 
@@ -37,6 +38,8 @@ int main()
 			"ASCII alphanumeric classification is exact");
 		check(Ascii::isHexDigit(ch) == hexDigit,
 			"ASCII hexadecimal classification is exact");
+		check(Ascii::isPrint(ch) == printable,
+			"ASCII printable classification matches the C locale");
 		check(Ascii::toLower(ch) == lowered,
 			"ASCII lowercase conversion preserves non-ASCII bytes");
 	}

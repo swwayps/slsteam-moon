@@ -28,6 +28,10 @@ constexpr bool isHexDigit(unsigned char value) noexcept
 		(value >= 'a' && value <= 'f');
 }
 
+constexpr bool isPrint(unsigned char value) noexcept
+{
+	return value >= 0x20 && value < 0x7f;
+}
 constexpr unsigned char toLower(unsigned char value) noexcept
 {
 	return value >= 'A' && value <= 'Z'

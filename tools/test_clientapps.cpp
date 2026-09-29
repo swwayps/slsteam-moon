@@ -39,12 +39,22 @@ struct FakeClientApps
 };
 }
 
+// The registry resolves these slots from the client at boot; the wrapper is
+// tested against the slot the registry hands it.
+VFTableInfo_t::VFTableInfo_t(const char* type, const char* function, unsigned int slot)
+	: typeName(type), functionName(function), address(0), index(slot) {}
+namespace VFTIndexes::IClientApps
+{
+VFTableInfo_t GetAppData{"14IClientAppsMap", "GetAppData", 0};
+VFTableInfo_t GetAppDataSection{"14IClientAppsMap", "GetAppDataSection", 5};
+VFTableInfo_t RequestAppInfoUpdate{"14IClientAppsMap", "RequestAppInfoUpdate", 7};
+VFTableInfo_t GetAppType{"14IClientAppsMap", "GetAppType", 10};
+}
+
 int main()
 {
-	static_assert(VFTIndexes::IClientApps::RequestAppInfoUpdate == 7);
-
 	std::array<std::uintptr_t, 8> vtable{};
-	vtable[VFTIndexes::IClientApps::RequestAppInfoUpdate] =
+	vtable[VFTIndexes::IClientApps::RequestAppInfoUpdate.index] =
 		reinterpret_cast<std::uintptr_t>(&fakeRequestAppInfoUpdate);
 	FakeClientApps fake{vtable.data()};
 	auto* const apps = reinterpret_cast<IClientApps*>(&fake);
@@ -54,7 +64,7 @@ int main()
 	CHECK(apps->requestAppInfoUpdate(expected),
 	      "successful Steam request result is propagated");
 	CHECK(calls == 1 && observedSelf == apps && observedIds == expected,
-	      "slot 7 receives the exact object, ordered ids, and count");
+	      "the registry slot receives the exact object, ordered ids, and count");
 
 	requestResult = false;
 	CHECK(!apps->requestAppInfoUpdate(expected),

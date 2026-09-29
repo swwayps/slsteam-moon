@@ -123,7 +123,12 @@ VFTHook<T>::VFTHook(const char* name) : Hook<T>::Hook(name)
 }
 
 template<typename T>
-bool DetourHook<T>::setup(Pattern_t pattern, T hookFn)
+VFTHook<T>::VFTHook() : VFTHook<T>("")
+{
+}
+
+template<typename T>
+bool DetourHook<T>::setup(const Pattern_t& pattern, T hookFn)
 {
 	if (pattern.address == LM_ADDRESS_BAD)
 	{
@@ -132,6 +137,16 @@ bool DetourHook<T>::setup(Pattern_t pattern, T hookFn)
 
 	this->name = pattern.name;
 	this->originalFn.address = pattern.address;
+	this->hookFn.fn = hookFn;
+
+	return true;
+}
+
+template<typename T>
+bool DetourHook<T>::setup(const VFTableInfo_t& info, T hookFn)
+{
+	this->name = info.getPrintName();
+	this->originalFn.address = info.address;
 	this->hookFn.fn = hookFn;
 
 	return true;
@@ -246,10 +261,11 @@ void VFTHook<T>::remove()
 }
 
 template<typename T>
-void VFTHook<T>::setup(std::shared_ptr<lm_vmt_t> vft, unsigned int index, T hookFn)
+void VFTHook<T>::setup(std::shared_ptr<lm_vmt_t> vft, const VFTableInfo_t& info, T hookFn)
 {
 	this->vft = vft;
-	this->index = index;
+	this->index = info.index;
+	this->name = info.getPrintName();
 
 	this->originalFn.address = LM_VmtGetOriginal(this->vft.get(), this->index);
 	this->hookFn.fn = hookFn;
@@ -1092,7 +1108,7 @@ static void hkClientUtils_RunIPCFrame(void* pClientUtils, void* a1, void* a2, vo
 
 static bool hkClientUser_BLoggedOn(void* pClientUser)
 {
-	const bool ret = Hooks::IClientUser_BLoggedOn.tramp.fn(pClientUser);
+	const bool ret = Hooks::IClientUser_BLoggedOn.originalFn.fn(pClientUser);
 	
 	if (Misc::shouldFakeOffline())
 	{
@@ -1112,7 +1128,7 @@ static uint32_t hkClientUser_BUpdateOwnershipTicket(void* pClientUser, uint32_t 
 		g_pLog->debug("Force re-requesting OwnershipInfo for %u\n", appId);
 	}
 
-	const uint32_t ret = Hooks::IClientUser_BUpdateAppOwnershipTicket.tramp.fn(pClientUser, appId, staleOnly);
+	const uint32_t ret = Hooks::IClientUser_BUpdateAppOwnershipTicket.originalFn.fn(pClientUser, appId, staleOnly);
 
 	g_pLog->debug
 	(
@@ -1138,7 +1154,7 @@ static std::vector<uint8_t> getClientLocalOwnershipTicket(void* pClientUser)
 	uint32_t steamIdOffset = 0;
 	uint32_t signatureOffset = 0;
 	uint32_t signatureSize = 0;
-	const uint32_t size = Hooks::IClientUser_GetAppOwnershipTicketExtendedData.tramp.fn(
+	const uint32_t size = Hooks::IClientUser_GetAppOwnershipTicketExtendedData.originalFn.fn(
 		pClientUser,
 		AppTicket::kLocalSourceAppId,
 		buffer.data(),
@@ -1175,7 +1191,7 @@ static uint32_t hkClientUser_GetAppOwnershipTicketExtendedData(
 	uint32_t* pSigSize
 )
 {
-	const uint32_t ret = Hooks::IClientUser_GetAppOwnershipTicketExtendedData.tramp.fn(pClientUser, appId, pTicket, ticketSize, pOffAppId, pOffSteamId, pOffSig, pSigSize);
+	const uint32_t ret = Hooks::IClientUser_GetAppOwnershipTicketExtendedData.originalFn.fn(pClientUser, appId, pTicket, ticketSize, pOffAppId, pOffSteamId, pOffSig, pSigSize);
 	g_pLog->debugOnce("%s(%u)->%u\n", Hooks::IClientUser_GetAppOwnershipTicketExtendedData.name.c_str(), appId, ret);
 
 	// Preserve a genuine client result.  Managed apps whose client lookup
@@ -1262,7 +1278,7 @@ static bool hkClientUser_GetEncryptedAppTicket(void* pClientUser, void* pTicket,
 
 static uint8_t hkClientUser_IsUserSubscribedAppInTicket(void* pClientUser, uint64_t steamId, AppId_t appId)
 {
-	const uint8_t ticketState = Hooks::IClientUser_IsUserSubscribedAppInTicket.tramp.fn(pClientUser, steamId, appId);
+	const uint8_t ticketState = Hooks::IClientUser_IsUserSubscribedAppInTicket.originalFn.fn(pClientUser, steamId, appId);
 	g_pLog->debug
 	(
 		"%s(%p, %u) -> %i\n",
@@ -1350,7 +1366,7 @@ static CSteamId hkClientUser_GetSteamId(const CSteamId& steamId)
 
 static bool hkClientUser_RequiresLegacyCDKey(void* pClientUser, uint32_t appId, uint32_t* a2)
 {
-	const bool requiresKey = Hooks::IClientUser_RequiresLegacyCDKey.tramp.fn(pClientUser, appId, a2);
+	const bool requiresKey = Hooks::IClientUser_RequiresLegacyCDKey.originalFn.fn(pClientUser, appId, a2);
 	g_pLog->debugOnce
 	(
 		"%s(%p, %u, %u) -> %i\n",
@@ -1391,10 +1407,23 @@ static void hkClientUser_RunIPCFrame(void* pClientUser, void* a1, void* a2, void
 		std::shared_ptr<lm_vmt_t> vft = std::make_shared<lm_vmt_t>();
 		LM_VmtNew(*reinterpret_cast<lm_address_t**>(pClientUser), vft.get());
 
+		Hooks::IClientUser_BLoggedOn.setup(vft, VFTIndexes::IClientUser::BLoggedOn, &hkClientUser_BLoggedOn);
+		Hooks::IClientUser_BUpdateAppOwnershipTicket.setup(vft, VFTIndexes::IClientUser::BUpdateAppOwnershipTicket, hkClientUser_BUpdateOwnershipTicket);
+		Hooks::IClientUser_GetAppOwnershipTicketExtendedData.setup(vft, VFTIndexes::IClientUser::GetAppOwnershipTicketExtendedData, hkClientUser_GetAppOwnershipTicketExtendedData);
+		Hooks::IClientUser_IsUserSubscribedAppInTicket.setup(vft, VFTIndexes::IClientUser::IsUserSubscribedAppInTicket, &hkClientUser_IsUserSubscribedAppInTicket);
+		Hooks::IClientUser_RequiresLegacyCDKey.setup(vft, VFTIndexes::IClientUser::RequiresLegacyCDKey, hkClientUser_RequiresLegacyCDKey);
 		Hooks::IClientUser_GetEncryptedAppTicket.setup(
 			vft,
 			VFTIndexes::IClientUser::GetEncryptedAppTicket,
 			hkClientUser_GetEncryptedAppTicket);
+
+		// The ticket, CD-key and offline hooks were pattern detours placed at
+		// load; as vtable hooks they only exist once this frame has run.
+		Hooks::IClientUser_BLoggedOn.place();
+		Hooks::IClientUser_BUpdateAppOwnershipTicket.place();
+		Hooks::IClientUser_GetAppOwnershipTicketExtendedData.place();
+		Hooks::IClientUser_IsUserSubscribedAppInTicket.place();
+		Hooks::IClientUser_RequiresLegacyCDKey.place();
 		Hooks::IClientUser_GetEncryptedAppTicket.place();
 
 		g_pLog->debug("IClientUser->vft at %p\n", vft->vtable);
@@ -1485,11 +1514,6 @@ namespace Hooks
 
 	DetourHook<IClientAppManager_BCanRemotePlayTogether_t> IClientAppManager_BCanRemotePlayTogether;
 
-	DetourHook<IClientUser_BLoggedOn_t> IClientUser_BLoggedOn;
-	DetourHook<IClientUser_BUpdateAppOwnershipTicket_t> IClientUser_BUpdateAppOwnershipTicket;
-	DetourHook<IClientUser_GetAppOwnershipTicketExtendedData_t> IClientUser_GetAppOwnershipTicketExtendedData;
-	DetourHook<IClientUser_IsUserSubscribedAppInTicket_t> IClientUser_IsUserSubscribedAppInTicket;
-	DetourHook<IClientUser_RequiresLegacyCDKey_t> IClientUser_RequiresLegacyCDKey;
 
 	VFTHook<IClientAppManager_BIsDlcEnabled_t> IClientAppManager_BIsDlcEnabled("IClientAppManager::BIsDlcEnabled");
 	VFTHook<IClientAppManager_GetAppUpdateInfo_t> IClientAppManager_GetAppUpdateInfo("IClientAppManager::GetAppUpdateInfo");
@@ -1502,6 +1526,11 @@ namespace Hooks
 
 	VFTHook<IClientRemoteStorage_IsCloudEnabledForApp_t> IClientRemoteStorage_IsCloudEnabledForApp("IClientRemoteStorage::IsCloudEnabledForApp");
 
+	VFTHook<IClientUser_BLoggedOn_t> IClientUser_BLoggedOn;
+	VFTHook<IClientUser_BUpdateAppOwnershipTicket_t> IClientUser_BUpdateAppOwnershipTicket;
+	VFTHook<IClientUser_GetAppOwnershipTicketExtendedData_t> IClientUser_GetAppOwnershipTicketExtendedData;
+	VFTHook<IClientUser_IsUserSubscribedAppInTicket_t> IClientUser_IsUserSubscribedAppInTicket;
+	VFTHook<IClientUser_RequiresLegacyCDKey_t> IClientUser_RequiresLegacyCDKey;
 	VFTHook<IClientUser_GetEncryptedAppTicket_t> IClientUser_GetEncryptedAppTicket("IClientUser::GetEncryptedAppTicket");
 
 	VFTHook<IClientUtils_GetAppId_t> IClientUtils_GetAppId("IClientUtils::GetAppId");
@@ -1546,11 +1575,6 @@ bool Hooks::setup()
 		&& IClientUtils_RunIPCFrame.setup(Patterns::IClientUtils::RunIPCFrame, hkClientUtils_RunIPCFrame)
 		&& IClientUser_RunIPCFrame.setup(Patterns::IClientUser::RunIPCFrame, hkClientUser_RunIPCFrame)
 		&& IClientUserStats_RunIPCFrame.setup(Patterns::IClientUserStats::RunIPCFrame, hkClientUserStats_RunIPCFrame)
-		&& IClientUser_BLoggedOn.setup(Patterns::IClientUser::BLoggedOn, &hkClientUser_BLoggedOn)
-		&& IClientUser_BUpdateAppOwnershipTicket.setup(Patterns::IClientUser::BUpdateAppOwnershipTicket, hkClientUser_BUpdateOwnershipTicket)
-		&& IClientUser_GetAppOwnershipTicketExtendedData.setup(Patterns::IClientUser::GetAppOwnershipTicketExtendedData, hkClientUser_GetAppOwnershipTicketExtendedData)
-		&& IClientUser_IsUserSubscribedAppInTicket.setup(Patterns::IClientUser::IsUserSubscribedAppInTicket, &hkClientUser_IsUserSubscribedAppInTicket)
-		&& IClientUser_RequiresLegacyCDKey.setup(Patterns::IClientUser::RequiresLegacyCDKey, hkClientUser_RequiresLegacyCDKey)
 
 		&& ISteamMatchmakingPingResponse_ServerResponded.setup(Patterns::ISteamMatchmakingPingResponse::ServerResponded, hkSteamMatchmakingPingResponse_ServerResponded);
 
@@ -1655,11 +1679,6 @@ void Hooks::place()
 	IClientUser_RunIPCFrame.place();
 	IClientUserStats_RunIPCFrame.place();
 
-	IClientUser_BLoggedOn.place();
-	IClientUser_BUpdateAppOwnershipTicket.place();
-	IClientUser_GetAppOwnershipTicketExtendedData.place();
-	IClientUser_IsUserSubscribedAppInTicket.place();
-	IClientUser_RequiresLegacyCDKey.place();
 
 	ISteamMatchmakingPingResponse_ServerResponded.place();
 }
