@@ -1004,25 +1004,6 @@ namespace Patterns
 		};
 	}
 
-	namespace CCMInterface
-	{
-		Pattern_t RecvPkt
-		{
-			"CCMInterface::RecvPkt",
-			// The stack frame grew on a later beta (sub esp,0x4cc -> larger), so
-			// the frame size and the frame-relative [ebp-disp] spill of the saved
-			// argument both drift together.  Both are local-frame layout, not
-			// values the hook reads, so mask the frame immediate and the spill
-			// displacement (their high bytes 00 00 / FF FF are kept); the gs
-			// cookie load and the rest keep exactly one .text match.
-			"55 89 E5 57 56 E8 ? ? ? ? 81 C6 ? ? ? ? 53 81 EC ? ? 00 00 8B 45 08 8B 7D 0C 89 85 ? ? FF FF 65 A1 14 00 00 00 89 45 E4 31 C0 8B 86",
-			SigFollowMode::None,
-			nullptr,
-			"Patterns::CCMInterface::RecvPkt"
-		};
-	}
-
-
 	namespace CSteamEngine
 	{
 		Pattern_t GetServerPipe
@@ -1303,13 +1284,6 @@ namespace Patterns
 			"E8 ? ? ? ? 8B 85 ? ? ? ? 83 C4 10 3D B7 85 0A 7A",
 			SigFollowMode::PrologueUpwards,
 			std::vector<uint8_t> { 0x56, 0x57, 0xe5, 0x89, 0x55 }
-		};
-		Pattern_t BCanRemotePlayTogether
-		{
-			"IClientAppManager::BCanRemotePlayTogether",
-			"58 5A FF 74 24 ? 56 E8 ? ? ? ? 83 C4 10 85 C0 74",
-			SigFollowMode::PrologueUpwards,
-			std::vector<uint8_t> { 0xe8, 0x53, 0x56, 0x57 }
 		};
 	}
 

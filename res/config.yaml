@@ -204,5 +204,8 @@ FakeWalletBalance: 0
 #None = 6
 LogLevel: 2
 
+#Dump all used IClientInterfaceMaps
+DumpClientInterfaces: no
+
 #Logs all calls to Steamworks (this makes the logfile huge! Only useful for debugging/analyzing
 ExtendedLogging: no

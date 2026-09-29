@@ -510,6 +510,7 @@ bool CConfig::loadSettings()
 	achievements = getSetting<bool>(node, "Achievements", true);
 	achievementOwnerId = getSetting<uint64_t>(node, "AchievementOwnerId", 76561198028121353ULL);
 	disableUpdates = getSetting<bool>(node, "DisableUpdates", true);
+	dumpInterfaceMaps = getSetting<bool>(node, "DumpClientInterfaces", false);
 	extendedLogging = getSetting<bool>(node, "ExtendedLogging", false);
 	patternCache = getSetting<bool>(node, "PatternCache", true);
 	asyncProvision = getSetting<bool>(node, "AsyncProvision", true);
@@ -528,7 +529,7 @@ bool CConfig::loadSettings()
 		"FakeEmail=%s FakeWalletBalance=%i DisableCloud=%i DisableUpdates=%i Donate=%i "
 		"InjectAllAdvertisedDlc=%i Achievements=%i PatternCache=%i "
 		"AsyncProvision=%i ExtendedLogging=%i AutoUpdateApps=%i LogLevel=%u "
-		"MaxSchemaTries=%u\n",
+		"MaxSchemaTries=%u DumpClientInterfaces=%i\n",
 		disableFamilyLock.get(), disableParentalRestrictions.get(),
 		useWhiteList.get(),
 		safeMode.get(), notifications.get(), warnHashMissmatch.get(),
@@ -538,7 +539,7 @@ bool CConfig::loadSettings()
 		injectAllAdvertisedDlc.get(),
 		achievements.get(), patternCache.get(), asyncProvision.get(),
 		extendedLogging.get(), autoUpdateApps.get(), logLevel.get(),
-		maxSchemaTries.get());
+		maxSchemaTries.get(), dumpInterfaceMaps.get());
 
 
 	appIds = getList<uint32_t>(node, "AppIds");

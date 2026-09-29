@@ -11,6 +11,7 @@
 #include <cstring>
 #include <dlfcn.h>
 #include <elf.h>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -57,7 +58,7 @@ std::unordered_map<lm_address_t, std::string> Decompiler::picThunks = std::unord
 std::unordered_map<lm_address_t, std::string> Decompiler::strings = std::unordered_map<lm_address_t, std::string>();
 std::unordered_map<std::string, VFTable> Decompiler::vftables = std::unordered_map<std::string, VFTable>();
 
-unsigned int Decompiler::isString(const lm_address_t addr, std::string* outStr)
+unsigned int Decompiler::getString(const lm_address_t addr, std::string* outStr)
 {
 	const char* pChAddr = reinterpret_cast<const char*>(addr);
 	bool nullTerminated = false;
@@ -89,6 +90,50 @@ unsigned int Decompiler::isString(const lm_address_t addr, std::string* outStr)
 	return i + 1;
 }
 
+lm_address_t Decompiler::extractHexNum(const std::string& str)
+{
+	unsigned int start = 0;
+	unsigned int end = 0;
+
+	for(unsigned int i = 0; i < str.size(); i++)
+	{
+		const char c = str.at(i);
+
+		if (c == '0' && i + 2 < str.size())
+		{
+			const char n = str.at(i + 1);
+			if (n != 'x')
+			{
+				continue;
+			}
+
+			start = i + 2;
+			i++;
+			continue;
+		}
+
+		if (!Ascii::isHexDigit(static_cast<unsigned char>(c)))
+		{
+			if (start)
+			{
+				break;
+			}
+
+			continue;
+		}
+
+		end = i;
+	}
+
+	if (start >= end)
+	{
+		return LM_ADDRESS_BAD;
+	}
+
+	const std::string numStr = str.substr(start, end - start + 1);
+	return std::stoull(numStr, nullptr, 16);
+}
+
 bool Decompiler::getRelativeTarget(const lm_inst_t& instr, lm_address_t& target)
 {
 	auto str = std::string(instr.op_str);
@@ -106,6 +151,62 @@ bool Decompiler::getRelativeTarget(const lm_inst_t& instr, lm_address_t& target)
 
 	target = std::stoul(str, nullptr, 16);
 	return true;
+}
+
+lm_address_t Decompiler::getLeaOffset(lm_inst_t& callInstr)
+{
+	lm_address_t offset = LM_ADDRESS_BAD;
+	std::string thunkReg;
+
+	if (!isPICThunk(callInstr, &thunkReg))
+	{
+		return LM_ADDRESS_BAD;
+	}
+
+	//Thunk moves the return address into our target register
+	offset = callInstr.address + callInstr.size;
+	//g_pLog->debug("Found thunk with %s target\n", thunkRegister.c_str());
+
+	lm_inst_t nextInstr;
+	if (!LM_Disassemble(offset, &nextInstr))
+	{
+		g_pLog->debug("Failed to disassemble next in getLeaOffset at %p\n", offset);
+		return LM_ADDRESS_BAD;
+	}
+
+	//Thunk is followed by 'add thunkReg, num'
+	if (strcmp(nextInstr.mnemonic, "add") != 0)
+	{
+		g_pLog->debug("Failed to get lea offset at %p, next instruction is not an add instruction!\n", offset);
+		return LM_ADDRESS_BAD;
+	}
+
+	//g_pLog->debug("Found %s %s\n", instr.mnemonic, instr.op_str);
+	auto split = Utils::strsplit(nextInstr.op_str, ",");
+	if (split[0] != thunkReg)
+	{
+		g_pLog->debug("Failed to get lea offset at %p, split[0] != thunkReg\n");
+		return LM_ADDRESS_BAD;
+	}
+
+	split[1] = split[1].substr(3, split[1].size() - 3);
+	offset += std::stoul(split[1], nullptr, 16);
+
+	return offset;
+}
+
+Elf_Shdr* Decompiler::getSection(const lm_module_t& mod, const char* name)
+{
+	std::ostringstream ss;
+	ss << mod.name << "::" << name;
+
+	const auto secName = ss.str();
+	if (!sections.contains(secName))
+	{
+		return nullptr;
+	}
+
+	return &sections.at(secName);
 }
 
 bool Decompiler::isPICThunk(const lm_inst_t& callInstr, std::string* targetRegister)
@@ -197,7 +298,7 @@ void Decompiler::collectStrings(const lm_module_t& mod, const Elf_Shdr& section)
 	for(lm_address_t addr = start; addr < end; )
 	{
 		lm_address_t begin = addr;
-		unsigned int read = isString(addr, &strBuf);
+		unsigned int read = getString(addr, &strBuf);
 
 		addr += read;
 
@@ -376,14 +477,142 @@ void Decompiler::parseModule(const lm_module_t &mod)
 		return;
 	}
 
-	const Elf_Shdr& shText = sections[std::string(mod.name) + "::.text"];
-	const Elf_Shdr& shROData = sections[std::string(mod.name) + "::.rodata"];
-	const Elf_Shdr& shDataRelRO = sections[std::string(mod.name) + "::.data.rel.ro"];
+	const Elf_Shdr* shROData = getSection(mod, ".rodata");
+	if (shROData)
+	{
+		//Collect strings to cross-reference
+		collectStrings(mod, *shROData);
+	}
 
-	//Collect strings to cross-reference
-	collectStrings(mod, shROData);
-	//Use collected strings to identify typeInfos, then cross reference those to find VFTables
-	collectVFTables(mod, shDataRelRO);
+	const Elf_Shdr* shRODataStr = getSection(mod, ".rodata.str");
+	if (shRODataStr)
+	{
+		collectStrings(mod, *shRODataStr);
+	}
+
+	const Elf_Shdr* shDataRelRO = getSection(mod, ".data.rel.ro");
+	if (shDataRelRO)
+	{
+		//Use collected strings to identify typeInfos, then cross reference those to find VFTables
+		collectVFTables(mod, *shDataRelRO);
+	}
+}
+
+void Decompiler::parseFunction(const lm_address_t begin, std::unordered_map<lm_address_t, unsigned int>& references)
+{
+	auto branchesTaken = std::unordered_set<lm_address_t>();
+	std::string thunkReg;
+	lm_address_t leaOffset = LM_ADDRESS_BAD;
+
+	__parseFunction(begin, references, branchesTaken, thunkReg, leaOffset);
+}
+
+void Decompiler::__parseFunction
+(
+	const lm_address_t begin,
+	std::unordered_map<lm_address_t, unsigned int>& references,
+	std::unordered_set<lm_address_t>& branchesTaken,
+	std::string& thunkReg,
+	lm_address_t& leaOffset
+)
+{
+	lm_address_t addr = begin;
+	lm_inst_t instr;
+
+	for(;;)
+	{
+		if (!LM_Disassemble(addr, &instr))
+		{
+			g_pLog->debug("Failed to disassemble function %p at %p!\n", begin, addr);
+			return;
+		}
+
+		//g_pLog->debug("%p: %s %s\n", addr, instr.mnemonic, instr.op_str);
+
+		addr += instr.size;
+
+		if (instr.mnemonic[0] == 'j')
+		{
+			lm_address_t branch;
+
+			if (!getRelativeTarget(instr, branch))
+			{
+				g_pLog->debug("Failed to follow %s %s at %p!\n", instr.address, instr.mnemonic, instr.op_str);
+				return;
+			}
+
+			if (branchesTaken.contains(branch))
+			{
+				continue;
+			}
+
+			branchesTaken.emplace(branch);
+
+			if (strcmp(instr.mnemonic, "jmp") == 0)
+			{
+				addr = branch;
+			}
+			else
+			{
+				__parseFunction(branch, references, branchesTaken, thunkReg, leaOffset);
+			}
+
+			//g_pLog->debug("Taking branch at %p to %p\n", instr.address, addr);
+			continue;
+		}
+		else if(strcmp(instr.mnemonic, "ret") == 0)
+		{
+			return;
+		}
+
+		if (isPICThunk(instr, &thunkReg))
+		{
+			leaOffset = getLeaOffset(instr);
+			continue;
+		}
+
+		if (!leaOffset)
+		{
+			continue;
+		}
+
+		if (strcmp(instr.mnemonic, "lea") != 0)
+		{
+			continue;
+		}
+
+		if (!strstr(instr.op_str, thunkReg.c_str()))
+		{
+			continue;
+		}
+
+		lm_address_t targetAddr;
+		if (strstr(instr.op_str, "-"))
+		{
+			const lm_address_t offset = extractHexNum(instr.op_str);
+			targetAddr = leaOffset - offset;
+		}
+		else if(strstr(instr.op_str, "+"))
+		{
+			const lm_address_t offset = extractHexNum(instr.op_str);
+			targetAddr = leaOffset + offset;
+		}
+		else
+		{
+			continue;
+		}
+
+		//g_pLog->debug("Target addr for op %p\n", targetAddr);
+
+		if (!strings.contains(targetAddr))
+		{
+			continue;
+		}
+
+		//const auto& str = strings.at(targetAddr);
+		//g_pLog->debug("String reference to %s at %p\n", str.c_str(), instr.address);
+		references[targetAddr]++;
+	}
 }
 
 std::map<std::string, unsigned int> Decompiler::parseInterfaceMapBase(const char* interface)
@@ -399,104 +628,37 @@ std::map<std::string, unsigned int> Decompiler::parseInterfaceMapBase(const char
 
 	g_pLog->debug("Disassembling %s's functions\n", interface);
 
-	lm_inst_t instr;
-	lm_address_t leaOffset = 0;
-	std::string thunkRegister;
-
-	unsigned int index = 0;
-
-	for(const auto& fn : vft.functions)
+	for(unsigned int i = 0; i < vft.functions.size(); i++)
 	{
-		lm_address_t addr = fn;
-		unsigned int stage = 0;
+		const lm_address_t fn = vft.functions[i];
 
-		for(unsigned int i = 0; i < 1000; i++)
+		auto refs = std::unordered_map<lm_address_t, unsigned int>();
+		parseFunction(fn, refs);
+
+		for(const auto& ref : refs)
 		{
-			if (!LM_Disassemble(addr, &instr))
+			const auto& str = strings[ref.first];
+			if (strstr(interface, str.c_str()))
 			{
-				g_pLog->debug("Failed to disassemble vft function %p at %p\n", fn, instr.address);
+				continue;
 			}
 
-			addr += instr.size;
-
-			auto split = std::vector<std::string>();
-
-			switch(stage)
-			{
-				//Check PIC thunk
-				case 0:
-					if (!isPICThunk(instr, &thunkRegister))
-					{
-						continue;
-					}
-					//Thunk moves the return address into our target register
-
-					leaOffset = instr.address + instr.size;
-					//g_pLog->debug("Found thunk with %s target\n", thunkRegister.c_str());
-					stage++;
-					break;
-
-				//Thunk is followed by 'add thunkReg, num'
-				case 1:
-					if (strcmp(instr.mnemonic, "add") != 0)
-					{
-						continue;
-					}
-
-					//g_pLog->debug("Found %s %s\n", instr.mnemonic, instr.op_str);
-					split = Utils::strsplit(instr.op_str, ",");
-					if (split[0] != thunkRegister)
-					{
-						continue;
-					}
-					
-					split[1] = split[1].substr(3, split[1].size() - 3);
-					leaOffset += std::stoul(split[1], nullptr, 16);
-
-					stage++;
-					break;
-
-				case 2:
-					if (strcmp(instr.mnemonic, "lea") != 0)
-					{
-						continue;
-					}
-
-					if (!strstr(instr.op_str, thunkRegister.c_str()) || !strstr(instr.op_str, " - "))
-					{
-						continue;
-					}
-
-					split = Utils::strsplit(instr.op_str, "-");
-					auto hexnumStr = split[1].substr(3, split[1].size() - 4);
-					const lm_address_t targetAddr = leaOffset - std::stoul(hexnumStr, nullptr, 16);
-
-					if (!strings.contains(targetAddr))
-					{
-						continue;
-					}
-
-					const auto& str = strings.at(targetAddr);
-					if (strstr(interface, str.c_str()))
-					{
-						continue;
-					}
-
-					//g_pLog->debug("Found string ref to %s at %p for vft[%u]\n", str.c_str(), targetAddr, index);
-					functionMap[str] = index;
-
-					stage++;
-					break;
-			}
-
-			if (stage > 2)
-			{
-				break;
-			}
+			//I would love to add a break statement after this.
+			//But some functions do reference multiple strings
+			//Since we can't know which one is the right one without applying possibly wrong heuristics
+			//We just index all of them
+			functionMap[str] = i;
+			//g_pLog->debug("%s::%s at %u (%u times)\n", interface, str.c_str(), i, ref.second);
 		}
-
-		index++;
 	}
 
 	return functionMap;
+}
+
+void Decompiler::cleanUp()
+{
+	sections.clear();
+	picThunks.clear();
+	strings.clear();
+	vftables.clear();
 }

@@ -1,5 +1,6 @@
 #include "vftableinfo.hpp"
 
+#include "config.hpp"
 #include "decompiler.hpp"
 #include "log.hpp"
 
@@ -17,7 +18,7 @@ bool VFTableInfo_t::init()
 {
 	if (!Decompiler::vftables.contains(typeName))
 	{
-		g_pLog->debug("%s not found in Decompiler::vftables!\n", typeName);
+		g_pLog->debug("%s not found in Decompiler::vftables!\n", typeName.c_str());
 		return false;
 	}
 
@@ -61,6 +62,16 @@ std::string VFTableInfo_t::getPrintName() const
 
 namespace VFTIndexes
 {
+	namespace CCMInterface
+	{
+		VFTableInfo_t RecvPkt
+		{
+			"12CCMInterface",
+			"RecvPkt",
+			3
+		};
+	};
+
 	namespace CClientUnifiedServiceTransport
 	{
 		VFTableInfo_t SendAndRecvMsg
@@ -83,10 +94,10 @@ namespace VFTIndexes
 			"14IClientAppsMap",
 			"GetAppDataSection"
 		};
-		VFTableInfo_t RequestAppInfoUpdate
+		VFTableInfo_t GetAppType
 		{
 			"14IClientAppsMap",
-			"RequestAppInfoUpdate"
+			"GetAppType"
 		};
 		VFTableInfo_t GetDLCCount
 		{
@@ -98,49 +109,54 @@ namespace VFTIndexes
 			"14IClientAppsMap",
 			"BGetDLCDataByIndex"
 		};
-		VFTableInfo_t GetAppType
+		VFTableInfo_t RequestAppInfoUpdate
 		{
 			"14IClientAppsMap",
-			"GetAppType"
+			"RequestAppInfoUpdate"
 		};
 	}
 
 	namespace IClientAppManager
 	{
-		VFTableInfo_t InstallApp
+		VFTableInfo_t BCanRemotePlayTogether
 		{
 			"20IClientAppManagerMap",
-			"InstallApp"
-		};
-		VFTableInfo_t UninstallApp
-		{
-			"20IClientAppManagerMap",
-			"UninstallApp"
-		};
-		VFTableInfo_t LaunchApp
-		{
-			"20IClientAppManagerMap",
-			"LaunchApp"
-		};
-		VFTableInfo_t GetAppInstallState
-		{
-			"20IClientAppManagerMap",
-			"GetAppInstallState"
-		};
-		VFTableInfo_t IsAppDlcInstalled
-		{
-			"20IClientAppManagerMap",
-			"IsAppDlcInstalled"
+			"BCanRemotePlayTogether"
 		};
 		VFTableInfo_t BIsDlcEnabled
 		{
 			"20IClientAppManagerMap",
 			"BIsDlcEnabled"
 		};
+		VFTableInfo_t GetAppInstallState
+		{
+			"20IClientAppManagerMap",
+			"GetAppInstallState"
+		};
 		VFTableInfo_t GetUpdateInfo
 		{
 			"20IClientAppManagerMap",
 			"GetUpdateInfo"
+		};
+		VFTableInfo_t InstallApp
+		{
+			"20IClientAppManagerMap",
+			"InstallApp"
+		};
+		VFTableInfo_t IsAppDlcInstalled
+		{
+			"20IClientAppManagerMap",
+			"IsAppDlcInstalled"
+		};
+		VFTableInfo_t LaunchApp
+		{
+			"20IClientAppManagerMap",
+			"LaunchApp"
+		};
+		VFTableInfo_t UninstallApp
+		{
+			"20IClientAppManagerMap",
+			"UninstallApp"
 		};
 	}
 
@@ -180,15 +196,15 @@ namespace VFTIndexes
 
 	namespace IClientUtils
 	{
-		VFTableInfo_t GetOfflineMode
-		{
-			"15IClientUtilsMap",
-			"GetOfflineMode"
-		};
 		VFTableInfo_t GetAppId
 		{
 			"15IClientUtilsMap",
 			"GetAppID"
+		};
+		VFTableInfo_t GetOfflineMode
+		{
+			"15IClientUtilsMap",
+			"GetOfflineMode"
 		};
 	}
 
@@ -242,16 +258,20 @@ namespace VFTIndexes
 	std::unordered_map<std::string, std::map<std::string, unsigned int>> tableMap;
 }
 
-void VFTIndexes::dump(const std::map<std::string, unsigned int>& interfaceMap)
+void VFTIndexes::dump(const std::string& name, const std::map<std::string, unsigned int>& functionMap)
 {
 	std::ostringstream ss;
 
-	for(const auto& kv : interfaceMap)
+	ss << "\n" << name << "\n{";
+
+	for(const auto& kv : functionMap)
 	{
-		ss << "\n" << kv.first << " = " << kv.second;
+		ss << "\n\t" << kv.first << " = " << kv.second;
 	}
 
-	g_pLog->debug("Dump %s\n", ss.str().c_str());
+	ss << "\n};";
+
+	g_pLog->info("Dump %s\n", ss.str().c_str());
 }
 
 bool VFTIndexes::init()
@@ -261,6 +281,14 @@ bool VFTIndexes::init()
 		if (!fn->init())
 		{
 			return false;
+		}
+	}
+
+	if (g_config.dumpInterfaceMaps.get())
+	{
+		for(const auto& tbl : tableMap)
+		{
+			dump(tbl.first, tbl.second);
 		}
 	}
 

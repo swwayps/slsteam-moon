@@ -8,10 +8,6 @@
 //   CUser::ProcessPendingLicenseUpdates  PackagePatch loses the runtime license
 //                                        refresh, so adding a game needs a
 //                                        Steam restart again.
-//   CCMInterface::RecvPkt                required now (sole CM receive path);
-//                                        kept here because its frame layout
-//                                        has drifted before and a miss now
-//                                        fails the load.
 //   CSteamApp::OwnershipFlagsReference    LibraryRemoval cannot derive the
 //                                        ownership-flags field offset, so
 //                                        visual library removal turns off.
@@ -160,15 +156,6 @@ int main(int argc, char** argv)
 		"00 00 85 C9 0F 8E ? ? ? ? 05 ? 1C 00 00 89 44 24 18 8D 83 ? ? ? ? 8B 30",
 		source);
 
-	// The stack frame grew on a later beta (sub esp,0x4cc -> larger), drifting
-	// both the frame immediate and the frame-relative spill of the saved
-	// argument together. Both are local-frame layout, not values the hook reads,
-	// so mask the frame immediate and the spill displacement (high bytes kept).
-	(void)resolveUnique(
-		client, "CCMInterface::RecvPkt",
-		"55 89 E5 57 56 E8 ? ? ? ? 81 C6 ? ? ? ? 53 81 EC ? ? 00 00 8B 45 08 "
-		"8B 7D 0C 89 85 ? ? FF FF 65 A1 14 00 00 00 89 45 E4 31 C0 8B 86",
-		source);
 
 	// FillInAppOverview serializes several fields with this very shape, one
 	// after another, so the discriminator has to be the field offset. The

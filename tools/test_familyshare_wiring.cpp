@@ -54,7 +54,7 @@ int main()
 	// the mandatory hook chain instead of an optional extra.
 	expect(
 		hooks.find(
-			"&&CCMInterface_RecvPkt.setup(Patterns::CCMInterface::RecvPkt,&hkCMInterface_RecvPkt)")
+			"&&CCMInterface_RecvPkt.setup(VFTIndexes::CCMInterface::RecvPkt,&hkCMInterface_RecvPkt)")
 			!= std::string::npos,
 		"CM receive setup is part of the mandatory hook chain");
 	expect(
@@ -70,9 +70,8 @@ int main()
 		hooks.find("CProtoBufMsgBase_InitFromPacket") == std::string::npos,
 		"the classic InitFromPacket transport is gone");
 	expect(
-		patterns.find("CCMInterface::RecvPkt.optional=true;")
-			== std::string::npos,
-		"CM receive locator is required");
+		patterns.find("CCMInterface::RecvPkt") == std::string::npos,
+		"CM receive is located by its vtable slot, not a pattern");
 	if (failures != 0)
 	{
 		std::cerr << failures << " CM receive wiring check(s) failed\n";

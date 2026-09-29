@@ -149,6 +149,7 @@ public:
 	// Move refreshes for existing provisioned buffers off la_preinit. A
 	// missing buffer still takes the synchronous PICS fallback.
 	MTVariable<bool> asyncProvision;
+	MTVariable<bool> dumpInterfaceMaps;
 	MTVariable<bool> extendedLogging;
 	// Safety valve for pathological bulk copies into stplug-in (see
 	// config_discovery.hpp). This is NOT a library-size limit: it sits far above

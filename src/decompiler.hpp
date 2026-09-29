@@ -6,6 +6,7 @@
 #include <map>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 
@@ -41,9 +42,13 @@ namespace Decompiler
 	extern std::unordered_map<lm_address_t, std::string> strings;
 	extern std::unordered_map<std::string, VFTable> vftables;
 
-	unsigned int isString(const lm_address_t addr, std::string* outStr);
+	unsigned int getString(const lm_address_t addr, std::string* outStr);
+	lm_address_t extractHexNum(const std::string& str);
 	bool isPICThunk(const lm_inst_t& callInstr, std::string* targetRegister);
 	bool getRelativeTarget(const lm_inst_t& instr, lm_address_t& target);
+	lm_address_t getLeaOffset(lm_inst_t& callInstr);
+
+	Elf_Shdr* getSection(const lm_module_t& mod, const char* name);
 
 	void collectStrings(const lm_module_t& mod, const Elf_Shdr& section);
 	bool collectVFTables(const lm_module_t& mod, const Elf_Shdr& section);
@@ -51,5 +56,17 @@ namespace Decompiler
 	bool parseHeader(const lm_module_t& mod);
 	void parseModule(const lm_module_t& mod);
 
+	void parseFunction(const lm_address_t begin, std::unordered_map<lm_address_t, unsigned int>& references);
+	void __parseFunction
+	(
+		const lm_address_t begin,
+		std::unordered_map<lm_address_t, unsigned int>& references,
+		std::unordered_set<lm_address_t>& branchesTaken,
+		std::string& thunkReg,
+		lm_address_t& leaOffset
+	);
+	
 	std::map<std::string, unsigned int> parseInterfaceMapBase(const char* interface);
+
+	void cleanUp();
 }

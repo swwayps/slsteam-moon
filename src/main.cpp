@@ -669,6 +669,7 @@ static void load()
 	}
 
 	SLSAPI::init();
+	Decompiler::cleanUp();
 
 	// Resolve SLSsteam.so's own install root via libmem so the
 	// runtime helpers (wrapper integration script + bundled tools)

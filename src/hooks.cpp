@@ -708,7 +708,7 @@ static uint32_t hkUser_PostCallbackToAppId(void* pUser, uint32_t appId, uint32_t
 
 static bool hkClientAppManager_BCanRemotePlayTogether(void* pClientAppManager, uint32_t appId)
 {
-	const bool ret = Hooks::IClientAppManager_BCanRemotePlayTogether.tramp.fn(pClientAppManager, appId);
+	const bool ret = Hooks::IClientAppManager_BCanRemotePlayTogether.originalFn.fn(pClientAppManager, appId);
 	g_pLog->debug
 	(
 		"%s(%p, %u) -> %u\n",
@@ -815,11 +815,13 @@ static void hkClientAppManager_RunIPCFrame(void* pClientAppManager, void* a1, vo
 	std::shared_ptr<lm_vmt_t> vft = std::make_shared<lm_vmt_t>();
 	LM_VmtNew(*reinterpret_cast<lm_address_t**>(pClientAppManager), vft.get());
 
+	Hooks::IClientAppManager_BCanRemotePlayTogether.setup(vft, VFTIndexes::IClientAppManager::BCanRemotePlayTogether, hkClientAppManager_BCanRemotePlayTogether);
 	Hooks::IClientAppManager_BIsDlcEnabled.setup(vft, VFTIndexes::IClientAppManager::BIsDlcEnabled, hkClientAppManager_BIsDlcEnabled);
 	Hooks::IClientAppManager_GetAppUpdateInfo.setup(vft, VFTIndexes::IClientAppManager::GetUpdateInfo, hkClientAppManager_GetUpdateInfo);
 	Hooks::IClientAppManager_LaunchApp.setup(vft, VFTIndexes::IClientAppManager::LaunchApp, hkClientAppManager_LaunchApp);
 	Hooks::IClientAppManager_IsAppDlcInstalled.setup(vft, VFTIndexes::IClientAppManager::IsAppDlcInstalled, hkClientAppManager_IsAppDlcInstalled);
 
+	Hooks::IClientAppManager_BCanRemotePlayTogether.place();
 	Hooks::IClientAppManager_BIsDlcEnabled.place();
 	Hooks::IClientAppManager_GetAppUpdateInfo.place();
 	Hooks::IClientAppManager_LaunchApp.place();
@@ -1453,25 +1455,6 @@ static void hkSteamMatchmakingPingResponse_ServerResponded(void* pSteamMatchingP
 	Hooks::ISteamMatchmakingPingResponse_ServerResponded.tramp.fn(pSteamMatchingPingResponse, details);
 }
 
-static void patchRetn(lm_address_t address)
-{
-	// Defense-in-depth: never write to a null or unresolved address.
-	// If a pattern fails to resolve, its address is 0 (or
-	// LM_ADDRESS_BAD); patching it would segfault.  Skip instead.
-	if (address == 0 || address == LM_ADDRESS_BAD)
-	{
-		g_pLog->warn("patchRetn called with invalid address %p; skipping\n", reinterpret_cast<void*>(address));
-		return;
-	}
-
-	constexpr lm_byte_t retn = 0xC3;
-
-	lm_prot_t oldProt;
-	LM_ProtMemory(address, 1, LM_PROT_XRW, &oldProt); //LM_PROT_W Should be enough, but just in case something tries to execute it inbetween us setting the prot and writing to it
-	LM_WriteMemory(address, &retn, 1);
-	LM_ProtMemory(address, 1, oldProt, LM_NULL);
-}
-
 namespace Hooks
 {
 	static bool playerStatsHookReady = false;
@@ -1512,7 +1495,7 @@ namespace Hooks
 
 	DetourHook<IClientFriends_GetFriendGamePlayed_t> IClientFriends_GetFriendGamePlayed;
 
-	DetourHook<IClientAppManager_BCanRemotePlayTogether_t> IClientAppManager_BCanRemotePlayTogether;
+	VFTHook<IClientAppManager_BCanRemotePlayTogether_t> IClientAppManager_BCanRemotePlayTogether("IClientAppManager::BCanRemotePlayTogether");
 
 
 	VFTHook<IClientAppManager_BIsDlcEnabled_t> IClientAppManager_BIsDlcEnabled("IClientAppManager::BIsDlcEnabled");
@@ -1546,7 +1529,7 @@ bool Hooks::setup()
 	bool succeeded =
 		TraceIPC.setup(Patterns::TraceIPC, &hkTraceIPC)
 
-		&& CCMInterface_RecvPkt.setup(Patterns::CCMInterface::RecvPkt, &hkCMInterface_RecvPkt)
+		&& CCMInterface_RecvPkt.setup(VFTIndexes::CCMInterface::RecvPkt, &hkCMInterface_RecvPkt)
 
 		&& CWebSocketConnection_BBuildAndAsyncSendFrame.setup(Patterns::CWebSocketConnection::BBuildAndAsyncSendFrame, &ManifestCode::hkBBuildAndAsyncSendFrame)
 		&& CRemoteClientManager_RecvPkt.setup(Patterns::CRemoteClientManager::RecvPkt, &ManifestCode::hkRecvPkt)
@@ -1566,7 +1549,6 @@ bool Hooks::setup()
 		&& CSteamEngine_ProcessIPCFrame.setup(Patterns::CSteamEngine::ProcessIPCFrame, &hkSteamEngine_ProcessIPCFrame)
 		&& CSteamEngine_SetAppIdForCurrentPipe.setup(Patterns::CSteamEngine::SetAppIdForCurrentPipe, &hkSteamEngine_SetAppIdForCurrentPipe)
 
-		&& IClientAppManager_BCanRemotePlayTogether.setup(Patterns::IClientAppManager::BCanRemotePlayTogether, hkClientAppManager_BCanRemotePlayTogether)
 
 		&& IClientApps_RunIPCFrame.setup(Patterns::IClientApps::RunIPCFrame, hkClientApps_RunIPCFrame)
 		&& IClientAppManager_RunIPCFrame.setup(Patterns::IClientAppManager::RunIPCFrame, hkClientAppManager_RunIPCFrame)
@@ -1668,8 +1650,6 @@ void Hooks::place()
 	IClientFriends_GetFriendGamePlayed.place();
 
 	CWebSocketConnection_BBuildAndAsyncSendFrame.place();
-
-	IClientAppManager_BCanRemotePlayTogether.place();
 
 	IClientApps_RunIPCFrame.place();
 	IClientAppManager_RunIPCFrame.place();

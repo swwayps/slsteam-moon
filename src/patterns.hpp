@@ -71,10 +71,6 @@ namespace Patterns
 		extern Pattern_t GetPlayerStats;
 	}
 
-	namespace CCMInterface
-	{
-		extern Pattern_t RecvPkt;
-	}
 
 	namespace CSteamEngine
 	{
@@ -121,7 +117,6 @@ namespace Patterns
 	namespace IClientAppManager
 	{
 		extern Pattern_t RunIPCFrame;
-		extern Pattern_t BCanRemotePlayTogether;
 	}
 
 	namespace IClientApps
