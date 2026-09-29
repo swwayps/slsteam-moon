@@ -21,6 +21,7 @@
 #include "sdk/IClientAppManager.hpp"
 #include "sdk/IClientApps.hpp"
 #include "sdk/IClientFriends.hpp"
+#include "sdk/IClientUser.hpp"
 #include "sdk/IClientUtils.hpp"
 
 #include "feats/achievements.hpp"
@@ -1219,13 +1220,13 @@ static uint32_t hkClientUser_GetAppOwnershipTicketExtendedData(
 	uint32_t appId,
 	void* pTicket,
 	uint32_t ticketSize,
-	uint32_t* a4,
-	uint32_t* a5,
-	uint32_t* a6,
-	uint32_t* a7)
-
+	uint32_t* pOffAppId,
+	uint32_t* pOffSteamId,
+	uint32_t* pOffSig,
+	uint32_t* pSigSize
+)
 {
-	const uint32_t ret = Hooks::IClientUser_GetAppOwnershipTicketExtendedData.tramp.fn(pClientUser, appId, pTicket, ticketSize, a4, a5, a6, a7);
+	const uint32_t ret = Hooks::IClientUser_GetAppOwnershipTicketExtendedData.tramp.fn(pClientUser, appId, pTicket, ticketSize, pOffAppId, pOffSteamId, pOffSig, pSigSize);
 	g_pLog->debugOnce("%s(%u)->%u\n", Hooks::IClientUser_GetAppOwnershipTicketExtendedData.name.c_str(), appId, ret);
 
 	// Preserve a genuine client result.  Managed apps whose client lookup
@@ -1253,7 +1254,7 @@ static uint32_t hkClientUser_GetAppOwnershipTicketExtendedData(
 			std::span<const uint8_t>(localSource.data(), localSource.size()),
 			appId);
 		if (AppTicket::copyOwnershipTicket(
-			prepared, pTicket, ticketSize, a4, a5, a6, a7))
+			prepared, pTicket, ticketSize, pOffAppId, pOffSteamId, pOffSig, pSigSize))
 		{
 			const char* source = "explicit";
 			if (prepared.source == AppTicket::Source::LocalDerived)
@@ -1433,6 +1434,7 @@ static void hkClientUser_RunIPCFrame(void* pClientUser, void* a1, void* a2, void
 {
 	static std::once_flag attestationOnce;
 	attestHookInvocation(attestationOnce, Hooks::IClientUser_RunIPCFrame.name);
+	g_pClientUser = reinterpret_cast<IClientUser*>(pClientUser);
 
 	static bool hooked = false;
 	if (!hooked)

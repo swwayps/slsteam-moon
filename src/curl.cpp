@@ -32,11 +32,12 @@ int Curl::getString(const char* url, std::string& out)
 	};
 
 	// Bounded like the in-process libcurl client this replaced: a stalled
-	// server must not hold the calling Steam thread (connect 5 s, total 10 s).
+	// server must not hold the calling Steam thread. --max-time caps the whole
+	// transfer at 10 s, the connect phase included.
 	const char* args[] =
 	{
-		"-s",
-		"--connect-timeout", "5",
+		"--silent",
+		"--connect-timeout", "15",
 		"--max-time", "10",
 		url,
 		nullptr
@@ -92,6 +93,8 @@ int Curl::getString(const char* url, std::string& out)
 	{
 		return 1;
 	}
+
+	status = WEXITSTATUS(status);
 
 	g_pLog->debug("Exit Status: %i\n", status);
 
