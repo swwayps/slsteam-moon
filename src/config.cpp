@@ -462,6 +462,7 @@ bool CConfig::loadSettings()
 	automaticFilter = getSetting<bool>(node, "AutoFilterList", true);
 	playNotOwnedGames = getSetting<bool>(node, "PlayNotOwnedGames", false);
 	smartTickets = getSetting<SmartTicketsFlags>(node, "SmartTickets", 1);
+	maxSchemaTries = getSetting<uint32_t>(node, "MaxSchemaTries", 10);
 	// SafeMode (abort the load on an unknown steamclient.so hash) is force-
 	// disabled. Its hash whitelist cannot be kept current: it goes stale on
 	// every Steam client update and would disable an otherwise-working client,
@@ -524,7 +525,8 @@ bool CConfig::loadSettings()
 		"Notifications=%i WarnHashMissmatch=%i NotifyInit=%i API=%i "
 		"FakeEmail=%s FakeWalletBalance=%i DisableCloud=%i Donate=%i "
 		"InjectAllAdvertisedDlc=%i Achievements=%i PatternCache=%i "
-		"AsyncProvision=%i ExtendedLogging=%i AutoUpdateApps=%i LogLevel=%u\n",
+		"AsyncProvision=%i ExtendedLogging=%i AutoUpdateApps=%i LogLevel=%u "
+		"MaxSchemaTries=%u\n",
 		disableFamilyLock.get(), disableParentalRestrictions.get(),
 		useWhiteList.get(), automaticFilter.get(), playNotOwnedGames.get(),
 		safeMode.get(), notifications.get(), warnHashMissmatch.get(),
@@ -532,7 +534,8 @@ bool CConfig::loadSettings()
 		fakeWalletBalance.get(), disableCloud.get(), donate.get().enabled,
 		injectAllAdvertisedDlc.get(),
 		achievements.get(), patternCache.get(), asyncProvision.get(),
-		extendedLogging.get(), autoUpdateApps.get(), logLevel.get());
+		extendedLogging.get(), autoUpdateApps.get(), logLevel.get(),
+		maxSchemaTries.get());
 
 
 	appIds = getList<uint32_t>(node, "AppIds");

@@ -8,7 +8,9 @@
 #include <memory>
 #include <string>
 
+class CAPIJob;
 class CAppOwnershipInfo;
+class CClientUnifiedServiceTransport;
 class CProtoBufMsgBase;
 class CUtlBuffer;
 
@@ -87,6 +89,8 @@ namespace Hooks
 	typedef void(*IClientUserStats_RunIPCFrame_t)(void*, void*, void*, void*);
 
 	typedef uint32_t(*CAPIJob_GetPlayerStats_t)(void*);
+	typedef uint32_t(*CAPIJob_SendAndRecv_t)(CAPIJob*, CProtoBufMsgBase*, uint32_t, uint32_t, CProtoBufMsgBase*, uint32_t);
+	typedef uint32_t(*CClientUnifiedServiceMethod_SendAndRecvMsg_t)(CClientUnifiedServiceTransport*, const char*, void*, void*, void*);
 
 	typedef void(*CProtoBufMsgBase_InitFromPacket_t)(CProtoBufMsgBase*, void*);
 	typedef void(*CCMInterface_RecvPkt_t)(void*, CNetPacket*);
@@ -124,6 +128,8 @@ namespace Hooks
 	extern DetourHook<TraceIPC_t> TraceIPC;
 
 	extern DetourHook<CAPIJob_GetPlayerStats_t> CAPIJob_GetPlayerStats;
+	extern DetourHook<CAPIJob_SendAndRecv_t> CAPIJob_SendAndRecv;
+	extern DetourHook<CClientUnifiedServiceMethod_SendAndRecvMsg_t> CClientUnifiedServiceMethod_SendAndRecvMsg;
 
 	extern DetourHook<CProtoBufMsgBase_InitFromPacket_t> CProtoBufMsgBase_InitFromPacket;
 	extern DetourHook<CCMInterface_RecvPkt_t> CCMInterface_RecvPkt;

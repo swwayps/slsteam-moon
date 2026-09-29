@@ -9,7 +9,9 @@
 #include "process.hpp"
 #include "vftableinfo.hpp"
 
+#include "sdk/CAPIJob.hpp"
 #include "sdk/CAppOwnershipInfo.hpp"
+#include "sdk/CClientUnifiedServiceTransport.hpp"
 #include "sdk/CNetPacket.hpp"
 #include "sdk/CProtoBufMsgBase.hpp"
 #include "sdk/CSteamEngine.hpp"
@@ -284,6 +286,63 @@ static uint32_t hkCAPIJob_GetPlayerStats(void* pAPIJob)
 	);
 
 	return res;
+}
+
+static uint32_t hkAPIJob_SendAndRecv(CAPIJob* pAPIJob, CProtoBufMsgBase* send, uint32_t a2, uint32_t timeOut, CProtoBufMsgBase* recv, uint32_t targetType)
+{
+	uint32_t ret = Achievements::sendAndRecvGetUserStats(pAPIJob, send, timeOut, recv, targetType);
+
+	if (!ret)
+	{
+		ret = Hooks::CAPIJob_SendAndRecv.tramp.fn(pAPIJob, send, a2, timeOut, recv, targetType);
+	}
+
+	g_pLog->debug
+	(
+		"%s(%p, %s, %u, %u, %s, %u) -> %u\n",
+
+		Hooks::CAPIJob_SendAndRecv.name.c_str(),
+		pAPIJob,
+		MemHlp::getTypeName(send),
+		a2,
+		timeOut,
+		MemHlp::getTypeName(recv),
+		targetType,
+		ret
+	);
+
+	return ret;
+}
+
+static uint32_t hkClientUnifiedServiceTransport_SendAndRecvMsg(CClientUnifiedServiceTransport* pUnifiedServiceTransport, const char* name, void* send, void* recv, void* arg4)
+{
+	uint32_t ret = Achievements::sendAndRecvGetPlayerStats
+	(
+		pUnifiedServiceTransport,
+		name,
+		reinterpret_cast<CPlayer_GetUserStats_Request*>(send),
+		reinterpret_cast<CPlayer_GetUserStats_Response*>(recv)
+	);
+
+	if (ret == ERESULT_NO_RESULT)
+	{
+		ret = Hooks::CClientUnifiedServiceMethod_SendAndRecvMsg.tramp.fn(pUnifiedServiceTransport, name, send, recv, arg4);
+	}
+
+	g_pLog->debug
+	(
+		"%s(%p, %s, %s, %s, %p) -> %u\n",
+
+		Hooks::CClientUnifiedServiceMethod_SendAndRecvMsg.name.c_str(),
+		pUnifiedServiceTransport,
+		name,
+		MemHlp::getTypeName(send),
+		MemHlp::getTypeName(recv),
+		arg4,
+		ret
+	);
+
+	return ret;
 }
 
 static void hkProtoBufMsgBase_InitFromPacket(CProtoBufMsgBase* pMsg, void* pSrc)
@@ -1428,6 +1487,8 @@ namespace Hooks
 	DetourHook<IClientUserStats_RunIPCFrame_t> IClientUserStats_RunIPCFrame;
 
 	DetourHook<CAPIJob_GetPlayerStats_t> CAPIJob_GetPlayerStats;
+	DetourHook<CAPIJob_SendAndRecv_t> CAPIJob_SendAndRecv;
+	DetourHook<CClientUnifiedServiceMethod_SendAndRecvMsg_t> CClientUnifiedServiceMethod_SendAndRecvMsg;
 
 	DetourHook<CProtoBufMsgBase_InitFromPacket_t> CProtoBufMsgBase_InitFromPacket;
 	DetourHook<CCMInterface_RecvPkt_t> CCMInterface_RecvPkt;

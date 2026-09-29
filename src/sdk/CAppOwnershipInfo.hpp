@@ -8,7 +8,7 @@ struct CAppOwnershipInfo {
     uint32_t owner;
     int32_t masterSubscriptionAppId;
     uint32_t trialTime;
-    int32_t field5_0x14;
+    uint32_t numLicenses;
     char region[2];
     char field7_0x1A[2];
     uint32_t purchaseTime;

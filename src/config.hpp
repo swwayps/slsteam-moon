@@ -121,6 +121,7 @@ public:
 	MTVariable<bool> automaticFilter;
 	MTVariable<bool> playNotOwnedGames;
 	MTVariable<SmartTicketsFlags> smartTickets;
+	MTVariable<uint32_t> maxSchemaTries;
 	MTVariable<bool> safeMode;
 	MTVariable<bool> notifications;
 	MTVariable<bool> warnHashMissmatch;
@@ -195,7 +196,7 @@ public:
 		// client at startup (a huge FakeWalletBalance bricked Steam on every
 		// launch).  Not throwing at all sidesteps the partitioned-EH defect.
 		return node[name].as<T>(defVal);
-	};
+	}
 
 	template<typename T>
 	std::unordered_set<T> getList(YAML::Node& rootNode, const char* name)
