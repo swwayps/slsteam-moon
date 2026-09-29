@@ -82,31 +82,6 @@ bool Apps::unlockApp(std::uint32_t, CAppOwnershipInfo*)
 int main()
 {
 	Apps::setDiscoveredAppDlcIds({kManagedDlc});
-	CHECK(Apps::ownershipOverrideAllowed(
-	          true, false, false, false, false, false, false),
-	      "a LuaTools-managed app remains eligible before type discovery");
-	CHECK(Apps::ownershipOverrideAllowed(
-	          true, false, true, true, false, false, true),
-	      "package-zero owns flag does not prove native ownership");
-	CHECK(!Apps::ownershipOverrideAllowed(
-	          false, true, false, true, true, false, false),
-	      "an unmanaged DLC is rejected before any ownership metadata changes");
-
-	CHECK(!Apps::genericOwnershipOverrideAllowed(
-	          true, false, true, true, false, false),
-	      "global app ownership never overrides a known DLC");
-	CHECK(!Apps::genericOwnershipOverrideAllowed(
-	          true, false, false, false, false, false),
-	      "global app ownership fails closed until the app type is known");
-	CHECK(Apps::genericOwnershipOverrideAllowed(
-	          true, false, true, false, false, false),
-	      "global app ownership still accepts a known non-DLC when filtering is off");
-	CHECK(!Apps::genericOwnershipOverrideAllowed(
-	          true, false, true, false, true, false),
-	      "automatic filtering still rejects a non-game app");
-	CHECK(Apps::genericOwnershipOverrideAllowed(
-	          true, false, true, false, true, true),
-	      "automatic filtering still accepts games and applications");
 
 	CHECK(!DLC::shouldUnlockDlc(kUnmanagedDlc),
 	      "an unmanaged DLC keeps Steam's ownership result");

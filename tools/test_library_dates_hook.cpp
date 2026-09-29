@@ -105,9 +105,8 @@ int main()
 	      "excluded apps remain untouched");
 	excluded = false;
 	g_config.addedAppIds.set({});
-	g_config.playNotOwnedGames.set(true);
 	check(checkDate(0, packageDate, false).purchaseTime == packageDate,
-	      "the generic app path does not acquire a managed-library date");
+	      "an unmanaged app keeps its package date");
 	std::filesystem::remove_all(temp);
 	std::printf("%d failure(s)\n", failures);
 	return failures ? 1 : 0;

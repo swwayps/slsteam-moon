@@ -459,8 +459,6 @@ bool CConfig::loadSettings()
 	disableFamilyLock = getSetting<bool>(node, "DisableFamilyShareLock", true);
 	disableParentalRestrictions = getSetting<bool>(node, "DisableParentalRestrictions", false);
 	useWhiteList = getSetting<bool>(node, "UseWhitelist", false);
-	automaticFilter = getSetting<bool>(node, "AutoFilterList", true);
-	playNotOwnedGames = getSetting<bool>(node, "PlayNotOwnedGames", false);
 	smartTickets = getSetting<SmartTicketsFlags>(node, "SmartTickets", 1);
 	maxSchemaTries = getSetting<uint32_t>(node, "MaxSchemaTries", 10);
 	// SafeMode (abort the load on an unknown steamclient.so hash) is force-
@@ -521,14 +519,14 @@ bool CConfig::loadSettings()
 	//TODO: Create smart logging function to log them automatically via getSetting
 	g_pLog->info(
 		"Config: DisableFamilyShareLock=%i DisableParentalRestrictions=%i "
-		"UseWhitelist=%i AutoFilterList=%i PlayNotOwnedGames=%i SafeMode=%i "
+		"UseWhitelist=%i SafeMode=%i "
 		"Notifications=%i WarnHashMissmatch=%i NotifyInit=%i API=%i "
 		"FakeEmail=%s FakeWalletBalance=%i DisableCloud=%i Donate=%i "
 		"InjectAllAdvertisedDlc=%i Achievements=%i PatternCache=%i "
 		"AsyncProvision=%i ExtendedLogging=%i AutoUpdateApps=%i LogLevel=%u "
 		"MaxSchemaTries=%u\n",
 		disableFamilyLock.get(), disableParentalRestrictions.get(),
-		useWhiteList.get(), automaticFilter.get(), playNotOwnedGames.get(),
+		useWhiteList.get(),
 		safeMode.get(), notifications.get(), warnHashMissmatch.get(),
 		notifyInit.get(), api.get(), fakeEmail.get().c_str(),
 		fakeWalletBalance.get(), disableCloud.get(), donate.get().enabled,

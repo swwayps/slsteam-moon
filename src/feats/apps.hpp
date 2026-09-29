@@ -12,30 +12,6 @@ namespace Apps
 {
 	extern bool applistRequested;
 
-	// The generic PlayNotOwnedGames path is allowed to handle games and
-	// applications, but never DLC.  DLC ownership is scoped separately through
-	// isAddedAppDlcId(), so fail closed until Steam's app type is available.
-	inline bool genericOwnershipOverrideAllowed(
-		bool playNotOwnedGames, bool ownsLicense, bool appTypeKnown,
-		bool isDlc, bool automaticFilter, bool isGameOrApplication)
-	{
-		if (!playNotOwnedGames || ownsLicense || !appTypeKnown || isDlc)
-		{
-			return false;
-		}
-		return !automaticFilter || isGameOrApplication;
-	}
-
-	inline bool ownershipOverrideAllowed(
-		bool managedApp, bool playNotOwnedGames, bool ownsLicense,
-		bool appTypeKnown, bool isDlc, bool automaticFilter,
-		bool isGameOrApplication)
-	{
-		return managedApp || genericOwnershipOverrideAllowed(
-			playNotOwnedGames, ownsLicense, appTypeKnown, isDlc,
-			automaticFilter, isGameOrApplication);
-	}
-
 	bool unlockApp(uint32_t appId, CAppOwnershipInfo* info, const CSteamId& ownerId);
 	bool unlockApp(uint32_t appId, CAppOwnershipInfo* info);
 

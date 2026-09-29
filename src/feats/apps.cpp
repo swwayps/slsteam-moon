@@ -17,7 +17,6 @@
 
 #include "appinfo_provision.hpp"
 #include "appinfostate.hpp"
-#include "clouddecision.hpp"
 #include "fakeappid.hpp"
 #include "synthmark.hpp"
 #include "../utils/ManifestFetch.hpp"
@@ -274,17 +273,9 @@ bool Apps::checkAppOwnership(uint32_t appId, CAppOwnershipInfo* pInfo)
 		return false;
 	}
 
-	const bool manualUnlock = g_config.isAddedAppId(appId);
-	const EAppType type = g_pClientApps
-		? g_pClientApps->getAppType(appId)
-		: APPTYPE_INVALID;
-	const bool typeKnown = type != APPTYPE_INVALID;
-	const bool gameOrApplication =
-		type == APPTYPE_APPLICATION || type == APPTYPE_GAME;
-	if (!ownershipOverrideAllowed(
-	        manualUnlock, g_config.playNotOwnedGames.get(),
-	        pInfo->ownsLicense, typeKnown, type == APPTYPE_DLC,
-	        g_config.automaticFilter.get(), gameOrApplication))
+	// Only LuaTools-managed apps are unlocked; everything else keeps Steam's
+	// answer untouched.
+	if (!g_config.isAddedAppId(appId))
 	{
 		return false;
 	}
@@ -305,8 +296,8 @@ bool Apps::checkAppOwnership(uint32_t appId, CAppOwnershipInfo* pInfo)
 	{
 		pInfo->purchaseTime = times.at(appId);
 	}
-	else if (manualUnlock && (pInfo->subId == 0 ||
-	         (pInfo->subId == -1 && !pInfo->ownsLicense)))
+	else if (pInfo->subId == 0 ||
+	         (pInfo->subId == -1 && !pInfo->ownsLicense))
 	{
 		// Package 0 contributes its license date to every appended app. That
 		// date is unrelated to library inclusion and breaks "recently added".
@@ -348,43 +339,14 @@ void Apps::getSubscribedApps(uint32_t* appList, size_t size, uint32_t& count)
 
 bool Apps::shouldDisableCloud(uint32_t appId)
 {
-	const bool enabled = g_config.disableCloud.get();
-	if (!enabled)
-	{
-		return false;
-	}
-
 	// Managed apps are injected into package 0 so Steam treats them as
-	// owned — which means isSubscribed() returns true for them.  Cloud
-	// saves still can't sync: Valve's cloud backend validates ownership
-	// server-side and rejects the upload with "Access Denied" (visible in
-	// cloud_log.txt).  Disable cloud for them explicitly so Steam doesn't
-	// attempt the doomed sync and surface a cloud error to the user; the
-	// ownership check below would otherwise be defeated by our own
-	// ownership injection.
-	const bool managed = g_config.isAddedAppId(appId);
-	const bool unlockNotOwned = g_config.playNotOwnedGames.get();
-
-	// Query Steam only when the decision can depend on its answer.  That
-	// answer flips to "not owned" for genuinely owned apps while the client
-	// rebuilds its license set, so it must never reach a decision it cannot
-	// change.
-	bool steamReportsOwned = true;
-	if (managed || !unlockNotOwned)
-	{
-		return Apps::cloudDisableDecision(enabled, managed, unlockNotOwned,
-		                                  steamReportsOwned);
-	}
-
-	CUser* user = getLocalUser();
-	if (user == nullptr)
-	{
-		return false;
-	}
-	steamReportsOwned = user->isSubscribed(appId);
-
-	return Apps::cloudDisableDecision(enabled, managed, unlockNotOwned,
-	                                  steamReportsOwned);
+	// owned.  Cloud saves still can't sync: Valve's cloud backend validates
+	// ownership server-side and rejects the upload with "Access Denied"
+	// (visible in cloud_log.txt).  Disable cloud for them explicitly so Steam
+	// doesn't attempt the doomed sync and surface a cloud error to the user.
+	// Steam's own ownership answer is never consulted: it flips to "not owned"
+	// for genuinely owned apps while the client rebuilds its license set.
+	return g_config.disableCloud.get() && g_config.isAddedAppId(appId);
 }
 
 bool Apps::shouldDisableCDKey(uint32_t appId)

@@ -118,8 +118,6 @@ public:
 	MTVariable<bool> disableFamilyLock;
 	MTVariable<bool> disableParentalRestrictions;
 	MTVariable<bool> useWhiteList;
-	MTVariable<bool> automaticFilter;
-	MTVariable<bool> playNotOwnedGames;
 	MTVariable<SmartTicketsFlags> smartTickets;
 	MTVariable<uint32_t> maxSchemaTries;
 	MTVariable<bool> safeMode;

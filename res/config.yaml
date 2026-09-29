@@ -33,8 +33,6 @@ UseWhitelist: no
 #List of AppIds to ex-/include
 AppIds:
 
-#Enables playing of not owned games. Respects black-/whitelist AppIds
-PlayNotOwnedGames: no
 
 #DO NOT ADD APPIDS HERE. Recent slsteam-moon versions read the game list
 #directly from ~/.steam/steam/config/stplug-in. To add AppIDs manually
