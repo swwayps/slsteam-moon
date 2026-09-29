@@ -59,7 +59,7 @@ endif
 .PHONY: test-manifestdonor test-manifestfetch
 .PHONY: test-reconcilepin-scan
 .PHONY: test-depotkey-recv-policy
-.PHONY: test-private-apps test-config-strings
+.PHONY: test-private-apps test-config-settings
 
 test-manifestdonor:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror \
@@ -530,13 +530,13 @@ test-depot-overrides:
 		-Wl,--gc-sections -pthread -o /tmp/test_depot_overrides
 	/tmp/test_depot_overrides
 
-test-config-strings:
+test-config-settings:
 	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
 		-fno-reorder-blocks-and-partition -ffunction-sections -fdata-sections \
 		-Wall -Wextra -Wpedantic -isystem include -I src \
-		tools/test_config_strings.cpp src/feats/librarydates.cpp lib/libyaml-cpp.a \
-		-Wl,--gc-sections -pthread -o /tmp/test_config_strings
-	/tmp/test_config_strings
+		tools/test_config_settings.cpp src/feats/librarydates.cpp lib/libyaml-cpp.a \
+		-Wl,--gc-sections -pthread -o /tmp/test_config_settings
+	/tmp/test_config_settings
 test-private-apps:
 	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
 		-fno-reorder-blocks-and-partition -ffunction-sections -fdata-sections \

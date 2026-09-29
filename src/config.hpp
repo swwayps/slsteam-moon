@@ -197,16 +197,21 @@ public:
 			return defVal;
 		}
 
-		// Use yaml-cpp's NON-THROWING conversion (the as<T>(fallback) overload):
-		// it returns defVal on a bad/out-of-range scalar instead of throwing
-		// YAML::TypedBadConversion<T>.  We can NOT rely on catching that throw:
-		// under the release build (-O3 -flto -freorder-blocks-and-partition)
-		// the throw lives in the function's ".cold" partition and the call-site
-		// table fails to route it to the catch landing pad, so even catch (...)
-		// is bypassed -> the exception escapes loadSettings and aborts the
-		// client at startup (a huge FakeWalletBalance bricked Steam on every
-		// launch).  Not throwing at all sidesteps the partitioned-EH defect.
-		return node[name].as<T>(defVal);
+		// Decode without throwing. We can NOT rely on catching the
+		// YAML::TypedBadConversion<T> that as<T>() raises: under the release
+		// build (-O3 -flto -freorder-blocks-and-partition) the throw lives in
+		// the function's ".cold" partition and the call-site table fails to
+		// route it to the catch landing pad, so even catch (...) is bypassed
+		// and the client aborts at startup (a huge FakeWalletBalance bricked
+		// Steam on every launch). A bad scalar falls back to the default and
+		// is reported by key instead.
+		T value {};
+		if (!YAML::convert<T>::decode(node[name], value))
+		{
+			setError(ELoadError::ParsingException, name);
+			return defVal;
+		}
+		return value;
 	}
 
 	template<typename T>
