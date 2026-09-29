@@ -3,8 +3,12 @@
 #include "../src/feats/apps.hpp"
 #include "../src/log.hpp"
 
+#include <atomic>
+#include <cstdint>
 #include <cstdio>
 #include <memory>
+#include <string>
+#include <thread>
 
 namespace
 {
@@ -57,6 +61,34 @@ int main()
 	      "other keys are ignored");
 	check(setWithoutThrowing(key, nullptr) && setWithoutThrowing(nullptr, "[10]"),
 	      "null strings are ignored");
+
+	// The detour writes the list on the config-store caller while the presence
+	// sender reads it; alternating a small and a large list swaps the set's
+	// storage on every write. Without synchronisation this crashes in seconds.
+	std::string large = "[";
+	for (int i = 1; i <= 300; i++)
+	{
+		large += std::to_string(i) + (i < 300 ? "," : "]");
+	}
+	std::atomic<bool> stop { false };
+	std::thread reader([&stop]
+	{
+		while (!stop.load())
+		{
+			for (uint32_t appId = 1; appId <= 300; appId++)
+			{
+				(void)Apps::privateApps.contains(appId);
+			}
+		}
+	});
+	for (int i = 0; i < 20000; i++)
+	{
+		Apps::setConfigStoreString(key, (i & 1) ? "[7]" : large.c_str());
+	}
+	stop.store(true);
+	reader.join();
+	check(Apps::privateApps.contains(7u) && !Apps::privateApps.contains(8u),
+	      "concurrent readers see a whole list");
 
 	return failures ? 1 : 0;
 }

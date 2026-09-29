@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../mtvar.hpp"
+
 #include <cstdint>
 #include <map>
 #include <unordered_set>
@@ -17,7 +19,8 @@ struct DepotInfo_t;
 namespace Apps
 {
 	extern bool applistRequested;
-	extern std::unordered_set<uint32_t> privateApps;
+	// Written by the config-store detour, read by the presence sender.
+	extern MTVariable<std::unordered_set<uint32_t>> privateApps;
 
 	bool unlockApp(uint32_t appId, AppOwnershipInfo_t* info, const CSteamId& ownerId);
 	bool unlockApp(uint32_t appId, AppOwnershipInfo_t* info);

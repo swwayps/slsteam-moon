@@ -215,7 +215,7 @@ namespace
 }
 
 bool Apps::applistRequested;
-std::unordered_set<AppId_t> Apps::privateApps = std::unordered_set<AppId_t>();
+MTVariable<std::unordered_set<AppId_t>> Apps::privateApps;
 
 bool Apps::unlockApp(uint32_t appId, AppOwnershipInfo_t* info, const CSteamId& ownerId)
 {
@@ -557,7 +557,7 @@ void Apps::sendGamesPlayed(CNetPacket* pkt)
 			char name[256] {}; //No clue how long titles can get
 			int len = 0;
 
-			if (privateApps.contains(gameId))
+			if (privateApps.contains(static_cast<AppId_t>(gameId)))
 			{
 				strcpy(name, "Redacted");
 				len = strlen(name);
@@ -717,5 +717,5 @@ void Apps::setConfigStoreString(const char* key, const char* value)
 		g_pLog->debug("Added %u to privateApps\n", appId);
 	}
 
-	privateApps = std::move(apps);
+	privateApps.set(std::move(apps));
 }
