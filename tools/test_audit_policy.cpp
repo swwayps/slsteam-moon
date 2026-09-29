@@ -110,7 +110,9 @@ int main()
 		"#include<cctype>", "#include<ctype.h>",
 		"std::isalnum(", "std::isalpha(", "std::isdigit(",
 		"std::isspace(", "std::isxdigit(", "std::tolower(",
-		"std::toupper(",
+		"std::toupper(", "std::isprint(", "std::isgraph(",
+		"std::ispunct(", "std::iscntrl(", "std::isblank(",
+		"std::isupper(", "std::islower(",
 	};
 	bool auditSourcesAreLocaleFree = true;
 	for (const auto& entry : std::filesystem::recursive_directory_iterator("src"))
