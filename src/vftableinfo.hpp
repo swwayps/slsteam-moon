@@ -35,6 +35,11 @@ namespace VFTIndexes
 		extern VFTableInfo_t SendAndRecvMsg;
 	}
 
+	namespace CGameInfoDialog
+	{
+		extern VFTableInfo_t ServerResponded;
+	}
+
 	namespace CSteamMatchmakingServers
 	{
 		extern VFTableInfo_t GetServerDetails;

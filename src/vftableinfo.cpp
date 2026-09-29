@@ -41,7 +41,6 @@ bool VFTableInfo_t::init()
 
 	auto& vft = Decompiler::vftables[typeName];
 	auto& funcs = vft.functions;
-	vft.analzye();
 
 	if (index >= funcs.size())
 	{
@@ -78,6 +77,16 @@ namespace VFTIndexes
 		{
 			"30CClientUnifiedServiceTransport",
 			"SendAndRecv",
+			5
+		};
+	}
+
+	namespace CGameInfoDialog
+	{
+		VFTableInfo_t ServerResponded
+		{
+			"15CGameInfoDialog",
+			"ServerResponded",
 			5
 		};
 	}

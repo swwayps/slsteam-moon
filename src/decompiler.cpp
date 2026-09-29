@@ -504,18 +504,21 @@ void Decompiler::parseModule(const lm_module_t &mod)
 	if (shROData)
 	{
 		//Collect strings to cross-reference
+		g_pLog->debug("Scanning .rodata for strings in %s\n", mod.name);
 		collectStrings(mod, *shROData);
 	}
 
 	const Elf_Shdr* shRODataStr = getSection(mod, ".rodata.str");
 	if (shRODataStr)
 	{
+		g_pLog->debug("Scanning .rodata.str for strings in %s\n", mod.name);
 		collectStrings(mod, *shRODataStr);
 	}
 
 	const Elf_Shdr* shDataRelRO = getSection(mod, ".data.rel.ro");
 	if (shDataRelRO)
 	{
+		g_pLog->debug("Scanning .data.rel.ro for VFTables in %s\n", mod.name);
 		//Use collected strings to identify typeInfos, then cross reference those to find VFTables
 		collectVFTables(mod, *shDataRelRO);
 	}
@@ -655,7 +658,6 @@ std::map<std::string, unsigned int> Decompiler::parseInterfaceMapBase(const char
 	}
 
 	auto& vft = vftables[interface];
-	vft.analzye();
 
 	g_pLog->debug("Disassembling %s's functions\n", interface);
 

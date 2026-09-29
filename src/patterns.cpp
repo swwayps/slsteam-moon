@@ -1264,18 +1264,6 @@ namespace Patterns
 		};
 	}
 
-	namespace ISteamMatchmakingPingResponse
-	{
-		Pattern_t ServerResponded
-		{
-			"ISteamMatchmakingPingResponse::ServerResponded",
-			"8B 85 ? ? ? ? 8B 40 ? 85 C0 0F 84 ? ? ? ? 39 46",
-			SigFollowMode::PrologueUpwards,
-			std::vector<uint8_t> { 0x57, 0xe5, 0x89, 0x55 },
-			&g_modSteamUI
-		};
-	}
-
 	namespace CWebSocketConnection
 	{
 		Pattern_t BBuildAndAsyncSendFrame

@@ -1275,10 +1275,10 @@ static bool hkClientUser_RequiresLegacyCDKey(void* pClientUser, uint32_t appId, 
 	return requiresKey;
 }
 
-static void hkSteamMatchmakingPingResponse_ServerResponded(void* pSteamMatchingPingResponse, gameserverdetails_t* details)
+static void hkCGameInfoDialog_ServerResponded(void* pGameInfoDialog, gameserverdetails_t* details)
 {
 	FakeAppIds::pingResponse(details);
-	Hooks::ISteamMatchmakingPingResponse_ServerResponded.tramp.fn(pSteamMatchingPingResponse, details);
+	Hooks::CGameInfoDialog_ServerResponded.tramp.fn(pGameInfoDialog, details);
 }
 
 namespace Hooks
@@ -1338,7 +1338,7 @@ namespace Hooks
 	VFTHook<IClientUtils_GetAppId_t> IClientUtils_GetAppId("IClientUtils::GetAppId");
 	VFTHook<IClientUtils_GetOfflineMode_t> IClientUtils_GetOfflineMode("IClientUtils::GetOfflineMode");
 
-	DetourHook<ISteamMatchmakingPingResponse_ServerResponded_t> ISteamMatchmakingPingResponse_ServerResponded;
+	DetourHook<CGameInfoDialog_ServerResponded_t> CGameInfoDialog_ServerResponded;
 }
 
 void Hooks::placeVFTHooks()
@@ -1455,7 +1455,7 @@ bool Hooks::setup()
 
 
 
-		&& ISteamMatchmakingPingResponse_ServerResponded.setup(Patterns::ISteamMatchmakingPingResponse::ServerResponded, hkSteamMatchmakingPingResponse_ServerResponded);
+		&& CGameInfoDialog_ServerResponded.setup(VFTIndexes::CGameInfoDialog::ServerResponded, hkCGameInfoDialog_ServerResponded);
 
 
 	// CAPIJob::GetPlayerStats is a debug-only observation hook, and its pattern
@@ -1487,7 +1487,6 @@ bool Hooks::setup()
 		const auto storage = Decompiler::vftables.find("18CUserRemoteStorage");
 		if (storage != Decompiler::vftables.end())
 		{
-			storage->second.analzye();
 			const auto& slots = storage->second.functions;
 			cloudToggleHookReady = entry.index < slots.size()
 				&& IClientRemoteStorage_IsCloudEnabledForApp.setup(
@@ -1574,7 +1573,7 @@ void Hooks::place()
 
 
 
-	ISteamMatchmakingPingResponse_ServerResponded.place();
+	CGameInfoDialog_ServerResponded.place();
 }
 
 void Hooks::remove()
@@ -1645,7 +1644,7 @@ void Hooks::remove()
 	IClientUser_IsUserSubscribedAppInTicket.remove();
 	IClientUser_RequiresLegacyCDKey.remove();
 
-	ISteamMatchmakingPingResponse_ServerResponded.remove();
+	CGameInfoDialog_ServerResponded.remove();
 
 	IClientAppManager_BIsDlcEnabled.remove();
 	IClientAppManager_GetAppUpdateInfo.remove();

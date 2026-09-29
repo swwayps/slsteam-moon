@@ -637,7 +637,6 @@ static void load()
 
 	{
 		BootProf::Span vftProfile(g_pLog.get(), "vftable_scan");
-		Decompiler::parseModule(g_modSteamClient);
 		if (!VFTIndexes::init())
 		{
 			g_pLog->warn("Failed to parse VFTables! Aborting...\n");
@@ -1107,6 +1106,29 @@ extern "C" uintptr_t la_symbind32(Elf32_Sym* sym,
 	return sym->st_value;
 }
 
+// The decompiler reads link-time offsets out of .data.rel.ro, so each module is
+// parsed from la_objopen, before the loader relocates it (upstream
+// 3e9dfdd/807e229). Only the vtables of the module just opened are analysed.
+static void decompileBeforeRelocation(const char* path)
+{
+	const bool client = AuditBinding::hasSuffix(path, "/steamclient.so");
+	lm_module_t& mod = client ? g_modSteamClient : g_modSteamUI;
+	if (mod.base || !LM_FindModule(client ? "steamclient.so" : "steamui.so", &mod))
+	{
+		return;
+	}
+
+	BootProf::Span profile(g_pLog.get(), client ? "decompile_steamclient" : "decompile_steamui");
+	Decompiler::parseModule(mod);
+	for (auto& [name, vft] : Decompiler::vftables)
+	{
+		if (vft.moduleBase == mod.base)
+		{
+			vft.analzye();
+		}
+	}
+}
+
 extern "C" unsigned int la_objopen(struct link_map* map,
                                    __attribute__((unused)) Lmid_t lmid,
                                    __attribute__((unused)) uintptr_t* cookie)
@@ -1118,6 +1140,10 @@ extern "C" unsigned int la_objopen(struct link_map* map,
 		if (!setupSuccess)
 		{
 			setup();
+		}
+		if (setupSuccess)
+		{
+			decompileBeforeRelocation(map->l_name);
 		}
 		load();
 	}

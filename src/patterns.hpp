@@ -157,11 +157,6 @@ namespace Patterns
 	}
 
 
-	namespace ISteamMatchmakingPingResponse
-	{
-		extern Pattern_t ServerResponded;
-	}
-
 	// Construct-on-first-use accessor for the pattern registry.
 	//
 	// The global Pattern_t objects below register themselves into this
