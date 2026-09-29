@@ -13,6 +13,8 @@
 #include <fcntl.h>
 #include <ios>
 #include <unistd.h>
+#include <cerrno>
+#include <mutex>
 
 
 namespace SLSAPI
@@ -25,6 +27,10 @@ namespace SLSAPI
 	const char* path = "";
 	std::fstream fstream;
 	CFileWatcher* watcher;
+
+	std::mutex executionMutex;
+	std::vector<InstallCommand_t> installs;
+	std::vector<uint32_t> uninstalls;
 }
 
 bool SLSAPI::isEnabled()
@@ -92,22 +98,26 @@ void SLSAPI::onFileChange()
 			uint32_t appId = std::strtoul(split[1].c_str(), nullptr, 10);
 			uint32_t library = std::strtoul(split[2].c_str(), nullptr, 10);
 
-			if (!g_pClientAppManager)
-			{
-				g_pLog->info("API g_pClientAppManager is nullptr! Aborting...\n");
-				return;
-			}
-
-			g_pLog->info("API Installing %s to %s\n", split[1].c_str(), split[2].c_str());
-
-			// Same call, same arguments — executed on the owner IPC thread.
-			// Non-blocking: the watcher does not wait for the owner.
-			const auto mode = OwnerWork::submitInstallApp(appId, library);
-			g_pLog->debug("API install request dispatched %s\n", OwnerWork::modeName(mode));
+			std::lock_guard guard(executionMutex);
+			installs.emplace_back(InstallCommand_t { appId, library } );
 		}
 		catch(...)
 		{
 			g_pLog->info("API Failed to parse %s or %s!\n", split[1].c_str(), split[2].c_str());
+		}
+	}
+	else if (split.size() > 1 && split[0] == "uninstall")
+	{
+		try
+		{
+			uint32_t appId = std::strtoul(split[1].c_str(), nullptr, 10);
+
+			std::lock_guard guard(executionMutex);
+			uninstalls.emplace_back(appId);
+		}
+		catch(...)
+		{
+			g_pLog->info("API Failed to parse %s!\n", split[1].c_str());
 		}
 	}
 }
@@ -164,8 +174,40 @@ void SLSAPI::init()
 	}
 
 	watcher = new CFileWatcher(onFileChange);
-	watcher->addFile(path);
+	if (!watcher->addFile(path))
+	{
+		g_pLog->warn("API could not watch %s -> API unavailable\n", path);
+		return;
+	}
 	watcher->start();
 
 	g_pLog->debug("SLSsteam API initialized at %s\n", path);
+}
+
+void SLSAPI::runIPCFrame()
+{
+	if (!installs.size() && !uninstalls.size()) //No need to lock mutex when no commands are queued
+	{
+		return;
+	}
+
+	std::lock_guard guard(executionMutex);
+
+	while(installs.size())
+	{
+		const auto app = installs.begin();
+		g_pClientAppManager->installApp(app->appId, app->libraryIndex);
+		installs.erase(app);
+
+		g_pLog->debug("Installed %u to %u\n", app->appId, app->libraryIndex);
+	}
+
+	while(uninstalls.size())
+	{
+		const auto app = uninstalls.begin();
+		g_pClientAppManager->uninstallApp(*app);
+		uninstalls.erase(app);
+
+		g_pLog->debug("Uninstalled %u\n", *app);
+	}
 }

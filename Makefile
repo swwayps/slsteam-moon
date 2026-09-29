@@ -168,6 +168,9 @@ bin/pattern-refresh: tools/pattern-refresh/main.cpp \
 		tools/pattern-refresh/main.cpp tools/pattern-refresh/catalog.cpp \
 		src/pattern_catalog.cpp -lcurl -lcrypto -lpthread -o $@
 
+tools/schema-grabber/bin/Release/net9.0/linux-x64/publish/schema-grabber:
+	sh tools/schema-grabber/build.sh
+
 -include $(deps)
 obj/update.o: src/update.cpp res/version.txt
 	$(shell ./embed-version.sh)

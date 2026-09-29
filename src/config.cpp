@@ -6,6 +6,7 @@
 #include "config_default.hpp"
 #include "filewatcher.hpp"
 #include "log.hpp"
+
 #include "yaml-cpp/yaml.h"
 
 #include "feats/appinfo_provision.hpp"
@@ -321,6 +322,7 @@ static void onFileChange()
 	// Steam-owned package and license work is serialized by OwnerWork.  Only
 	// the stplug-in/luaappids union enters this complete desired-state snapshot.
 	HotReload::publish(afterManaged, true);
+	g_pLog->notify("Config reloaded!");
 }
 
 bool CConfig::init()
@@ -531,6 +533,7 @@ bool CConfig::loadSettings()
 		injectAllAdvertisedDlc.get(),
 		achievements.get(), patternCache.get(), asyncProvision.get(),
 		extendedLogging.get(), autoUpdateApps.get(), logLevel.get());
+
 
 	appIds = getList<uint32_t>(node, "AppIds");
 
@@ -831,7 +834,6 @@ bool CConfig::loadSettings()
 			break;
 	}
 
-
 	return true;
 }
 
@@ -879,7 +881,7 @@ void CConfig::purgePinsForApps(const std::unordered_set<uint32_t>& appIds)
 	lockedApps.set(ManifestPins::lockedAppSet(pinMap));
 }
 
-bool CConfig::shouldExcludeAppId(uint32_t appId)
+bool CConfig::shouldExcludeAppId(uint32_t appId, bool ignoreAdditionalApps)
 {
 	bool exclude = false;
 	//Proper way would be with getAppType, but that seems broken so we need to do this instead
@@ -891,7 +893,7 @@ bool CConfig::shouldExcludeAppId(uint32_t appId)
 	else
 	{
 		bool found = appIds.get().contains(appId);
-		exclude = !isAddedAppId(appId) && ((useWhiteList.get() && !found) || (!useWhiteList.get() && found));
+		exclude = (!isAddedAppId(appId) || ignoreAdditionalApps) && ((useWhiteList.get() && !found) || (!useWhiteList.get() && found));
 	}
 
 	g_pLog->debugOnce("shouldExcludeAppId(%u) -> %i\n", appId, exclude);

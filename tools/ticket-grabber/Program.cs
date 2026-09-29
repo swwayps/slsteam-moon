@@ -377,6 +377,7 @@ namespace TicketGrabber
             if (args.Length < 3 || (args.Length > 0 && args.Any(a => a == "-h" || a == "--help")))
             {
                 Console.WriteLine("Usage: ./ticket-grabber username password appId");
+                Console.WriteLine("Use AppId 0 to grab AppOwnershipTickets for all owned licenses");
                 Environment.Exit(1);
             }
 

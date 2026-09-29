@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstddef>
 #include <cstdint>
 #include <map>
 #include <vector>
@@ -12,7 +11,6 @@ class CSteamId;
 namespace Apps
 {
 	extern bool applistRequested;
-	extern std::map<uint32_t, int> appIdOwnerOverride;
 
 	// The generic PlayNotOwnedGames path is allowed to handle games and
 	// applications, but never DLC.  DLC ownership is scoped separately through

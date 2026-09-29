@@ -1,6 +1,6 @@
 # Maintainer: Ace! _SL/S <acesls@protonmail.com>
 pkgname="slssteam-git"
-pkgver=20260528151547
+pkgver=20260624075231
 pkgrel=1
 pkgdesc="Steamclient Mod - Pre release"
 arch=("i686" "x86_64")
@@ -54,4 +54,5 @@ package() {
 	install -D "$srcdir/SLSsteam/res/logo.png" "$pkgdir/usr/share/pixmaps/SLSsteam.png"
 
 	install -D "$srcdir/SLSsteam/tools/ticket-grabber/bin/Release/net9.0/linux-x64/publish/ticket-grabber" "$pkgdir/usr/bin/sls-ticket-grabber"
+	install -D "$srcdir/SLSsteam/tools/schema-grabber/bin/Release/net9.0/linux-x64/publish/schema-grabber" "$pkgdir/usr/bin/sls-schema-grabber"
 }

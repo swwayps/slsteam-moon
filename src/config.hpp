@@ -293,7 +293,7 @@ public:
 	std::unordered_map<uint32_t, uint64_t> getAppPinnedDepots(uint32_t appId);
 	void purgePinsForApps(const std::unordered_set<uint32_t>& appIds);
 
-	bool shouldExcludeAppId(uint32_t appId);
+	bool shouldExcludeAppId(uint32_t appId, bool ignoreAdditionalApps = false);
 	uint32_t getDenuvoGameOwner(uint32_t appId);
 };
 

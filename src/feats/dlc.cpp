@@ -1,21 +1,16 @@
 #include "dlc.hpp"
 
 #include "../sdk/CAppOwnershipInfo.hpp"
-#include "../sdk/IClientUtils.hpp"
 
 #include "../config.hpp"
 
 #include "apps.hpp"
+#include "fakeappid.hpp"
 #include "stats_policy.hpp"
 
 
 bool DLC::shouldUnlockDlc(uint32_t appId)
 {
-	if (!g_pClientUtils || !g_pClientUtils->getAppId())
-	{
-		return false;
-	}
-
 	// The upstream DLC hook applied the global AppIds blacklist/whitelist to
 	// every DLC queried while any game was active.  With the default empty
 	// blacklist that made DLC from ordinary, genuinely-owned games eligible
@@ -28,8 +23,15 @@ bool DLC::shouldUnlockDlc(uint32_t appId)
 	{
 		return false;
 	}
-
 	if (g_config.shouldExcludeAppId(appId))
+	{
+		return false;
+	}
+
+	uint32_t pipeAppId = FakeAppIds::getRealAppIdForCurrentPipe();
+	//Don't unlock inside the SteamClient (AppId 0)
+	//Enable blacklisting whole games
+	if (!pipeAppId || g_config.shouldExcludeAppId(pipeAppId, true))
 	{
 		return false;
 	}

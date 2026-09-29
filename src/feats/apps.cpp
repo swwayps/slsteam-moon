@@ -214,7 +214,6 @@ namespace
 }
 
 bool Apps::applistRequested;
-std::map<uint32_t, int> Apps::appIdOwnerOverride;
 
 bool Apps::unlockApp(uint32_t appId, CAppOwnershipInfo* info, const CSteamId& ownerId)
 {
