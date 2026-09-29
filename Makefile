@@ -153,7 +153,7 @@ bin/SLSsteam.so: $(objs) $(libs)
 bin/library-inject.so: tools/library-inject/main.cpp tools/library-inject/Makefile
 	@mkdir -p bin
 	$(MAKE) -C tools/library-inject
-	ln -f tools/library-inject/library-inject.so bin/library-inject.so
+	cp tools/library-inject/library-inject.so $@
 
 PATTERN_PUBLIC_KEY_HEX = $(shell tr -d '[:space:]' < res/pattern-public-key.hex 2>/dev/null)
 

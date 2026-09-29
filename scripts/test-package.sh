@@ -47,6 +47,11 @@ fi
 STUBBED=()
 BACKUP_DIR="$(mktemp -d)"
 BACKED_UP=()
+# The subproject build output behind bin/library-inject.so must not share
+# storage with it, or the stubs below would overwrite what make reuses.
+INJECT_OUT="tools/library-inject/library-inject.so"
+INJECT_SUM=""
+[ -f "$INJECT_OUT" ] && INJECT_SUM="$(sha256sum < "$INJECT_OUT")"
 for f in bin/SLSsteam.so bin/library-inject.so bin/pattern-refresh; do
     mkdir -p bin
     if [ -e "$f" ]; then
@@ -57,6 +62,11 @@ for f in bin/SLSsteam.so bin/library-inject.so bin/pattern-refresh; do
     [ "$f" != bin/pattern-refresh ] || chmod +x "$f"
     STUBBED+=("$f")
 done
+if [ -n "$INJECT_SUM" ]; then
+    [ "$(sha256sum < "$INJECT_OUT")" = "$INJECT_SUM" ] \
+        && ok "stubbing bin/ leaves $INJECT_OUT intact" \
+        || bad "bin/library-inject.so shares storage with $INJECT_OUT"
+fi
 
 ABI_TMP="$(mktemp -d)"
 ABI_READELF="$ABI_TMP/readelf"
