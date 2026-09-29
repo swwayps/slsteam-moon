@@ -411,11 +411,12 @@ enum ESpeakerConfiguration : int {
   k_ESpeakerConfiguration_Other = 0,
   k_ESpeakerConfiguration_Stereo = 1,
   k_ESpeakerConfiguration_51 = 2,
-  k_ESpeakerConfiguration_71 = 3
+  k_ESpeakerConfiguration_71 = 3,
+  k_ESpeakerConfiguration_51_Ac3 = 4
 };
 bool ESpeakerConfiguration_IsValid(int value);
 constexpr ESpeakerConfiguration ESpeakerConfiguration_MIN = k_ESpeakerConfiguration_Other;
-constexpr ESpeakerConfiguration ESpeakerConfiguration_MAX = k_ESpeakerConfiguration_71;
+constexpr ESpeakerConfiguration ESpeakerConfiguration_MAX = k_ESpeakerConfiguration_51_Ac3;
 constexpr int ESpeakerConfiguration_ARRAYSIZE = ESpeakerConfiguration_MAX + 1;
 
 const std::string& ESpeakerConfiguration_Name(ESpeakerConfiguration value);
@@ -1778,7 +1779,7 @@ bool EEnhancedMarketAppearanceStatus_Parse(
 enum EContentReportSubjectType : int {
   k_EContentReportSubjectType_Invalid = 0,
   k_EContentReportSubjectType_ForumPost = 1,
-  k_EContentReportSubjectType_Unused = 2,
+  k_EContentReportSubjectType_CommentThread = 2,
   k_EContentReportSubjectType_UGCFile = 3,
   k_EContentReportSubjectType_FriendChatMsg = 4,
   k_EContentReportSubjectType_ChatRoomMsg = 5,
@@ -1915,7 +1916,7 @@ enum EContentReportSubjectAction : int {
   k_EContentReportSubjectAction_Updated = 5,
   k_EContentReportSubjectAction_Escalated = 6,
   k_EContentReportSubjectAction_Disputed = 7,
-  k_EContentReportSubjectAction_SustainedOnDispute = 8,
+  k_EContentReportSubjectAction_Sustained = 8,
   k_EContentReportSubjectAction_Locked = 9,
   k_EContentReportSubjectAction_Unlocked = 10,
   k_EContentReportSubjectAction_Deleted = 11,

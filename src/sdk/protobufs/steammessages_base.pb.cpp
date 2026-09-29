@@ -235,7 +235,6 @@ constexpr CCuratorPreferences::CCuratorPreferences(
   , website_title_(&::PROTOBUF_NAMESPACE_ID::internal::fixed_address_empty_string)
   , website_url_(&::PROTOBUF_NAMESPACE_ID::internal::fixed_address_empty_string)
   , discussion_url_(&::PROTOBUF_NAMESPACE_ID::internal::fixed_address_empty_string)
-  , supported_languages_(0u)
   , platform_windows_(false)
   , platform_mac_(false)
   , platform_linux_(false)
@@ -410,11 +409,11 @@ constexpr CPackageReservationStatus::CPackageReservationStatus(
   , time_reserved_(0u)
   , rtime_estimated_notification_(0u)
   , queue_head_position_at_reservation_(0)
-  , queue_head_position_now_(0)
   , expired_(false)
   , position_is_waitlist_(false)
   , queue_in_waitlist_(false)
-  , reservation_type_(false){}
+  , queue_head_position_now_(0)
+  , collection_time_active_(0u){}
 struct CPackageReservationStatusDefaultTypeInternal {
   constexpr CPackageReservationStatusDefaultTypeInternal()
     : _instance(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized{}) {}
@@ -5771,29 +5770,26 @@ std::string CMsgAppRights::GetTypeName() const {
 class CCuratorPreferences::_Internal {
  public:
   using HasBits = decltype(std::declval<CCuratorPreferences>()._has_bits_);
-  static void set_has_supported_languages(HasBits* has_bits) {
+  static void set_has_platform_windows(HasBits* has_bits) {
     (*has_bits)[0] |= 8u;
   }
-  static void set_has_platform_windows(HasBits* has_bits) {
+  static void set_has_platform_mac(HasBits* has_bits) {
     (*has_bits)[0] |= 16u;
   }
-  static void set_has_platform_mac(HasBits* has_bits) {
+  static void set_has_platform_linux(HasBits* has_bits) {
     (*has_bits)[0] |= 32u;
   }
-  static void set_has_platform_linux(HasBits* has_bits) {
+  static void set_has_vr_content(HasBits* has_bits) {
     (*has_bits)[0] |= 64u;
   }
-  static void set_has_vr_content(HasBits* has_bits) {
-    (*has_bits)[0] |= 128u;
-  }
   static void set_has_adult_content_violence(HasBits* has_bits) {
-    (*has_bits)[0] |= 512u;
+    (*has_bits)[0] |= 256u;
   }
   static void set_has_adult_content_sex(HasBits* has_bits) {
-    (*has_bits)[0] |= 1024u;
+    (*has_bits)[0] |= 512u;
   }
   static void set_has_timestamp_updated(HasBits* has_bits) {
-    (*has_bits)[0] |= 256u;
+    (*has_bits)[0] |= 128u;
   }
   static void set_has_website_title(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
@@ -5805,7 +5801,7 @@ class CCuratorPreferences::_Internal {
     (*has_bits)[0] |= 4u;
   }
   static void set_has_show_broadcast(HasBits* has_bits) {
-    (*has_bits)[0] |= 2048u;
+    (*has_bits)[0] |= 1024u;
   }
 };
 
@@ -5838,9 +5834,9 @@ CCuratorPreferences::CCuratorPreferences(const CCuratorPreferences& from)
     discussion_url_.Set(::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::EmptyDefault{}, from._internal_discussion_url(), 
       GetArena());
   }
-  ::memcpy(&supported_languages_, &from.supported_languages_,
+  ::memcpy(&platform_windows_, &from.platform_windows_,
     static_cast<size_t>(reinterpret_cast<char*>(&show_broadcast_) -
-    reinterpret_cast<char*>(&supported_languages_)) + sizeof(show_broadcast_));
+    reinterpret_cast<char*>(&platform_windows_)) + sizeof(show_broadcast_));
   // @@protoc_insertion_point(copy_constructor:CCuratorPreferences)
 }
 
@@ -5849,9 +5845,9 @@ website_title_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStri
 website_url_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
 discussion_url_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
 ::memset(reinterpret_cast<char*>(this) + static_cast<size_t>(
-    reinterpret_cast<char*>(&supported_languages_) - reinterpret_cast<char*>(this)),
+    reinterpret_cast<char*>(&platform_windows_) - reinterpret_cast<char*>(this)),
     0, static_cast<size_t>(reinterpret_cast<char*>(&show_broadcast_) -
-    reinterpret_cast<char*>(&supported_languages_)) + sizeof(show_broadcast_));
+    reinterpret_cast<char*>(&platform_windows_)) + sizeof(show_broadcast_));
 }
 
 CCuratorPreferences::~CCuratorPreferences() {
@@ -5898,14 +5894,14 @@ void CCuratorPreferences::Clear() {
     }
   }
   if (cached_has_bits & 0x000000f8u) {
-    ::memset(&supported_languages_, 0, static_cast<size_t>(
-        reinterpret_cast<char*>(&vr_content_) -
-        reinterpret_cast<char*>(&supported_languages_)) + sizeof(vr_content_));
+    ::memset(&platform_windows_, 0, static_cast<size_t>(
+        reinterpret_cast<char*>(&timestamp_updated_) -
+        reinterpret_cast<char*>(&platform_windows_)) + sizeof(timestamp_updated_));
   }
-  if (cached_has_bits & 0x00000f00u) {
-    ::memset(&timestamp_updated_, 0, static_cast<size_t>(
+  if (cached_has_bits & 0x00000700u) {
+    ::memset(&adult_content_violence_, 0, static_cast<size_t>(
         reinterpret_cast<char*>(&show_broadcast_) -
-        reinterpret_cast<char*>(&timestamp_updated_)) + sizeof(show_broadcast_));
+        reinterpret_cast<char*>(&adult_content_violence_)) + sizeof(show_broadcast_));
   }
   _has_bits_.Clear();
   _internal_metadata_.Clear<std::string>();
@@ -5919,14 +5915,6 @@ const char* CCuratorPreferences::_InternalParse(const char* ptr, ::PROTOBUF_NAME
     ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
     CHK_(ptr);
     switch (tag >> 3) {
-      // optional uint32 supported_languages = 1;
-      case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 8)) {
-          _Internal::set_has_supported_languages(&has_bits);
-          supported_languages_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
-          CHK_(ptr);
-        } else goto handle_unusual;
-        continue;
       // optional bool platform_windows = 2;
       case 2:
         if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 16)) {
@@ -6075,50 +6063,44 @@ failure:
   (void) cached_has_bits;
 
   cached_has_bits = _has_bits_[0];
-  // optional uint32 supported_languages = 1;
-  if (cached_has_bits & 0x00000008u) {
-    target = stream->EnsureSpace(target);
-    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteUInt32ToArray(1, this->_internal_supported_languages(), target);
-  }
-
   // optional bool platform_windows = 2;
-  if (cached_has_bits & 0x00000010u) {
+  if (cached_has_bits & 0x00000008u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(2, this->_internal_platform_windows(), target);
   }
 
   // optional bool platform_mac = 3;
-  if (cached_has_bits & 0x00000020u) {
+  if (cached_has_bits & 0x00000010u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(3, this->_internal_platform_mac(), target);
   }
 
   // optional bool platform_linux = 4;
-  if (cached_has_bits & 0x00000040u) {
+  if (cached_has_bits & 0x00000020u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(4, this->_internal_platform_linux(), target);
   }
 
   // optional bool vr_content = 5;
-  if (cached_has_bits & 0x00000080u) {
+  if (cached_has_bits & 0x00000040u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(5, this->_internal_vr_content(), target);
   }
 
   // optional bool adult_content_violence = 6;
-  if (cached_has_bits & 0x00000200u) {
+  if (cached_has_bits & 0x00000100u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(6, this->_internal_adult_content_violence(), target);
   }
 
   // optional bool adult_content_sex = 7;
-  if (cached_has_bits & 0x00000400u) {
+  if (cached_has_bits & 0x00000200u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(7, this->_internal_adult_content_sex(), target);
   }
 
   // optional uint32 timestamp_updated = 8;
-  if (cached_has_bits & 0x00000100u) {
+  if (cached_has_bits & 0x00000080u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteUInt32ToArray(8, this->_internal_timestamp_updated(), target);
   }
@@ -6154,7 +6136,7 @@ failure:
   }
 
   // optional bool show_broadcast = 14;
-  if (cached_has_bits & 0x00000800u) {
+  if (cached_has_bits & 0x00000400u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(14, this->_internal_show_broadcast(), target);
   }
@@ -6216,54 +6198,47 @@ size_t CCuratorPreferences::ByteSizeLong() const {
           this->_internal_discussion_url());
     }
 
-    // optional uint32 supported_languages = 1;
-    if (cached_has_bits & 0x00000008u) {
-      total_size += 1 +
-        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::UInt32Size(
-          this->_internal_supported_languages());
-    }
-
     // optional bool platform_windows = 2;
-    if (cached_has_bits & 0x00000010u) {
+    if (cached_has_bits & 0x00000008u) {
       total_size += 1 + 1;
     }
 
     // optional bool platform_mac = 3;
-    if (cached_has_bits & 0x00000020u) {
+    if (cached_has_bits & 0x00000010u) {
       total_size += 1 + 1;
     }
 
     // optional bool platform_linux = 4;
-    if (cached_has_bits & 0x00000040u) {
+    if (cached_has_bits & 0x00000020u) {
       total_size += 1 + 1;
     }
 
     // optional bool vr_content = 5;
-    if (cached_has_bits & 0x00000080u) {
+    if (cached_has_bits & 0x00000040u) {
       total_size += 1 + 1;
     }
 
-  }
-  if (cached_has_bits & 0x00000f00u) {
     // optional uint32 timestamp_updated = 8;
-    if (cached_has_bits & 0x00000100u) {
+    if (cached_has_bits & 0x00000080u) {
       total_size += 1 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::UInt32Size(
           this->_internal_timestamp_updated());
     }
 
+  }
+  if (cached_has_bits & 0x00000700u) {
     // optional bool adult_content_violence = 6;
-    if (cached_has_bits & 0x00000200u) {
+    if (cached_has_bits & 0x00000100u) {
       total_size += 1 + 1;
     }
 
     // optional bool adult_content_sex = 7;
-    if (cached_has_bits & 0x00000400u) {
+    if (cached_has_bits & 0x00000200u) {
       total_size += 1 + 1;
     }
 
     // optional bool show_broadcast = 14;
-    if (cached_has_bits & 0x00000800u) {
+    if (cached_has_bits & 0x00000400u) {
       total_size += 1 + 1;
     }
 
@@ -6303,33 +6278,30 @@ void CCuratorPreferences::MergeFrom(const CCuratorPreferences& from) {
       _internal_set_discussion_url(from._internal_discussion_url());
     }
     if (cached_has_bits & 0x00000008u) {
-      supported_languages_ = from.supported_languages_;
-    }
-    if (cached_has_bits & 0x00000010u) {
       platform_windows_ = from.platform_windows_;
     }
-    if (cached_has_bits & 0x00000020u) {
+    if (cached_has_bits & 0x00000010u) {
       platform_mac_ = from.platform_mac_;
     }
-    if (cached_has_bits & 0x00000040u) {
+    if (cached_has_bits & 0x00000020u) {
       platform_linux_ = from.platform_linux_;
     }
-    if (cached_has_bits & 0x00000080u) {
+    if (cached_has_bits & 0x00000040u) {
       vr_content_ = from.vr_content_;
+    }
+    if (cached_has_bits & 0x00000080u) {
+      timestamp_updated_ = from.timestamp_updated_;
     }
     _has_bits_[0] |= cached_has_bits;
   }
-  if (cached_has_bits & 0x00000f00u) {
+  if (cached_has_bits & 0x00000700u) {
     if (cached_has_bits & 0x00000100u) {
-      timestamp_updated_ = from.timestamp_updated_;
-    }
-    if (cached_has_bits & 0x00000200u) {
       adult_content_violence_ = from.adult_content_violence_;
     }
-    if (cached_has_bits & 0x00000400u) {
+    if (cached_has_bits & 0x00000200u) {
       adult_content_sex_ = from.adult_content_sex_;
     }
-    if (cached_has_bits & 0x00000800u) {
+    if (cached_has_bits & 0x00000400u) {
       show_broadcast_ = from.show_broadcast_;
     }
     _has_bits_[0] |= cached_has_bits;
@@ -6359,9 +6331,9 @@ void CCuratorPreferences::InternalSwap(CCuratorPreferences* other) {
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
       PROTOBUF_FIELD_OFFSET(CCuratorPreferences, show_broadcast_)
       + sizeof(CCuratorPreferences::show_broadcast_)
-      - PROTOBUF_FIELD_OFFSET(CCuratorPreferences, supported_languages_)>(
-          reinterpret_cast<char*>(&supported_languages_),
-          reinterpret_cast<char*>(&other->supported_languages_));
+      - PROTOBUF_FIELD_OFFSET(CCuratorPreferences, platform_windows_)>(
+          reinterpret_cast<char*>(&platform_windows_),
+          reinterpret_cast<char*>(&other->platform_windows_));
 }
 
 std::string CCuratorPreferences::GetTypeName() const {
@@ -9724,7 +9696,7 @@ class CPackageReservationStatus::_Internal {
     (*has_bits)[0] |= 1u;
   }
   static void set_has_expired(HasBits* has_bits) {
-    (*has_bits)[0] |= 8192u;
+    (*has_bits)[0] |= 4096u;
   }
   static void set_has_time_expires(HasBits* has_bits) {
     (*has_bits)[0] |= 256u;
@@ -9742,21 +9714,21 @@ class CPackageReservationStatus::_Internal {
     (*has_bits)[0] |= 2048u;
   }
   static void set_has_queue_head_position_now(HasBits* has_bits) {
-    (*has_bits)[0] |= 4096u;
+    (*has_bits)[0] |= 32768u;
   }
   static void set_has_position_is_waitlist(HasBits* has_bits) {
-    (*has_bits)[0] |= 16384u;
+    (*has_bits)[0] |= 8192u;
   }
   static void set_has_user_waitlist_token(HasBits* has_bits) {
     (*has_bits)[0] |= 4u;
   }
   static void set_has_queue_in_waitlist(HasBits* has_bits) {
-    (*has_bits)[0] |= 32768u;
+    (*has_bits)[0] |= 16384u;
   }
   static void set_has_queue_waitlist_token(HasBits* has_bits) {
     (*has_bits)[0] |= 8u;
   }
-  static void set_has_reservation_type(HasBits* has_bits) {
+  static void set_has_collection_time_active(HasBits* has_bits) {
     (*has_bits)[0] |= 65536u;
   }
 };
@@ -9792,8 +9764,8 @@ CPackageReservationStatus::CPackageReservationStatus(const CPackageReservationSt
       GetArena());
   }
   ::memcpy(&packageid_, &from.packageid_,
-    static_cast<size_t>(reinterpret_cast<char*>(&reservation_type_) -
-    reinterpret_cast<char*>(&packageid_)) + sizeof(reservation_type_));
+    static_cast<size_t>(reinterpret_cast<char*>(&collection_time_active_) -
+    reinterpret_cast<char*>(&packageid_)) + sizeof(collection_time_active_));
   // @@protoc_insertion_point(copy_constructor:CPackageReservationStatus)
 }
 
@@ -9804,8 +9776,8 @@ user_waitlist_token_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmp
 queue_waitlist_token_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
 ::memset(reinterpret_cast<char*>(this) + static_cast<size_t>(
     reinterpret_cast<char*>(&packageid_) - reinterpret_cast<char*>(this)),
-    0, static_cast<size_t>(reinterpret_cast<char*>(&reservation_type_) -
-    reinterpret_cast<char*>(&packageid_)) + sizeof(reservation_type_));
+    0, static_cast<size_t>(reinterpret_cast<char*>(&collection_time_active_) -
+    reinterpret_cast<char*>(&packageid_)) + sizeof(collection_time_active_));
 }
 
 CPackageReservationStatus::~CPackageReservationStatus() {
@@ -9860,10 +9832,10 @@ void CPackageReservationStatus::Clear() {
   }
   if (cached_has_bits & 0x0000ff00u) {
     ::memset(&time_expires_, 0, static_cast<size_t>(
-        reinterpret_cast<char*>(&queue_in_waitlist_) -
-        reinterpret_cast<char*>(&time_expires_)) + sizeof(queue_in_waitlist_));
+        reinterpret_cast<char*>(&queue_head_position_now_) -
+        reinterpret_cast<char*>(&time_expires_)) + sizeof(queue_head_position_now_));
   }
-  reservation_type_ = false;
+  collection_time_active_ = 0u;
   _has_bits_.Clear();
   _internal_metadata_.Clear<std::string>();
 }
@@ -10004,11 +9976,11 @@ const char* CPackageReservationStatus::_InternalParse(const char* ptr, ::PROTOBU
           CHK_(ptr);
         } else goto handle_unusual;
         continue;
-      // optional bool reservation_type = 17;
+      // optional uint32 collection_time_active = 17;
       case 17:
         if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 136)) {
-          _Internal::set_has_reservation_type(&has_bits);
-          reservation_type_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          _Internal::set_has_collection_time_active(&has_bits);
+          collection_time_active_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
           CHK_(ptr);
         } else goto handle_unusual;
         continue;
@@ -10073,7 +10045,7 @@ failure:
   }
 
   // optional bool expired = 6;
-  if (cached_has_bits & 0x00002000u) {
+  if (cached_has_bits & 0x00001000u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(6, this->_internal_expired(), target);
   }
@@ -10109,13 +10081,13 @@ failure:
   }
 
   // optional int32 queue_head_position_now = 12;
-  if (cached_has_bits & 0x00001000u) {
+  if (cached_has_bits & 0x00008000u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteInt32ToArray(12, this->_internal_queue_head_position_now(), target);
   }
 
   // optional bool position_is_waitlist = 13;
-  if (cached_has_bits & 0x00004000u) {
+  if (cached_has_bits & 0x00002000u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(13, this->_internal_position_is_waitlist(), target);
   }
@@ -10127,7 +10099,7 @@ failure:
   }
 
   // optional bool queue_in_waitlist = 15;
-  if (cached_has_bits & 0x00008000u) {
+  if (cached_has_bits & 0x00004000u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(15, this->_internal_queue_in_waitlist(), target);
   }
@@ -10138,10 +10110,10 @@ failure:
         16, this->_internal_queue_waitlist_token(), target);
   }
 
-  // optional bool reservation_type = 17;
+  // optional uint32 collection_time_active = 17;
   if (cached_has_bits & 0x00010000u) {
     target = stream->EnsureSpace(target);
-    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(17, this->_internal_reservation_type(), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteUInt32ToArray(17, this->_internal_collection_time_active(), target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -10248,32 +10220,34 @@ size_t CPackageReservationStatus::ByteSizeLong() const {
           this->_internal_queue_head_position_at_reservation());
     }
 
-    // optional int32 queue_head_position_now = 12;
+    // optional bool expired = 6;
     if (cached_has_bits & 0x00001000u) {
+      total_size += 1 + 1;
+    }
+
+    // optional bool position_is_waitlist = 13;
+    if (cached_has_bits & 0x00002000u) {
+      total_size += 1 + 1;
+    }
+
+    // optional bool queue_in_waitlist = 15;
+    if (cached_has_bits & 0x00004000u) {
+      total_size += 1 + 1;
+    }
+
+    // optional int32 queue_head_position_now = 12;
+    if (cached_has_bits & 0x00008000u) {
       total_size += 1 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::Int32Size(
           this->_internal_queue_head_position_now());
     }
 
-    // optional bool expired = 6;
-    if (cached_has_bits & 0x00002000u) {
-      total_size += 1 + 1;
-    }
-
-    // optional bool position_is_waitlist = 13;
-    if (cached_has_bits & 0x00004000u) {
-      total_size += 1 + 1;
-    }
-
-    // optional bool queue_in_waitlist = 15;
-    if (cached_has_bits & 0x00008000u) {
-      total_size += 1 + 1;
-    }
-
   }
-  // optional bool reservation_type = 17;
+  // optional uint32 collection_time_active = 17;
   if (cached_has_bits & 0x00010000u) {
-    total_size += 2 + 1;
+    total_size += 2 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::UInt32Size(
+        this->_internal_collection_time_active());
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -10339,21 +10313,21 @@ void CPackageReservationStatus::MergeFrom(const CPackageReservationStatus& from)
       queue_head_position_at_reservation_ = from.queue_head_position_at_reservation_;
     }
     if (cached_has_bits & 0x00001000u) {
-      queue_head_position_now_ = from.queue_head_position_now_;
-    }
-    if (cached_has_bits & 0x00002000u) {
       expired_ = from.expired_;
     }
-    if (cached_has_bits & 0x00004000u) {
+    if (cached_has_bits & 0x00002000u) {
       position_is_waitlist_ = from.position_is_waitlist_;
     }
-    if (cached_has_bits & 0x00008000u) {
+    if (cached_has_bits & 0x00004000u) {
       queue_in_waitlist_ = from.queue_in_waitlist_;
+    }
+    if (cached_has_bits & 0x00008000u) {
+      queue_head_position_now_ = from.queue_head_position_now_;
     }
     _has_bits_[0] |= cached_has_bits;
   }
   if (cached_has_bits & 0x00010000u) {
-    _internal_set_reservation_type(from._internal_reservation_type());
+    _internal_set_collection_time_active(from._internal_collection_time_active());
   }
 }
 
@@ -10377,8 +10351,8 @@ void CPackageReservationStatus::InternalSwap(CPackageReservationStatus* other) {
   user_waitlist_token_.Swap(&other->user_waitlist_token_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
   queue_waitlist_token_.Swap(&other->queue_waitlist_token_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
-      PROTOBUF_FIELD_OFFSET(CPackageReservationStatus, reservation_type_)
-      + sizeof(CPackageReservationStatus::reservation_type_)
+      PROTOBUF_FIELD_OFFSET(CPackageReservationStatus, collection_time_active_)
+      + sizeof(CPackageReservationStatus::collection_time_active_)
       - PROTOBUF_FIELD_OFFSET(CPackageReservationStatus, packageid_)>(
           reinterpret_cast<char*>(&packageid_),
           reinterpret_cast<char*>(&other->packageid_));

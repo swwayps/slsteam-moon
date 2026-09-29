@@ -1084,32 +1084,36 @@ bool ESpeakerConfiguration_IsValid(int value) {
     case 1:
     case 2:
     case 3:
+    case 4:
       return true;
     default:
       return false;
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ESpeakerConfiguration_strings[4] = {};
+static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ESpeakerConfiguration_strings[5] = {};
 
 static const char ESpeakerConfiguration_names[] =
   "k_ESpeakerConfiguration_51"
+  "k_ESpeakerConfiguration_51_Ac3"
   "k_ESpeakerConfiguration_71"
   "k_ESpeakerConfiguration_Other"
   "k_ESpeakerConfiguration_Stereo";
 
 static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ESpeakerConfiguration_entries[] = {
   { {ESpeakerConfiguration_names + 0, 26}, 2 },
-  { {ESpeakerConfiguration_names + 26, 26}, 3 },
-  { {ESpeakerConfiguration_names + 52, 29}, 0 },
-  { {ESpeakerConfiguration_names + 81, 30}, 1 },
+  { {ESpeakerConfiguration_names + 26, 30}, 4 },
+  { {ESpeakerConfiguration_names + 56, 26}, 3 },
+  { {ESpeakerConfiguration_names + 82, 29}, 0 },
+  { {ESpeakerConfiguration_names + 111, 30}, 1 },
 };
 
 static const int ESpeakerConfiguration_entries_by_number[] = {
-  2, // 0 -> k_ESpeakerConfiguration_Other
-  3, // 1 -> k_ESpeakerConfiguration_Stereo
+  3, // 0 -> k_ESpeakerConfiguration_Other
+  4, // 1 -> k_ESpeakerConfiguration_Stereo
   0, // 2 -> k_ESpeakerConfiguration_51
-  1, // 3 -> k_ESpeakerConfiguration_71
+  2, // 3 -> k_ESpeakerConfiguration_71
+  1, // 4 -> k_ESpeakerConfiguration_51_Ac3
 };
 
 const std::string& ESpeakerConfiguration_Name(
@@ -1118,12 +1122,12 @@ const std::string& ESpeakerConfiguration_Name(
       ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
           ESpeakerConfiguration_entries,
           ESpeakerConfiguration_entries_by_number,
-          4, ESpeakerConfiguration_strings);
+          5, ESpeakerConfiguration_strings);
   (void) dummy;
   int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
       ESpeakerConfiguration_entries,
       ESpeakerConfiguration_entries_by_number,
-      4, value);
+      5, value);
   return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
                      ESpeakerConfiguration_strings[idx].get();
 }
@@ -1131,7 +1135,7 @@ bool ESpeakerConfiguration_Parse(
     ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESpeakerConfiguration* value) {
   int int_value;
   bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ESpeakerConfiguration_entries, 4, name, &int_value);
+      ESpeakerConfiguration_entries, 5, name, &int_value);
   if (success) {
     *value = static_cast<ESpeakerConfiguration>(int_value);
   }
@@ -5096,33 +5100,33 @@ static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ECo
 static const char EContentReportSubjectType_names[] =
   "k_EContentReportSubjectType_ChatGroup"
   "k_EContentReportSubjectType_ChatRoomMsg"
+  "k_EContentReportSubjectType_CommentThread"
   "k_EContentReportSubjectType_ForumPost"
   "k_EContentReportSubjectType_FriendChatMsg"
   "k_EContentReportSubjectType_Invalid"
   "k_EContentReportSubjectType_MAX"
-  "k_EContentReportSubjectType_UGCFile"
-  "k_EContentReportSubjectType_Unused";
+  "k_EContentReportSubjectType_UGCFile";
 
 static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EContentReportSubjectType_entries[] = {
   { {EContentReportSubjectType_names + 0, 37}, 6 },
   { {EContentReportSubjectType_names + 37, 39}, 5 },
-  { {EContentReportSubjectType_names + 76, 37}, 1 },
-  { {EContentReportSubjectType_names + 113, 41}, 4 },
-  { {EContentReportSubjectType_names + 154, 35}, 0 },
-  { {EContentReportSubjectType_names + 189, 31}, 7 },
-  { {EContentReportSubjectType_names + 220, 35}, 3 },
-  { {EContentReportSubjectType_names + 255, 34}, 2 },
+  { {EContentReportSubjectType_names + 76, 41}, 2 },
+  { {EContentReportSubjectType_names + 117, 37}, 1 },
+  { {EContentReportSubjectType_names + 154, 41}, 4 },
+  { {EContentReportSubjectType_names + 195, 35}, 0 },
+  { {EContentReportSubjectType_names + 230, 31}, 7 },
+  { {EContentReportSubjectType_names + 261, 35}, 3 },
 };
 
 static const int EContentReportSubjectType_entries_by_number[] = {
-  4, // 0 -> k_EContentReportSubjectType_Invalid
-  2, // 1 -> k_EContentReportSubjectType_ForumPost
-  7, // 2 -> k_EContentReportSubjectType_Unused
-  6, // 3 -> k_EContentReportSubjectType_UGCFile
-  3, // 4 -> k_EContentReportSubjectType_FriendChatMsg
+  5, // 0 -> k_EContentReportSubjectType_Invalid
+  3, // 1 -> k_EContentReportSubjectType_ForumPost
+  2, // 2 -> k_EContentReportSubjectType_CommentThread
+  7, // 3 -> k_EContentReportSubjectType_UGCFile
+  4, // 4 -> k_EContentReportSubjectType_FriendChatMsg
   1, // 5 -> k_EContentReportSubjectType_ChatRoomMsg
   0, // 6 -> k_EContentReportSubjectType_ChatGroup
-  5, // 7 -> k_EContentReportSubjectType_MAX
+  6, // 7 -> k_EContentReportSubjectType_MAX
 };
 
 const std::string& EContentReportSubjectType_Name(
@@ -5527,7 +5531,7 @@ static const char EContentReportSubjectAction_names[] =
   "k_EContentReportSubjectAction_Released"
   "k_EContentReportSubjectAction_ResetContent"
   "k_EContentReportSubjectAction_Sanctioned"
-  "k_EContentReportSubjectAction_SustainedOnDispute"
+  "k_EContentReportSubjectAction_Sustained"
   "k_EContentReportSubjectAction_TradeBanned"
   "k_EContentReportSubjectAction_Unlocked"
   "k_EContentReportSubjectAction_Unresolved"
@@ -5553,12 +5557,12 @@ static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EContentReportSubjectA
   { {EContentReportSubjectAction_names + 627, 38}, 21 },
   { {EContentReportSubjectAction_names + 665, 42}, 17 },
   { {EContentReportSubjectAction_names + 707, 40}, 2 },
-  { {EContentReportSubjectAction_names + 747, 48}, 8 },
-  { {EContentReportSubjectAction_names + 795, 41}, 15 },
-  { {EContentReportSubjectAction_names + 836, 38}, 10 },
-  { {EContentReportSubjectAction_names + 874, 40}, 1 },
-  { {EContentReportSubjectAction_names + 914, 37}, 5 },
-  { {EContentReportSubjectAction_names + 951, 36}, 12 },
+  { {EContentReportSubjectAction_names + 747, 39}, 8 },
+  { {EContentReportSubjectAction_names + 786, 41}, 15 },
+  { {EContentReportSubjectAction_names + 827, 38}, 10 },
+  { {EContentReportSubjectAction_names + 865, 40}, 1 },
+  { {EContentReportSubjectAction_names + 905, 37}, 5 },
+  { {EContentReportSubjectAction_names + 942, 36}, 12 },
 };
 
 static const int EContentReportSubjectAction_entries_by_number[] = {
@@ -5570,7 +5574,7 @@ static const int EContentReportSubjectAction_entries_by_number[] = {
   22, // 5 -> k_EContentReportSubjectAction_Updated
   7, // 6 -> k_EContentReportSubjectAction_Escalated
   6, // 7 -> k_EContentReportSubjectAction_Disputed
-  18, // 8 -> k_EContentReportSubjectAction_SustainedOnDispute
+  18, // 8 -> k_EContentReportSubjectAction_Sustained
   11, // 9 -> k_EContentReportSubjectAction_Locked
   20, // 10 -> k_EContentReportSubjectAction_Unlocked
   5, // 11 -> k_EContentReportSubjectAction_Deleted

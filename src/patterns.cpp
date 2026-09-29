@@ -1048,24 +1048,6 @@ namespace Patterns
 		};
 	}
 
-	namespace CSteamMatchmakingServers
-	{
-		Pattern_t GetServerDetails
-		{
-			"CSteamMatchmakingServers::GetServerDetails",
-			"89 45 ? 83 C4 10 83 EC 0C 89 F3",
-			SigFollowMode::PrologueUpwards,
-			std::vector<uint8_t> { 0x56, 0x57, 0xe5, 0x89, 0x55 }
-		};
-		Pattern_t RequestInternetServerList
-		{
-			"CSteamMatchmakingServers::RequestInternetServerList",
-			"C7 04 24 ? ? 00 00 E8 ? ? ? ? 5A 89 45 ? 59 FF B6 ? ? ? ? FF B6 ? ? ? ? FF B6 ? ? ? ? FF B6 ? ? ? ? FF B6 ? ? ? ? 6A 01",
-			SigFollowMode::PrologueUpwards,
-			std::vector<uint8_t> { 0xe8, 0x57, 0xe5, 0x89, 0x55 }
-		};
-	}
-
 	namespace CUser
 	{
 		// CCompatManager is an embedded member of the local CUser. Locate the

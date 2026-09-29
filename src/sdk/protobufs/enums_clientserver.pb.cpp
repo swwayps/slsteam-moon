@@ -549,7 +549,6 @@ bool EMsg_IsValid(int value) {
     case 2902:
     case 2903:
     case 2905:
-    case 2906:
     case 2907:
     case 2908:
     case 3000:
@@ -1429,7 +1428,7 @@ bool EMsg_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EMsg_strings[1409] = {};
+static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EMsg_strings[1408] = {};
 
 static const char EMsg_names[] =
   "k_EMRouteMessage"
@@ -2724,7 +2723,6 @@ static const char EMsg_names[] =
   "k_EMsgSLCBase"
   "k_EMsgSMExpensiveReport"
   "k_EMsgSMHourlyReport"
-  "k_EMsgSMMonitorSpace"
   "k_EMsgSMPartitionRenames"
   "k_EMsgSMTestNextBuildSchemaConversion"
   "k_EMsgSMTestNextBuildSchemaConversionResponse"
@@ -4163,151 +4161,150 @@ static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EMsg_entries[] = {
   { {EMsg_names + 37335, 13}, 9400 },
   { {EMsg_names + 37348, 23}, 2902 },
   { {EMsg_names + 37371, 20}, 2903 },
-  { {EMsg_names + 37391, 20}, 2906 },
-  { {EMsg_names + 37411, 24}, 2905 },
-  { {EMsg_names + 37435, 37}, 2907 },
-  { {EMsg_names + 37472, 45}, 2908 },
-  { {EMsg_names + 37517, 17}, 8600 },
-  { {EMsg_names + 37534, 35}, 8601 },
-  { {EMsg_names + 37569, 34}, 8600 },
-  { {EMsg_names + 37603, 25}, 12100 },
-  { {EMsg_names + 37628, 19}, 146 },
-  { {EMsg_names + 37647, 33}, 151 },
-  { {EMsg_names + 37680, 42}, 9804 },
-  { {EMsg_names + 37722, 27}, 147 },
-  { {EMsg_names + 37749, 31}, 152 },
-  { {EMsg_names + 37780, 17}, 317 },
-  { {EMsg_names + 37797, 30}, 237 },
-  { {EMsg_names + 37827, 38}, 238 },
-  { {EMsg_names + 37865, 27}, 230 },
-  { {EMsg_names + 37892, 17}, 301 },
-  { {EMsg_names + 37909, 21}, 235 },
-  { {EMsg_names + 37930, 29}, 236 },
-  { {EMsg_names + 37959, 11}, 141 },
-  { {EMsg_names + 37970, 21}, 138 },
-  { {EMsg_names + 37991, 15}, 8000 },
-  { {EMsg_names + 38006, 15}, 126 },
-  { {EMsg_names + 38021, 25}, 240 },
-  { {EMsg_names + 38046, 33}, 241 },
-  { {EMsg_names + 38079, 16}, 323 },
-  { {EMsg_names + 38095, 21}, 228 },
-  { {EMsg_names + 38116, 23}, 9200 },
-  { {EMsg_names + 38139, 46}, 9200 },
-  { {EMsg_names + 38185, 47}, 9201 },
-  { {EMsg_names + 38232, 47}, 9202 },
-  { {EMsg_names + 38279, 48}, 9203 },
-  { {EMsg_names + 38327, 22}, 149 },
-  { {EMsg_names + 38349, 23}, 150 },
-  { {EMsg_names + 38372, 13}, 7300 },
-  { {EMsg_names + 38385, 30}, 7371 },
-  { {EMsg_names + 38415, 31}, 7369 },
-  { {EMsg_names + 38446, 39}, 7370 },
-  { {EMsg_names + 38485, 20}, 7351 },
-  { {EMsg_names + 38505, 28}, 7352 },
-  { {EMsg_names + 38533, 30}, 7353 },
-  { {EMsg_names + 38563, 38}, 7354 },
-  { {EMsg_names + 38601, 33}, 7355 },
-  { {EMsg_names + 38634, 41}, 7356 },
-  { {EMsg_names + 38675, 36}, 7380 },
-  { {EMsg_names + 38711, 35}, 7359 },
-  { {EMsg_names + 38746, 32}, 7341 },
-  { {EMsg_names + 38778, 40}, 7342 },
-  { {EMsg_names + 38818, 35}, 7343 },
-  { {EMsg_names + 38853, 43}, 7344 },
-  { {EMsg_names + 38896, 30}, 7339 },
-  { {EMsg_names + 38926, 32}, 7349 },
-  { {EMsg_names + 38958, 34}, 7350 },
-  { {EMsg_names + 38992, 28}, 7337 },
-  { {EMsg_names + 39020, 33}, 7338 },
-  { {EMsg_names + 39053, 30}, 7307 },
-  { {EMsg_names + 39083, 38}, 7308 },
-  { {EMsg_names + 39121, 28}, 7327 },
-  { {EMsg_names + 39149, 36}, 7328 },
-  { {EMsg_names + 39185, 32}, 7331 },
-  { {EMsg_names + 39217, 13}, 7000 },
-  { {EMsg_names + 39230, 19}, 7006 },
-  { {EMsg_names + 39249, 27}, 7007 },
-  { {EMsg_names + 39276, 23}, 7003 },
-  { {EMsg_names + 39299, 31}, 7004 },
-  { {EMsg_names + 39330, 29}, 5246 },
-  { {EMsg_names + 39359, 30}, 5247 },
-  { {EMsg_names + 39389, 30}, 5248 },
-  { {EMsg_names + 39419, 31}, 5249 },
-  { {EMsg_names + 39450, 29}, 5244 },
-  { {EMsg_names + 39479, 30}, 5245 },
-  { {EMsg_names + 39509, 22}, 5250 },
-  { {EMsg_names + 39531, 19}, 5240 },
-  { {EMsg_names + 39550, 27}, 5241 },
-  { {EMsg_names + 39577, 36}, 5242 },
-  { {EMsg_names + 39613, 37}, 5243 },
-  { {EMsg_names + 39650, 20}, 5238 },
-  { {EMsg_names + 39670, 25}, 5253 },
-  { {EMsg_names + 39695, 33}, 5254 },
-  { {EMsg_names + 39728, 28}, 5239 },
-  { {EMsg_names + 39756, 22}, 5234 },
-  { {EMsg_names + 39778, 30}, 5235 },
-  { {EMsg_names + 39808, 28}, 5215 },
-  { {EMsg_names + 39836, 24}, 5217 },
-  { {EMsg_names + 39860, 32}, 5218 },
-  { {EMsg_names + 39892, 24}, 5228 },
-  { {EMsg_names + 39916, 32}, 5229 },
-  { {EMsg_names + 39948, 28}, 5236 },
-  { {EMsg_names + 39976, 36}, 5237 },
-  { {EMsg_names + 40012, 13}, 7900 },
-  { {EMsg_names + 40025, 25}, 4073 },
-  { {EMsg_names + 40050, 33}, 4074 },
-  { {EMsg_names + 40083, 21}, 4211 },
-  { {EMsg_names + 40104, 23}, 4236 },
-  { {EMsg_names + 40127, 31}, 4312 },
-  { {EMsg_names + 40158, 26}, 7900 },
-  { {EMsg_names + 40184, 13}, 8100 },
-  { {EMsg_names + 40197, 21}, 229 },
-  { {EMsg_names + 40218, 18}, 1010 },
-  { {EMsg_names + 40236, 30}, 2247 },
-  { {EMsg_names + 40266, 22}, 322 },
-  { {EMsg_names + 40288, 29}, 221 },
-  { {EMsg_names + 40317, 26}, 215 },
-  { {EMsg_names + 40343, 49}, 245 },
-  { {EMsg_names + 40392, 41}, 244 },
-  { {EMsg_names + 40433, 27}, 225 },
-  { {EMsg_names + 40460, 17}, 601 },
-  { {EMsg_names + 40477, 16}, 605 },
-  { {EMsg_names + 40493, 27}, 608 },
-  { {EMsg_names + 40520, 27}, 607 },
-  { {EMsg_names + 40547, 22}, 611 },
-  { {EMsg_names + 40569, 17}, 604 },
-  { {EMsg_names + 40586, 22}, 606 },
-  { {EMsg_names + 40608, 22}, 609 },
-  { {EMsg_names + 40630, 31}, 610 },
-  { {EMsg_names + 40661, 33}, 12203 },
-  { {EMsg_names + 40694, 34}, 12204 },
-  { {EMsg_names + 40728, 31}, 12200 },
-  { {EMsg_names + 40759, 35}, 12201 },
-  { {EMsg_names + 40794, 43}, 12202 },
-  { {EMsg_names + 40837, 15}, 130 },
-  { {EMsg_names + 40852, 16}, 131 },
-  { {EMsg_names + 40868, 16}, 8300 },
-  { {EMsg_names + 40884, 38}, 8304 },
-  { {EMsg_names + 40922, 37}, 8305 },
-  { {EMsg_names + 40959, 22}, 133 },
-  { {EMsg_names + 40981, 23}, 134 },
-  { {EMsg_names + 41004, 32}, 8303 },
-  { {EMsg_names + 41036, 22}, 8306 },
-  { {EMsg_names + 41058, 31}, 8300 },
-  { {EMsg_names + 41089, 39}, 8301 },
-  { {EMsg_names + 41128, 19}, 9000 },
-  { {EMsg_names + 41147, 30}, 9000 },
-  { {EMsg_names + 41177, 31}, 9001 },
-  { {EMsg_names + 41208, 27}, 9002 },
-  { {EMsg_names + 41235, 18}, 8200 },
-  { {EMsg_names + 41253, 16}, 204 },
-  { {EMsg_names + 41269, 17}, 205 },
-  { {EMsg_names + 41286, 34}, 9533 },
-  { {EMsg_names + 41320, 37}, 9532 },
-  { {EMsg_names + 41357, 42}, 9534 },
-  { {EMsg_names + 41399, 44}, 9535 },
-  { {EMsg_names + 41443, 39}, 9536 },
-  { {EMsg_names + 41482, 43}, 9537 },
+  { {EMsg_names + 37391, 24}, 2905 },
+  { {EMsg_names + 37415, 37}, 2907 },
+  { {EMsg_names + 37452, 45}, 2908 },
+  { {EMsg_names + 37497, 17}, 8600 },
+  { {EMsg_names + 37514, 35}, 8601 },
+  { {EMsg_names + 37549, 34}, 8600 },
+  { {EMsg_names + 37583, 25}, 12100 },
+  { {EMsg_names + 37608, 19}, 146 },
+  { {EMsg_names + 37627, 33}, 151 },
+  { {EMsg_names + 37660, 42}, 9804 },
+  { {EMsg_names + 37702, 27}, 147 },
+  { {EMsg_names + 37729, 31}, 152 },
+  { {EMsg_names + 37760, 17}, 317 },
+  { {EMsg_names + 37777, 30}, 237 },
+  { {EMsg_names + 37807, 38}, 238 },
+  { {EMsg_names + 37845, 27}, 230 },
+  { {EMsg_names + 37872, 17}, 301 },
+  { {EMsg_names + 37889, 21}, 235 },
+  { {EMsg_names + 37910, 29}, 236 },
+  { {EMsg_names + 37939, 11}, 141 },
+  { {EMsg_names + 37950, 21}, 138 },
+  { {EMsg_names + 37971, 15}, 8000 },
+  { {EMsg_names + 37986, 15}, 126 },
+  { {EMsg_names + 38001, 25}, 240 },
+  { {EMsg_names + 38026, 33}, 241 },
+  { {EMsg_names + 38059, 16}, 323 },
+  { {EMsg_names + 38075, 21}, 228 },
+  { {EMsg_names + 38096, 23}, 9200 },
+  { {EMsg_names + 38119, 46}, 9200 },
+  { {EMsg_names + 38165, 47}, 9201 },
+  { {EMsg_names + 38212, 47}, 9202 },
+  { {EMsg_names + 38259, 48}, 9203 },
+  { {EMsg_names + 38307, 22}, 149 },
+  { {EMsg_names + 38329, 23}, 150 },
+  { {EMsg_names + 38352, 13}, 7300 },
+  { {EMsg_names + 38365, 30}, 7371 },
+  { {EMsg_names + 38395, 31}, 7369 },
+  { {EMsg_names + 38426, 39}, 7370 },
+  { {EMsg_names + 38465, 20}, 7351 },
+  { {EMsg_names + 38485, 28}, 7352 },
+  { {EMsg_names + 38513, 30}, 7353 },
+  { {EMsg_names + 38543, 38}, 7354 },
+  { {EMsg_names + 38581, 33}, 7355 },
+  { {EMsg_names + 38614, 41}, 7356 },
+  { {EMsg_names + 38655, 36}, 7380 },
+  { {EMsg_names + 38691, 35}, 7359 },
+  { {EMsg_names + 38726, 32}, 7341 },
+  { {EMsg_names + 38758, 40}, 7342 },
+  { {EMsg_names + 38798, 35}, 7343 },
+  { {EMsg_names + 38833, 43}, 7344 },
+  { {EMsg_names + 38876, 30}, 7339 },
+  { {EMsg_names + 38906, 32}, 7349 },
+  { {EMsg_names + 38938, 34}, 7350 },
+  { {EMsg_names + 38972, 28}, 7337 },
+  { {EMsg_names + 39000, 33}, 7338 },
+  { {EMsg_names + 39033, 30}, 7307 },
+  { {EMsg_names + 39063, 38}, 7308 },
+  { {EMsg_names + 39101, 28}, 7327 },
+  { {EMsg_names + 39129, 36}, 7328 },
+  { {EMsg_names + 39165, 32}, 7331 },
+  { {EMsg_names + 39197, 13}, 7000 },
+  { {EMsg_names + 39210, 19}, 7006 },
+  { {EMsg_names + 39229, 27}, 7007 },
+  { {EMsg_names + 39256, 23}, 7003 },
+  { {EMsg_names + 39279, 31}, 7004 },
+  { {EMsg_names + 39310, 29}, 5246 },
+  { {EMsg_names + 39339, 30}, 5247 },
+  { {EMsg_names + 39369, 30}, 5248 },
+  { {EMsg_names + 39399, 31}, 5249 },
+  { {EMsg_names + 39430, 29}, 5244 },
+  { {EMsg_names + 39459, 30}, 5245 },
+  { {EMsg_names + 39489, 22}, 5250 },
+  { {EMsg_names + 39511, 19}, 5240 },
+  { {EMsg_names + 39530, 27}, 5241 },
+  { {EMsg_names + 39557, 36}, 5242 },
+  { {EMsg_names + 39593, 37}, 5243 },
+  { {EMsg_names + 39630, 20}, 5238 },
+  { {EMsg_names + 39650, 25}, 5253 },
+  { {EMsg_names + 39675, 33}, 5254 },
+  { {EMsg_names + 39708, 28}, 5239 },
+  { {EMsg_names + 39736, 22}, 5234 },
+  { {EMsg_names + 39758, 30}, 5235 },
+  { {EMsg_names + 39788, 28}, 5215 },
+  { {EMsg_names + 39816, 24}, 5217 },
+  { {EMsg_names + 39840, 32}, 5218 },
+  { {EMsg_names + 39872, 24}, 5228 },
+  { {EMsg_names + 39896, 32}, 5229 },
+  { {EMsg_names + 39928, 28}, 5236 },
+  { {EMsg_names + 39956, 36}, 5237 },
+  { {EMsg_names + 39992, 13}, 7900 },
+  { {EMsg_names + 40005, 25}, 4073 },
+  { {EMsg_names + 40030, 33}, 4074 },
+  { {EMsg_names + 40063, 21}, 4211 },
+  { {EMsg_names + 40084, 23}, 4236 },
+  { {EMsg_names + 40107, 31}, 4312 },
+  { {EMsg_names + 40138, 26}, 7900 },
+  { {EMsg_names + 40164, 13}, 8100 },
+  { {EMsg_names + 40177, 21}, 229 },
+  { {EMsg_names + 40198, 18}, 1010 },
+  { {EMsg_names + 40216, 30}, 2247 },
+  { {EMsg_names + 40246, 22}, 322 },
+  { {EMsg_names + 40268, 29}, 221 },
+  { {EMsg_names + 40297, 26}, 215 },
+  { {EMsg_names + 40323, 49}, 245 },
+  { {EMsg_names + 40372, 41}, 244 },
+  { {EMsg_names + 40413, 27}, 225 },
+  { {EMsg_names + 40440, 17}, 601 },
+  { {EMsg_names + 40457, 16}, 605 },
+  { {EMsg_names + 40473, 27}, 608 },
+  { {EMsg_names + 40500, 27}, 607 },
+  { {EMsg_names + 40527, 22}, 611 },
+  { {EMsg_names + 40549, 17}, 604 },
+  { {EMsg_names + 40566, 22}, 606 },
+  { {EMsg_names + 40588, 22}, 609 },
+  { {EMsg_names + 40610, 31}, 610 },
+  { {EMsg_names + 40641, 33}, 12203 },
+  { {EMsg_names + 40674, 34}, 12204 },
+  { {EMsg_names + 40708, 31}, 12200 },
+  { {EMsg_names + 40739, 35}, 12201 },
+  { {EMsg_names + 40774, 43}, 12202 },
+  { {EMsg_names + 40817, 15}, 130 },
+  { {EMsg_names + 40832, 16}, 131 },
+  { {EMsg_names + 40848, 16}, 8300 },
+  { {EMsg_names + 40864, 38}, 8304 },
+  { {EMsg_names + 40902, 37}, 8305 },
+  { {EMsg_names + 40939, 22}, 133 },
+  { {EMsg_names + 40961, 23}, 134 },
+  { {EMsg_names + 40984, 32}, 8303 },
+  { {EMsg_names + 41016, 22}, 8306 },
+  { {EMsg_names + 41038, 31}, 8300 },
+  { {EMsg_names + 41069, 39}, 8301 },
+  { {EMsg_names + 41108, 19}, 9000 },
+  { {EMsg_names + 41127, 30}, 9000 },
+  { {EMsg_names + 41157, 31}, 9001 },
+  { {EMsg_names + 41188, 27}, 9002 },
+  { {EMsg_names + 41215, 18}, 8200 },
+  { {EMsg_names + 41233, 16}, 204 },
+  { {EMsg_names + 41249, 17}, 205 },
+  { {EMsg_names + 41266, 34}, 9533 },
+  { {EMsg_names + 41300, 37}, 9532 },
+  { {EMsg_names + 41337, 42}, 9534 },
+  { {EMsg_names + 41379, 44}, 9535 },
+  { {EMsg_names + 41423, 39}, 9536 },
+  { {EMsg_names + 41462, 43}, 9537 },
 };
 
 static const int EMsg_entries_by_number[] = {
@@ -4321,74 +4318,74 @@ static const int EMsg_entries_by_number[] = {
   1288, // 121 -> k_EMsgSCIDResponse
   1164, // 123 -> k_EMsgJobHeartbeat
   1161, // 124 -> k_EMsgHubConnect
-  1315, // 126 -> k_EMsgSubscribe
+  1314, // 126 -> k_EMsgSubscribe
   0, // 127 -> k_EMRouteMessage
-  1413, // 130 -> k_EMsgWGRequest
-  1414, // 131 -> k_EMsgWGResponse
+  1412, // 130 -> k_EMsgWGRequest
+  1413, // 131 -> k_EMsgWGResponse
   1168, // 132 -> k_EMsgKeepAlive
-  1418, // 133 -> k_EMsgWebAPIJobRequest
-  1419, // 134 -> k_EMsgWebAPIJobResponse
+  1417, // 133 -> k_EMsgWebAPIJobRequest
+  1418, // 134 -> k_EMsgWebAPIJobResponse
   838, // 135 -> k_EMsgClientSessionStart
   837, // 136 -> k_EMsgClientSessionEnd
   840, // 137 -> k_EMsgClientSessionUpdate
-  1313, // 138 -> k_EMsgStatsDeprecated
+  1312, // 138 -> k_EMsgStatsDeprecated
   1236, // 139 -> k_EMsgPing
   1237, // 140 -> k_EMsgPingResponse
-  1312, // 141 -> k_EMsgStats
+  1311, // 141 -> k_EMsgStats
   1285, // 142 -> k_EMsgRequestFullStatsBlock
   1184, // 143 -> k_EMsgLoadDBOCacheItem
   1185, // 144 -> k_EMsgLoadDBOCacheItemResponse
   1163, // 145 -> k_EMsgInvalidateDBOCacheItems
-  1300, // 146 -> k_EMsgServiceMethod
-  1303, // 147 -> k_EMsgServiceMethodResponse
+  1299, // 146 -> k_EMsgServiceMethod
+  1302, // 147 -> k_EMsgServiceMethodResponse
   779, // 148 -> k_EMsgClientPackageVersions
-  1325, // 149 -> k_EMsgTimestampRequest
-  1326, // 150 -> k_EMsgTimestampResponse
-  1301, // 151 -> k_EMsgServiceMethodCallFromClient
-  1304, // 152 -> k_EMsgServiceMethodSendToClient
+  1324, // 149 -> k_EMsgTimestampRequest
+  1325, // 150 -> k_EMsgTimestampResponse
+  1300, // 151 -> k_EMsgServiceMethodCallFromClient
+  1303, // 152 -> k_EMsgServiceMethodSendToClient
   509, // 200 -> k_EMsgBaseShell
   1018, // 201 -> k_EMsgExit
   999, // 202 -> k_EMsgDirRequest
   1000, // 203 -> k_EMsgDirResponse
-  1429, // 204 -> k_EMsgZipRequest
-  1430, // 205 -> k_EMsgZipResponse
-  1395, // 215 -> k_EMsgUpdateRecordResponse
-  1394, // 221 -> k_EMsgUpdateCreditCardRequest
-  1398, // 225 -> k_EMsgUpdateUserBanResponse
+  1428, // 204 -> k_EMsgZipRequest
+  1429, // 205 -> k_EMsgZipResponse
+  1394, // 215 -> k_EMsgUpdateRecordResponse
+  1393, // 221 -> k_EMsgUpdateCreditCardRequest
+  1397, // 225 -> k_EMsgUpdateUserBanResponse
   1238, // 226 -> k_EMsgPrepareToExit
   915, // 227 -> k_EMsgContentDescriptionUpdate
-  1319, // 228 -> k_EMsgTestResetServer
-  1390, // 229 -> k_EMsgUniverseChanged
-  1308, // 230 -> k_EMsgShellConfigInfoUpdate
+  1318, // 228 -> k_EMsgTestResetServer
+  1389, // 229 -> k_EMsgUniverseChanged
+  1307, // 230 -> k_EMsgShellConfigInfoUpdate
   1286, // 233 -> k_EMsgRequestWindowsEventLogEntries
   1242, // 234 -> k_EMsgProvideWindowsEventLogEntries
-  1310, // 235 -> k_EMsgShellSearchLogs
-  1311, // 236 -> k_EMsgShellSearchLogsResponse
-  1306, // 237 -> k_EMsgShellCheckWindowsUpdates
-  1307, // 238 -> k_EMsgShellCheckWindowsUpdatesResponse
-  1316, // 240 -> k_EMsgTestFlushDelayedSQL
-  1317, // 241 -> k_EMsgTestFlushDelayedSQLResponse
+  1309, // 235 -> k_EMsgShellSearchLogs
+  1310, // 236 -> k_EMsgShellSearchLogsResponse
+  1305, // 237 -> k_EMsgShellCheckWindowsUpdates
+  1306, // 238 -> k_EMsgShellCheckWindowsUpdatesResponse
+  1315, // 240 -> k_EMsgTestFlushDelayedSQL
+  1316, // 241 -> k_EMsgTestFlushDelayedSQLResponse
   1017, // 242 -> k_EMsgEnsureExecuteScheduledTask_TEST
   1016, // 243 -> k_EMsgEnsureExecuteScheduledTaskResponse_TEST
-  1397, // 244 -> k_EMsgUpdateScheduledTaskEnableState_TEST
-  1396, // 245 -> k_EMsgUpdateScheduledTaskEnableStateResponse_TEST
+  1396, // 244 -> k_EMsgUpdateScheduledTaskEnableState_TEST
+  1395, // 245 -> k_EMsgUpdateScheduledTaskEnableStateResponse_TEST
   914, // 246 -> k_EMsgContentDescriptionDeltaUpdate
   1126, // 247 -> k_EMsgGMShellAndServerAddressUpdates
   1114, // 248 -> k_EMsgGMDynamicRoutingUpdate
   1015, // 249 -> k_EMsgEnsureBillingConfigReload_TEST
   1014, // 250 -> k_EMsgEnsureBillingConfigReloadResponse_TEST
   499, // 300 -> k_EMsgBaseGM
-  1309, // 301 -> k_EMsgShellFailed
+  1308, // 301 -> k_EMsgShellFailed
   1020, // 307 -> k_EMsgExitShells
   1019, // 308 -> k_EMsgExitShell
   1158, // 309 -> k_EMsgGracefulExitShell
   1183, // 316 -> k_EMsgLicenseProcessingComplete
-  1305, // 317 -> k_EMsgSetTestFlag
+  1304, // 317 -> k_EMsgSetTestFlag
   1244, // 318 -> k_EMsgQueuedEmailsComplete
   1113, // 320 -> k_EMsgGMDRMSync
   1235, // 321 -> k_EMsgPhysicalBoxInventory
-  1393, // 322 -> k_EMsgUpdateConfigFile
-  1318, // 323 -> k_EMsgTestInitDB
+  1392, // 322 -> k_EMsgUpdateConfigFile
+  1317, // 323 -> k_EMsgTestInitDB
   1130, // 324 -> k_EMsgGMWriteConfigToSQL
   1119, // 325 -> k_EMsgGMLoadActivationCodes
   1121, // 326 -> k_EMsgGMQueueForFBS
@@ -4488,16 +4485,16 @@ static const int EMsg_entries_by_number[] = {
   576, // 597 -> k_EMsgClientChatAction
   61, // 598 -> k_EMsgAMClientChatActionRelay
   512, // 600 -> k_EMsgBaseVS
-  1399, // 601 -> k_EMsgVACResponse
+  1398, // 601 -> k_EMsgVACResponse
   1284, // 602 -> k_EMsgReqChallengeTest
-  1404, // 604 -> k_EMsgVSMarkCheat
-  1400, // 605 -> k_EMsgVSAddCheat
-  1405, // 606 -> k_EMsgVSPurgeCodeModDB
-  1402, // 607 -> k_EMsgVSGetChallengeResults
-  1401, // 608 -> k_EMsgVSChallengeResultText
-  1406, // 609 -> k_EMsgVSReportLingerer
-  1407, // 610 -> k_EMsgVSRequestManagedChallenge
-  1403, // 611 -> k_EMsgVSLoadDBFinished
+  1403, // 604 -> k_EMsgVSMarkCheat
+  1399, // 605 -> k_EMsgVSAddCheat
+  1404, // 606 -> k_EMsgVSPurgeCodeModDB
+  1401, // 607 -> k_EMsgVSGetChallengeResults
+  1400, // 608 -> k_EMsgVSChallengeResultText
+  1405, // 609 -> k_EMsgVSReportLingerer
+  1406, // 610 -> k_EMsgVSRequestManagedChallenge
+  1402, // 611 -> k_EMsgVSLoadDBFinished
   494, // 625 -> k_EMsgBaseDRMS
   944, // 628 -> k_EMsgDRMBuildBlobRequest
   945, // 629 -> k_EMsgDRMBuildBlobResponse
@@ -4633,7 +4630,7 @@ static const int EMsg_entries_by_number[] = {
   389, // 1004 -> k_EMsgAdminCmdResponse
   396, // 1005 -> k_EMsgAdminLogListenRequest
   395, // 1006 -> k_EMsgAdminLogEvent
-  1391, // 1010 -> k_EMsgUniverseData
+  1390, // 1010 -> k_EMsgUniverseData
   398, // 1019 -> k_EMsgAdminSpew
   390, // 1020 -> k_EMsgAdminConsoleTitle
   394, // 1023 -> k_EMsgAdminGCSpew
@@ -4839,16 +4836,15 @@ static const int EMsg_entries_by_number[] = {
   1092, // 2244 -> k_EMsgGCHAppCheersGetAllowedTypesResponse
   1104, // 2245 -> k_EMsgGCHRoutingRulesFromGCHtoGM
   1105, // 2246 -> k_EMsgGCHRoutingRulesToGCHfromGM
-  1392, // 2247 -> k_EMsgUpdateCMMessageRateRules
+  1391, // 2247 -> k_EMsgUpdateCMMessageRateRules
   505, // 2500 -> k_EMsgBaseP2P
   1225, // 2502 -> k_EMsgP2PIntroducerMessage
   507, // 2900 -> k_EMsgBaseSM
   1290, // 2902 -> k_EMsgSMExpensiveReport
   1291, // 2903 -> k_EMsgSMHourlyReport
-  1293, // 2905 -> k_EMsgSMPartitionRenames
-  1292, // 2906 -> k_EMsgSMMonitorSpace
-  1294, // 2907 -> k_EMsgSMTestNextBuildSchemaConversion
-  1295, // 2908 -> k_EMsgSMTestNextBuildSchemaConversionResponse
+  1292, // 2905 -> k_EMsgSMPartitionRenames
+  1293, // 2907 -> k_EMsgSMTestNextBuildSchemaConversion
+  1294, // 2908 -> k_EMsgSMTestNextBuildSchemaConversionResponse
   510, // 3000 -> k_EMsgBaseTest
   1165, // 3001 -> k_EMsgJobHeartbeatTest
   1166, // 3002 -> k_EMsgJobHeartbeatTestResponse
@@ -4922,8 +4918,8 @@ static const int EMsg_entries_by_number[] = {
   152, // 4066 -> k_EMsgAMGetChatBanListResponse
   352, // 4067 -> k_EMsgAMUnBanFromChat
   312, // 4068 -> k_EMsgAMSetClanDetails
-  1383, // 4073 -> k_EMsgUGSGetUserGameStats
-  1384, // 4074 -> k_EMsgUGSGetUserGameStatsResponse
+  1382, // 4073 -> k_EMsgUGSGetUserGameStats
+  1383, // 4074 -> k_EMsgUGSGetUserGameStatsResponse
   44, // 4075 -> k_EMsgAMCheckClanMembership
   159, // 4076 -> k_EMsgAMGetClanMembers
   160, // 4077 -> k_EMsgAMGetClanMembersResponse
@@ -5004,14 +5000,14 @@ static const int EMsg_entries_by_number[] = {
   195, // 4206 -> k_EMsgAMGetPurchaseStatus
   342, // 4209 -> k_EMsgAMSupportIsAccountEnabled
   343, // 4210 -> k_EMsgAMSupportIsAccountEnabledResponse
-  1385, // 4211 -> k_EMsgUGSGetUserStats
+  1384, // 4211 -> k_EMsgUGSGetUserStats
   126, // 4213 -> k_EMsgAMGSSearch
   551, // 4219 -> k_EMsgChatServerRouteFriendMsg
   347, // 4220 -> k_EMsgAMTicketAuthRequestOrResponse
   17, // 4224 -> k_EMsgAMAddFreeLicense
   359, // 4231 -> k_EMsgAMValidateEmailLink
   360, // 4232 -> k_EMsgAMValidateEmailLinkResponse
-  1386, // 4236 -> k_EMsgUGSStoreUserStats
+  1385, // 4236 -> k_EMsgUGSStoreUserStats
   94, // 4241 -> k_EMsgAMDeleteStoredCard
   292, // 4242 -> k_EMsgAMRevokeLegacyGameKeys
   217, // 4244 -> k_EMsgAMGetWalletDetails
@@ -5061,7 +5057,7 @@ static const int EMsg_entries_by_number[] = {
   230, // 4309 -> k_EMsgAMIsAccountInCaptchaGracePeriodResponse
   12, // 4310 -> k_EMsgAMAccountPS3Unlink
   13, // 4311 -> k_EMsgAMAccountPS3UnlinkResponse
-  1387, // 4312 -> k_EMsgUGSStoreUserStatsResponse
+  1386, // 4312 -> k_EMsgUGSStoreUserStatsResponse
   145, // 4313 -> k_EMsgAMGetAccountPSNInfo
   146, // 4314 -> k_EMsgAMGetAccountPSNInfoResponse
   25, // 4315 -> k_EMsgAMAuthenticatedPlayerList
@@ -5174,36 +5170,36 @@ static const int EMsg_entries_by_number[] = {
   1229, // 5013 -> k_EMsgPSGetAccountCartContents
   1230, // 5014 -> k_EMsgPSGetAccountCartContentsResponse
   511, // 5200 -> k_EMsgBaseUFSRange
-  1375, // 5215 -> k_EMsgUFSReloadPartitionInfo
-  1376, // 5217 -> k_EMsgUFSSynchronizeFile
-  1377, // 5218 -> k_EMsgUFSSynchronizeFileResponse
+  1374, // 5215 -> k_EMsgUFSReloadPartitionInfo
+  1375, // 5217 -> k_EMsgUFSSynchronizeFile
+  1376, // 5218 -> k_EMsgUFSSynchronizeFileResponse
   891, // 5226 -> k_EMsgClientUFSGetUGCDetails
   892, // 5227 -> k_EMsgClientUFSGetUGCDetailsResponse
-  1378, // 5228 -> k_EMsgUFSUpdateFileFlags
-  1379, // 5229 -> k_EMsgUFSUpdateFileFlagsResponse
+  1377, // 5228 -> k_EMsgUFSUpdateFileFlags
+  1378, // 5229 -> k_EMsgUFSUpdateFileFlagsResponse
   889, // 5230 -> k_EMsgClientUFSGetSingleFileInfo
   890, // 5231 -> k_EMsgClientUFSGetSingleFileInfoResponse
   893, // 5232 -> k_EMsgClientUFSShareFile
   894, // 5233 -> k_EMsgClientUFSShareFileResponse
-  1373, // 5234 -> k_EMsgUFSReloadAccount
-  1374, // 5235 -> k_EMsgUFSReloadAccountResponse
-  1380, // 5236 -> k_EMsgUFSUpdateRecordBatched
-  1381, // 5237 -> k_EMsgUFSUpdateRecordBatchedResponse
-  1369, // 5238 -> k_EMsgUFSMigrateFile
-  1372, // 5239 -> k_EMsgUFSMigrateFileResponse
-  1365, // 5240 -> k_EMsgUFSGetUGCURLs
-  1366, // 5241 -> k_EMsgUFSGetUGCURLsResponse
-  1367, // 5242 -> k_EMsgUFSHttpUploadFileFinishRequest
-  1368, // 5243 -> k_EMsgUFSHttpUploadFileFinishResponse
-  1362, // 5244 -> k_EMsgUFSDownloadStartRequest
-  1363, // 5245 -> k_EMsgUFSDownloadStartResponse
-  1358, // 5246 -> k_EMsgUFSDownloadChunkRequest
-  1359, // 5247 -> k_EMsgUFSDownloadChunkResponse
-  1360, // 5248 -> k_EMsgUFSDownloadFinishRequest
-  1361, // 5249 -> k_EMsgUFSDownloadFinishResponse
-  1364, // 5250 -> k_EMsgUFSFlushURLCache
-  1370, // 5253 -> k_EMsgUFSMigrateFileAppID
-  1371, // 5254 -> k_EMsgUFSMigrateFileAppIDResponse
+  1372, // 5234 -> k_EMsgUFSReloadAccount
+  1373, // 5235 -> k_EMsgUFSReloadAccountResponse
+  1379, // 5236 -> k_EMsgUFSUpdateRecordBatched
+  1380, // 5237 -> k_EMsgUFSUpdateRecordBatchedResponse
+  1368, // 5238 -> k_EMsgUFSMigrateFile
+  1371, // 5239 -> k_EMsgUFSMigrateFileResponse
+  1364, // 5240 -> k_EMsgUFSGetUGCURLs
+  1365, // 5241 -> k_EMsgUFSGetUGCURLsResponse
+  1366, // 5242 -> k_EMsgUFSHttpUploadFileFinishRequest
+  1367, // 5243 -> k_EMsgUFSHttpUploadFileFinishResponse
+  1361, // 5244 -> k_EMsgUFSDownloadStartRequest
+  1362, // 5245 -> k_EMsgUFSDownloadStartResponse
+  1357, // 5246 -> k_EMsgUFSDownloadChunkRequest
+  1358, // 5247 -> k_EMsgUFSDownloadChunkResponse
+  1359, // 5248 -> k_EMsgUFSDownloadFinishRequest
+  1360, // 5249 -> k_EMsgUFSDownloadFinishResponse
+  1363, // 5250 -> k_EMsgUFSFlushURLCache
+  1369, // 5253 -> k_EMsgUFSMigrateFileAppID
+  1370, // 5254 -> k_EMsgUFSMigrateFileAppIDResponse
   490, // 5400 -> k_EMsgBaseClient2
   806, // 5401 -> k_EMsgClientRequestForgottenPasswordEmail
   808, // 5402 -> k_EMsgClientRequestForgottenPasswordEmailResponse
@@ -5449,22 +5445,22 @@ static const int EMsg_entries_by_number[] = {
   1211, // 6813 -> k_EMsgNonStdMsgRTMPServer
   1217, // 6814 -> k_EMsgNonStdMsgWebSocket
   1212, // 6815 -> k_EMsgNonStdMsgRedis
-  1353, // 7000 -> k_EMsgUDSBase
+  1352, // 7000 -> k_EMsgUDSBase
   888, // 7001 -> k_EMsgClientUDSP2PSessionStarted
   887, // 7002 -> k_EMsgClientUDSP2PSessionEnded
-  1356, // 7003 -> k_EMsgUDSRenderUserAuth
-  1357, // 7004 -> k_EMsgUDSRenderUserAuthResponse
+  1355, // 7003 -> k_EMsgUDSRenderUserAuth
+  1356, // 7004 -> k_EMsgUDSRenderUserAuthResponse
   691, // 7005 -> k_EMsgClientInviteToGame
-  1354, // 7006 -> k_EMsgUDSHasSession
-  1355, // 7007 -> k_EMsgUDSHasSessionResponse
+  1353, // 7006 -> k_EMsgUDSHasSession
+  1354, // 7007 -> k_EMsgUDSHasSessionResponse
   1201, // 7100 -> k_EMsgMPASBase
   1202, // 7101 -> k_EMsgMPASVacBanReset
   1167, // 7200 -> k_EMsgKGSBase
-  1327, // 7300 -> k_EMsgUCMBase
+  1326, // 7300 -> k_EMsgUCMBase
   870, // 7301 -> k_EMsgClientUCMAddScreenshot
   871, // 7302 -> k_EMsgClientUCMAddScreenshotResponse
-  1348, // 7307 -> k_EMsgUCMResetCommunityContent
-  1349, // 7308 -> k_EMsgUCMResetCommunityContentResponse
+  1347, // 7307 -> k_EMsgUCMResetCommunityContent
+  1348, // 7308 -> k_EMsgUCMResetCommunityContentResponse
   874, // 7309 -> k_EMsgClientUCMDeleteScreenshot
   875, // 7310 -> k_EMsgClientUCMDeleteScreenshotResponse
   880, // 7311 -> k_EMsgClientUCMPublishFile
@@ -5473,35 +5469,35 @@ static const int EMsg_entries_by_number[] = {
   873, // 7316 -> k_EMsgClientUCMDeletePublishedFileResponse
   885, // 7325 -> k_EMsgClientUCMUpdatePublishedFile
   886, // 7326 -> k_EMsgClientUCMUpdatePublishedFileResponse
-  1350, // 7327 -> k_EMsgUCMUpdatePublishedFile
-  1351, // 7328 -> k_EMsgUCMUpdatePublishedFileResponse
-  1352, // 7331 -> k_EMsgUCMUpdatePublishedFileStat
-  1346, // 7337 -> k_EMsgUCMReloadPublishedFile
-  1347, // 7338 -> k_EMsgUCMReloadUserFileListCaches
-  1343, // 7339 -> k_EMsgUCMPublishedFileReported
-  1339, // 7341 -> k_EMsgUCMPublishedFilePreviewAdd
-  1340, // 7342 -> k_EMsgUCMPublishedFilePreviewAddResponse
-  1341, // 7343 -> k_EMsgUCMPublishedFilePreviewRemove
-  1342, // 7344 -> k_EMsgUCMPublishedFilePreviewRemoveResponse
-  1344, // 7349 -> k_EMsgUCMPublishedFileSubscribed
-  1345, // 7350 -> k_EMsgUCMPublishedFileUnsubscribed
-  1331, // 7351 -> k_EMsgUCMPublishFile
-  1332, // 7352 -> k_EMsgUCMPublishFileResponse
-  1333, // 7353 -> k_EMsgUCMPublishedFileChildAdd
-  1334, // 7354 -> k_EMsgUCMPublishedFileChildAddResponse
-  1335, // 7355 -> k_EMsgUCMPublishedFileChildRemove
-  1336, // 7356 -> k_EMsgUCMPublishedFileChildRemoveResponse
-  1338, // 7359 -> k_EMsgUCMPublishedFileParentChanged
+  1349, // 7327 -> k_EMsgUCMUpdatePublishedFile
+  1350, // 7328 -> k_EMsgUCMUpdatePublishedFileResponse
+  1351, // 7331 -> k_EMsgUCMUpdatePublishedFileStat
+  1345, // 7337 -> k_EMsgUCMReloadPublishedFile
+  1346, // 7338 -> k_EMsgUCMReloadUserFileListCaches
+  1342, // 7339 -> k_EMsgUCMPublishedFileReported
+  1338, // 7341 -> k_EMsgUCMPublishedFilePreviewAdd
+  1339, // 7342 -> k_EMsgUCMPublishedFilePreviewAddResponse
+  1340, // 7343 -> k_EMsgUCMPublishedFilePreviewRemove
+  1341, // 7344 -> k_EMsgUCMPublishedFilePreviewRemoveResponse
+  1343, // 7349 -> k_EMsgUCMPublishedFileSubscribed
+  1344, // 7350 -> k_EMsgUCMPublishedFileUnsubscribed
+  1330, // 7351 -> k_EMsgUCMPublishFile
+  1331, // 7352 -> k_EMsgUCMPublishFileResponse
+  1332, // 7353 -> k_EMsgUCMPublishedFileChildAdd
+  1333, // 7354 -> k_EMsgUCMPublishedFileChildAddResponse
+  1334, // 7355 -> k_EMsgUCMPublishedFileChildRemove
+  1335, // 7356 -> k_EMsgUCMPublishedFileChildRemoveResponse
+  1337, // 7359 -> k_EMsgUCMPublishedFileParentChanged
   883, // 7364 -> k_EMsgClientUCMSetUserPublishedFileAction
   884, // 7365 -> k_EMsgClientUCMSetUserPublishedFileActionResponse
   876, // 7366 -> k_EMsgClientUCMEnumeratePublishedFilesByUserAction
   877, // 7367 -> k_EMsgClientUCMEnumeratePublishedFilesByUserActionResponse
-  1329, // 7369 -> k_EMsgUCMGetUserSubscribedFiles
-  1330, // 7370 -> k_EMsgUCMGetUserSubscribedFilesResponse
-  1328, // 7371 -> k_EMsgUCMFixStatsPublishedFile
+  1328, // 7369 -> k_EMsgUCMGetUserSubscribedFiles
+  1329, // 7370 -> k_EMsgUCMGetUserSubscribedFilesResponse
+  1327, // 7371 -> k_EMsgUCMFixStatsPublishedFile
   878, // 7378 -> k_EMsgClientUCMEnumerateUserSubscribedFilesWithUpdates
   879, // 7379 -> k_EMsgClientUCMEnumerateUserSubscribedFilesWithUpdatesResponse
-  1337, // 7380 -> k_EMsgUCMPublishedFileContentUpdated
+  1336, // 7380 -> k_EMsgUCMPublishedFileContentUpdated
   882, // 7381 -> k_EMsgClientUCMPublishedFileUpdated
   1059, // 7500 -> k_EMsgFSBase
   824, // 7501 -> k_EMsgClientRichPresenceUpload
@@ -5562,18 +5558,18 @@ static const int EMsg_entries_by_number[] = {
   1246, // 7806 -> k_EMsgRMMsgTraceAddOrUpdateTrigger
   1248, // 7807 -> k_EMsgRMMsgTraceRemoveTriggers
   1247, // 7808 -> k_EMsgRMMsgTraceEvent
-  1382, // 7900 -> k_EMsgUGSBase
+  1381, // 7900 -> k_EMsgUGSBase
   895, // 7901 -> k_EMsgClientUGSGetGlobalStats
   896, // 7902 -> k_EMsgClientUGSGetGlobalStatsResponse
-  1314, // 8000 -> k_EMsgStoreBase
-  1389, // 8100 -> k_EMsgUMQBase
-  1428, // 8200 -> k_EMsgWorkshopBase
-  1415, // 8300 -> k_EMsgWebAPIBase
-  1423, // 8301 -> k_EMsgWebAPIValidateOAuth2TokenResponse
-  1420, // 8303 -> k_EMsgWebAPIRegisterGCInterfaces
-  1416, // 8304 -> k_EMsgWebAPIInvalidateOAuthClientCache
-  1417, // 8305 -> k_EMsgWebAPIInvalidateOAuthTokenCache
-  1421, // 8306 -> k_EMsgWebAPISetSecrets
+  1313, // 8000 -> k_EMsgStoreBase
+  1388, // 8100 -> k_EMsgUMQBase
+  1427, // 8200 -> k_EMsgWorkshopBase
+  1414, // 8300 -> k_EMsgWebAPIBase
+  1422, // 8301 -> k_EMsgWebAPIValidateOAuth2TokenResponse
+  1419, // 8303 -> k_EMsgWebAPIRegisterGCInterfaces
+  1415, // 8304 -> k_EMsgWebAPIInvalidateOAuthClientCache
+  1416, // 8305 -> k_EMsgWebAPIInvalidateOAuthTokenCache
+  1420, // 8306 -> k_EMsgWebAPISetSecrets
   474, // 8400 -> k_EMsgBackpackBase
   472, // 8401 -> k_EMsgBackpackAddToCurrency
   473, // 8402 -> k_EMsgBackpackAddToCurrencyResponse
@@ -5584,8 +5580,8 @@ static const int EMsg_entries_by_number[] = {
   539, // 8508 -> k_EMsgCREUpdateUserPublishedItemVoteResponse
   534, // 8509 -> k_EMsgCREGetUserPublishedItemVoteDetails
   535, // 8510 -> k_EMsgCREGetUserPublishedItemVoteDetailsResponse
-  1296, // 8600 -> k_EMsgSecretsBase
-  1297, // 8601 -> k_EMsgSecretsCredentialPairResponse
+  1295, // 8600 -> k_EMsgSecretsBase
+  1296, // 8601 -> k_EMsgSecretsCredentialPairResponse
   515, // 8700 -> k_EMsgBoxMonitorBase
   517, // 8701 -> k_EMsgBoxMonitorReportResponse
   1226, // 8900 -> k_EMsgPICSBase
@@ -5597,9 +5593,9 @@ static const int EMsg_entries_by_number[] = {
   772, // 8906 -> k_EMsgClientPICSAccessTokenResponse
   775, // 8907 -> k_EMsgClientPICSPrivateBetaRequest
   776, // 8908 -> k_EMsgClientPICSPrivateBetaResponse
-  1424, // 9000 -> k_EMsgWorkerProcess
-  1426, // 9001 -> k_EMsgWorkerProcessPingResponse
-  1427, // 9002 -> k_EMsgWorkerProcessShutdown
+  1423, // 9000 -> k_EMsgWorkerProcess
+  1425, // 9001 -> k_EMsgWorkerProcessPingResponse
+  1426, // 9002 -> k_EMsgWorkerProcessShutdown
   963, // 9100 -> k_EMsgDRMWorkerProcess
   969, // 9101 -> k_EMsgDRMWorkerProcessDRMAndSignResponse
   990, // 9102 -> k_EMsgDRMWorkerProcessSteamworksInfoRequest
@@ -5634,10 +5630,10 @@ static const int EMsg_entries_by_number[] = {
   979, // 9133 -> k_EMsgDRMWorkerProcessInstallAllResponse
   986, // 9134 -> k_EMsgDRMWorkerProcessSignFile
   987, // 9135 -> k_EMsgDRMWorkerProcessSignFileResponse
-  1320, // 9200 -> k_EMsgTestWorkerProcess
-  1322, // 9201 -> k_EMsgTestWorkerProcessLoadUnloadModuleResponse
-  1323, // 9202 -> k_EMsgTestWorkerProcessServiceModuleCallRequest
-  1324, // 9203 -> k_EMsgTestWorkerProcessServiceModuleCallResponse
+  1319, // 9200 -> k_EMsgTestWorkerProcess
+  1321, // 9201 -> k_EMsgTestWorkerProcessLoadUnloadModuleResponse
+  1322, // 9202 -> k_EMsgTestWorkerProcessServiceModuleCallRequest
+  1323, // 9203 -> k_EMsgTestWorkerProcessServiceModuleCallResponse
   1243, // 9300 -> k_EMsgQuestServerBase
   670, // 9330 -> k_EMsgClientGetEmoticonList
   622, // 9331 -> k_EMsgClientEmoticonList
@@ -5675,12 +5671,12 @@ static const int EMsg_entries_by_number[] = {
   1255, // 9529 -> k_EMsgRemoteClientAppDownloadStats
   1259, // 9530 -> k_EMsgRemoteClientAppUploadStats
   1256, // 9531 -> k_EMsgRemoteClientAppInfoUpdateComplete
-  1432, // 9532 -> k_eMsgRemoteClientDownloadsManagement
-  1431, // 9533 -> k_eMsgRemoteClientDownloadingAppID
-  1433, // 9534 -> k_eMsgRemoteClientPeerContentServerChanged
-  1434, // 9535 -> k_eMsgRemoteClientRestrictAutoUpdatesChanged
-  1435, // 9536 -> k_eMsgRemoteClientSuspendLanPeerContent
-  1436, // 9537 -> k_eMsgRemoteClientUpdateDownloadsController
+  1431, // 9532 -> k_eMsgRemoteClientDownloadsManagement
+  1430, // 9533 -> k_eMsgRemoteClientDownloadingAppID
+  1432, // 9534 -> k_eMsgRemoteClientPeerContentServerChanged
+  1433, // 9535 -> k_eMsgRemoteClientRestrictAutoUpdatesChanged
+  1434, // 9536 -> k_eMsgRemoteClientSuspendLanPeerContent
+  1435, // 9537 -> k_eMsgRemoteClientUpdateDownloadsController
   1253, // 9538 -> k_EMsgRemoteClientAcceptAllEULAs
   595, // 9600 -> k_EMsgClientConcurrentSessionsBase
   696, // 9601 -> k_EMsgClientKickPlayingSession
@@ -5692,7 +5688,7 @@ static const int EMsg_entries_by_number[] = {
   910, // 9801 -> k_EMsgClientVoiceCallPreAuthorizeResponse
   828, // 9802 -> k_EMsgClientServerTimestampRequest
   829, // 9803 -> k_EMsgClientServerTimestampResponse
-  1302, // 9804 -> k_EMsgServiceMethodCallFromClientNonAuthed
+  1301, // 9804 -> k_EMsgServiceMethodCallFromClientNonAuthed
   685, // 9805 -> k_EMsgClientHello
   623, // 9806 -> k_EMsgClientEnableOrDisableDownloads
   624, // 9807 -> k_EMsgClientEnableOrDisableDownloadsResponse
@@ -5714,10 +5710,10 @@ static const int EMsg_entries_by_number[] = {
   550, // 12001 -> k_EMsgChatServerGetPendingNotificationCountResponse
   508, // 12100 -> k_EMsgBaseSecretServer
   513, // 12200 -> k_EMsgBaseWG
-  1411, // 12201 -> k_EMsgWGConnectionValidateUserToken
-  1412, // 12202 -> k_EMsgWGConnectionValidateUserTokenResponse
-  1408, // 12203 -> k_EMsgWGConnectionLegacyWGRequest
-  1409, // 12204 -> k_EMsgWGConnectionLegacyWGResponse
+  1410, // 12201 -> k_EMsgWGConnectionValidateUserToken
+  1411, // 12202 -> k_EMsgWGConnectionValidateUserTokenResponse
+  1407, // 12203 -> k_EMsgWGConnectionLegacyWGRequest
+  1408, // 12204 -> k_EMsgWGConnectionLegacyWGResponse
   784, // 12300 -> k_EMsgClientPendingGameLaunch
   785, // 12301 -> k_EMsgClientPendingGameLaunchResponse
 };
@@ -5728,12 +5724,12 @@ const std::string& EMsg_Name(
       ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
           EMsg_entries,
           EMsg_entries_by_number,
-          1409, EMsg_strings);
+          1408, EMsg_strings);
   (void) dummy;
   int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
       EMsg_entries,
       EMsg_entries_by_number,
-      1409, value);
+      1408, value);
   return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
                      EMsg_strings[idx].get();
 }
@@ -5741,7 +5737,7 @@ bool EMsg_Parse(
     ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EMsg* value) {
   int int_value;
   bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EMsg_entries, 1437, name, &int_value);
+      EMsg_entries, 1436, name, &int_value);
   if (success) {
     *value = static_cast<EMsg>(int_value);
   }

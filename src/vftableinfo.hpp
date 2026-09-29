@@ -10,12 +10,14 @@
 
 struct VFTableInfo_t
 {
+	constexpr static unsigned int NO_INDEX = 0xFFFFFFFF;
+
 	std::string typeName;
 	std::string functionName;
 	lm_address_t address;
 	unsigned int index;
 
-	VFTableInfo_t(const char* typeName, const char* functionName, const unsigned int index = 0);
+	VFTableInfo_t(const char* typeName, const char* functionName, const unsigned int index = NO_INDEX);
 	bool init();
 
 	std::string getPrintName() const;
@@ -31,6 +33,12 @@ namespace VFTIndexes
 	namespace CClientUnifiedServiceTransport
 	{
 		extern VFTableInfo_t SendAndRecvMsg;
+	}
+
+	namespace CSteamMatchmakingServers
+	{
+		extern VFTableInfo_t GetServerDetails;
+		extern VFTableInfo_t RequestInternetServerList;
 	}
 
 	namespace IClientApps

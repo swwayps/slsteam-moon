@@ -48,7 +48,7 @@ struct TableStruct_steammessages_5fplayer_2esteamclient_2eproto {
     PROTOBUF_SECTION_VARIABLE(protodesc_cold);
   static const ::PROTOBUF_NAMESPACE_ID::internal::AuxiliaryParseTableField aux[]
     PROTOBUF_SECTION_VARIABLE(protodesc_cold);
-  static const ::PROTOBUF_NAMESPACE_ID::internal::ParseTable schema[154]
+  static const ::PROTOBUF_NAMESPACE_ID::internal::ParseTable schema[155]
     PROTOBUF_SECTION_VARIABLE(protodesc_cold);
   static const ::PROTOBUF_NAMESPACE_ID::internal::FieldMetadata field_metadata[];
   static const ::PROTOBUF_NAMESPACE_ID::internal::SerializationTable serialization_table[];
@@ -360,6 +360,9 @@ extern CPlayer_GetUserAchievements_ResponseDefaultTypeInternal _CPlayer_GetUserA
 class CPlayer_GetUserAchievements_Response_Achievement;
 struct CPlayer_GetUserAchievements_Response_AchievementDefaultTypeInternal;
 extern CPlayer_GetUserAchievements_Response_AchievementDefaultTypeInternal _CPlayer_GetUserAchievements_Response_Achievement_default_instance_;
+class CPlayer_GetUserAchievements_Response_Group;
+struct CPlayer_GetUserAchievements_Response_GroupDefaultTypeInternal;
+extern CPlayer_GetUserAchievements_Response_GroupDefaultTypeInternal _CPlayer_GetUserAchievements_Response_Group_default_instance_;
 class CPlayer_GetUserStats_Request;
 struct CPlayer_GetUserStats_RequestDefaultTypeInternal;
 extern CPlayer_GetUserStats_RequestDefaultTypeInternal _CPlayer_GetUserStats_Request_default_instance_;
@@ -619,6 +622,7 @@ template<> ::CPlayer_GetTopAchievementsForGames_Response_Game* Arena::CreateMayb
 template<> ::CPlayer_GetUserAchievements_Request* Arena::CreateMaybeMessage<::CPlayer_GetUserAchievements_Request>(Arena*);
 template<> ::CPlayer_GetUserAchievements_Response* Arena::CreateMaybeMessage<::CPlayer_GetUserAchievements_Response>(Arena*);
 template<> ::CPlayer_GetUserAchievements_Response_Achievement* Arena::CreateMaybeMessage<::CPlayer_GetUserAchievements_Response_Achievement>(Arena*);
+template<> ::CPlayer_GetUserAchievements_Response_Group* Arena::CreateMaybeMessage<::CPlayer_GetUserAchievements_Response_Group>(Arena*);
 template<> ::CPlayer_GetUserStats_Request* Arena::CreateMaybeMessage<::CPlayer_GetUserStats_Request>(Arena*);
 template<> ::CPlayer_GetUserStats_Response* Arena::CreateMaybeMessage<::CPlayer_GetUserStats_Response>(Arena*);
 template<> ::CPlayer_GetUserStats_Response_Stats* Arena::CreateMaybeMessage<::CPlayer_GetUserStats_Response_Stats>(Arena*);
@@ -12610,7 +12614,10 @@ class CPlayer_GetGameAchievements_Response_Group PROTOBUF_FINAL :
     kDlcappidFieldNumber = 3,
     kArchivedFieldNumber = 4,
     kDeveloperonlyFieldNumber = 5,
+    kIspublicFieldNumber = 7,
     kOrderFieldNumber = 6,
+    kTotalAchievementsFieldNumber = 8,
+    kCompletionAchievementsFieldNumber = 9,
   };
   // optional string localized_name = 2;
   bool has_localized_name() const;
@@ -12684,6 +12691,19 @@ class CPlayer_GetGameAchievements_Response_Group PROTOBUF_FINAL :
   void _internal_set_developeronly(bool value);
   public:
 
+  // optional bool ispublic = 7;
+  bool has_ispublic() const;
+  private:
+  bool _internal_has_ispublic() const;
+  public:
+  void clear_ispublic();
+  bool ispublic() const;
+  void set_ispublic(bool value);
+  private:
+  bool _internal_ispublic() const;
+  void _internal_set_ispublic(bool value);
+  public:
+
   // optional uint32 order = 6;
   bool has_order() const;
   private:
@@ -12695,6 +12715,32 @@ class CPlayer_GetGameAchievements_Response_Group PROTOBUF_FINAL :
   private:
   ::PROTOBUF_NAMESPACE_ID::uint32 _internal_order() const;
   void _internal_set_order(::PROTOBUF_NAMESPACE_ID::uint32 value);
+  public:
+
+  // optional uint32 total_achievements = 8;
+  bool has_total_achievements() const;
+  private:
+  bool _internal_has_total_achievements() const;
+  public:
+  void clear_total_achievements();
+  ::PROTOBUF_NAMESPACE_ID::uint32 total_achievements() const;
+  void set_total_achievements(::PROTOBUF_NAMESPACE_ID::uint32 value);
+  private:
+  ::PROTOBUF_NAMESPACE_ID::uint32 _internal_total_achievements() const;
+  void _internal_set_total_achievements(::PROTOBUF_NAMESPACE_ID::uint32 value);
+  public:
+
+  // optional uint32 completion_achievements = 9;
+  bool has_completion_achievements() const;
+  private:
+  bool _internal_has_completion_achievements() const;
+  public:
+  void clear_completion_achievements();
+  ::PROTOBUF_NAMESPACE_ID::uint32 completion_achievements() const;
+  void set_completion_achievements(::PROTOBUF_NAMESPACE_ID::uint32 value);
+  private:
+  ::PROTOBUF_NAMESPACE_ID::uint32 _internal_completion_achievements() const;
+  void _internal_set_completion_achievements(::PROTOBUF_NAMESPACE_ID::uint32 value);
   public:
 
   // @@protoc_insertion_point(class_scope:CPlayer_GetGameAchievements_Response.Group)
@@ -12711,7 +12757,10 @@ class CPlayer_GetGameAchievements_Response_Group PROTOBUF_FINAL :
   ::PROTOBUF_NAMESPACE_ID::uint32 dlcappid_;
   bool archived_;
   bool developeronly_;
+  bool ispublic_;
   ::PROTOBUF_NAMESPACE_ID::uint32 order_;
+  ::PROTOBUF_NAMESPACE_ID::uint32 total_achievements_;
+  ::PROTOBUF_NAMESPACE_ID::uint32 completion_achievements_;
   friend struct ::TableStruct_steammessages_5fplayer_2esteamclient_2eproto;
 };
 // -------------------------------------------------------------------
@@ -13254,6 +13303,156 @@ class CPlayer_GetUserAchievements_Response_Achievement PROTOBUF_FINAL :
 };
 // -------------------------------------------------------------------
 
+class CPlayer_GetUserAchievements_Response_Group PROTOBUF_FINAL :
+    public ::PROTOBUF_NAMESPACE_ID::MessageLite /* @@protoc_insertion_point(class_definition:CPlayer_GetUserAchievements_Response.Group) */ {
+ public:
+  inline CPlayer_GetUserAchievements_Response_Group() : CPlayer_GetUserAchievements_Response_Group(nullptr) {}
+  virtual ~CPlayer_GetUserAchievements_Response_Group();
+  explicit constexpr CPlayer_GetUserAchievements_Response_Group(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  CPlayer_GetUserAchievements_Response_Group(const CPlayer_GetUserAchievements_Response_Group& from);
+  CPlayer_GetUserAchievements_Response_Group(CPlayer_GetUserAchievements_Response_Group&& from) noexcept
+    : CPlayer_GetUserAchievements_Response_Group() {
+    *this = ::std::move(from);
+  }
+
+  inline CPlayer_GetUserAchievements_Response_Group& operator=(const CPlayer_GetUserAchievements_Response_Group& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline CPlayer_GetUserAchievements_Response_Group& operator=(CPlayer_GetUserAchievements_Response_Group&& from) noexcept {
+    if (GetArena() == from.GetArena()) {
+      if (this != &from) InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  inline const std::string& unknown_fields() const {
+    return _internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString);
+  }
+  inline std::string* mutable_unknown_fields() {
+    return _internal_metadata_.mutable_unknown_fields<std::string>();
+  }
+
+  static const CPlayer_GetUserAchievements_Response_Group& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const CPlayer_GetUserAchievements_Response_Group* internal_default_instance() {
+    return reinterpret_cast<const CPlayer_GetUserAchievements_Response_Group*>(
+               &_CPlayer_GetUserAchievements_Response_Group_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    70;
+
+  friend void swap(CPlayer_GetUserAchievements_Response_Group& a, CPlayer_GetUserAchievements_Response_Group& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(CPlayer_GetUserAchievements_Response_Group* other) {
+    if (other == this) return;
+    if (GetArena() == other->GetArena()) {
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(CPlayer_GetUserAchievements_Response_Group* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetArena() == other->GetArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  inline CPlayer_GetUserAchievements_Response_Group* New() const final {
+    return CreateMaybeMessage<CPlayer_GetUserAchievements_Response_Group>(nullptr);
+  }
+
+  CPlayer_GetUserAchievements_Response_Group* New(::PROTOBUF_NAMESPACE_ID::Arena* arena) const final {
+    return CreateMaybeMessage<CPlayer_GetUserAchievements_Response_Group>(arena);
+  }
+  void CheckTypeAndMergeFrom(const ::PROTOBUF_NAMESPACE_ID::MessageLite& from)
+    final;
+  void CopyFrom(const CPlayer_GetUserAchievements_Response_Group& from);
+  void MergeFrom(const CPlayer_GetUserAchievements_Response_Group& from);
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  ::PROTOBUF_NAMESPACE_ID::uint8* _InternalSerialize(
+      ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  void DiscardUnknownFields();
+  int GetCachedSize() const final { return _cached_size_.Get(); }
+
+  private:
+  inline void SharedCtor();
+  inline void SharedDtor();
+  void SetCachedSize(int size) const;
+  void InternalSwap(CPlayer_GetUserAchievements_Response_Group* other);
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "CPlayer_GetUserAchievements_Response.Group";
+  }
+  protected:
+  explicit CPlayer_GetUserAchievements_Response_Group(::PROTOBUF_NAMESPACE_ID::Arena* arena);
+  private:
+  static void ArenaDtor(void* object);
+  inline void RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena* arena);
+  public:
+
+  std::string GetTypeName() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kGroupidFieldNumber = 1,
+    kCompletionAchievementsFieldNumber = 3,
+  };
+  // optional uint32 groupid = 1;
+  bool has_groupid() const;
+  private:
+  bool _internal_has_groupid() const;
+  public:
+  void clear_groupid();
+  ::PROTOBUF_NAMESPACE_ID::uint32 groupid() const;
+  void set_groupid(::PROTOBUF_NAMESPACE_ID::uint32 value);
+  private:
+  ::PROTOBUF_NAMESPACE_ID::uint32 _internal_groupid() const;
+  void _internal_set_groupid(::PROTOBUF_NAMESPACE_ID::uint32 value);
+  public:
+
+  // optional uint32 completion_achievements = 3;
+  bool has_completion_achievements() const;
+  private:
+  bool _internal_has_completion_achievements() const;
+  public:
+  void clear_completion_achievements();
+  ::PROTOBUF_NAMESPACE_ID::uint32 completion_achievements() const;
+  void set_completion_achievements(::PROTOBUF_NAMESPACE_ID::uint32 value);
+  private:
+  ::PROTOBUF_NAMESPACE_ID::uint32 _internal_completion_achievements() const;
+  void _internal_set_completion_achievements(::PROTOBUF_NAMESPACE_ID::uint32 value);
+  public:
+
+  // @@protoc_insertion_point(class_scope:CPlayer_GetUserAchievements_Response.Group)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
+  mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+  ::PROTOBUF_NAMESPACE_ID::uint32 groupid_;
+  ::PROTOBUF_NAMESPACE_ID::uint32 completion_achievements_;
+  friend struct ::TableStruct_steammessages_5fplayer_2esteamclient_2eproto;
+};
+// -------------------------------------------------------------------
+
 class CPlayer_GetUserAchievements_Response PROTOBUF_FINAL :
     public ::PROTOBUF_NAMESPACE_ID::MessageLite /* @@protoc_insertion_point(class_definition:CPlayer_GetUserAchievements_Response) */ {
  public:
@@ -13295,7 +13494,7 @@ class CPlayer_GetUserAchievements_Response PROTOBUF_FINAL :
                &_CPlayer_GetUserAchievements_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    70;
+    71;
 
   friend void swap(CPlayer_GetUserAchievements_Response& a, CPlayer_GetUserAchievements_Response& b) {
     a.Swap(&b);
@@ -13358,11 +13557,13 @@ class CPlayer_GetUserAchievements_Response PROTOBUF_FINAL :
   // nested types ----------------------------------------------------
 
   typedef CPlayer_GetUserAchievements_Response_Achievement Achievement;
+  typedef CPlayer_GetUserAchievements_Response_Group Group;
 
   // accessors -------------------------------------------------------
 
   enum : int {
     kAchievementsFieldNumber = 1,
+    kGroupsFieldNumber = 4,
     kSchemaVersionFieldNumber = 2,
     kSchemaHashFieldNumber = 3,
   };
@@ -13383,6 +13584,24 @@ class CPlayer_GetUserAchievements_Response PROTOBUF_FINAL :
   ::CPlayer_GetUserAchievements_Response_Achievement* add_achievements();
   const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::CPlayer_GetUserAchievements_Response_Achievement >&
       achievements() const;
+
+  // repeated .CPlayer_GetUserAchievements_Response.Group groups = 4;
+  int groups_size() const;
+  private:
+  int _internal_groups_size() const;
+  public:
+  void clear_groups();
+  ::CPlayer_GetUserAchievements_Response_Group* mutable_groups(int index);
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::CPlayer_GetUserAchievements_Response_Group >*
+      mutable_groups();
+  private:
+  const ::CPlayer_GetUserAchievements_Response_Group& _internal_groups(int index) const;
+  ::CPlayer_GetUserAchievements_Response_Group* _internal_add_groups();
+  public:
+  const ::CPlayer_GetUserAchievements_Response_Group& groups(int index) const;
+  ::CPlayer_GetUserAchievements_Response_Group* add_groups();
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::CPlayer_GetUserAchievements_Response_Group >&
+      groups() const;
 
   // optional int32 schema_version = 2;
   bool has_schema_version() const;
@@ -13420,6 +13639,7 @@ class CPlayer_GetUserAchievements_Response PROTOBUF_FINAL :
   ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
   mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::CPlayer_GetUserAchievements_Response_Achievement > achievements_;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::CPlayer_GetUserAchievements_Response_Group > groups_;
   ::PROTOBUF_NAMESPACE_ID::int32 schema_version_;
   ::PROTOBUF_NAMESPACE_ID::uint32 schema_hash_;
   friend struct ::TableStruct_steammessages_5fplayer_2esteamclient_2eproto;
@@ -13467,7 +13687,7 @@ class CPlayer_GetUserStats_Request PROTOBUF_FINAL :
                &_CPlayer_GetUserStats_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    71;
+    72;
 
   friend void swap(CPlayer_GetUserStats_Request& a, CPlayer_GetUserStats_Request& b) {
     a.Swap(&b);
@@ -13669,7 +13889,7 @@ class CPlayer_GetUserStats_Response_Unlock_Time PROTOBUF_FINAL :
                &_CPlayer_GetUserStats_Response_Unlock_Time_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    72;
+    73;
 
   friend void swap(CPlayer_GetUserStats_Response_Unlock_Time& a, CPlayer_GetUserStats_Response_Unlock_Time& b) {
     a.Swap(&b);
@@ -13819,7 +14039,7 @@ class CPlayer_GetUserStats_Response_Stats PROTOBUF_FINAL :
                &_CPlayer_GetUserStats_Response_Stats_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    73;
+    74;
 
   friend void swap(CPlayer_GetUserStats_Response_Stats& a, CPlayer_GetUserStats_Response_Stats& b) {
     a.Swap(&b);
@@ -13989,7 +14209,7 @@ class CPlayer_GetUserStats_Response PROTOBUF_FINAL :
                &_CPlayer_GetUserStats_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    74;
+    75;
 
   friend void swap(CPlayer_GetUserStats_Response& a, CPlayer_GetUserStats_Response& b) {
     a.Swap(&b);
@@ -14206,7 +14426,7 @@ class CPlayer_GetFavoriteBadge_Request PROTOBUF_FINAL :
                &_CPlayer_GetFavoriteBadge_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    75;
+    76;
 
   friend void swap(CPlayer_GetFavoriteBadge_Request& a, CPlayer_GetFavoriteBadge_Request& b) {
     a.Swap(&b);
@@ -14341,7 +14561,7 @@ class CPlayer_GetFavoriteBadge_Response PROTOBUF_FINAL :
                &_CPlayer_GetFavoriteBadge_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    76;
+    77;
 
   friend void swap(CPlayer_GetFavoriteBadge_Response& a, CPlayer_GetFavoriteBadge_Response& b) {
     a.Swap(&b);
@@ -14566,7 +14786,7 @@ class CPlayer_SetFavoriteBadge_Request PROTOBUF_FINAL :
                &_CPlayer_SetFavoriteBadge_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    77;
+    78;
 
   friend void swap(CPlayer_SetFavoriteBadge_Request& a, CPlayer_SetFavoriteBadge_Request& b) {
     a.Swap(&b);
@@ -14716,7 +14936,7 @@ class CPlayer_SetFavoriteBadge_Response PROTOBUF_FINAL :
                &_CPlayer_SetFavoriteBadge_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    78;
+    79;
 
   friend void swap(CPlayer_SetFavoriteBadge_Response& a, CPlayer_SetFavoriteBadge_Response& b) {
     a.Swap(&b);
@@ -14833,7 +15053,7 @@ class CPlayer_GetProfileCustomization_Request PROTOBUF_FINAL :
                &_CPlayer_GetProfileCustomization_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    79;
+    80;
 
   friend void swap(CPlayer_GetProfileCustomization_Request& a, CPlayer_GetProfileCustomization_Request& b) {
     a.Swap(&b);
@@ -14998,7 +15218,7 @@ class ProfileCustomizationSlot PROTOBUF_FINAL :
                &_ProfileCustomizationSlot_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    80;
+    81;
 
   friend void swap(ProfileCustomizationSlot& a, ProfileCustomizationSlot& b) {
     a.Swap(&b);
@@ -15342,7 +15562,7 @@ class ProfileCustomization PROTOBUF_FINAL :
                &_ProfileCustomization_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    81;
+    82;
 
   friend void swap(ProfileCustomization& a, ProfileCustomization& b) {
     a.Swap(&b);
@@ -15572,7 +15792,7 @@ class ProfileTheme PROTOBUF_FINAL :
                &_ProfileTheme_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    82;
+    83;
 
   friend void swap(ProfileTheme& a, ProfileTheme& b) {
     a.Swap(&b);
@@ -15736,7 +15956,7 @@ class ProfilePreferences PROTOBUF_FINAL :
                &_ProfilePreferences_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    83;
+    84;
 
   friend void swap(ProfilePreferences& a, ProfilePreferences& b) {
     a.Swap(&b);
@@ -15871,7 +16091,7 @@ class CPlayer_GetProfileCustomization_Response_PurchasedCustomization PROTOBUF_F
                &_CPlayer_GetProfileCustomization_Response_PurchasedCustomization_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    84;
+    85;
 
   friend void swap(CPlayer_GetProfileCustomization_Response_PurchasedCustomization& a, CPlayer_GetProfileCustomization_Response_PurchasedCustomization& b) {
     a.Swap(&b);
@@ -16036,7 +16256,7 @@ class CPlayer_GetProfileCustomization_Response PROTOBUF_FINAL :
                &_CPlayer_GetProfileCustomization_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    85;
+    86;
 
   friend void swap(CPlayer_GetProfileCustomization_Response& a, CPlayer_GetProfileCustomization_Response& b) {
     a.Swap(&b);
@@ -16253,7 +16473,7 @@ class CPlayer_GetPurchasedProfileCustomizations_Request PROTOBUF_FINAL :
                &_CPlayer_GetPurchasedProfileCustomizations_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    86;
+    87;
 
   friend void swap(CPlayer_GetPurchasedProfileCustomizations_Request& a, CPlayer_GetPurchasedProfileCustomizations_Request& b) {
     a.Swap(&b);
@@ -16388,7 +16608,7 @@ class CPlayer_GetPurchasedProfileCustomizations_Response_PurchasedCustomization 
                &_CPlayer_GetPurchasedProfileCustomizations_Response_PurchasedCustomization_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    87;
+    88;
 
   friend void swap(CPlayer_GetPurchasedProfileCustomizations_Response_PurchasedCustomization& a, CPlayer_GetPurchasedProfileCustomizations_Response_PurchasedCustomization& b) {
     a.Swap(&b);
@@ -16538,7 +16758,7 @@ class CPlayer_GetPurchasedProfileCustomizations_Response PROTOBUF_FINAL :
                &_CPlayer_GetPurchasedProfileCustomizations_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    88;
+    89;
 
   friend void swap(CPlayer_GetPurchasedProfileCustomizations_Response& a, CPlayer_GetPurchasedProfileCustomizations_Response& b) {
     a.Swap(&b);
@@ -16679,7 +16899,7 @@ class CPlayer_GetPurchasedAndUpgradedProfileCustomizations_Request PROTOBUF_FINA
                &_CPlayer_GetPurchasedAndUpgradedProfileCustomizations_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    89;
+    90;
 
   friend void swap(CPlayer_GetPurchasedAndUpgradedProfileCustomizations_Request& a, CPlayer_GetPurchasedAndUpgradedProfileCustomizations_Request& b) {
     a.Swap(&b);
@@ -16814,7 +17034,7 @@ class CPlayer_GetPurchasedAndUpgradedProfileCustomizations_Response_PurchasedCus
                &_CPlayer_GetPurchasedAndUpgradedProfileCustomizations_Response_PurchasedCustomization_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    90;
+    91;
 
   friend void swap(CPlayer_GetPurchasedAndUpgradedProfileCustomizations_Response_PurchasedCustomization& a, CPlayer_GetPurchasedAndUpgradedProfileCustomizations_Response_PurchasedCustomization& b) {
     a.Swap(&b);
@@ -16964,7 +17184,7 @@ class CPlayer_GetPurchasedAndUpgradedProfileCustomizations_Response_UpgradedCust
                &_CPlayer_GetPurchasedAndUpgradedProfileCustomizations_Response_UpgradedCustomization_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    91;
+    92;
 
   friend void swap(CPlayer_GetPurchasedAndUpgradedProfileCustomizations_Response_UpgradedCustomization& a, CPlayer_GetPurchasedAndUpgradedProfileCustomizations_Response_UpgradedCustomization& b) {
     a.Swap(&b);
@@ -17114,7 +17334,7 @@ class CPlayer_GetPurchasedAndUpgradedProfileCustomizations_Response PROTOBUF_FIN
                &_CPlayer_GetPurchasedAndUpgradedProfileCustomizations_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    92;
+    93;
 
   friend void swap(CPlayer_GetPurchasedAndUpgradedProfileCustomizations_Response& a, CPlayer_GetPurchasedAndUpgradedProfileCustomizations_Response& b) {
     a.Swap(&b);
@@ -17276,7 +17496,7 @@ class CPlayer_GetProfileThemesAvailable_Request PROTOBUF_FINAL :
                &_CPlayer_GetProfileThemesAvailable_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    93;
+    94;
 
   friend void swap(CPlayer_GetProfileThemesAvailable_Request& a, CPlayer_GetProfileThemesAvailable_Request& b) {
     a.Swap(&b);
@@ -17393,7 +17613,7 @@ class CPlayer_GetProfileThemesAvailable_Response PROTOBUF_FINAL :
                &_CPlayer_GetProfileThemesAvailable_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    94;
+    95;
 
   friend void swap(CPlayer_GetProfileThemesAvailable_Response& a, CPlayer_GetProfileThemesAvailable_Response& b) {
     a.Swap(&b);
@@ -17532,7 +17752,7 @@ class CPlayer_SetProfileTheme_Request PROTOBUF_FINAL :
                &_CPlayer_SetProfileTheme_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    95;
+    96;
 
   friend void swap(CPlayer_SetProfileTheme_Request& a, CPlayer_SetProfileTheme_Request& b) {
     a.Swap(&b);
@@ -17674,7 +17894,7 @@ class CPlayer_SetProfileTheme_Response PROTOBUF_FINAL :
                &_CPlayer_SetProfileTheme_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    96;
+    97;
 
   friend void swap(CPlayer_SetProfileTheme_Response& a, CPlayer_SetProfileTheme_Response& b) {
     a.Swap(&b);
@@ -17791,7 +18011,7 @@ class CPlayer_SetProfilePreferences_Request PROTOBUF_FINAL :
                &_CPlayer_SetProfilePreferences_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    97;
+    98;
 
   friend void swap(CPlayer_SetProfilePreferences_Request& a, CPlayer_SetProfilePreferences_Request& b) {
     a.Swap(&b);
@@ -17931,7 +18151,7 @@ class CPlayer_SetProfilePreferences_Response PROTOBUF_FINAL :
                &_CPlayer_SetProfilePreferences_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    98;
+    99;
 
   friend void swap(CPlayer_SetProfilePreferences_Response& a, CPlayer_SetProfilePreferences_Response& b) {
     a.Swap(&b);
@@ -18048,7 +18268,7 @@ class CPlayer_PostStatusToFriends_Request PROTOBUF_FINAL :
                &_CPlayer_PostStatusToFriends_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    99;
+    100;
 
   friend void swap(CPlayer_PostStatusToFriends_Request& a, CPlayer_PostStatusToFriends_Request& b) {
     a.Swap(&b);
@@ -18205,7 +18425,7 @@ class CPlayer_PostStatusToFriends_Response PROTOBUF_FINAL :
                &_CPlayer_PostStatusToFriends_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    100;
+    101;
 
   friend void swap(CPlayer_PostStatusToFriends_Response& a, CPlayer_PostStatusToFriends_Response& b) {
     a.Swap(&b);
@@ -18322,7 +18542,7 @@ class CPlayer_GetPostedStatus_Request PROTOBUF_FINAL :
                &_CPlayer_GetPostedStatus_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    101;
+    102;
 
   friend void swap(CPlayer_GetPostedStatus_Request& a, CPlayer_GetPostedStatus_Request& b) {
     a.Swap(&b);
@@ -18472,7 +18692,7 @@ class CPlayer_GetPostedStatus_Response PROTOBUF_FINAL :
                &_CPlayer_GetPostedStatus_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    102;
+    103;
 
   friend void swap(CPlayer_GetPostedStatus_Response& a, CPlayer_GetPostedStatus_Response& b) {
     a.Swap(&b);
@@ -18674,7 +18894,7 @@ class CPlayer_DeletePostedStatus_Request PROTOBUF_FINAL :
                &_CPlayer_DeletePostedStatus_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    103;
+    104;
 
   friend void swap(CPlayer_DeletePostedStatus_Request& a, CPlayer_DeletePostedStatus_Request& b) {
     a.Swap(&b);
@@ -18809,7 +19029,7 @@ class CPlayer_DeletePostedStatus_Response PROTOBUF_FINAL :
                &_CPlayer_DeletePostedStatus_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    104;
+    105;
 
   friend void swap(CPlayer_DeletePostedStatus_Response& a, CPlayer_DeletePostedStatus_Response& b) {
     a.Swap(&b);
@@ -18926,7 +19146,7 @@ class CPlayer_GetLastPlayedTimes_Request PROTOBUF_FINAL :
                &_CPlayer_GetLastPlayedTimes_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    105;
+    106;
 
   friend void swap(CPlayer_GetLastPlayedTimes_Request& a, CPlayer_GetLastPlayedTimes_Request& b) {
     a.Swap(&b);
@@ -19061,7 +19281,7 @@ class CPlayer_GetLastPlayedTimes_Response_Game PROTOBUF_FINAL :
                &_CPlayer_GetLastPlayedTimes_Response_Game_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    106;
+    107;
 
   friend void swap(CPlayer_GetLastPlayedTimes_Response_Game& a, CPlayer_GetLastPlayedTimes_Response_Game& b) {
     a.Swap(&b);
@@ -19451,7 +19671,7 @@ class CPlayer_GetLastPlayedTimes_Response PROTOBUF_FINAL :
                &_CPlayer_GetLastPlayedTimes_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    107;
+    108;
 
   friend void swap(CPlayer_GetLastPlayedTimes_Response& a, CPlayer_GetLastPlayedTimes_Response& b) {
     a.Swap(&b);
@@ -19592,7 +19812,7 @@ class CPlayer_GetTimeSSAAccepted_Request PROTOBUF_FINAL :
                &_CPlayer_GetTimeSSAAccepted_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    108;
+    109;
 
   friend void swap(CPlayer_GetTimeSSAAccepted_Request& a, CPlayer_GetTimeSSAAccepted_Request& b) {
     a.Swap(&b);
@@ -19709,7 +19929,7 @@ class CPlayer_GetTimeSSAAccepted_Response PROTOBUF_FINAL :
                &_CPlayer_GetTimeSSAAccepted_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    109;
+    110;
 
   friend void swap(CPlayer_GetTimeSSAAccepted_Response& a, CPlayer_GetTimeSSAAccepted_Response& b) {
     a.Swap(&b);
@@ -19874,7 +20094,7 @@ class CPlayer_AcceptSSA_Request PROTOBUF_FINAL :
                &_CPlayer_AcceptSSA_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    110;
+    111;
 
   friend void swap(CPlayer_AcceptSSA_Request& a, CPlayer_AcceptSSA_Request& b) {
     a.Swap(&b);
@@ -20024,7 +20244,7 @@ class CPlayer_AcceptSSA_Response PROTOBUF_FINAL :
                &_CPlayer_AcceptSSA_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    111;
+    112;
 
   friend void swap(CPlayer_AcceptSSA_Response& a, CPlayer_AcceptSSA_Response& b) {
     a.Swap(&b);
@@ -20141,7 +20361,7 @@ class CPlayer_GetNicknameList_Request PROTOBUF_FINAL :
                &_CPlayer_GetNicknameList_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    112;
+    113;
 
   friend void swap(CPlayer_GetNicknameList_Request& a, CPlayer_GetNicknameList_Request& b) {
     a.Swap(&b);
@@ -20258,7 +20478,7 @@ class CPlayer_GetNicknameList_Response_PlayerNickname PROTOBUF_FINAL :
                &_CPlayer_GetNicknameList_Response_PlayerNickname_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    113;
+    114;
 
   friend void swap(CPlayer_GetNicknameList_Response_PlayerNickname& a, CPlayer_GetNicknameList_Response_PlayerNickname& b) {
     a.Swap(&b);
@@ -20415,7 +20635,7 @@ class CPlayer_GetNicknameList_Response PROTOBUF_FINAL :
                &_CPlayer_GetNicknameList_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    114;
+    115;
 
   friend void swap(CPlayer_GetNicknameList_Response& a, CPlayer_GetNicknameList_Response& b) {
     a.Swap(&b);
@@ -20556,7 +20776,7 @@ class CPlayer_GetPerFriendPreferences_Request PROTOBUF_FINAL :
                &_CPlayer_GetPerFriendPreferences_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    115;
+    116;
 
   friend void swap(CPlayer_GetPerFriendPreferences_Request& a, CPlayer_GetPerFriendPreferences_Request& b) {
     a.Swap(&b);
@@ -20673,7 +20893,7 @@ class PerFriendPreferences PROTOBUF_FINAL :
                &_PerFriendPreferences_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    116;
+    117;
 
   friend void swap(PerFriendPreferences& a, PerFriendPreferences& b) {
     a.Swap(&b);
@@ -20935,7 +21155,7 @@ class CPlayer_GetPerFriendPreferences_Response PROTOBUF_FINAL :
                &_CPlayer_GetPerFriendPreferences_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    117;
+    118;
 
   friend void swap(CPlayer_GetPerFriendPreferences_Response& a, CPlayer_GetPerFriendPreferences_Response& b) {
     a.Swap(&b);
@@ -21074,7 +21294,7 @@ class CPlayer_SetPerFriendPreferences_Request PROTOBUF_FINAL :
                &_CPlayer_SetPerFriendPreferences_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    118;
+    119;
 
   friend void swap(CPlayer_SetPerFriendPreferences_Request& a, CPlayer_SetPerFriendPreferences_Request& b) {
     a.Swap(&b);
@@ -21214,7 +21434,7 @@ class CPlayer_SetPerFriendPreferences_Response PROTOBUF_FINAL :
                &_CPlayer_SetPerFriendPreferences_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    119;
+    120;
 
   friend void swap(CPlayer_SetPerFriendPreferences_Response& a, CPlayer_SetPerFriendPreferences_Response& b) {
     a.Swap(&b);
@@ -21331,7 +21551,7 @@ class CPlayer_AddFriend_Request PROTOBUF_FINAL :
                &_CPlayer_AddFriend_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    120;
+    121;
 
   friend void swap(CPlayer_AddFriend_Request& a, CPlayer_AddFriend_Request& b) {
     a.Swap(&b);
@@ -21466,7 +21686,7 @@ class CPlayer_AddFriend_Response PROTOBUF_FINAL :
                &_CPlayer_AddFriend_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    121;
+    122;
 
   friend void swap(CPlayer_AddFriend_Response& a, CPlayer_AddFriend_Response& b) {
     a.Swap(&b);
@@ -21631,7 +21851,7 @@ class CPlayer_RemoveFriend_Request PROTOBUF_FINAL :
                &_CPlayer_RemoveFriend_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    122;
+    123;
 
   friend void swap(CPlayer_RemoveFriend_Request& a, CPlayer_RemoveFriend_Request& b) {
     a.Swap(&b);
@@ -21766,7 +21986,7 @@ class CPlayer_RemoveFriend_Response PROTOBUF_FINAL :
                &_CPlayer_RemoveFriend_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    123;
+    124;
 
   friend void swap(CPlayer_RemoveFriend_Response& a, CPlayer_RemoveFriend_Response& b) {
     a.Swap(&b);
@@ -21901,7 +22121,7 @@ class CPlayer_IgnoreFriend_Request PROTOBUF_FINAL :
                &_CPlayer_IgnoreFriend_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    124;
+    125;
 
   friend void swap(CPlayer_IgnoreFriend_Request& a, CPlayer_IgnoreFriend_Request& b) {
     a.Swap(&b);
@@ -22051,7 +22271,7 @@ class CPlayer_IgnoreFriend_Response PROTOBUF_FINAL :
                &_CPlayer_IgnoreFriend_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    125;
+    126;
 
   friend void swap(CPlayer_IgnoreFriend_Response& a, CPlayer_IgnoreFriend_Response& b) {
     a.Swap(&b);
@@ -22186,7 +22406,7 @@ class CPlayer_GetCommunityPreferences_Request PROTOBUF_FINAL :
                &_CPlayer_GetCommunityPreferences_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    126;
+    127;
 
   friend void swap(CPlayer_GetCommunityPreferences_Request& a, CPlayer_GetCommunityPreferences_Request& b) {
     a.Swap(&b);
@@ -22303,7 +22523,7 @@ class CPlayer_CommunityPreferences PROTOBUF_FINAL :
                &_CPlayer_CommunityPreferences_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    127;
+    128;
 
   friend void swap(CPlayer_CommunityPreferences& a, CPlayer_CommunityPreferences& b) {
     a.Swap(&b);
@@ -22498,7 +22718,7 @@ class CPlayer_GetCommunityPreferences_Response PROTOBUF_FINAL :
                &_CPlayer_GetCommunityPreferences_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    128;
+    129;
 
   friend void swap(CPlayer_GetCommunityPreferences_Response& a, CPlayer_GetCommunityPreferences_Response& b) {
     a.Swap(&b);
@@ -22658,7 +22878,7 @@ class CPlayer_SetCommunityPreferences_Request PROTOBUF_FINAL :
                &_CPlayer_SetCommunityPreferences_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    129;
+    130;
 
   friend void swap(CPlayer_SetCommunityPreferences_Request& a, CPlayer_SetCommunityPreferences_Request& b) {
     a.Swap(&b);
@@ -22798,7 +23018,7 @@ class CPlayer_SetCommunityPreferences_Response PROTOBUF_FINAL :
                &_CPlayer_SetCommunityPreferences_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    130;
+    131;
 
   friend void swap(CPlayer_SetCommunityPreferences_Response& a, CPlayer_SetCommunityPreferences_Response& b) {
     a.Swap(&b);
@@ -22915,7 +23135,7 @@ class CPlayer_GetTextFilterWords_Request PROTOBUF_FINAL :
                &_CPlayer_GetTextFilterWords_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    131;
+    132;
 
   friend void swap(CPlayer_GetTextFilterWords_Request& a, CPlayer_GetTextFilterWords_Request& b) {
     a.Swap(&b);
@@ -23032,7 +23252,7 @@ class CPlayer_TextFilterWords PROTOBUF_FINAL :
                &_CPlayer_TextFilterWords_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    132;
+    133;
 
   friend void swap(CPlayer_TextFilterWords& a, CPlayer_TextFilterWords& b) {
     a.Swap(&b);
@@ -23219,7 +23439,7 @@ class CPlayer_GetTextFilterWords_Response PROTOBUF_FINAL :
                &_CPlayer_GetTextFilterWords_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    133;
+    134;
 
   friend void swap(CPlayer_GetTextFilterWords_Response& a, CPlayer_GetTextFilterWords_Response& b) {
     a.Swap(&b);
@@ -23359,7 +23579,7 @@ class CPlayer_GetNewSteamAnnouncementState_Request PROTOBUF_FINAL :
                &_CPlayer_GetNewSteamAnnouncementState_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    134;
+    135;
 
   friend void swap(CPlayer_GetNewSteamAnnouncementState_Request& a, CPlayer_GetNewSteamAnnouncementState_Request& b) {
     a.Swap(&b);
@@ -23494,7 +23714,7 @@ class CPlayer_GetNewSteamAnnouncementState_Response PROTOBUF_FINAL :
                &_CPlayer_GetNewSteamAnnouncementState_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    135;
+    136;
 
   friend void swap(CPlayer_GetNewSteamAnnouncementState_Response& a, CPlayer_GetNewSteamAnnouncementState_Response& b) {
     a.Swap(&b);
@@ -23703,7 +23923,7 @@ class CPlayer_UpdateSteamAnnouncementLastRead_Request PROTOBUF_FINAL :
                &_CPlayer_UpdateSteamAnnouncementLastRead_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    136;
+    137;
 
   friend void swap(CPlayer_UpdateSteamAnnouncementLastRead_Request& a, CPlayer_UpdateSteamAnnouncementLastRead_Request& b) {
     a.Swap(&b);
@@ -23853,7 +24073,7 @@ class CPlayer_UpdateSteamAnnouncementLastRead_Response PROTOBUF_FINAL :
                &_CPlayer_UpdateSteamAnnouncementLastRead_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    137;
+    138;
 
   friend void swap(CPlayer_UpdateSteamAnnouncementLastRead_Response& a, CPlayer_UpdateSteamAnnouncementLastRead_Response& b) {
     a.Swap(&b);
@@ -23970,7 +24190,7 @@ class CPlayer_GetPrivacySettings_Request PROTOBUF_FINAL :
                &_CPlayer_GetPrivacySettings_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    138;
+    139;
 
   friend void swap(CPlayer_GetPrivacySettings_Request& a, CPlayer_GetPrivacySettings_Request& b) {
     a.Swap(&b);
@@ -24087,7 +24307,7 @@ class CPrivacySettings PROTOBUF_FINAL :
                &_CPrivacySettings_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    139;
+    140;
 
   friend void swap(CPrivacySettings& a, CPrivacySettings& b) {
     a.Swap(&b);
@@ -24297,7 +24517,7 @@ class CPlayer_GetPrivacySettings_Response PROTOBUF_FINAL :
                &_CPlayer_GetPrivacySettings_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    140;
+    141;
 
   friend void swap(CPlayer_GetPrivacySettings_Response& a, CPlayer_GetPrivacySettings_Response& b) {
     a.Swap(&b);
@@ -24437,7 +24657,7 @@ class CPlayer_GetDurationControl_Request PROTOBUF_FINAL :
                &_CPlayer_GetDurationControl_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    141;
+    142;
 
   friend void swap(CPlayer_GetDurationControl_Request& a, CPlayer_GetDurationControl_Request& b) {
     a.Swap(&b);
@@ -24572,7 +24792,7 @@ class CPlayer_GetDurationControl_Response PROTOBUF_FINAL :
                &_CPlayer_GetDurationControl_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    142;
+    143;
 
   friend void swap(CPlayer_GetDurationControl_Response& a, CPlayer_GetDurationControl_Response& b) {
     a.Swap(&b);
@@ -24812,7 +25032,7 @@ class CPlayer_RecordDisconnectedPlaytime_Request_PlayHistory PROTOBUF_FINAL :
                &_CPlayer_RecordDisconnectedPlaytime_Request_PlayHistory_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    143;
+    144;
 
   friend void swap(CPlayer_RecordDisconnectedPlaytime_Request_PlayHistory& a, CPlayer_RecordDisconnectedPlaytime_Request_PlayHistory& b) {
     a.Swap(&b);
@@ -25007,7 +25227,7 @@ class CPlayer_RecordDisconnectedPlaytime_Request PROTOBUF_FINAL :
                &_CPlayer_RecordDisconnectedPlaytime_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    144;
+    145;
 
   friend void swap(CPlayer_RecordDisconnectedPlaytime_Request& a, CPlayer_RecordDisconnectedPlaytime_Request& b) {
     a.Swap(&b);
@@ -25148,7 +25368,7 @@ class CPlayer_RecordDisconnectedPlaytime_Response PROTOBUF_FINAL :
                &_CPlayer_RecordDisconnectedPlaytime_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    145;
+    146;
 
   friend void swap(CPlayer_RecordDisconnectedPlaytime_Response& a, CPlayer_RecordDisconnectedPlaytime_Response& b) {
     a.Swap(&b);
@@ -25265,7 +25485,7 @@ class CPlayer_LastPlayedTimes_Notification PROTOBUF_FINAL :
                &_CPlayer_LastPlayedTimes_Notification_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    146;
+    147;
 
   friend void swap(CPlayer_LastPlayedTimes_Notification& a, CPlayer_LastPlayedTimes_Notification& b) {
     a.Swap(&b);
@@ -25404,7 +25624,7 @@ class CPlayer_FriendNicknameChanged_Notification PROTOBUF_FINAL :
                &_CPlayer_FriendNicknameChanged_Notification_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    147;
+    148;
 
   friend void swap(CPlayer_FriendNicknameChanged_Notification& a, CPlayer_FriendNicknameChanged_Notification& b) {
     a.Swap(&b);
@@ -25576,7 +25796,7 @@ class CPlayer_FriendEquippedProfileItemsChanged_Notification PROTOBUF_FINAL :
                &_CPlayer_FriendEquippedProfileItemsChanged_Notification_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    148;
+    149;
 
   friend void swap(CPlayer_FriendEquippedProfileItemsChanged_Notification& a, CPlayer_FriendEquippedProfileItemsChanged_Notification& b) {
     a.Swap(&b);
@@ -25711,7 +25931,7 @@ class CPlayer_NewSteamAnnouncementState_Notification PROTOBUF_FINAL :
                &_CPlayer_NewSteamAnnouncementState_Notification_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    149;
+    150;
 
   friend void swap(CPlayer_NewSteamAnnouncementState_Notification& a, CPlayer_NewSteamAnnouncementState_Notification& b) {
     a.Swap(&b);
@@ -25920,7 +26140,7 @@ class CPlayer_CommunityPreferencesChanged_Notification PROTOBUF_FINAL :
                &_CPlayer_CommunityPreferencesChanged_Notification_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    150;
+    151;
 
   friend void swap(CPlayer_CommunityPreferencesChanged_Notification& a, CPlayer_CommunityPreferencesChanged_Notification& b) {
     a.Swap(&b);
@@ -26080,7 +26300,7 @@ class CPlayer_TextFilterWordsChanged_Notification PROTOBUF_FINAL :
                &_CPlayer_TextFilterWordsChanged_Notification_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    151;
+    152;
 
   friend void swap(CPlayer_TextFilterWordsChanged_Notification& a, CPlayer_TextFilterWordsChanged_Notification& b) {
     a.Swap(&b);
@@ -26220,7 +26440,7 @@ class CPlayer_PerFriendPreferencesChanged_Notification PROTOBUF_FINAL :
                &_CPlayer_PerFriendPreferencesChanged_Notification_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    152;
+    153;
 
   friend void swap(CPlayer_PerFriendPreferencesChanged_Notification& a, CPlayer_PerFriendPreferencesChanged_Notification& b) {
     a.Swap(&b);
@@ -26375,7 +26595,7 @@ class CPlayer_PrivacySettingsChanged_Notification PROTOBUF_FINAL :
                &_CPlayer_PrivacySettingsChanged_Notification_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    153;
+    154;
 
   friend void swap(CPlayer_PrivacySettingsChanged_Notification& a, CPlayer_PrivacySettingsChanged_Notification& b) {
     a.Swap(&b);
@@ -36217,7 +36437,7 @@ inline void CPlayer_GetGameAchievements_Response_Group::set_developeronly(bool v
 
 // optional uint32 order = 6;
 inline bool CPlayer_GetGameAchievements_Response_Group::_internal_has_order() const {
-  bool value = (_has_bits_[0] & 0x00000020u) != 0;
+  bool value = (_has_bits_[0] & 0x00000040u) != 0;
   return value;
 }
 inline bool CPlayer_GetGameAchievements_Response_Group::has_order() const {
@@ -36225,7 +36445,7 @@ inline bool CPlayer_GetGameAchievements_Response_Group::has_order() const {
 }
 inline void CPlayer_GetGameAchievements_Response_Group::clear_order() {
   order_ = 0u;
-  _has_bits_[0] &= ~0x00000020u;
+  _has_bits_[0] &= ~0x00000040u;
 }
 inline ::PROTOBUF_NAMESPACE_ID::uint32 CPlayer_GetGameAchievements_Response_Group::_internal_order() const {
   return order_;
@@ -36235,12 +36455,96 @@ inline ::PROTOBUF_NAMESPACE_ID::uint32 CPlayer_GetGameAchievements_Response_Grou
   return _internal_order();
 }
 inline void CPlayer_GetGameAchievements_Response_Group::_internal_set_order(::PROTOBUF_NAMESPACE_ID::uint32 value) {
-  _has_bits_[0] |= 0x00000020u;
+  _has_bits_[0] |= 0x00000040u;
   order_ = value;
 }
 inline void CPlayer_GetGameAchievements_Response_Group::set_order(::PROTOBUF_NAMESPACE_ID::uint32 value) {
   _internal_set_order(value);
   // @@protoc_insertion_point(field_set:CPlayer_GetGameAchievements_Response.Group.order)
+}
+
+// optional bool ispublic = 7;
+inline bool CPlayer_GetGameAchievements_Response_Group::_internal_has_ispublic() const {
+  bool value = (_has_bits_[0] & 0x00000020u) != 0;
+  return value;
+}
+inline bool CPlayer_GetGameAchievements_Response_Group::has_ispublic() const {
+  return _internal_has_ispublic();
+}
+inline void CPlayer_GetGameAchievements_Response_Group::clear_ispublic() {
+  ispublic_ = false;
+  _has_bits_[0] &= ~0x00000020u;
+}
+inline bool CPlayer_GetGameAchievements_Response_Group::_internal_ispublic() const {
+  return ispublic_;
+}
+inline bool CPlayer_GetGameAchievements_Response_Group::ispublic() const {
+  // @@protoc_insertion_point(field_get:CPlayer_GetGameAchievements_Response.Group.ispublic)
+  return _internal_ispublic();
+}
+inline void CPlayer_GetGameAchievements_Response_Group::_internal_set_ispublic(bool value) {
+  _has_bits_[0] |= 0x00000020u;
+  ispublic_ = value;
+}
+inline void CPlayer_GetGameAchievements_Response_Group::set_ispublic(bool value) {
+  _internal_set_ispublic(value);
+  // @@protoc_insertion_point(field_set:CPlayer_GetGameAchievements_Response.Group.ispublic)
+}
+
+// optional uint32 total_achievements = 8;
+inline bool CPlayer_GetGameAchievements_Response_Group::_internal_has_total_achievements() const {
+  bool value = (_has_bits_[0] & 0x00000080u) != 0;
+  return value;
+}
+inline bool CPlayer_GetGameAchievements_Response_Group::has_total_achievements() const {
+  return _internal_has_total_achievements();
+}
+inline void CPlayer_GetGameAchievements_Response_Group::clear_total_achievements() {
+  total_achievements_ = 0u;
+  _has_bits_[0] &= ~0x00000080u;
+}
+inline ::PROTOBUF_NAMESPACE_ID::uint32 CPlayer_GetGameAchievements_Response_Group::_internal_total_achievements() const {
+  return total_achievements_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::uint32 CPlayer_GetGameAchievements_Response_Group::total_achievements() const {
+  // @@protoc_insertion_point(field_get:CPlayer_GetGameAchievements_Response.Group.total_achievements)
+  return _internal_total_achievements();
+}
+inline void CPlayer_GetGameAchievements_Response_Group::_internal_set_total_achievements(::PROTOBUF_NAMESPACE_ID::uint32 value) {
+  _has_bits_[0] |= 0x00000080u;
+  total_achievements_ = value;
+}
+inline void CPlayer_GetGameAchievements_Response_Group::set_total_achievements(::PROTOBUF_NAMESPACE_ID::uint32 value) {
+  _internal_set_total_achievements(value);
+  // @@protoc_insertion_point(field_set:CPlayer_GetGameAchievements_Response.Group.total_achievements)
+}
+
+// optional uint32 completion_achievements = 9;
+inline bool CPlayer_GetGameAchievements_Response_Group::_internal_has_completion_achievements() const {
+  bool value = (_has_bits_[0] & 0x00000100u) != 0;
+  return value;
+}
+inline bool CPlayer_GetGameAchievements_Response_Group::has_completion_achievements() const {
+  return _internal_has_completion_achievements();
+}
+inline void CPlayer_GetGameAchievements_Response_Group::clear_completion_achievements() {
+  completion_achievements_ = 0u;
+  _has_bits_[0] &= ~0x00000100u;
+}
+inline ::PROTOBUF_NAMESPACE_ID::uint32 CPlayer_GetGameAchievements_Response_Group::_internal_completion_achievements() const {
+  return completion_achievements_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::uint32 CPlayer_GetGameAchievements_Response_Group::completion_achievements() const {
+  // @@protoc_insertion_point(field_get:CPlayer_GetGameAchievements_Response.Group.completion_achievements)
+  return _internal_completion_achievements();
+}
+inline void CPlayer_GetGameAchievements_Response_Group::_internal_set_completion_achievements(::PROTOBUF_NAMESPACE_ID::uint32 value) {
+  _has_bits_[0] |= 0x00000100u;
+  completion_achievements_ = value;
+}
+inline void CPlayer_GetGameAchievements_Response_Group::set_completion_achievements(::PROTOBUF_NAMESPACE_ID::uint32 value) {
+  _internal_set_completion_achievements(value);
+  // @@protoc_insertion_point(field_set:CPlayer_GetGameAchievements_Response.Group.completion_achievements)
 }
 
 // -------------------------------------------------------------------
@@ -36587,6 +36891,66 @@ inline void CPlayer_GetUserAchievements_Response_Achievement::set_progress_float
 
 // -------------------------------------------------------------------
 
+// CPlayer_GetUserAchievements_Response_Group
+
+// optional uint32 groupid = 1;
+inline bool CPlayer_GetUserAchievements_Response_Group::_internal_has_groupid() const {
+  bool value = (_has_bits_[0] & 0x00000001u) != 0;
+  return value;
+}
+inline bool CPlayer_GetUserAchievements_Response_Group::has_groupid() const {
+  return _internal_has_groupid();
+}
+inline void CPlayer_GetUserAchievements_Response_Group::clear_groupid() {
+  groupid_ = 0u;
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline ::PROTOBUF_NAMESPACE_ID::uint32 CPlayer_GetUserAchievements_Response_Group::_internal_groupid() const {
+  return groupid_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::uint32 CPlayer_GetUserAchievements_Response_Group::groupid() const {
+  // @@protoc_insertion_point(field_get:CPlayer_GetUserAchievements_Response.Group.groupid)
+  return _internal_groupid();
+}
+inline void CPlayer_GetUserAchievements_Response_Group::_internal_set_groupid(::PROTOBUF_NAMESPACE_ID::uint32 value) {
+  _has_bits_[0] |= 0x00000001u;
+  groupid_ = value;
+}
+inline void CPlayer_GetUserAchievements_Response_Group::set_groupid(::PROTOBUF_NAMESPACE_ID::uint32 value) {
+  _internal_set_groupid(value);
+  // @@protoc_insertion_point(field_set:CPlayer_GetUserAchievements_Response.Group.groupid)
+}
+
+// optional uint32 completion_achievements = 3;
+inline bool CPlayer_GetUserAchievements_Response_Group::_internal_has_completion_achievements() const {
+  bool value = (_has_bits_[0] & 0x00000002u) != 0;
+  return value;
+}
+inline bool CPlayer_GetUserAchievements_Response_Group::has_completion_achievements() const {
+  return _internal_has_completion_achievements();
+}
+inline void CPlayer_GetUserAchievements_Response_Group::clear_completion_achievements() {
+  completion_achievements_ = 0u;
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline ::PROTOBUF_NAMESPACE_ID::uint32 CPlayer_GetUserAchievements_Response_Group::_internal_completion_achievements() const {
+  return completion_achievements_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::uint32 CPlayer_GetUserAchievements_Response_Group::completion_achievements() const {
+  // @@protoc_insertion_point(field_get:CPlayer_GetUserAchievements_Response.Group.completion_achievements)
+  return _internal_completion_achievements();
+}
+inline void CPlayer_GetUserAchievements_Response_Group::_internal_set_completion_achievements(::PROTOBUF_NAMESPACE_ID::uint32 value) {
+  _has_bits_[0] |= 0x00000002u;
+  completion_achievements_ = value;
+}
+inline void CPlayer_GetUserAchievements_Response_Group::set_completion_achievements(::PROTOBUF_NAMESPACE_ID::uint32 value) {
+  _internal_set_completion_achievements(value);
+  // @@protoc_insertion_point(field_set:CPlayer_GetUserAchievements_Response.Group.completion_achievements)
+}
+
+// -------------------------------------------------------------------
+
 // CPlayer_GetUserAchievements_Response
 
 // repeated .CPlayer_GetUserAchievements_Response.Achievement achievements = 1;
@@ -36682,6 +37046,45 @@ inline void CPlayer_GetUserAchievements_Response::_internal_set_schema_hash(::PR
 inline void CPlayer_GetUserAchievements_Response::set_schema_hash(::PROTOBUF_NAMESPACE_ID::uint32 value) {
   _internal_set_schema_hash(value);
   // @@protoc_insertion_point(field_set:CPlayer_GetUserAchievements_Response.schema_hash)
+}
+
+// repeated .CPlayer_GetUserAchievements_Response.Group groups = 4;
+inline int CPlayer_GetUserAchievements_Response::_internal_groups_size() const {
+  return groups_.size();
+}
+inline int CPlayer_GetUserAchievements_Response::groups_size() const {
+  return _internal_groups_size();
+}
+inline void CPlayer_GetUserAchievements_Response::clear_groups() {
+  groups_.Clear();
+}
+inline ::CPlayer_GetUserAchievements_Response_Group* CPlayer_GetUserAchievements_Response::mutable_groups(int index) {
+  // @@protoc_insertion_point(field_mutable:CPlayer_GetUserAchievements_Response.groups)
+  return groups_.Mutable(index);
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::CPlayer_GetUserAchievements_Response_Group >*
+CPlayer_GetUserAchievements_Response::mutable_groups() {
+  // @@protoc_insertion_point(field_mutable_list:CPlayer_GetUserAchievements_Response.groups)
+  return &groups_;
+}
+inline const ::CPlayer_GetUserAchievements_Response_Group& CPlayer_GetUserAchievements_Response::_internal_groups(int index) const {
+  return groups_.Get(index);
+}
+inline const ::CPlayer_GetUserAchievements_Response_Group& CPlayer_GetUserAchievements_Response::groups(int index) const {
+  // @@protoc_insertion_point(field_get:CPlayer_GetUserAchievements_Response.groups)
+  return _internal_groups(index);
+}
+inline ::CPlayer_GetUserAchievements_Response_Group* CPlayer_GetUserAchievements_Response::_internal_add_groups() {
+  return groups_.Add();
+}
+inline ::CPlayer_GetUserAchievements_Response_Group* CPlayer_GetUserAchievements_Response::add_groups() {
+  // @@protoc_insertion_point(field_add:CPlayer_GetUserAchievements_Response.groups)
+  return _internal_add_groups();
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::CPlayer_GetUserAchievements_Response_Group >&
+CPlayer_GetUserAchievements_Response::groups() const {
+  // @@protoc_insertion_point(field_list:CPlayer_GetUserAchievements_Response.groups)
+  return groups_;
 }
 
 // -------------------------------------------------------------------
@@ -44130,6 +44533,8 @@ inline void CPlayer_PrivacySettingsChanged_Notification::set_allocated_privacy_s
 #ifdef __GNUC__
   #pragma GCC diagnostic pop
 #endif  // __GNUC__
+// -------------------------------------------------------------------
+
 // -------------------------------------------------------------------
 
 // -------------------------------------------------------------------

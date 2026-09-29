@@ -22,7 +22,7 @@ bool VFTableInfo_t::init()
 		return false;
 	}
 
-	if (!index)
+	if (index == NO_INDEX)
 	{
 		if (!VFTIndexes::tableMap.contains(typeName))
 		{
@@ -50,7 +50,7 @@ bool VFTableInfo_t::init()
 	}
 
 	address = funcs.at(index);
-	g_pLog->debug("%s at index %u\n", getPrintName().c_str(), index);
+	g_pLog->debug("%s at index %u, address %p\n", getPrintName().c_str(), index, address);
 	return true;
 }
 
@@ -79,6 +79,22 @@ namespace VFTIndexes
 			"30CClientUnifiedServiceTransport",
 			"SendAndRecv",
 			5
+		};
+	}
+
+	namespace CSteamMatchmakingServers
+	{
+		VFTableInfo_t GetServerDetails
+		{
+			"24CSteamMatchMakingServers",
+			"GetServerDetails",
+			7
+		};
+		VFTableInfo_t RequestInternetServerList
+		{
+			"24CSteamMatchMakingServers",
+			"RequestInternetServerList",
+			0
 		};
 	}
 

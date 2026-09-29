@@ -3403,7 +3403,6 @@ class CCuratorPreferences PROTOBUF_FINAL :
     kWebsiteTitleFieldNumber = 11,
     kWebsiteUrlFieldNumber = 12,
     kDiscussionUrlFieldNumber = 13,
-    kSupportedLanguagesFieldNumber = 1,
     kPlatformWindowsFieldNumber = 2,
     kPlatformMacFieldNumber = 3,
     kPlatformLinuxFieldNumber = 4,
@@ -3515,19 +3514,6 @@ class CCuratorPreferences PROTOBUF_FINAL :
   const std::string& _internal_discussion_url() const;
   void _internal_set_discussion_url(const std::string& value);
   std::string* _internal_mutable_discussion_url();
-  public:
-
-  // optional uint32 supported_languages = 1;
-  bool has_supported_languages() const;
-  private:
-  bool _internal_has_supported_languages() const;
-  public:
-  void clear_supported_languages();
-  ::PROTOBUF_NAMESPACE_ID::uint32 supported_languages() const;
-  void set_supported_languages(::PROTOBUF_NAMESPACE_ID::uint32 value);
-  private:
-  ::PROTOBUF_NAMESPACE_ID::uint32 _internal_supported_languages() const;
-  void _internal_set_supported_languages(::PROTOBUF_NAMESPACE_ID::uint32 value);
   public:
 
   // optional bool platform_windows = 2;
@@ -3648,7 +3634,6 @@ class CCuratorPreferences PROTOBUF_FINAL :
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr website_title_;
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr website_url_;
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr discussion_url_;
-  ::PROTOBUF_NAMESPACE_ID::uint32 supported_languages_;
   bool platform_windows_;
   bool platform_mac_;
   bool platform_linux_;
@@ -5780,11 +5765,11 @@ class CPackageReservationStatus PROTOBUF_FINAL :
     kTimeReservedFieldNumber = 8,
     kRtimeEstimatedNotificationFieldNumber = 9,
     kQueueHeadPositionAtReservationFieldNumber = 11,
-    kQueueHeadPositionNowFieldNumber = 12,
     kExpiredFieldNumber = 6,
     kPositionIsWaitlistFieldNumber = 13,
     kQueueInWaitlistFieldNumber = 15,
-    kReservationTypeFieldNumber = 17,
+    kQueueHeadPositionNowFieldNumber = 12,
+    kCollectionTimeActiveFieldNumber = 17,
   };
   // optional string reservation_country_code = 5;
   bool has_reservation_country_code() const;
@@ -5970,19 +5955,6 @@ class CPackageReservationStatus PROTOBUF_FINAL :
   void _internal_set_queue_head_position_at_reservation(::PROTOBUF_NAMESPACE_ID::int32 value);
   public:
 
-  // optional int32 queue_head_position_now = 12;
-  bool has_queue_head_position_now() const;
-  private:
-  bool _internal_has_queue_head_position_now() const;
-  public:
-  void clear_queue_head_position_now();
-  ::PROTOBUF_NAMESPACE_ID::int32 queue_head_position_now() const;
-  void set_queue_head_position_now(::PROTOBUF_NAMESPACE_ID::int32 value);
-  private:
-  ::PROTOBUF_NAMESPACE_ID::int32 _internal_queue_head_position_now() const;
-  void _internal_set_queue_head_position_now(::PROTOBUF_NAMESPACE_ID::int32 value);
-  public:
-
   // optional bool expired = 6;
   bool has_expired() const;
   private:
@@ -6022,17 +5994,30 @@ class CPackageReservationStatus PROTOBUF_FINAL :
   void _internal_set_queue_in_waitlist(bool value);
   public:
 
-  // optional bool reservation_type = 17;
-  bool has_reservation_type() const;
+  // optional int32 queue_head_position_now = 12;
+  bool has_queue_head_position_now() const;
   private:
-  bool _internal_has_reservation_type() const;
+  bool _internal_has_queue_head_position_now() const;
   public:
-  void clear_reservation_type();
-  bool reservation_type() const;
-  void set_reservation_type(bool value);
+  void clear_queue_head_position_now();
+  ::PROTOBUF_NAMESPACE_ID::int32 queue_head_position_now() const;
+  void set_queue_head_position_now(::PROTOBUF_NAMESPACE_ID::int32 value);
   private:
-  bool _internal_reservation_type() const;
-  void _internal_set_reservation_type(bool value);
+  ::PROTOBUF_NAMESPACE_ID::int32 _internal_queue_head_position_now() const;
+  void _internal_set_queue_head_position_now(::PROTOBUF_NAMESPACE_ID::int32 value);
+  public:
+
+  // optional uint32 collection_time_active = 17;
+  bool has_collection_time_active() const;
+  private:
+  bool _internal_has_collection_time_active() const;
+  public:
+  void clear_collection_time_active();
+  ::PROTOBUF_NAMESPACE_ID::uint32 collection_time_active() const;
+  void set_collection_time_active(::PROTOBUF_NAMESPACE_ID::uint32 value);
+  private:
+  ::PROTOBUF_NAMESPACE_ID::uint32 _internal_collection_time_active() const;
+  void _internal_set_collection_time_active(::PROTOBUF_NAMESPACE_ID::uint32 value);
   public:
 
   // @@protoc_insertion_point(class_scope:CPackageReservationStatus)
@@ -6056,11 +6041,11 @@ class CPackageReservationStatus PROTOBUF_FINAL :
   ::PROTOBUF_NAMESPACE_ID::uint32 time_reserved_;
   ::PROTOBUF_NAMESPACE_ID::uint32 rtime_estimated_notification_;
   ::PROTOBUF_NAMESPACE_ID::int32 queue_head_position_at_reservation_;
-  ::PROTOBUF_NAMESPACE_ID::int32 queue_head_position_now_;
   bool expired_;
   bool position_is_waitlist_;
   bool queue_in_waitlist_;
-  bool reservation_type_;
+  ::PROTOBUF_NAMESPACE_ID::int32 queue_head_position_now_;
+  ::PROTOBUF_NAMESPACE_ID::uint32 collection_time_active_;
   friend struct ::TableStruct_steammessages_5fbase_2eproto;
 };
 // -------------------------------------------------------------------
@@ -11255,37 +11240,9 @@ inline void CMsgAppRights::set_edit_store_display_content(bool value) {
 
 // CCuratorPreferences
 
-// optional uint32 supported_languages = 1;
-inline bool CCuratorPreferences::_internal_has_supported_languages() const {
-  bool value = (_has_bits_[0] & 0x00000008u) != 0;
-  return value;
-}
-inline bool CCuratorPreferences::has_supported_languages() const {
-  return _internal_has_supported_languages();
-}
-inline void CCuratorPreferences::clear_supported_languages() {
-  supported_languages_ = 0u;
-  _has_bits_[0] &= ~0x00000008u;
-}
-inline ::PROTOBUF_NAMESPACE_ID::uint32 CCuratorPreferences::_internal_supported_languages() const {
-  return supported_languages_;
-}
-inline ::PROTOBUF_NAMESPACE_ID::uint32 CCuratorPreferences::supported_languages() const {
-  // @@protoc_insertion_point(field_get:CCuratorPreferences.supported_languages)
-  return _internal_supported_languages();
-}
-inline void CCuratorPreferences::_internal_set_supported_languages(::PROTOBUF_NAMESPACE_ID::uint32 value) {
-  _has_bits_[0] |= 0x00000008u;
-  supported_languages_ = value;
-}
-inline void CCuratorPreferences::set_supported_languages(::PROTOBUF_NAMESPACE_ID::uint32 value) {
-  _internal_set_supported_languages(value);
-  // @@protoc_insertion_point(field_set:CCuratorPreferences.supported_languages)
-}
-
 // optional bool platform_windows = 2;
 inline bool CCuratorPreferences::_internal_has_platform_windows() const {
-  bool value = (_has_bits_[0] & 0x00000010u) != 0;
+  bool value = (_has_bits_[0] & 0x00000008u) != 0;
   return value;
 }
 inline bool CCuratorPreferences::has_platform_windows() const {
@@ -11293,7 +11250,7 @@ inline bool CCuratorPreferences::has_platform_windows() const {
 }
 inline void CCuratorPreferences::clear_platform_windows() {
   platform_windows_ = false;
-  _has_bits_[0] &= ~0x00000010u;
+  _has_bits_[0] &= ~0x00000008u;
 }
 inline bool CCuratorPreferences::_internal_platform_windows() const {
   return platform_windows_;
@@ -11303,7 +11260,7 @@ inline bool CCuratorPreferences::platform_windows() const {
   return _internal_platform_windows();
 }
 inline void CCuratorPreferences::_internal_set_platform_windows(bool value) {
-  _has_bits_[0] |= 0x00000010u;
+  _has_bits_[0] |= 0x00000008u;
   platform_windows_ = value;
 }
 inline void CCuratorPreferences::set_platform_windows(bool value) {
@@ -11313,7 +11270,7 @@ inline void CCuratorPreferences::set_platform_windows(bool value) {
 
 // optional bool platform_mac = 3;
 inline bool CCuratorPreferences::_internal_has_platform_mac() const {
-  bool value = (_has_bits_[0] & 0x00000020u) != 0;
+  bool value = (_has_bits_[0] & 0x00000010u) != 0;
   return value;
 }
 inline bool CCuratorPreferences::has_platform_mac() const {
@@ -11321,7 +11278,7 @@ inline bool CCuratorPreferences::has_platform_mac() const {
 }
 inline void CCuratorPreferences::clear_platform_mac() {
   platform_mac_ = false;
-  _has_bits_[0] &= ~0x00000020u;
+  _has_bits_[0] &= ~0x00000010u;
 }
 inline bool CCuratorPreferences::_internal_platform_mac() const {
   return platform_mac_;
@@ -11331,7 +11288,7 @@ inline bool CCuratorPreferences::platform_mac() const {
   return _internal_platform_mac();
 }
 inline void CCuratorPreferences::_internal_set_platform_mac(bool value) {
-  _has_bits_[0] |= 0x00000020u;
+  _has_bits_[0] |= 0x00000010u;
   platform_mac_ = value;
 }
 inline void CCuratorPreferences::set_platform_mac(bool value) {
@@ -11341,7 +11298,7 @@ inline void CCuratorPreferences::set_platform_mac(bool value) {
 
 // optional bool platform_linux = 4;
 inline bool CCuratorPreferences::_internal_has_platform_linux() const {
-  bool value = (_has_bits_[0] & 0x00000040u) != 0;
+  bool value = (_has_bits_[0] & 0x00000020u) != 0;
   return value;
 }
 inline bool CCuratorPreferences::has_platform_linux() const {
@@ -11349,7 +11306,7 @@ inline bool CCuratorPreferences::has_platform_linux() const {
 }
 inline void CCuratorPreferences::clear_platform_linux() {
   platform_linux_ = false;
-  _has_bits_[0] &= ~0x00000040u;
+  _has_bits_[0] &= ~0x00000020u;
 }
 inline bool CCuratorPreferences::_internal_platform_linux() const {
   return platform_linux_;
@@ -11359,7 +11316,7 @@ inline bool CCuratorPreferences::platform_linux() const {
   return _internal_platform_linux();
 }
 inline void CCuratorPreferences::_internal_set_platform_linux(bool value) {
-  _has_bits_[0] |= 0x00000040u;
+  _has_bits_[0] |= 0x00000020u;
   platform_linux_ = value;
 }
 inline void CCuratorPreferences::set_platform_linux(bool value) {
@@ -11369,7 +11326,7 @@ inline void CCuratorPreferences::set_platform_linux(bool value) {
 
 // optional bool vr_content = 5;
 inline bool CCuratorPreferences::_internal_has_vr_content() const {
-  bool value = (_has_bits_[0] & 0x00000080u) != 0;
+  bool value = (_has_bits_[0] & 0x00000040u) != 0;
   return value;
 }
 inline bool CCuratorPreferences::has_vr_content() const {
@@ -11377,7 +11334,7 @@ inline bool CCuratorPreferences::has_vr_content() const {
 }
 inline void CCuratorPreferences::clear_vr_content() {
   vr_content_ = false;
-  _has_bits_[0] &= ~0x00000080u;
+  _has_bits_[0] &= ~0x00000040u;
 }
 inline bool CCuratorPreferences::_internal_vr_content() const {
   return vr_content_;
@@ -11387,7 +11344,7 @@ inline bool CCuratorPreferences::vr_content() const {
   return _internal_vr_content();
 }
 inline void CCuratorPreferences::_internal_set_vr_content(bool value) {
-  _has_bits_[0] |= 0x00000080u;
+  _has_bits_[0] |= 0x00000040u;
   vr_content_ = value;
 }
 inline void CCuratorPreferences::set_vr_content(bool value) {
@@ -11397,7 +11354,7 @@ inline void CCuratorPreferences::set_vr_content(bool value) {
 
 // optional bool adult_content_violence = 6;
 inline bool CCuratorPreferences::_internal_has_adult_content_violence() const {
-  bool value = (_has_bits_[0] & 0x00000200u) != 0;
+  bool value = (_has_bits_[0] & 0x00000100u) != 0;
   return value;
 }
 inline bool CCuratorPreferences::has_adult_content_violence() const {
@@ -11405,7 +11362,7 @@ inline bool CCuratorPreferences::has_adult_content_violence() const {
 }
 inline void CCuratorPreferences::clear_adult_content_violence() {
   adult_content_violence_ = false;
-  _has_bits_[0] &= ~0x00000200u;
+  _has_bits_[0] &= ~0x00000100u;
 }
 inline bool CCuratorPreferences::_internal_adult_content_violence() const {
   return adult_content_violence_;
@@ -11415,7 +11372,7 @@ inline bool CCuratorPreferences::adult_content_violence() const {
   return _internal_adult_content_violence();
 }
 inline void CCuratorPreferences::_internal_set_adult_content_violence(bool value) {
-  _has_bits_[0] |= 0x00000200u;
+  _has_bits_[0] |= 0x00000100u;
   adult_content_violence_ = value;
 }
 inline void CCuratorPreferences::set_adult_content_violence(bool value) {
@@ -11425,7 +11382,7 @@ inline void CCuratorPreferences::set_adult_content_violence(bool value) {
 
 // optional bool adult_content_sex = 7;
 inline bool CCuratorPreferences::_internal_has_adult_content_sex() const {
-  bool value = (_has_bits_[0] & 0x00000400u) != 0;
+  bool value = (_has_bits_[0] & 0x00000200u) != 0;
   return value;
 }
 inline bool CCuratorPreferences::has_adult_content_sex() const {
@@ -11433,7 +11390,7 @@ inline bool CCuratorPreferences::has_adult_content_sex() const {
 }
 inline void CCuratorPreferences::clear_adult_content_sex() {
   adult_content_sex_ = false;
-  _has_bits_[0] &= ~0x00000400u;
+  _has_bits_[0] &= ~0x00000200u;
 }
 inline bool CCuratorPreferences::_internal_adult_content_sex() const {
   return adult_content_sex_;
@@ -11443,7 +11400,7 @@ inline bool CCuratorPreferences::adult_content_sex() const {
   return _internal_adult_content_sex();
 }
 inline void CCuratorPreferences::_internal_set_adult_content_sex(bool value) {
-  _has_bits_[0] |= 0x00000400u;
+  _has_bits_[0] |= 0x00000200u;
   adult_content_sex_ = value;
 }
 inline void CCuratorPreferences::set_adult_content_sex(bool value) {
@@ -11453,7 +11410,7 @@ inline void CCuratorPreferences::set_adult_content_sex(bool value) {
 
 // optional uint32 timestamp_updated = 8;
 inline bool CCuratorPreferences::_internal_has_timestamp_updated() const {
-  bool value = (_has_bits_[0] & 0x00000100u) != 0;
+  bool value = (_has_bits_[0] & 0x00000080u) != 0;
   return value;
 }
 inline bool CCuratorPreferences::has_timestamp_updated() const {
@@ -11461,7 +11418,7 @@ inline bool CCuratorPreferences::has_timestamp_updated() const {
 }
 inline void CCuratorPreferences::clear_timestamp_updated() {
   timestamp_updated_ = 0u;
-  _has_bits_[0] &= ~0x00000100u;
+  _has_bits_[0] &= ~0x00000080u;
 }
 inline ::PROTOBUF_NAMESPACE_ID::uint32 CCuratorPreferences::_internal_timestamp_updated() const {
   return timestamp_updated_;
@@ -11471,7 +11428,7 @@ inline ::PROTOBUF_NAMESPACE_ID::uint32 CCuratorPreferences::timestamp_updated() 
   return _internal_timestamp_updated();
 }
 inline void CCuratorPreferences::_internal_set_timestamp_updated(::PROTOBUF_NAMESPACE_ID::uint32 value) {
-  _has_bits_[0] |= 0x00000100u;
+  _has_bits_[0] |= 0x00000080u;
   timestamp_updated_ = value;
 }
 inline void CCuratorPreferences::set_timestamp_updated(::PROTOBUF_NAMESPACE_ID::uint32 value) {
@@ -11794,7 +11751,7 @@ inline void CCuratorPreferences::set_allocated_discussion_url(std::string* discu
 
 // optional bool show_broadcast = 14;
 inline bool CCuratorPreferences::_internal_has_show_broadcast() const {
-  bool value = (_has_bits_[0] & 0x00000800u) != 0;
+  bool value = (_has_bits_[0] & 0x00000400u) != 0;
   return value;
 }
 inline bool CCuratorPreferences::has_show_broadcast() const {
@@ -11802,7 +11759,7 @@ inline bool CCuratorPreferences::has_show_broadcast() const {
 }
 inline void CCuratorPreferences::clear_show_broadcast() {
   show_broadcast_ = false;
-  _has_bits_[0] &= ~0x00000800u;
+  _has_bits_[0] &= ~0x00000400u;
 }
 inline bool CCuratorPreferences::_internal_show_broadcast() const {
   return show_broadcast_;
@@ -11812,7 +11769,7 @@ inline bool CCuratorPreferences::show_broadcast() const {
   return _internal_show_broadcast();
 }
 inline void CCuratorPreferences::_internal_set_show_broadcast(bool value) {
-  _has_bits_[0] |= 0x00000800u;
+  _has_bits_[0] |= 0x00000400u;
   show_broadcast_ = value;
 }
 inline void CCuratorPreferences::set_show_broadcast(bool value) {
@@ -15078,7 +15035,7 @@ inline void CPackageReservationStatus::set_allocated_reservation_country_code(st
 
 // optional bool expired = 6;
 inline bool CPackageReservationStatus::_internal_has_expired() const {
-  bool value = (_has_bits_[0] & 0x00002000u) != 0;
+  bool value = (_has_bits_[0] & 0x00001000u) != 0;
   return value;
 }
 inline bool CPackageReservationStatus::has_expired() const {
@@ -15086,7 +15043,7 @@ inline bool CPackageReservationStatus::has_expired() const {
 }
 inline void CPackageReservationStatus::clear_expired() {
   expired_ = false;
-  _has_bits_[0] &= ~0x00002000u;
+  _has_bits_[0] &= ~0x00001000u;
 }
 inline bool CPackageReservationStatus::_internal_expired() const {
   return expired_;
@@ -15096,7 +15053,7 @@ inline bool CPackageReservationStatus::expired() const {
   return _internal_expired();
 }
 inline void CPackageReservationStatus::_internal_set_expired(bool value) {
-  _has_bits_[0] |= 0x00002000u;
+  _has_bits_[0] |= 0x00001000u;
   expired_ = value;
 }
 inline void CPackageReservationStatus::set_expired(bool value) {
@@ -15291,7 +15248,7 @@ inline void CPackageReservationStatus::set_queue_head_position_at_reservation(::
 
 // optional int32 queue_head_position_now = 12;
 inline bool CPackageReservationStatus::_internal_has_queue_head_position_now() const {
-  bool value = (_has_bits_[0] & 0x00001000u) != 0;
+  bool value = (_has_bits_[0] & 0x00008000u) != 0;
   return value;
 }
 inline bool CPackageReservationStatus::has_queue_head_position_now() const {
@@ -15299,7 +15256,7 @@ inline bool CPackageReservationStatus::has_queue_head_position_now() const {
 }
 inline void CPackageReservationStatus::clear_queue_head_position_now() {
   queue_head_position_now_ = 0;
-  _has_bits_[0] &= ~0x00001000u;
+  _has_bits_[0] &= ~0x00008000u;
 }
 inline ::PROTOBUF_NAMESPACE_ID::int32 CPackageReservationStatus::_internal_queue_head_position_now() const {
   return queue_head_position_now_;
@@ -15309,7 +15266,7 @@ inline ::PROTOBUF_NAMESPACE_ID::int32 CPackageReservationStatus::queue_head_posi
   return _internal_queue_head_position_now();
 }
 inline void CPackageReservationStatus::_internal_set_queue_head_position_now(::PROTOBUF_NAMESPACE_ID::int32 value) {
-  _has_bits_[0] |= 0x00001000u;
+  _has_bits_[0] |= 0x00008000u;
   queue_head_position_now_ = value;
 }
 inline void CPackageReservationStatus::set_queue_head_position_now(::PROTOBUF_NAMESPACE_ID::int32 value) {
@@ -15319,7 +15276,7 @@ inline void CPackageReservationStatus::set_queue_head_position_now(::PROTOBUF_NA
 
 // optional bool position_is_waitlist = 13;
 inline bool CPackageReservationStatus::_internal_has_position_is_waitlist() const {
-  bool value = (_has_bits_[0] & 0x00004000u) != 0;
+  bool value = (_has_bits_[0] & 0x00002000u) != 0;
   return value;
 }
 inline bool CPackageReservationStatus::has_position_is_waitlist() const {
@@ -15327,7 +15284,7 @@ inline bool CPackageReservationStatus::has_position_is_waitlist() const {
 }
 inline void CPackageReservationStatus::clear_position_is_waitlist() {
   position_is_waitlist_ = false;
-  _has_bits_[0] &= ~0x00004000u;
+  _has_bits_[0] &= ~0x00002000u;
 }
 inline bool CPackageReservationStatus::_internal_position_is_waitlist() const {
   return position_is_waitlist_;
@@ -15337,7 +15294,7 @@ inline bool CPackageReservationStatus::position_is_waitlist() const {
   return _internal_position_is_waitlist();
 }
 inline void CPackageReservationStatus::_internal_set_position_is_waitlist(bool value) {
-  _has_bits_[0] |= 0x00004000u;
+  _has_bits_[0] |= 0x00002000u;
   position_is_waitlist_ = value;
 }
 inline void CPackageReservationStatus::set_position_is_waitlist(bool value) {
@@ -15420,7 +15377,7 @@ inline void CPackageReservationStatus::set_allocated_user_waitlist_token(std::st
 
 // optional bool queue_in_waitlist = 15;
 inline bool CPackageReservationStatus::_internal_has_queue_in_waitlist() const {
-  bool value = (_has_bits_[0] & 0x00008000u) != 0;
+  bool value = (_has_bits_[0] & 0x00004000u) != 0;
   return value;
 }
 inline bool CPackageReservationStatus::has_queue_in_waitlist() const {
@@ -15428,7 +15385,7 @@ inline bool CPackageReservationStatus::has_queue_in_waitlist() const {
 }
 inline void CPackageReservationStatus::clear_queue_in_waitlist() {
   queue_in_waitlist_ = false;
-  _has_bits_[0] &= ~0x00008000u;
+  _has_bits_[0] &= ~0x00004000u;
 }
 inline bool CPackageReservationStatus::_internal_queue_in_waitlist() const {
   return queue_in_waitlist_;
@@ -15438,7 +15395,7 @@ inline bool CPackageReservationStatus::queue_in_waitlist() const {
   return _internal_queue_in_waitlist();
 }
 inline void CPackageReservationStatus::_internal_set_queue_in_waitlist(bool value) {
-  _has_bits_[0] |= 0x00008000u;
+  _has_bits_[0] |= 0x00004000u;
   queue_in_waitlist_ = value;
 }
 inline void CPackageReservationStatus::set_queue_in_waitlist(bool value) {
@@ -15519,32 +15476,32 @@ inline void CPackageReservationStatus::set_allocated_queue_waitlist_token(std::s
   // @@protoc_insertion_point(field_set_allocated:CPackageReservationStatus.queue_waitlist_token)
 }
 
-// optional bool reservation_type = 17;
-inline bool CPackageReservationStatus::_internal_has_reservation_type() const {
+// optional uint32 collection_time_active = 17;
+inline bool CPackageReservationStatus::_internal_has_collection_time_active() const {
   bool value = (_has_bits_[0] & 0x00010000u) != 0;
   return value;
 }
-inline bool CPackageReservationStatus::has_reservation_type() const {
-  return _internal_has_reservation_type();
+inline bool CPackageReservationStatus::has_collection_time_active() const {
+  return _internal_has_collection_time_active();
 }
-inline void CPackageReservationStatus::clear_reservation_type() {
-  reservation_type_ = false;
+inline void CPackageReservationStatus::clear_collection_time_active() {
+  collection_time_active_ = 0u;
   _has_bits_[0] &= ~0x00010000u;
 }
-inline bool CPackageReservationStatus::_internal_reservation_type() const {
-  return reservation_type_;
+inline ::PROTOBUF_NAMESPACE_ID::uint32 CPackageReservationStatus::_internal_collection_time_active() const {
+  return collection_time_active_;
 }
-inline bool CPackageReservationStatus::reservation_type() const {
-  // @@protoc_insertion_point(field_get:CPackageReservationStatus.reservation_type)
-  return _internal_reservation_type();
+inline ::PROTOBUF_NAMESPACE_ID::uint32 CPackageReservationStatus::collection_time_active() const {
+  // @@protoc_insertion_point(field_get:CPackageReservationStatus.collection_time_active)
+  return _internal_collection_time_active();
 }
-inline void CPackageReservationStatus::_internal_set_reservation_type(bool value) {
+inline void CPackageReservationStatus::_internal_set_collection_time_active(::PROTOBUF_NAMESPACE_ID::uint32 value) {
   _has_bits_[0] |= 0x00010000u;
-  reservation_type_ = value;
+  collection_time_active_ = value;
 }
-inline void CPackageReservationStatus::set_reservation_type(bool value) {
-  _internal_set_reservation_type(value);
-  // @@protoc_insertion_point(field_set:CPackageReservationStatus.reservation_type)
+inline void CPackageReservationStatus::set_collection_time_active(::PROTOBUF_NAMESPACE_ID::uint32 value) {
+  _internal_set_collection_time_active(value);
+  // @@protoc_insertion_point(field_set:CPackageReservationStatus.collection_time_active)
 }
 
 // -------------------------------------------------------------------
