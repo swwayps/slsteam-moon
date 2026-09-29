@@ -1187,6 +1187,30 @@ namespace Patterns
 			"55 89 E5 57 56 53 E8 ? ? ? ? 81 C3 ? ? ? ? 81 EC BC 01 00 00 8B 45 08 8B ? ? 1B 00 00 89 9D 54 FE FF FF 85 ? 0F 8E ? ? ? ? 8D 83 ? ? ? ? 83 EC 08 6A 7D 50",
 			SigFollowMode::None
 		};
+		Pattern_t m_OffsetClientUser
+		{
+			"CUser::m_ClientUser",
+			"2D ? ? ? ? C7 44 24 ? ? ? ? ? 81 E1",
+			SigFollowMode::None,
+			nullptr,
+			"Patterns::CUser::m_OffsetClientUser"
+		};
+		Pattern_t m_OffsetUserAppInfo
+		{
+			"CUser::m_UserAppInfo",
+			"8D 90 ? ? ? ? 8B 80 ? ? ? ? 6A ? 8D 4C 24",
+			SigFollowMode::None,
+			nullptr,
+			"Patterns::CUser::m_OffsetUserAppInfo"
+		};
+		Pattern_t m_OffsetUserAppManager
+		{
+			"CUser::m_UserAppmanager",
+			"8D 90 ? ? ? ? 8B 80 ? ? ? ? 68 ? ? ? ? 56",
+			SigFollowMode::None,
+			nullptr,
+			"Patterns::CUser::m_OffsetUserAppManager"
+		};
 	}
 
 	namespace CAppInfoCache

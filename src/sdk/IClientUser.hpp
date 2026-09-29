@@ -20,5 +20,3 @@ public:
 		uint32_t* pSigSize
 	);
 };
-
-extern IClientUser* g_pClientUser;

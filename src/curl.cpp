@@ -8,6 +8,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+
 //Spawn an external instance of curl, read it's stdout into out and return it's exit code
 //It's necessary because SteamOS seems broken. Curling certain URLs
 //will crash inside libssl.3.so (might have to do with broken certs, idk for sure).

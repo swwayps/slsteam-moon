@@ -222,7 +222,7 @@ void FakeAppIds::sendGamesPlayed(CNetPacket* packet)
 		const auto game = message.mutable_games_played(i);
 		const uint64_t gameId = game->game_id();
 
-		if (gameId & 0x2000000ULL)
+		if (gameId & GAME_TYPE_SHORTCUT)
 		{
 			continue;
 		}

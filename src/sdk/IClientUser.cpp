@@ -16,6 +16,3 @@ uint32_t IClientUser::getAppOwnershipTicketExtendeData
 {
 	return Hooks::IClientUser_GetAppOwnershipTicketExtendedData.originalFn.fn(this, appId, pTicket, ticketSize, pOffAppId, pOffSteamId, pOffSig, pSigSize);
 }
-
-
-IClientUser* g_pClientUser = nullptr;

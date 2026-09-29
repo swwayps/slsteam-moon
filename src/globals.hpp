@@ -5,7 +5,6 @@
 #include "libmem/libmem.h"
 
 #include <cstdint>
-#include <cstdio>
 
 
 extern lm_module_t g_modSteamClient;

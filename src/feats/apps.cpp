@@ -532,9 +532,8 @@ void Apps::sendGamesPlayed(CNetPacket* pkt)
 
 		const uint64_t gameId = game->game_id();
 
-		// Native non-Steam shortcut IDs use 0x2000000 in their low 32 bits.
-		// Leave the original shortcut title and 64-bit ID untouched.
-		if (gameId & 0x2000000ULL)
+		// Leave a non-Steam shortcut's title and 64-bit ID untouched.
+		if (gameId & GAME_TYPE_SHORTCUT)
 		{
 			g_pLog->debug("Preserving non-Steam shortcut %llu\n", gameId);
 			continue;

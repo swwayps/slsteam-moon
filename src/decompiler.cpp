@@ -22,6 +22,7 @@ void VFTable::init(const lm_address_t addr, const lm_module_t& mod)
 	this->address = addr;
 	this->typeInfo = reinterpret_cast<TypeInfo*>(addr + sizeof(this->address));
 	this->functions = std::vector<lm_address_t>();
+	this->subclasses = std::map<unsigned int, VFTable>();
 }
 
 unsigned int VFTable::analzye()
@@ -33,7 +34,7 @@ unsigned int VFTable::analzye()
 	//Already analysed
 	if (functions.size())
 	{
-		return 0;
+		return functions.size();
 	}
 
 	const lm_address_t start = address + sizeof(lm_address_t) * 2;
@@ -43,13 +44,27 @@ unsigned int VFTable::analzye()
 		const lm_address_t offset = *(reinterpret_cast<lm_address_t*>(start) + i);
 		if (!offset)
 		{
-			return i;
+			break;
+		}
+
+		//TODO:
+		//Proper way would be to cross reference the typeInfos, but I couldn't get the calculations for that
+		//right. It worked on the first 4 vftables on CUser but then started failing
+		constexpr lm_address_t NEGATIVE_OFFSET = 0xFFFF0000;
+		if ((offset & NEGATIVE_OFFSET) == NEGATIVE_OFFSET)
+		{
+			break;
 		}
 
 		this->functions.emplace_back(offset + moduleBase);
 	}
 
-	return 0;
+	for(auto& sub : subclasses)
+	{
+		sub.second.analzye();
+	}
+
+	return functions.size();
 }
 
 
@@ -384,6 +399,14 @@ bool Decompiler::collectVFTables(const lm_module_t& mod, const Elf_Shdr& section
 
 			auto vft = VFTable();
 			vft.init(vftAddr, mod);
+
+			if (vftables.contains(name))
+			{
+				auto& parent = vftables[name];
+				parent.subclasses[parent.subclasses.size()] = vft;
+				continue;
+			}
+
 			vftables[name] = vft;
 			//g_pLog->debug("VFTable %s at %p\n", name.c_str(), vft.address);
 		}

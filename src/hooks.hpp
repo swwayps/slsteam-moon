@@ -63,6 +63,7 @@ public:
 	virtual void place();
 	virtual void remove();
 
+	bool setup(const char* name, lm_address_t fn, T hookFn);
 	bool setup(const Pattern_t& pattern, T hookFn);
 	bool setup(const VFTableInfo_t& info, T hookFn);
 };
@@ -88,13 +89,6 @@ namespace Hooks
 {
 	typedef void(*TraceIPC_t)(const char*, const char*);
 
-	typedef void(*IClientAppManager_RunIPCFrame_t)(void*, void*, void*, void*);
-	typedef void(*IClientApps_RunIPCFrame_t)(void*, void*, void*, void*);
-	typedef void(*IClientRemoteStorage_RunIPCFrame_t)(void*, void*, void*, void*);
-	typedef void(*IClientUGC_RunIPCFrame_t)(void*, void*, void*, void*);
-	typedef void(*IClientUtils_RunIPCFrame_t)(void*, void*, void*, void*);
-	typedef void(*IClientUser_RunIPCFrame_t)(void*, void*, void*, void*);
-	typedef void(*IClientUserStats_RunIPCFrame_t)(void*, void*, void*, void*);
 
 	typedef uint32_t(*CAPIJob_GetPlayerStats_t)(void*);
 	typedef uint32_t(*CAPIJob_SendAndRecv_t)(CAPIJob*, CProtoBufMsgBase*, uint32_t, uint32_t, CProtoBufMsgBase*, EMsg);
@@ -149,13 +143,6 @@ namespace Hooks
 	extern DetourHook<CSteamMatchmakingServers_GetServerDetails_t> CSteamMatchmakingServers_GetServerDetails;
 	extern DetourHook<CSteamMatchmakingServers_RequestInternetServerList_t> CSteamMatchmakingServers_RequestInternetServerList;
 
-	extern DetourHook<IClientAppManager_RunIPCFrame_t> IClientAppManager_RunIPCFrame;
-	extern DetourHook<IClientApps_RunIPCFrame_t> IClientApps_RunIPCFrame;
-	extern DetourHook<IClientRemoteStorage_RunIPCFrame_t> IClientRemoteStorage_RunIPCFrame;
-	extern DetourHook<IClientUGC_RunIPCFrame_t> IClientUGC_RunIPCFrame;
-	extern DetourHook<IClientUtils_RunIPCFrame_t> IClientUtils_RunIPCFrame;
-	extern DetourHook<IClientUser_RunIPCFrame_t> IClientUser_RunIPCFrame;
-	extern DetourHook<IClientUserStats_RunIPCFrame_t> IClientUserStats_RunIPCFrame;
 
 	extern DetourHook<CSteamEngine_ProcessIPCFrame_t> CSteamEngine_ProcessIPCFrame;
 	extern DetourHook<CSteamEngine_SetAppIdForCurrentPipe_t> CSteamEngine_SetAppIdForCurrentPipe;
@@ -189,7 +176,7 @@ namespace Hooks
 	extern VFTHook<IClientApps_GetDLCCount_t> IClientApps_GetDLCCount;
 	extern VFTHook<IClientApps_GetAppData_t> IClientApps_GetAppData;
 
-	extern VFTHook<IClientRemoteStorage_IsCloudEnabledForApp_t> IClientRemoteStorage_IsCloudEnabledForApp;
+	extern DetourHook<IClientRemoteStorage_IsCloudEnabledForApp_t> IClientRemoteStorage_IsCloudEnabledForApp;
 
 	extern VFTHook<IClientUser_BLoggedOn_t> IClientUser_BLoggedOn;
 	extern VFTHook<IClientUser_BUpdateAppOwnershipTicket_t> IClientUser_BUpdateAppOwnershipTicket;
@@ -208,4 +195,7 @@ namespace Hooks
 	bool setup();
 	void place();
 	void remove();
+	// Installs the interface vtable hooks once the local user exists; called
+	// from ProcessIPCFrame on the IPC thread.
+	void placeVFTHooks();
 }

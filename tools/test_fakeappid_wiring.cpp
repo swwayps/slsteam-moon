@@ -69,9 +69,8 @@ int main()
 		!= std::string::npos,
 	       "encrypted-ticket identity timing uses the upstream VFT hook shape");
 	expect(hooks.find(
-		"IClientUser_GetEncryptedAppTicket.setup(\n"
-		"\t\t\tvft,\n"
-		"\t\t\tVFTIndexes::IClientUser::GetEncryptedAppTicket")
+		"IClientUser_GetEncryptedAppTicket.setup(vft, "
+		"VFTIndexes::IClientUser::GetEncryptedAppTicket")
 		!= std::string::npos,
 	       "encrypted-ticket hook is configured from the live IClientUser vtable");
 	expect(occurrences(hooks, "IClientUser_GetEncryptedAppTicket.place();") == 1,

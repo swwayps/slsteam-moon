@@ -40,7 +40,7 @@ class CSteamEngine
 {
 public:
 	CServerPipe* getServerPipe(HSteamPipe pipe);
-	CUser* getUser(uint32_t index);
+	CUser* getUser(uint32_t index = 0);
 	IClientUtils* getUtils();
 	void setAppIdForCurrentPipe(uint32_t appId);
 };

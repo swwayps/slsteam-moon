@@ -4,6 +4,11 @@
 
 #include <cstdint>
 
+
+class IClientAppManager;
+class IClientApps;
+class IClientUser;
+
 enum class ECallbackType : uint32_t
 {
 	LicensesUpdate_t = 0x7d,
@@ -76,6 +81,9 @@ struct AppOwnershipInfo_t {
 class CUser
 {
 public:
+	IClientAppManager* getAppManager();
+	IClientApps* getClientApps();
+	IClientUser* getClientUser();
 	bool checkAppOwnership(uint32_t appId, AppOwnershipInfo_t* pInfo);
 	bool isSubscribed(uint32_t appId);
 

@@ -22,6 +22,7 @@
 #include <string>
 #include <thread>
 
+
 std::map<uint64_t, std::unordered_set<std::string>> Updater::clientHashMap = std::map<uint64_t, std::unordered_set<std::string>>();
 
 namespace

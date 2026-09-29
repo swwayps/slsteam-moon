@@ -2,6 +2,7 @@
 
 #include "IClientCompat.hpp"
 #include "CUtl.hpp"
+#include "IClientUtils.hpp"
 
 #include "../hooks.hpp"
 #include "../patterns.hpp"
@@ -33,7 +34,7 @@ CServerPipe* CSteamEngine::getServerPipe(const HSteamPipe pipe)
 
 CUser* CSteamEngine::getUser(const uint32_t index)
 {
-	const static auto offset = *reinterpret_cast<lm_address_t*>(Patterns::CSteamEngine::Offset_User.address + 0x2);
+	const static auto offset = *reinterpret_cast<lm_address_t*>(Patterns::CSteamEngine::Offset_User.address + 2);
 	const auto vec = reinterpret_cast<const CUtlVector<CUser*>*>(this + offset);
 	if (!vec->memory.base || index >= vec->size)
 	{

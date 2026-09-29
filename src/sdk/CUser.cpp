@@ -1,10 +1,37 @@
 #include "CUser.hpp"
 
 #include "CUser.hpp"
+#include "IClientAppManager.hpp"
+#include "IClientApps.hpp"
+#include "IClientUser.hpp"
 
 #include "../hooks.hpp"
 #include "../patterns.hpp"
 
+#include "libmem/libmem.h"
+
+
+// The member accessors add byte offsets to this, which holds while CUser
+// stays an opaque (empty) handle.
+static_assert(sizeof(CUser) == 1);
+
+IClientAppManager* CUser::getAppManager()
+{
+	const static lm_address_t offset = *reinterpret_cast<lm_address_t*>(Patterns::CUser::m_OffsetUserAppManager.address + 2);
+	return reinterpret_cast<IClientAppManager*>(this + offset);
+}
+
+IClientApps* CUser::getClientApps()
+{
+	const static lm_address_t offset = *reinterpret_cast<lm_address_t*>(Patterns::CUser::m_OffsetUserAppInfo.address + 2);
+	return reinterpret_cast<IClientApps*>(this + offset);
+}
+
+IClientUser* CUser::getClientUser()
+{
+	const static lm_address_t offset = *reinterpret_cast<lm_address_t*>(Patterns::CUser::m_OffsetClientUser.address + 1);
+	return reinterpret_cast<IClientUser*>(this + offset);
+}
 
 bool CUser::checkAppOwnership(const AppId_t appId, AppOwnershipInfo_t* pInfo)
 {

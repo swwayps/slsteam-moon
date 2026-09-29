@@ -2,6 +2,7 @@
 #include "api.hpp"
 
 #include "config.hpp"
+#include "decompiler.hpp"
 #include "globals.hpp"
 #include "log.hpp"
 #include "memhlp.hpp"
@@ -53,6 +54,7 @@
 #include "libmem/libmem.h"
 
 #include <array>
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
@@ -125,6 +127,21 @@ VFTHook<T>::VFTHook(const char* name) : Hook<T>::Hook(name)
 template<typename T>
 VFTHook<T>::VFTHook() : VFTHook<T>("")
 {
+}
+
+template<typename T>
+bool DetourHook<T>::setup(const char* name, const lm_address_t fn, T hookFn)
+{
+	if (!isExecutableAddress(fn))
+	{
+		return false;
+	}
+
+	this->name = name;
+	this->originalFn.address = fn;
+	this->hookFn.fn = hookFn;
+
+	return true;
 }
 
 template<typename T>
@@ -414,6 +431,9 @@ static uint32_t hkSteamEngine_ProcessIPCFrame(
 	CUtlBuffer* pBufIn,
 	CUtlBuffer* pBufOut)
 {
+	static std::once_flag attestationOnce;
+	attestHookInvocation(attestationOnce, Hooks::CSteamEngine_ProcessIPCFrame.name);
+
 	if (!g_pSteamEngine)
 	{
 		g_pSteamEngine = reinterpret_cast<CSteamEngine*>(pSteamEngine);
@@ -439,10 +459,19 @@ static uint32_t hkSteamEngine_ProcessIPCFrame(
 	uint32_t ret;
 	if (cmd == EIPCCmd::RunInterface && pBufIn->hasBytes(10))
 	{
+		Hooks::placeVFTHooks();
+
 		EIPCInterface interface{};
 		uint32_t function = 0;
 		std::memcpy(&interface, pBufIn->mem.base + 1, sizeof(interface));
 		std::memcpy(&function, pBufIn->mem.base + 6, sizeof(function));
+		// IClientUtils calls define the owner IPC thread: owner work queued
+		// by watcher threads only runs inside a frame on that thread, so it
+		// is serialised with Steam's dispatcher.
+		if (interface == EIPCInterface::Utils)
+		{
+			OwnerWork::latchOwnerThread();
+		}
 		if (log)
 		{
 			const auto utils = g_pSteamEngine->getUtils();
@@ -454,8 +483,12 @@ static uint32_t hkSteamEngine_ProcessIPCFrame(
 				utils ? utils->getAppId() : 0);
 		}
 		FakeAppIds::runIPCFrame(false, interface);
-		ret = Hooks::CSteamEngine_ProcessIPCFrame.tramp.fn(
-			pSteamEngine, hPipe, pBufIn, pBufOut);
+		{
+			AffTrace::FrameGuard frame;
+			OwnerWork::drainOnOwnerFrame();
+			ret = Hooks::CSteamEngine_ProcessIPCFrame.tramp.fn(
+				pSteamEngine, hPipe, pBufIn, pBufOut);
+		}
 		FakeAppIds::runIPCFrame(true, interface);
 
 		if (pBufOut && pBufOut->hasBytes(1 + sizeof(CSteamId)) &&
@@ -477,6 +510,11 @@ static uint32_t hkSteamEngine_ProcessIPCFrame(
 					hkClientUser_GetSteamId(g_currentSteamId);
 				std::memcpy(pBufOut->mem.base + 1, &newId, sizeof(newId));
 			}
+		}
+
+		if (interface == EIPCInterface::Utils)
+		{
+			SLSAPI::runIPCFrame();
 		}
 	}
 	else
@@ -795,42 +833,6 @@ static bool hkClientAppManager_GetUpdateInfo(void* pClientAppManager, uint32_t a
 	return success;
 }
 
-__attribute__((hot))
-static void hkClientAppManager_RunIPCFrame(void* pClientAppManager, void* a1, void* a2, void* a3)
-{
-	static std::once_flag attestationOnce;
-	attestHookInvocation(attestationOnce, Hooks::IClientAppManager_RunIPCFrame.name);
-
-	g_pClientAppManager = reinterpret_cast<IClientAppManager*>(pClientAppManager);
-
-	std::shared_ptr<lm_vmt_t> vft = std::make_shared<lm_vmt_t>();
-	LM_VmtNew(*reinterpret_cast<lm_address_t**>(pClientAppManager), vft.get());
-
-	Hooks::IClientAppManager_BCanRemotePlayTogether.setup(vft, VFTIndexes::IClientAppManager::BCanRemotePlayTogether, hkClientAppManager_BCanRemotePlayTogether);
-	Hooks::IClientAppManager_BIsDlcEnabled.setup(vft, VFTIndexes::IClientAppManager::BIsDlcEnabled, hkClientAppManager_BIsDlcEnabled);
-	Hooks::IClientAppManager_GetAppUpdateInfo.setup(vft, VFTIndexes::IClientAppManager::GetUpdateInfo, hkClientAppManager_GetUpdateInfo);
-	Hooks::IClientAppManager_LaunchApp.setup(vft, VFTIndexes::IClientAppManager::LaunchApp, hkClientAppManager_LaunchApp);
-	Hooks::IClientAppManager_IsAppDlcInstalled.setup(vft, VFTIndexes::IClientAppManager::IsAppDlcInstalled, hkClientAppManager_IsAppDlcInstalled);
-
-	Hooks::IClientAppManager_BCanRemotePlayTogether.place();
-	Hooks::IClientAppManager_BIsDlcEnabled.place();
-	Hooks::IClientAppManager_GetAppUpdateInfo.place();
-	Hooks::IClientAppManager_LaunchApp.place();
-	Hooks::IClientAppManager_IsAppDlcInstalled.place();
-
-	g_pLog->debug("IClientAppManager->vft at %p\n", vft->vtable);
-
-	// Owner-frame accounting (see the note above hkClientUtils_RunIPCFrame):
-	// every dispatcher that can run on the owner thread accounts its frame, so
-	// ipc_depth/ipc_frames describe real owner activity. This one is a one-shot
-	// (it unhooks itself below), but it still counts while it runs.
-	AffTrace::FrameGuard frame;
-	OwnerWork::drainOnOwnerFrame();
-
-	Hooks::IClientAppManager_RunIPCFrame.remove();
-	Hooks::IClientAppManager_RunIPCFrame.originalFn.fn(pClientAppManager, a1, a2, a3);
-}
-
 static int32_t hkClientApps_GetAppData(void* pClientApps, uint32_t appId, const char* name, char* pChOut, uint32_t outSize)
 {
 	const int32_t ret = Hooks::IClientApps_GetAppData.originalFn.fn(pClientApps, appId, name, pChOut, outSize);
@@ -927,48 +929,9 @@ static uint32_t hkClientFriends_GetFriendGamePlayed(void* pClientFriends, uint64
 	return ret;
 }
 
-__attribute__((hot))
-static void hkClientApps_RunIPCFrame(void* pClientApps, void* a1, void* a2, void* a3)
-{
-	static std::once_flag attestationOnce;
-	attestHookInvocation(attestationOnce, Hooks::IClientApps_RunIPCFrame.name);
-
-	static bool hooked = false;
-	if (!hooked)
-	{
-		g_pClientApps = reinterpret_cast<IClientApps*>(pClientApps);
-
-		std::shared_ptr<lm_vmt_t> vft = std::make_shared<lm_vmt_t>();
-		LM_VmtNew(*reinterpret_cast<lm_address_t**>(pClientApps), vft.get());
-
-		Hooks::IClientApps_GetDLCDataByIndex.setup(vft, VFTIndexes::IClientApps::GetDLCDataByIndex, hkClientApps_GetDLCDataByIndex);
-		Hooks::IClientApps_GetDLCCount.setup(vft, VFTIndexes::IClientApps::GetDLCCount, hkClientApps_GetDLCCount);
-		Hooks::IClientApps_GetAppData.setup(vft, VFTIndexes::IClientApps::GetAppData, hkClientApps_GetAppData);
-
-		Hooks::IClientApps_GetDLCDataByIndex.place();
-		Hooks::IClientApps_GetDLCCount.place();
-		Hooks::IClientApps_GetAppData.place();
-
-		g_pLog->debug("IClientApps->vft at %p\n", vft->vtable);
-
-		hooked = true;
-	}
-
-	// Extra drain opportunity, plus owner-frame accounting. Both are no-ops
-	// unless this really is the latched owner thread. Measured on the guest:
-	// adding these extra drain points did NOT shorten the owner wake cadence
-	// (3.30 s -> 3.41 s), so they are not a latency mechanism — they are there
-	// so whichever dispatcher runs first takes the work, and so the frame
-	// counters cover all owner-thread IPC activity instead of one interface's.
-	AffTrace::FrameGuard frame;
-	OwnerWork::drainOnOwnerFrame();
-
-	Hooks::IClientApps_RunIPCFrame.tramp.fn(pClientApps, a1, a2, a3);
-}
-
 static bool hkClientRemoteStorage_IsCloudEnabledForApp(void* pClientRemoteStorage, uint32_t appId)
 {
-	const bool enabled = Hooks::IClientRemoteStorage_IsCloudEnabledForApp.originalFn.fn(pClientRemoteStorage, appId);
+	const bool enabled = Hooks::IClientRemoteStorage_IsCloudEnabledForApp.tramp.fn(pClientRemoteStorage, appId);
 	g_pLog->debugOnce
 	(
 		"%s(%p, %u) -> %i\n",
@@ -986,42 +949,6 @@ static bool hkClientRemoteStorage_IsCloudEnabledForApp(void* pClientRemoteStorag
 	}
 
 	return enabled;
-}
-
-static void hkClientRemoteStorage_RunIPCFrame(void* pClientRemoteStorage, void* a1, void* a2, void* a3)
-{
-	static std::once_flag attestationOnce;
-	attestHookInvocation(attestationOnce, Hooks::IClientRemoteStorage_RunIPCFrame.name);
-
-	static bool hooked = false;
-	if (!hooked)
-	{
-		std::shared_ptr<lm_vmt_t> vft = std::make_shared<lm_vmt_t>();
-		LM_VmtNew(*reinterpret_cast<lm_address_t**>(pClientRemoteStorage), vft.get());
-
-		Hooks::IClientRemoteStorage_IsCloudEnabledForApp.setup(vft, VFTIndexes::IClientRemoteStorage::IsCloudEnabledForApp, hkClientRemoteStorage_IsCloudEnabledForApp);
-		Hooks::IClientRemoteStorage_IsCloudEnabledForApp.place();
-
-		g_pLog->debug("IClientRemoteStorage->vft at %p\n", vft->vtable);
-
-		hooked = true;
-	}
-
-	AffTrace::FrameGuard frame;
-	OwnerWork::drainOnOwnerFrame();
-
-	Hooks::IClientRemoteStorage_RunIPCFrame.tramp.fn(pClientRemoteStorage, a1, a2, a3);
-}
-
-static void hkClientUGC_RunIPCFrame(void* pClientUGC, void* a1, void* a2, void* a3)
-{
-	static std::once_flag attestationOnce;
-	attestHookInvocation(attestationOnce, Hooks::IClientUGC_RunIPCFrame.name);
-
-	AffTrace::FrameGuard frame;
-	OwnerWork::drainOnOwnerFrame();
-
-	Hooks::IClientUGC_RunIPCFrame.tramp.fn(pClientUGC, a1, a2, a3);
 }
 
 static uint32_t hkClientUtils_GetAppId(void* pClientUtils)
@@ -1057,46 +984,6 @@ static bool hkClientUtils_GetOfflineMode(void* pClientUtils)
 	}
 
 	return ret;
-}
-
-// The IClientUtils dispatcher defines the "owner IPC thread" for this process:
-// it is the thread a controlled VM run latched and compared against, and it is
-// where the owner TID is latched. Every hooked dispatcher then drains and
-// accounts its frame, but only when it observes itself running on that latched
-// thread. The drain sits inside the frame (before the original runs) so queued
-// work is serialised with the dispatcher instead of racing it from an inotify
-// pthread.
-static void hkClientUtils_RunIPCFrame(void* pClientUtils, void* a1, void* a2, void* a3)
-{
-	static std::once_flag attestationOnce;
-	attestHookInvocation(attestationOnce, Hooks::IClientUtils_RunIPCFrame.name);
-
-	static bool hooked = false;
-	if (!hooked)
-	{
-		g_pClientUtils = reinterpret_cast<IClientUtils*>(pClientUtils);
-
-		std::shared_ptr<lm_vmt_t> vft = std::make_shared<lm_vmt_t>();
-		LM_VmtNew(*reinterpret_cast<lm_address_t**>(pClientUtils), vft.get());
-
-		Hooks::IClientUtils_GetAppId.setup(vft, VFTIndexes::IClientUtils::GetAppId, hkClientUtils_GetAppId);
-		Hooks::IClientUtils_GetOfflineMode.setup(vft, VFTIndexes::IClientUtils::GetOfflineMode, hkClientUtils_GetOfflineMode);
-
-		Hooks::IClientUtils_GetAppId.place();
-		Hooks::IClientUtils_GetOfflineMode.place();
-
-		g_pLog->debug("IClientUtils->vft at %p\n", vft->vtable);
-
-		hooked = true;
-	}
-
-	OwnerWork::latchOwnerThread();
-
-	AffTrace::FrameGuard frame;
-	OwnerWork::drainOnOwnerFrame();
-
-	Hooks::IClientUtils_RunIPCFrame.tramp.fn(pClientUtils, a1, a2, a3);
-	SLSAPI::runIPCFrame();
 }
 
 static bool hkClientUser_BLoggedOn(void* pClientUser)
@@ -1388,58 +1275,6 @@ static bool hkClientUser_RequiresLegacyCDKey(void* pClientUser, uint32_t appId, 
 	return requiresKey;
 }
 
-static void hkClientUser_RunIPCFrame(void* pClientUser, void* a1, void* a2, void* a3)
-{
-	static std::once_flag attestationOnce;
-	attestHookInvocation(attestationOnce, Hooks::IClientUser_RunIPCFrame.name);
-
-	static bool hooked = false;
-	if (!hooked)
-	{
-		g_pClientUser = reinterpret_cast<IClientUser*>(pClientUser);
-		std::shared_ptr<lm_vmt_t> vft = std::make_shared<lm_vmt_t>();
-		LM_VmtNew(*reinterpret_cast<lm_address_t**>(pClientUser), vft.get());
-
-		Hooks::IClientUser_BLoggedOn.setup(vft, VFTIndexes::IClientUser::BLoggedOn, &hkClientUser_BLoggedOn);
-		Hooks::IClientUser_BUpdateAppOwnershipTicket.setup(vft, VFTIndexes::IClientUser::BUpdateAppOwnershipTicket, hkClientUser_BUpdateOwnershipTicket);
-		Hooks::IClientUser_GetAppOwnershipTicketExtendedData.setup(vft, VFTIndexes::IClientUser::GetAppOwnershipTicketExtendedData, hkClientUser_GetAppOwnershipTicketExtendedData);
-		Hooks::IClientUser_IsUserSubscribedAppInTicket.setup(vft, VFTIndexes::IClientUser::IsUserSubscribedAppInTicket, &hkClientUser_IsUserSubscribedAppInTicket);
-		Hooks::IClientUser_RequiresLegacyCDKey.setup(vft, VFTIndexes::IClientUser::RequiresLegacyCDKey, hkClientUser_RequiresLegacyCDKey);
-		Hooks::IClientUser_GetEncryptedAppTicket.setup(
-			vft,
-			VFTIndexes::IClientUser::GetEncryptedAppTicket,
-			hkClientUser_GetEncryptedAppTicket);
-
-		// The ticket, CD-key and offline hooks were pattern detours placed at
-		// load; as vtable hooks they only exist once this frame has run.
-		Hooks::IClientUser_BLoggedOn.place();
-		Hooks::IClientUser_BUpdateAppOwnershipTicket.place();
-		Hooks::IClientUser_GetAppOwnershipTicketExtendedData.place();
-		Hooks::IClientUser_IsUserSubscribedAppInTicket.place();
-		Hooks::IClientUser_RequiresLegacyCDKey.place();
-		Hooks::IClientUser_GetEncryptedAppTicket.place();
-
-		g_pLog->debug("IClientUser->vft at %p\n", vft->vtable);
-		hooked = true;
-	}
-
-	AffTrace::FrameGuard frame;
-	OwnerWork::drainOnOwnerFrame();
-
-	Hooks::IClientUser_RunIPCFrame.tramp.fn(pClientUser, a1, a2, a3);
-}
-
-static void hkClientUserStats_RunIPCFrame(void* pClientUserStats, void* a1, void* a2, void* a3)
-{
-	static std::once_flag attestationOnce;
-	attestHookInvocation(attestationOnce, Hooks::IClientUserStats_RunIPCFrame.name);
-
-	AffTrace::FrameGuard frame;
-	OwnerWork::drainOnOwnerFrame();
-
-	Hooks::IClientUserStats_RunIPCFrame.tramp.fn(pClientUserStats, a1, a2, a3);
-}
-
 static void hkSteamMatchmakingPingResponse_ServerResponded(void* pSteamMatchingPingResponse, gameserverdetails_t* details)
 {
 	FakeAppIds::pingResponse(details);
@@ -1450,16 +1285,10 @@ namespace Hooks
 {
 	static bool playerStatsHookReady = false;
 	static bool depotOverrideHookReady = false;
+	static bool cloudToggleHookReady = false;
 
 	DetourHook<TraceIPC_t> TraceIPC;
 
-	DetourHook<IClientAppManager_RunIPCFrame_t> IClientAppManager_RunIPCFrame;
-	DetourHook<IClientApps_RunIPCFrame_t> IClientApps_RunIPCFrame;
-	DetourHook<IClientRemoteStorage_RunIPCFrame_t> IClientRemoteStorage_RunIPCFrame;
-	DetourHook<IClientUGC_RunIPCFrame_t> IClientUGC_RunIPCFrame;
-	DetourHook<IClientUtils_RunIPCFrame_t> IClientUtils_RunIPCFrame;
-	DetourHook<IClientUser_RunIPCFrame_t> IClientUser_RunIPCFrame;
-	DetourHook<IClientUserStats_RunIPCFrame_t> IClientUserStats_RunIPCFrame;
 
 	DetourHook<CAPIJob_GetPlayerStats_t> CAPIJob_GetPlayerStats;
 	DetourHook<CAPIJob_SendAndRecv_t> CAPIJob_SendAndRecv;
@@ -1497,7 +1326,7 @@ namespace Hooks
 	VFTHook<IClientApps_GetDLCCount_t> IClientApps_GetDLCCount("IClientApps::GetDLCCount");
 	VFTHook<IClientApps_GetAppData_t> IClientApps_GetAppData("IClientApps::GetAppData");
 
-	VFTHook<IClientRemoteStorage_IsCloudEnabledForApp_t> IClientRemoteStorage_IsCloudEnabledForApp("IClientRemoteStorage::IsCloudEnabledForApp");
+	DetourHook<IClientRemoteStorage_IsCloudEnabledForApp_t> IClientRemoteStorage_IsCloudEnabledForApp;
 
 	VFTHook<IClientUser_BLoggedOn_t> IClientUser_BLoggedOn;
 	VFTHook<IClientUser_BUpdateAppOwnershipTicket_t> IClientUser_BUpdateAppOwnershipTicket;
@@ -1510,6 +1339,92 @@ namespace Hooks
 	VFTHook<IClientUtils_GetOfflineMode_t> IClientUtils_GetOfflineMode("IClientUtils::GetOfflineMode");
 
 	DetourHook<ISteamMatchmakingPingResponse_ServerResponded_t> ISteamMatchmakingPingResponse_ServerResponded;
+}
+
+void Hooks::placeVFTHooks()
+{
+	static std::atomic<bool> placed { false };
+	if (placed.load(std::memory_order_acquire))
+	{
+		return;
+	}
+
+	static std::mutex mutex;
+	const std::lock_guard guard(mutex);
+	if (placed.load(std::memory_order_relaxed) || !g_pSteamEngine)
+	{
+		return;
+	}
+
+	// The interface objects are members of the local user (and of the engine
+	// for IClientUtils), located by offset instead of being captured from the
+	// IClient*::RunIPCFrame dispatchers (upstream 8de3384).
+	CUser* const user = g_pSteamEngine->getUser();
+	IClientUtils* const utils = g_pSteamEngine->getUtils();
+	if (!user || !utils)
+	{
+		return;
+	}
+
+	g_pClientAppManager = user->getAppManager();
+	g_pClientApps = user->getClientApps();
+	g_pClientUtils = utils;
+
+	{
+		auto vft = std::make_shared<lm_vmt_t>();
+		LM_VmtNew(*reinterpret_cast<lm_address_t**>(g_pClientAppManager), vft.get());
+		IClientAppManager_BCanRemotePlayTogether.setup(vft, VFTIndexes::IClientAppManager::BCanRemotePlayTogether, hkClientAppManager_BCanRemotePlayTogether);
+		IClientAppManager_BIsDlcEnabled.setup(vft, VFTIndexes::IClientAppManager::BIsDlcEnabled, hkClientAppManager_BIsDlcEnabled);
+		IClientAppManager_GetAppUpdateInfo.setup(vft, VFTIndexes::IClientAppManager::GetUpdateInfo, hkClientAppManager_GetUpdateInfo);
+		IClientAppManager_LaunchApp.setup(vft, VFTIndexes::IClientAppManager::LaunchApp, hkClientAppManager_LaunchApp);
+		IClientAppManager_IsAppDlcInstalled.setup(vft, VFTIndexes::IClientAppManager::IsAppDlcInstalled, hkClientAppManager_IsAppDlcInstalled);
+		IClientAppManager_BCanRemotePlayTogether.place();
+		IClientAppManager_BIsDlcEnabled.place();
+		IClientAppManager_GetAppUpdateInfo.place();
+		IClientAppManager_LaunchApp.place();
+		IClientAppManager_IsAppDlcInstalled.place();
+		g_pLog->debug("IClientAppManager->vft at %p\n", vft->vtable);
+	}
+	{
+		auto vft = std::make_shared<lm_vmt_t>();
+		LM_VmtNew(*reinterpret_cast<lm_address_t**>(g_pClientApps), vft.get());
+		IClientApps_GetDLCDataByIndex.setup(vft, VFTIndexes::IClientApps::GetDLCDataByIndex, hkClientApps_GetDLCDataByIndex);
+		IClientApps_GetDLCCount.setup(vft, VFTIndexes::IClientApps::GetDLCCount, hkClientApps_GetDLCCount);
+		IClientApps_GetAppData.setup(vft, VFTIndexes::IClientApps::GetAppData, hkClientApps_GetAppData);
+		IClientApps_GetDLCDataByIndex.place();
+		IClientApps_GetDLCCount.place();
+		IClientApps_GetAppData.place();
+		g_pLog->debug("IClientApps->vft at %p\n", vft->vtable);
+	}
+	{
+		IClientUser* const clientUser = user->getClientUser();
+		auto vft = std::make_shared<lm_vmt_t>();
+		LM_VmtNew(*reinterpret_cast<lm_address_t**>(clientUser), vft.get());
+		IClientUser_BLoggedOn.setup(vft, VFTIndexes::IClientUser::BLoggedOn, &hkClientUser_BLoggedOn);
+		IClientUser_BUpdateAppOwnershipTicket.setup(vft, VFTIndexes::IClientUser::BUpdateAppOwnershipTicket, hkClientUser_BUpdateOwnershipTicket);
+		IClientUser_GetAppOwnershipTicketExtendedData.setup(vft, VFTIndexes::IClientUser::GetAppOwnershipTicketExtendedData, hkClientUser_GetAppOwnershipTicketExtendedData);
+		IClientUser_IsUserSubscribedAppInTicket.setup(vft, VFTIndexes::IClientUser::IsUserSubscribedAppInTicket, &hkClientUser_IsUserSubscribedAppInTicket);
+		IClientUser_RequiresLegacyCDKey.setup(vft, VFTIndexes::IClientUser::RequiresLegacyCDKey, hkClientUser_RequiresLegacyCDKey);
+		IClientUser_GetEncryptedAppTicket.setup(vft, VFTIndexes::IClientUser::GetEncryptedAppTicket, hkClientUser_GetEncryptedAppTicket);
+		IClientUser_BLoggedOn.place();
+		IClientUser_BUpdateAppOwnershipTicket.place();
+		IClientUser_GetAppOwnershipTicketExtendedData.place();
+		IClientUser_IsUserSubscribedAppInTicket.place();
+		IClientUser_RequiresLegacyCDKey.place();
+		IClientUser_GetEncryptedAppTicket.place();
+		g_pLog->debug("IClientUser->vft at %p\n", vft->vtable);
+	}
+	{
+		auto vft = std::make_shared<lm_vmt_t>();
+		LM_VmtNew(*reinterpret_cast<lm_address_t**>(utils), vft.get());
+		IClientUtils_GetAppId.setup(vft, VFTIndexes::IClientUtils::GetAppId, hkClientUtils_GetAppId);
+		IClientUtils_GetOfflineMode.setup(vft, VFTIndexes::IClientUtils::GetOfflineMode, hkClientUtils_GetOfflineMode);
+		IClientUtils_GetAppId.place();
+		IClientUtils_GetOfflineMode.place();
+		g_pLog->debug("IClientUtils->vft at %p\n", vft->vtable);
+	}
+
+	placed.store(true, std::memory_order_release);
 }
 
 bool Hooks::setup()
@@ -1539,13 +1454,6 @@ bool Hooks::setup()
 		&& CSteamEngine_SetAppIdForCurrentPipe.setup(Patterns::CSteamEngine::SetAppIdForCurrentPipe, &hkSteamEngine_SetAppIdForCurrentPipe)
 
 
-		&& IClientApps_RunIPCFrame.setup(Patterns::IClientApps::RunIPCFrame, hkClientApps_RunIPCFrame)
-		&& IClientAppManager_RunIPCFrame.setup(Patterns::IClientAppManager::RunIPCFrame, hkClientAppManager_RunIPCFrame)
-		&& IClientRemoteStorage_RunIPCFrame.setup(Patterns::IClientRemoteStorage::RunIPCFrame, hkClientRemoteStorage_RunIPCFrame)
-		&& IClientUGC_RunIPCFrame.setup(Patterns::IClientUGC::RunIPCFrame, hkClientUGC_RunIPCFrame)
-		&& IClientUtils_RunIPCFrame.setup(Patterns::IClientUtils::RunIPCFrame, hkClientUtils_RunIPCFrame)
-		&& IClientUser_RunIPCFrame.setup(Patterns::IClientUser::RunIPCFrame, hkClientUser_RunIPCFrame)
-		&& IClientUserStats_RunIPCFrame.setup(Patterns::IClientUserStats::RunIPCFrame, hkClientUserStats_RunIPCFrame)
 
 		&& ISteamMatchmakingPingResponse_ServerResponded.setup(Patterns::ISteamMatchmakingPingResponse::ServerResponded, hkSteamMatchmakingPingResponse_ServerResponded);
 
@@ -1569,6 +1477,27 @@ bool Hooks::setup()
 	{
 		g_pLog->warn(
 			"BuildDepotDependency hook unavailable; DepotBlacklist and ManifestIds disabled\n");
+	}
+
+	// The cloud toggle is detoured on CUserRemoteStorage's own slot (upstream
+	// 269e867). CloudRedirect patches that vtable slot, so its hook runs first
+	// and calls through this detour. Only DisableCloud rides it.
+	{
+		const auto& entry = VFTIndexes::IClientRemoteStorage::IsCloudEnabledForApp;
+		const auto storage = Decompiler::vftables.find("18CUserRemoteStorage");
+		if (storage != Decompiler::vftables.end())
+		{
+			storage->second.analzye();
+			const auto& slots = storage->second.functions;
+			cloudToggleHookReady = entry.index < slots.size()
+				&& IClientRemoteStorage_IsCloudEnabledForApp.setup(
+					entry.getPrintName().c_str(), slots[entry.index],
+					hkClientRemoteStorage_IsCloudEnabledForApp);
+		}
+	}
+	if (!cloudToggleHookReady)
+	{
+		g_pLog->warn("IsCloudEnabledForApp hook unavailable; DisableCloud disabled\n");
 	}
 
 	Hooks::place();
@@ -1634,18 +1563,15 @@ void Hooks::place()
 		CUserAppManager_BuildDepotDependency.place();
 	}
 	CUser_PostCallbackToAppId.place();
+	if (cloudToggleHookReady)
+	{
+		IClientRemoteStorage_IsCloudEnabledForApp.place();
+	}
 
 	IClientFriends_GetFriendGamePlayed.place();
 
 	CWebSocketConnection_BBuildAndAsyncSendFrame.place();
 
-	IClientApps_RunIPCFrame.place();
-	IClientAppManager_RunIPCFrame.place();
-	IClientRemoteStorage_RunIPCFrame.place();
-	IClientUGC_RunIPCFrame.place();
-	IClientUtils_RunIPCFrame.place();
-	IClientUser_RunIPCFrame.place();
-	IClientUserStats_RunIPCFrame.place();
 
 
 	ISteamMatchmakingPingResponse_ServerResponded.place();
@@ -1711,13 +1637,6 @@ void Hooks::remove()
 
 	IClientAppManager_BCanRemotePlayTogether.remove();
 
-	IClientApps_RunIPCFrame.remove();
-	IClientAppManager_RunIPCFrame.remove();
-	IClientRemoteStorage_RunIPCFrame.remove();
-	IClientUGC_RunIPCFrame.remove();
-	IClientUtils_RunIPCFrame.remove();
-	IClientUser_RunIPCFrame.remove();
-	IClientUserStats_RunIPCFrame.remove();
 
 	IClientUser_BLoggedOn.remove();
 	IClientUser_BUpdateAppOwnershipTicket.remove();
@@ -1736,7 +1655,11 @@ void Hooks::remove()
 	IClientApps_GetDLCDataByIndex.remove();
 	IClientApps_GetDLCCount.remove();
 
-	IClientRemoteStorage_IsCloudEnabledForApp.remove();
+	if (cloudToggleHookReady)
+	{
+		IClientRemoteStorage_IsCloudEnabledForApp.remove();
+		cloudToggleHookReady = false;
+	}
 
 	IClientUtils_GetAppId.remove();
 	IClientUtils_GetOfflineMode.remove();

@@ -27,6 +27,7 @@ struct VFTable
 	lm_address_t address;
 	TypeInfo* typeInfo;
 	std::vector<lm_address_t> functions;
+	std::map<unsigned int, VFTable> subclasses;
 
 	void init(const lm_address_t addr, const lm_module_t& mod);
 	unsigned int analzye();

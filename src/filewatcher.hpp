@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <vector>
 
+
 typedef void(*FileModifyEvent_t)();
 
 class CFileWatcher
