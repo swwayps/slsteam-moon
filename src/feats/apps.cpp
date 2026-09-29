@@ -268,9 +268,19 @@ void Apps::buildDepotDependency(uint32_t appId, CUtlVector<DepotInfo_t>* depots,
 
 		if (manifestOverrides.contains(depot->depotId))
 		{
-			const uint64_t oldId = depot->manifestId;
-			depot->manifestId = manifestOverrides.at(depot->depotId);
-			g_pLog->debug("Overrode %u's manifest %llu with %llu\n", depot->depotId, oldId, depot->manifestId);
+			// ManifestPins own the depots they name: the download manager
+			// stages and plans that exact gid later, so a second, global
+			// override here would plan a build other than the staged one.
+			if (g_config.getManifestPinForPlanner(appId, depot->depotId))
+			{
+				g_pLog->debug("ManifestIds entry for %u skipped, ManifestPins owns it\n", depot->depotId);
+			}
+			else
+			{
+				const uint64_t oldId = depot->manifestId;
+				depot->manifestId = manifestOverrides.at(depot->depotId);
+				g_pLog->debug("Overrode %u's manifest %llu with %llu\n", depot->depotId, oldId, depot->manifestId);
+			}
 		}
 
 		g_pLog->debug("Depot %u for %u -> %llu\n", depot->depotId, depot->appId, depot->manifestId);
