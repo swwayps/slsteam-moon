@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <map>
+#include <string>
 #include <unordered_set>
 #include <vector>
 
@@ -28,6 +29,8 @@ namespace Apps
 	void buildDepotDependency(uint32_t appId, CUtlVector<DepotInfo_t>* depots, CUtlVector<DepotInfo_t>* sharedDepots);
 	bool checkAppOwnership(uint32_t appId, AppOwnershipInfo_t* info);
 	void getLegacyCDKey(uint32_t appId);
+	// The generated key for an app without a configured one: 4 * 4 A-Z/0-9.
+	std::string makeLegacyCDKey(uint32_t accountId, uint32_t appId);
 	void getSubscribedApps(uint32_t* appList, uint32_t size, uint32_t& count);
 
 	// Publish the two independent sources behind the managed-DLC membership

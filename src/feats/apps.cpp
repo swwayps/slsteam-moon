@@ -23,11 +23,11 @@
 
 #include <charconv>
 #include <cstdlib>
-#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <ctime>
 #include <mutex>
+#include <random>
 #include <sstream>
 #include <unordered_map>
 #include <sys/stat.h>
@@ -361,6 +361,34 @@ bool Apps::checkAppOwnership(uint32_t appId, AppOwnershipInfo_t* pInfo)
 	return true;
 }
 
+std::string Apps::makeLegacyCDKey(uint32_t accountId, uint32_t appId)
+{
+	constexpr std::string_view CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+	//Some games use 5 SEGMENT_CHARS/5 SEGMENT_NUM or a mix of both
+	//4 * 4 is the most common one though
+	constexpr unsigned int SEGMENT_CHARS = 4;
+	constexpr unsigned int SEGMENT_NUM = 4;
+
+	constexpr unsigned int SEGMENT_SIZE = SEGMENT_CHARS + 1; //AAAA-, BBBB-, etc
+	constexpr unsigned int KEY_SIZE = SEGMENT_SIZE * SEGMENT_NUM - 1; //Do not end with -
+
+	// A private engine: srand()/rand() would reseed the generator steamclient
+	// and steamui draw from, and their draws on other threads would change the
+	// key between calls.
+	std::minstd_rand engine(accountId + appId);
+	std::string key(KEY_SIZE, '-');
+	for (unsigned int i = 0; i < KEY_SIZE; i++)
+	{
+		if ((i + 1) % SEGMENT_SIZE != 0)
+		{
+			key[i] = CHARS[engine() % CHARS.size()];
+		}
+	}
+
+	return key;
+}
+
 void Apps::getLegacyCDKey(uint32_t appId)
 {
 	// Package 0 makes every managed app read as subscribed, so Steam's own
@@ -388,36 +416,7 @@ void Apps::getLegacyCDKey(uint32_t appId)
 	}
 	else
 	{
-		constexpr const char* CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-		static const unsigned int CHARS_SIZE = strlen(CHARS);
-
-		//Some games use 5 SEGMENT_CHARS/5 SEGMENT_NUM or a mix of both
-		//4 * 4 is the most common one though
-		constexpr unsigned int SEGMENT_CHARS = 4;
-		constexpr unsigned int SEGMENT_NUM = 4;
-
-		constexpr unsigned int SEGMENT_SIZE = SEGMENT_CHARS + 1; //AAAA-, BBBB-, etc
-		constexpr unsigned int KEY_SIZE = SEGMENT_SIZE * SEGMENT_NUM - 1; //Do not end with -
-		
-		//Don't forget null terminator since we
-		//do not pass a size argument to SetLegacyCDKey
-		newKey.resize(KEY_SIZE + 1);
-
-		srand(g_currentSteamId.steamId.accountId + appId);
-
-		for (unsigned int i = 0; i < KEY_SIZE; i++)
-		{
-			if ((i + 1) % SEGMENT_SIZE == 0)
-			{
-				newKey[i] = '-';
-				continue;
-			}
-
-			const unsigned int num = rand() % CHARS_SIZE;
-			newKey[i] = CHARS[num];
-		}
-
-		newKey[newKey.size() - 1] = '\0';
+		newKey = makeLegacyCDKey(g_currentSteamId.steamId.accountId, appId);
 		LOG_DEBUG("Generated random key %s for %u\n", newKey.c_str(), appId);
 	}
 

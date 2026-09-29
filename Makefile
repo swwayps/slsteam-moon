@@ -59,7 +59,7 @@ endif
 .PHONY: test-manifestdonor test-manifestfetch
 .PHONY: test-reconcilepin-scan
 .PHONY: test-depotkey-recv-policy
-.PHONY: test-private-apps test-config-settings test-curl-child
+.PHONY: test-private-apps test-config-settings test-curl-child test-legacy-cdkey
 
 test-manifestdonor:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror \
@@ -549,6 +549,13 @@ test-private-apps:
 		tools/test_private_apps.cpp src/feats/apps.cpp \
 		-Wl,--gc-sections -pthread -o /tmp/test_private_apps
 	/tmp/test_private_apps
+test-legacy-cdkey:
+	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
+		-fno-reorder-blocks-and-partition -ffunction-sections -fdata-sections \
+		-Wall -Wextra -Wpedantic -isystem include -I src \
+		tools/test_legacy_cdkey.cpp src/feats/apps.cpp \
+		-Wl,--gc-sections -pthread -o /tmp/test_legacy_cdkey
+	/tmp/test_legacy_cdkey
 test-library-dates-hook:
 	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
 		-fno-reorder-blocks-and-partition -ffunction-sections -fdata-sections \
