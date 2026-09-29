@@ -5,7 +5,6 @@
 #include "afftrace.hpp"
 #include "config.hpp"
 #include "filewatcher.hpp"
-#include "ownerwork.hpp"
 #include "runtimedir.hpp"
 #include "utils.hpp"
 
@@ -40,9 +39,9 @@ bool SLSAPI::isEnabled()
 
 void SLSAPI::onFileChange()
 {
-	// Runs on the API watcher pthread. The install request below enters
-	// Steam-owned code, so it is handed to the owner IPC thread without waiting
-	// (see ownerwork.hpp); parsing stays here.
+	// Runs on the API watcher pthread. Install and uninstall requests enter
+	// Steam-owned code, so they are queued for runIPCFrame() on Steam's IPC
+	// thread; parsing stays here.
 	auto watchSpan = AffTrace::watchSpan(AffTrace::Src::Api);
 
 	//Hot reload support :)

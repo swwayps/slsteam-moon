@@ -2,8 +2,8 @@
 // (src/utils/ownerqueue.hpp) and its policy helpers (src/ownerwork.hpp).
 //
 // The queue exists so watcher-originated Steam-owned work (package-0
-// injection via CUtlMemoryGrow, the NotifyLicensesUpdated broadcast, the API
-// install call) can execute on the latched owner IPC thread instead of on an
+// injection via CUtlMemoryGrow, the NotifyLicensesUpdated broadcast, the
+// compatibility mapping) can execute on the latched owner IPC thread instead of on an
 // inotify pthread. This is defensive thread-affinity HARDENING; no causal
 // claim about any client failure is made or tested here.
 //
@@ -212,8 +212,8 @@ static void test_package_snapshot_last_write_wins()
 	      "reconcile queues after the managed-state command");
 	CHECK(order.push(Command::syncPackage0(b), kT0 + 10) == PushResult::Coalesced,
 	      "replacement does not move the managed-state FIFO position");
-	CHECK(order.push(Command::installApp(9, 0), kT0) == PushResult::Queued,
-	      "install queues after other command kinds");
+	CHECK(order.push(Command::ensureCompat(9, 0, 0), kT0) == PushResult::Queued,
+	      "compat request queues after other command kinds");
 	CHECK(order.drain([&](const Command& cmd)
 	{
 		kinds.push_back(cmd.kind());
@@ -221,7 +221,7 @@ static void test_package_snapshot_last_write_wins()
 			orderedSnapshot = cmd.packageSnapshot();
 	}) == 4, "mixed command queue drains all records");
 	CHECK(kinds == std::vector<Kind>({ Kind::InjectPackage0, Kind::SyncPackage0,
-	                                   Kind::ReconcileLicenses, Kind::InstallApp }),
+	                                   Kind::ReconcileLicenses, Kind::EnsureCompat }),
 	      "snapshot replacement preserves FIFO position relative to other kinds");
 	CHECK(orderedSnapshot == carriedB,
 	      "the FIFO snapshot record carries the latest payload and pending additions");
@@ -238,12 +238,12 @@ static void test_idempotent_enqueue()
 	      "subset injection adds nothing new");
 	CHECK(q.depth() == 1, "no extra pending record");
 
-	q.push(Command::installApp(480, 0), kT0);
-	CHECK(q.push(Command::installApp(480, 0), kT0) == PushResult::Duplicate,
-	      "identical install is a no-op");
-	CHECK(q.push(Command::installApp(480, 1), kT0) == PushResult::Queued,
-	      "install into a different library is distinct work");
-	CHECK(q.depth() == 3, "one injection + two installs pending");
+	q.push(Command::ensureCompat(480, 0, 0), kT0);
+	CHECK(q.push(Command::ensureCompat(480, 0, 0), kT0) == PushResult::Duplicate,
+	      "identical compat request is a no-op");
+	CHECK(q.push(Command::ensureCompat(480, 1, 0), kT0) == PushResult::Queued,
+	      "compat request for a different generation is distinct work");
+	CHECK(q.depth() == 3, "one injection + two compat requests pending");
 	CHECK(q.stats().duplicates == 3, "duplicate pushes counted");
 
 	CHECK(q.push(Command::ensureCompat(582010, 0, 0), kT0) ==
@@ -258,7 +258,8 @@ static void test_idempotent_enqueue()
 	std::vector<Command> compat;
 	q.drain([&](const Command& cmd)
 	{
-		if (cmd.kind() == Kind::EnsureCompat) compat.push_back(cmd);
+		if (cmd.kind() == Kind::EnsureCompat && cmd.appId() == 582010)
+			compat.push_back(cmd);
 	});
 	CHECK(compat.size() == 2 && compat[0].appId() == 582010 &&
 	          compat[0].managedGeneration() == 0 && compat[0].attempt() == 0 &&
@@ -270,10 +271,10 @@ static void test_bounded()
 {
 	std::printf("[5] bounded queue and bounded command\n");
 	Queue q(2);
-	CHECK(q.push(Command::installApp(1, 0), kT0) == PushResult::Queued, "1st install fits");
-	CHECK(q.push(Command::installApp(2, 0), kT0) == PushResult::Queued, "2nd install fits");
-	CHECK(q.push(Command::installApp(3, 0), kT0) == PushResult::Full,
-	      "3rd install rejected at capacity (caller runs it itself)");
+	CHECK(q.push(Command::ensureCompat(1, 0, 0), kT0) == PushResult::Queued, "1st compat request fits");
+	CHECK(q.push(Command::ensureCompat(2, 0, 0), kT0) == PushResult::Queued, "2nd compat request fits");
+	CHECK(q.push(Command::ensureCompat(3, 0, 0), kT0) == PushResult::Full,
+	      "3rd compat request rejected at capacity (caller runs it itself)");
 	CHECK(q.depth() == 2, "capacity never exceeded");
 	CHECK(q.stats().rejectedFull == 1, "overflow rejection counted");
 
@@ -339,7 +340,7 @@ static void test_bounded()
 	CHECK(snapshotCapacity.push(Command::syncPackage0(
 		PackageSnapshot{ 2, { 2 }, { 22 }, true, {}, {} }), kT0 + 1) == PushResult::Coalesced,
 	      "a newer snapshot still coalesces when the queue is at capacity");
-	CHECK(snapshotCapacity.push(Command::installApp(5, 0), kT0 + 2) == PushResult::Full,
+	CHECK(snapshotCapacity.push(Command::ensureCompat(5, 0, 0), kT0 + 2) == PushResult::Full,
 	      "a different command kind is rejected at snapshot capacity");
 }
 
@@ -422,7 +423,7 @@ static void test_exception_containment()
 	Queue q;
 	q.push(Command::injectPackage0({ 1 }), kT0);
 	q.push(Command::reconcileLicenses(), kT0);
-	q.push(Command::installApp(9, 0), kT0);
+	q.push(Command::ensureCompat(9, 0, 0), kT0);
 
 	int ran = 0;
 	std::size_t drained = 0;
@@ -542,15 +543,15 @@ static void test_inline_fallback_ordering()
 {
 	std::printf("[11] inline fallbacks run pending work first (order preserved)\n");
 	Queue q(2);
-	// Two installs are pending and the queue is full, so the next batch is
+	// Two compat requests are pending and the queue is full, so the next batch is
 	// rejected and must run inline — but AFTER the work that was queued first.
-	q.push(Command::installApp(1, 0), kT0);
-	q.push(Command::installApp(2, 0), kT0);
-	CHECK(q.pushBatch({ Command::installApp(3, 0) }, kT0) == false,
-	      "the third install does not fit");
+	q.push(Command::ensureCompat(1, 0, 0), kT0);
+	q.push(Command::ensureCompat(2, 0, 0), kT0);
+	CHECK(q.pushBatch({ Command::ensureCompat(3, 0, 0) }, kT0) == false,
+	      "the third compat request does not fit");
 
 	std::vector<std::uint32_t> order;
-	const std::size_t ran = q.runPendingThen({ Command::installApp(3, 0) },
+	const std::size_t ran = q.runPendingThen({ Command::ensureCompat(3, 0, 0) },
 	                                        [&](const Command& c) { order.push_back(c.appId()); });
 	CHECK(ran == 3, "pending work plus the rejected batch all ran");
 	const std::vector<std::uint32_t> expected{ 1, 2, 3 };
@@ -561,7 +562,7 @@ static void test_inline_fallback_ordering()
 	// With nothing pending it is just the batch.
 	Queue q2;
 	std::vector<std::uint32_t> order2;
-	CHECK(q2.runPendingThen({ Command::installApp(9, 0) },
+	CHECK(q2.runPendingThen({ Command::ensureCompat(9, 0, 0) },
 	                       [&](const Command& c) { order2.push_back(c.appId()); }) == 1,
 	      "inline run with an empty queue runs only the given batch");
 	CHECK(order2.size() == 1 && order2[0] == 9, "and runs it unchanged");
@@ -599,11 +600,11 @@ static void test_serialised_execution()
 	std::thread direct([&]
 	{
 		for (int i = 0; i < 200; ++i)
-			q.runPendingThen({ Command::installApp(static_cast<std::uint32_t>(i), 7) }, runner);
+			q.runPendingThen({ Command::ensureCompat(static_cast<std::uint32_t>(i), 7, 0) }, runner);
 	});
 
 	for (int i = 0; i < 400; ++i)
-		q.push(Command::installApp(static_cast<std::uint32_t>(i), 0), OwnerQueue::monotonicUs());
+		q.push(Command::ensureCompat(static_cast<std::uint32_t>(i), 0, 0), OwnerQueue::monotonicUs());
 
 	direct.join();
 	std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -633,7 +634,7 @@ static void test_push_batch_atomicity()
 
 	// Capacity is full: a batch needing a third record must be rejected whole.
 	const bool rejected = q.pushBatch({ Command::injectPackage0({ 2 }),
-	                                    Command::installApp(5, 0) }, kT0, &per);
+	                                    Command::ensureCompat(5, 0, 0) }, kT0, &per);
 	CHECK(!rejected, "batch that does not fit is rejected");
 	CHECK(q.depth() == 2, "rejected batch leaves the queue untouched");
 	std::vector<std::uint32_t> ids;
@@ -745,7 +746,7 @@ static void test_exactly_once_under_race()
 	int accepted = 0;
 	for (int i = 0; i < kRounds; ++i)
 	{
-		if (q.push(Command::installApp(static_cast<std::uint32_t>(i), 0),
+		if (q.push(Command::ensureCompat(static_cast<std::uint32_t>(i), 0, 0),
 		           OwnerQueue::monotonicUs()) == PushResult::Queued)
 			++accepted;
 	}

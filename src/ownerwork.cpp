@@ -14,7 +14,6 @@
 #include "feats/compatlive.hpp"
 #include "feats/hotreload.hpp"
 #include "feats/packagepatch.hpp"
-#include "sdk/IClientAppManager.hpp"
 #include "sdk/CSteamEngine.hpp"
 
 #include <atomic>
@@ -61,11 +60,6 @@ namespace
 	// even reaching it.
 	thread_local bool t_draining = false;
 
-	AffTrace::Src traceSrc(OwnerQueue::Kind kind)
-	{
-		return (kind == OwnerQueue::Kind::InstallApp)
-			? AffTrace::Src::Api : AffTrace::Src::Config;
-	}
 
 	AffTrace::Call traceCall(OwnerQueue::Kind kind)
 	{
@@ -73,7 +67,6 @@ namespace
 		{
 			case OwnerQueue::Kind::InjectPackage0:    return AffTrace::Call::Package0Inject;
 			case OwnerQueue::Kind::ReconcileLicenses: return AffTrace::Call::LicenseReconcile;
-			case OwnerQueue::Kind::InstallApp:        return AffTrace::Call::InstallApp;
 			case OwnerQueue::Kind::SyncPackage0:     return AffTrace::Call::Package0Sync;
 			case OwnerQueue::Kind::EnsureCompat:     return AffTrace::Call::CompatMapping;
 		}
@@ -101,7 +94,7 @@ namespace
 	// inputs and order are identical in every mode.
 	void runCommand(const OwnerQueue::Command& cmd, AffTrace::Mode mode)
 	{
-		auto span = AffTrace::callSpan(traceSrc(cmd.kind()), traceCall(cmd.kind()), mode);
+		auto span = AffTrace::callSpan(AffTrace::Src::Config, traceCall(cmd.kind()), mode);
 		switch (cmd.kind())
 		{
 			case OwnerQueue::Kind::InjectPackage0:
@@ -112,14 +105,6 @@ namespace
 				break;
 			case OwnerQueue::Kind::SyncPackage0:
 				PackagePatch::synchronizePackage0(cmd.packageSnapshot());
-				break;
-			case OwnerQueue::Kind::InstallApp:
-				if (g_pClientAppManager == nullptr)
-				{
-					g_pLog->info("OwnerWork: app manager not available; install request dropped\n");
-					break;
-				}
-				g_pClientAppManager->installApp(cmd.appId(), cmd.library());
 				break;
 			case OwnerQueue::Kind::EnsureCompat:
 			{
@@ -278,7 +263,7 @@ namespace
 		const std::size_t depth = queue().depth();
 		for (const OwnerQueue::Command& cmd : batch)
 		{
-			AffTrace::queuePush(traceSrc(cmd.kind()), traceCall(cmd.kind()),
+			AffTrace::queuePush(AffTrace::Src::Config, traceCall(cmd.kind()),
 			                    AffTrace::Mode::Queued,
 			                    static_cast<std::uint32_t>(depth));
 		}
@@ -451,10 +436,6 @@ namespace OwnerWork
 			appId, managedGeneration, 0) });
 	}
 
-	Mode submitInstallApp(std::uint32_t appId, std::uint32_t library)
-	{
-		return submitBatch({ OwnerQueue::Command::installApp(appId, library) });
-	}
 
 	void notePlacement()
 	{

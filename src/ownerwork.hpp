@@ -28,7 +28,7 @@
 // expired: the watcher paid 1.5 s of latency and then ran the work off-owner
 // anyway — the worst of both options.
 //
-// So the handoff is now fire-and-forget: `submitHotAdd`/`submitInstallApp`
+// So the handoff is now fire-and-forget: `submitHotAdd`/`submitManagedState`
 // enqueue and return (microseconds), and the owner thread drains whenever it
 // next runs a frame. The hot-add is already asynchronous from the user's point
 // of view, so seconds of handoff latency cost nothing.
@@ -200,9 +200,6 @@ namespace OwnerWork
 	Mode submitCompatReadiness(
 		std::uint32_t appId,
 		std::uint64_t managedGeneration);
-
-	// API-watcher install request. Also non-blocking.
-	Mode submitInstallApp(std::uint32_t appId, std::uint32_t library);
 
 	// Staleness sweep. Called from the watcher loop's bounded poll timeout (and
 	// from each submit); a no-op unless something has been pending longer than

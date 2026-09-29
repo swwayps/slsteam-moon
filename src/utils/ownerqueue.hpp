@@ -62,8 +62,8 @@
 //  * Coalescing. Two pending package-0 injections merge into one whose id list
 //    is the first-seen-order union, which is exactly what running them in
 //    sequence would leave behind (injection is per-id idempotent). A second
-//    pending license reconcile is redundant, as is a duplicate install of the
-//    same (app, library) pair.
+//    pending license reconcile is redundant, as is a duplicate compat request
+//    for the same (app, generation) pair.
 //  * Idempotent enqueue. Re-pushing work already pending is a no-op that
 //    reports `Duplicate`.
 //  * Exactly once. Every accepted command is executed by exactly one of the
@@ -103,7 +103,7 @@
 namespace OwnerQueue
 {
 	// Default pending capacity. The realistic pending set is 1 injection +
-	// 1 reconcile + a handful of installs, so 32 is generous; the cap exists
+	// 1 reconcile + 1 snapshot + a few compat requests, so 32 is generous; the cap exists
 	// to bound memory and to make overflow behaviour explicit and testable.
 	inline constexpr std::size_t kDefaultCapacity = 32;
 
@@ -129,7 +129,6 @@ namespace OwnerQueue
 	{
 		InjectPackage0 = 0,     // CUtlMemoryGrow on package 0's vectors
 		ReconcileLicenses = 1,  // NotifyLicensesUpdated broadcast
-		InstallApp = 2,         // IClientAppManager::InstallApp
 		SyncPackage0 = 3,       // complete managed package-0 snapshot
 		EnsureCompat = 4,       // apply/poll a live compatibility mapping
 	};
@@ -141,26 +140,22 @@ namespace OwnerQueue
 	public:
 		static Command injectPackage0(std::vector<std::uint32_t> appIds)
 		{
-			return Command(Kind::InjectPackage0, std::move(appIds), 0, 0, {});
+			return Command(Kind::InjectPackage0, std::move(appIds), 0, {});
 		}
 		static Command reconcileLicenses()
 		{
-			return Command(Kind::ReconcileLicenses, {}, 0, 0, {});
-		}
-		static Command installApp(std::uint32_t appId, std::uint32_t library)
-		{
-			return Command(Kind::InstallApp, {}, appId, library, {});
+			return Command(Kind::ReconcileLicenses, {}, 0, {});
 		}
 		static Command syncPackage0(PackageSnapshot snapshot)
 		{
-			return Command(Kind::SyncPackage0, {}, 0, 0, std::move(snapshot));
+			return Command(Kind::SyncPackage0, {}, 0, std::move(snapshot));
 		}
 		static Command ensureCompat(
 			std::uint32_t appId,
 			std::uint64_t managedGeneration,
 			std::uint32_t attempt)
 		{
-			return Command(Kind::EnsureCompat, {}, appId, 0, {},
+			return Command(Kind::EnsureCompat, {}, appId, {},
 				managedGeneration, attempt);
 		}
 
@@ -168,7 +163,6 @@ namespace OwnerQueue
 		const std::vector<std::uint32_t>& appIds() const { return m_appIds; }
 		const PackageSnapshot& packageSnapshot() const { return m_packageSnapshot; }
 		std::uint32_t appId() const { return m_appId; }
-		std::uint32_t library() const { return m_library; }
 		std::uint64_t managedGeneration() const { return m_managedGeneration; }
 		std::uint32_t attempt() const { return m_attempt; }
 
@@ -184,8 +178,6 @@ namespace OwnerQueue
 					return m_appIds == other.m_appIds;
 				case Kind::ReconcileLicenses:
 					return true;
-				case Kind::InstallApp:
-					return m_appId == other.m_appId && m_library == other.m_library;
 				case Kind::SyncPackage0:
 					return m_packageSnapshot == other.m_packageSnapshot;
 				case Kind::EnsureCompat:
@@ -197,13 +189,13 @@ namespace OwnerQueue
 
 	private:
 		Command(Kind kind, std::vector<std::uint32_t> appIds,
-		        std::uint32_t appId, std::uint32_t library,
+		        std::uint32_t appId,
 		        PackageSnapshot packageSnapshot,
 		        std::uint64_t managedGeneration = 0,
 		        std::uint32_t attempt = 0)
 			: m_kind(kind), m_appIds(std::move(appIds)),
 			  m_packageSnapshot(std::move(packageSnapshot)),
-			  m_appId(appId), m_library(library),
+			  m_appId(appId),
 			  m_managedGeneration(managedGeneration), m_attempt(attempt)
 		{
 		}
@@ -212,7 +204,6 @@ namespace OwnerQueue
 		std::vector<std::uint32_t> m_appIds;
 		PackageSnapshot            m_packageSnapshot;
 		std::uint32_t              m_appId;
-		std::uint32_t              m_library;
 		std::uint64_t              m_managedGeneration;
 		std::uint32_t              m_attempt;
 	};
