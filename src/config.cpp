@@ -9,6 +9,7 @@
 
 #include "filewatcher.hpp"
 #include "log.hpp"
+#include "utils.hpp"
 
 #include "yaml-cpp/yaml.h"
 
@@ -909,9 +910,10 @@ bool CConfig::shouldExcludeAppId(uint32_t appId, bool ignoreAdditionalApps)
 		{
 			//Might be worth to check for k_EAppTypeDLC, but knowing Valve & individual gamedevs
 			//surely not every DLC will be tagged as such
-			char chParent[16];
+			char chParent[16] { };
 			const int len = g_pClientApps ? g_pClientApps->getAppData(appId, "parent", chParent, sizeof(chParent)) : 0;
-			if (len > 0)
+			//Do not blindly trust len, nor the str included. Some devs just like to mess with Valve or something (for example appId 221300)
+			if (len > 0 && Utils::isNumber(chParent))
 			{
 				//g_pLog->debug("AppId %i, parent %s (%i)\n", appId, chParent, len);
 				uint32_t parentId = std::stoul(chParent);
