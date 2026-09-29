@@ -15,18 +15,18 @@
 //will crash inside libssl.3.so (might have to do with broken certs, idk for sure).
 int Curl::getString(const char* url, std::string& out)
 {
-	g_pLog->debug("Curl::getString(%s)\n", url);
+	LOG_DEBUG("Curl::getString(%s)\n", url);
 
 	// Close-on-exec: a program Steam starts on another thread meanwhile would
 	// otherwise inherit the write end and hold the read below open.
 	int pipefd[2];
 	if (pipe2(pipefd, O_CLOEXEC) == -1)
 	{
-		g_pLog->debug("Failed to create pipe!\n");
+		LOG_ERROR("Failed to create pipe!\n");
 		return 1;
 	}
 
-	g_pLog->debug("Created pipe %i : %i\n", pipefd[0], pipefd[1]);
+	LOG_DEBUG("Created pipe %i : %i\n", pipefd[0], pipefd[1]);
 
 	constexpr static const char* env[] =
 	{
@@ -53,7 +53,7 @@ int Curl::getString(const char* url, std::string& out)
 		close(pipefd[0]);
 		close(pipefd[1]);
 
-		g_pLog->debug("Failed to fork!\n");
+		LOG_ERROR("Failed to fork!\n");
 		return 1;
 	}
 
@@ -78,7 +78,7 @@ int Curl::getString(const char* url, std::string& out)
 	//No need for writing
 	close(pipefd[1]);
 
-	g_pLog->debug("Child PID %i\n", pid);
+	LOG_DEBUG("Child PID %i\n", pid);
 
 	std::ostringstream bufSS;
 	char buf[8192];
@@ -92,19 +92,19 @@ int Curl::getString(const char* url, std::string& out)
 	close(pipefd[0]);
 
 	int status;
-	if(waitpid(pid, &status, 0) == -1)
+	if (waitpid(pid, &status, 0) == -1)
 	{
 		return 1;
 	}
 
-	if(!WIFEXITED(status))
+	if (!WIFEXITED(status))
 	{
 		return 1;
 	}
 
 	status = WEXITSTATUS(status);
 
-	g_pLog->debug("Exit Status: %i\n", status);
+	LOG_DEBUG("Exit Status: %i\n", status);
 
 	out = bufSS.str();
 

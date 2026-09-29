@@ -115,7 +115,7 @@ namespace MemHlp
 	{
 		if (address == LM_ADDRESS_BAD)
 		{
-			g_pLog->debug("Can't write to LM_ADDRESS_BAD!\n");
+			LOG_DEBUG("Can't write to LM_ADDRESS_BAD!\n");
 			return false;
 		}
 
@@ -130,15 +130,15 @@ namespace MemHlp
 
 		if (!LM_Assemble(code.c_str(), &inst))
 		{
-			g_pLog->debug("Failed to assemble %s!\n", code.c_str());
+			LOG_DEBUG("Failed to assemble %s!\n", code.c_str());
 		}
 		else if (!LM_WriteMemory(address, inst.bytes, inst.size))
 		{
-			g_pLog->debug("Failed to write %s to %p!\n", code.c_str(), address);
+			LOG_DEBUG("Failed to write %s to 0x%x!\n", code.c_str(), address);
 		}
 		else
 		{
-			g_pLog->debug("Wrote %s to %p with %i bytes\n", code.c_str(), address, inst.size);
+			LOG_DEBUG("Wrote %s to 0x%x with %i bytes\n", code.c_str(), address, inst.size);
 			address += inst.size;
 			success = true;
 		}

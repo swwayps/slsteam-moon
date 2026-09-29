@@ -4,6 +4,7 @@
 #include "usermsg.hpp" // user-facing message catalog (UserMsg/Lang/messageFor)
 
 #include <cstddef>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -14,6 +15,22 @@
 #include <shared_mutex>
 #include <sstream>
 #include <unordered_set>
+
+// Upstream's level flags, accepted by LOG_CUSTOM below. The local logger keeps
+// its own threshold (LogLevel); these only select which local level a line
+// goes to.
+enum ELogLevel : uint32_t
+{
+	k_ELogLevelTrace = 1 << 0,
+	k_ELogLevelOnce = 1 << 1,
+	k_ELogLevelDebug = 1 << 2,
+	k_ELogLevelWarn = 1 << 3,
+	k_ELogLevelError = 1 << 4,
+	k_ELogLevelInfo = 1 << 5,
+	k_ELogLevelNotifyShort = 1 << 6,
+	k_ELogLevelNotifyLong = 1 << 7,
+	k_ELogLevelAPI = 1 << 8
+};
 
 // Per-thread popup suppression.  A worker thread can set this so its own
 // log output still reaches the file but never raises a desktop popup.  Used
@@ -206,6 +223,26 @@ public:
 		__log(LogLevel::Warn, msg, args...);
 	}
 
+	// Upstream's LOG_CUSTOM: the most severe level in `flags` picks the local
+	// level, k_ELogLevelOnce deduplicates info and debug lines.
+	template<typename ...Args>
+	void custom(uint32_t flags, const char* msg, Args... args)
+	{
+		const bool once = flags & k_ELogLevelOnce;
+		if (flags & (k_ELogLevelWarn | k_ELogLevelError))
+			warn(msg, args...);
+		else if (flags & k_ELogLevelNotifyLong)
+			notifyLong(msg, args...);
+		else if (flags & k_ELogLevelNotifyShort)
+			notify(msg, args...);
+		else if (flags & (k_ELogLevelInfo | k_ELogLevelAPI))
+			once ? infoOnce(msg, args...) : info(msg, args...);
+		else if (flags & k_ELogLevelDebug)
+			once ? debugOnce(msg, args...) : debug(msg, args...);
+		else if (once)
+			this->once(msg, args...);
+	}
+
 	// The ONLY desktop-popup path. Renders a friendly, localized message
 	// from the usermsg.hpp catalog, throttled per-category so a multi-depot
 	// burst collapses into a single popup. `detail` fills the catalog's
@@ -221,3 +258,21 @@ public:
 };
 
 extern std::unique_ptr<CLog> g_pLog;
+
+// Upstream's logging macros on the local logger, so merged upstream code
+// compiles unchanged. Trace lines compile out as in upstream's default
+// builds; there is no separate error level, so errors log as warnings.
+#define LOG_TRACE(fmt, ...) ((void)0)
+#define LOG_TRACE_ONCE(fmt, ...) ((void)0)
+#define LOG_ONCE(fmt, ...) g_pLog->once(fmt __VA_OPT__(,) __VA_ARGS__)
+#define LOG_DEBUG(fmt, ...) g_pLog->debug(fmt __VA_OPT__(,) __VA_ARGS__)
+#define LOG_DEBUG_ONCE(fmt, ...) g_pLog->debugOnce(fmt __VA_OPT__(,) __VA_ARGS__)
+#define LOG_INFO(fmt, ...) g_pLog->info(fmt __VA_OPT__(,) __VA_ARGS__)
+#define LOG_WARN(fmt, ...) g_pLog->warn(fmt __VA_OPT__(,) __VA_ARGS__)
+#define LOG_ERROR(fmt, ...) g_pLog->warn(fmt __VA_OPT__(,) __VA_ARGS__)
+#define LOG_NOTIFY(fmt, ...) g_pLog->notify(fmt __VA_OPT__(,) __VA_ARGS__)
+#define LOG_NOTIFYLONG(fmt, ...) g_pLog->notifyLong(fmt __VA_OPT__(,) __VA_ARGS__)
+#define LOG_NOTIFYWARN(fmt, ...) g_pLog->warn(fmt __VA_OPT__(,) __VA_ARGS__)
+#define LOG_NOTIFYERROR(fmt, ...) g_pLog->warn(fmt __VA_OPT__(,) __VA_ARGS__)
+#define LOG_API(fmt, ...) g_pLog->info(fmt __VA_OPT__(,) __VA_ARGS__)
+#define LOG_CUSTOM(flags, fmt, ...) g_pLog->custom(flags, fmt __VA_OPT__(,) __VA_ARGS__)

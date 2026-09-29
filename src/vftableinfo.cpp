@@ -18,7 +18,7 @@ bool VFTableInfo_t::init()
 {
 	if (!Decompiler::vftables.contains(typeName))
 	{
-		g_pLog->debug("%s not found in Decompiler::vftables!\n", typeName.c_str());
+		LOG_ERROR("%s not found in Decompiler::vftables!\n", typeName.c_str());
 		return false;
 	}
 
@@ -32,7 +32,7 @@ bool VFTableInfo_t::init()
 		const auto& tbl = VFTIndexes::tableMap.at(typeName);
 		if (!tbl.contains(functionName))
 		{
-			g_pLog->debug("VFunction %s not found!\n", functionName.c_str());
+			LOG_ERROR("%s not found!\n", functionName.c_str());
 			return false;
 		}
 
@@ -44,12 +44,12 @@ bool VFTableInfo_t::init()
 
 	if (index >= funcs.size())
 	{
-		g_pLog->debug("%s index bigger than vtable size!\n", getPrintName().c_str());
+		LOG_ERROR("%s index bigger than vtable size!\n", getPrintName().c_str());
 		return false;
 	}
 
 	address = funcs.at(index);
-	g_pLog->debug("%s at index %u, address %p\n", getPrintName().c_str(), index, address);
+	LOG_DEBUG("%s at index %u, address 0x%x\n", getPrintName().c_str(), index, address);
 	return true;
 }
 
@@ -307,14 +307,14 @@ void VFTIndexes::dump(const std::string& name, const std::map<std::string, unsig
 
 	ss << "\n" << name << "\n{";
 
-	for(const auto& kv : functionMap)
+	for (const auto& kv : functionMap)
 	{
 		ss << "\n\t" << kv.first << " = " << kv.second;
 	}
 
 	ss << "\n};";
 
-	g_pLog->info("Dump %s\n", ss.str().c_str());
+	LOG_INFO("Dump %s\n", ss.str().c_str());
 }
 
 bool VFTIndexes::init()
@@ -331,7 +331,7 @@ bool VFTIndexes::init()
 
 	if (g_config.dumpInterfaceMaps.get())
 	{
-		for(const auto& tbl : tableMap)
+		for (const auto& tbl : tableMap)
 		{
 			dump(tbl.first, tbl.second);
 		}

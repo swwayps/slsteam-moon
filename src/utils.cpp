@@ -244,7 +244,7 @@ std::string Utils::getFileSHA256(const char *filePath)
 	sha256Final(ctx, sha256Bytes);
 
 	std::ostringstream sha256;
-	for(int i = 0; i < SHA256_DIGEST_LENGTH; i++)
+	for (int i = 0; i < SHA256_DIGEST_LENGTH; i++)
 	{
 		sha256 << std::hex << std::setw(2) << std::setfill('0') << (int)sha256Bytes[i];
 	}

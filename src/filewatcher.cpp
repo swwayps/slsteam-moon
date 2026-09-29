@@ -54,9 +54,9 @@ namespace
 void* watchLoop(void* args)
 {
 	auto watcher = reinterpret_cast<CFileWatcher*>(args);
-	g_pLog->debug("Started FileWatcher %u\n", watcher->notifyFd);
+	LOG_DEBUG("Started FileWatcher %u\n", watcher->notifyFd);
 
-	for(;;)
+	for (;;)
 	{
 		// Bail before touching any global (g_pLog below first) once shutdown
 		// has been requested, so the thread never races the static destructors
@@ -142,7 +142,7 @@ CFileWatcher::CFileWatcher(FileModifyEvent_t onModify)
 	this->onModify = onModify;
 
 	notifyFd = inotify_init();
-	g_pLog->debug("Created notify fd %i\n", notifyFd);
+	LOG_DEBUG("Created notify fd %i\n", notifyFd);
 }
 
 CFileWatcher::~CFileWatcher()

@@ -83,7 +83,7 @@ void SLSAPI::onFileChange()
 	char cmd[128];
 	fstream.getline(cmd, sizeof(cmd));
 
-	g_pLog->debug("API Running %s\n", cmd);
+	LOG_DEBUG("API Running %s\n", cmd);
 
 	auto split = Utils::strsplit(cmd, "|");
 	// Size first: an empty line (or one made only of separators) produces no
@@ -102,7 +102,7 @@ void SLSAPI::onFileChange()
 		}
 		catch(...)
 		{
-			g_pLog->info("API Failed to parse %s or %s!\n", split[1].c_str(), split[2].c_str());
+			LOG_INFO("API Failed to parse %s or %s!\n", split[1].c_str(), split[2].c_str());
 		}
 	}
 	else if (split.size() > 1 && split[0] == "uninstall")
@@ -116,7 +116,7 @@ void SLSAPI::onFileChange()
 		}
 		catch(...)
 		{
-			g_pLog->info("API Failed to parse %s!\n", split[1].c_str());
+			LOG_INFO("API Failed to parse %s!\n", split[1].c_str());
 		}
 	}
 }
@@ -198,7 +198,7 @@ void SLSAPI::runIPCFrame()
 		g_pClientAppManager->installApp(app->appId, app->libraryIndex);
 		installs.erase(app);
 
-		g_pLog->debug("Installed %u to %u\n", app->appId, app->libraryIndex);
+		LOG_DEBUG("Installed %u to %u\n", app->appId, app->libraryIndex);
 	}
 
 	while(uninstalls.size())
@@ -207,6 +207,6 @@ void SLSAPI::runIPCFrame()
 		g_pClientAppManager->uninstallApp(*app);
 		uninstalls.erase(app);
 
-		g_pLog->debug("Uninstalled %u\n", *app);
+		LOG_DEBUG("Uninstalled %u\n", *app);
 	}
 }

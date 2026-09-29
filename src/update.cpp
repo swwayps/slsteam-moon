@@ -235,7 +235,7 @@ void Updater::saveToCache(std::string yaml)
 	stream << yaml;
 	stream.close();
 
-	g_pLog->debug("Cached res/updates.yaml!\n");
+	LOG_DEBUG("Cached res/updates.yaml!\n");
 }
 
 std::string Updater::loadFromCache()
@@ -246,7 +246,7 @@ std::string Updater::loadFromCache()
 		return std::string();
 	}
 
-	g_pLog->debug("Loading updates.ymal from disk!\n");
+	LOG_DEBUG("Loading updates.ymal from disk!\n");
 
 	std::ifstream fstream = std::ifstream(path.c_str());
 	std::ostringstream buf;
@@ -295,7 +295,7 @@ bool Updater::verifySafeModeHash()
 	}
 	catch(std::runtime_error& err)
 	{
-		g_pLog->debug("Unable to read steamclient.so hash!\n");
+		LOG_ERROR("Unable to read steamclient.so hash!\n");
 		return false;
 	}
 

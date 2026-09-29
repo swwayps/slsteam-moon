@@ -98,7 +98,7 @@ bool Ticket::saveTicketToCache(CMsgClientGetAppOwnershipTicketResponse* resp)
 {
 	const uint32_t appId = resp->app_id();
 
-	g_pLog->debug("Saving ticket for %u...\n", appId);
+	LOG_DEBUG("Saving ticket for %u...\n", appId);
 
 	auto bytes = resp->ticket();
 
@@ -273,7 +273,7 @@ bool Ticket::saveEncryptedTicketToCache(CMsgClientRequestEncryptedAppTicketRespo
 {
 	const uint32_t appId = resp->app_id();
 
-	g_pLog->debug("Saving encrypted ticket for %u...\n", appId);
+	LOG_DEBUG("Saving encrypted ticket for %u...\n", appId);
 
 	auto bytes = resp->SerializeAsString();
 

@@ -26,12 +26,13 @@ bool Steam::init()
 
 	if (!Plat_Alloc || !Plat_Free || !Plat_Realloc)
 	{
+		LOG_ERROR("Didn't find all of Steam's platform allocators!\n");
 		return false;
 	}
 
-	g_pLog->debug("Plat_Alloc at %p\n", Plat_Alloc);
-	g_pLog->debug("Plat_Free at %p\n", Plat_Free);
-	g_pLog->debug("Plat_Realloc at %p\n", Plat_Realloc);
+	LOG_DEBUG("Plat_Alloc at %p\n", reinterpret_cast<void*>(Plat_Alloc));
+	LOG_DEBUG("Plat_Free at %p\n", reinterpret_cast<void*>(Plat_Free));
+	LOG_DEBUG("Plat_Realloc at %p\n", reinterpret_cast<void*>(Plat_Realloc));
 
 	return true;
 }

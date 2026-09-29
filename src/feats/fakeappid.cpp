@@ -184,7 +184,7 @@ void FakeAppIds::getServerDetails(uint32_t handle, gameserverdetails_t& details)
 	fakeAppIdMapPings[details.ip64] = realAppId;
 	details.appId = realAppId;
 
-	g_pLog->debug("Changing appId back to %u\n", realAppId);
+	LOG_DEBUG("Changing appId back to %u\n", realAppId);
 }
 
 uint32_t FakeAppIds::requestInternetServerList(uint32_t appId)
@@ -195,7 +195,7 @@ uint32_t FakeAppIds::requestInternetServerList(uint32_t appId)
 		return 0;
 	}
 
-	g_pLog->debug("Replacing %u with %u\n", appId, fake);
+	LOG_DEBUG("Replacing %u with %u\n", appId, fake);
 	return fake;
 }
 
@@ -234,7 +234,7 @@ void FakeAppIds::sendGamesPlayed(CNetPacket* packet)
 			continue;
 		}
 
-		g_pLog->debug("Setting %llu to %u\n", gameId, fakeAppId);
+		LOG_DEBUG("Setting %llu to %u\n", gameId, fakeAppId);
 		game->set_game_id(fakeAppId);
 	}
 

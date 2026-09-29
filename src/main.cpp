@@ -68,23 +68,23 @@ static bool cleanEnvVar(const char* varName, const char* endsWith)
 	auto splits = Utils::strsplit(var, ":");
 	auto newEnv = std::string();
 
-	for(unsigned int i = 0; i < splits.size(); i++)
+	for (unsigned int i = 0; i < splits.size(); i++)
 	{
 		auto split = splits.at(i);
 		if (split.ends_with(endsWith))
 		{
-			g_pLog->debug("Removed %s from $%s\n", endsWith, varName);
+			LOG_DEBUG("Removed %s from $%s\n", endsWith, varName);
 			continue;
 		}
 
-		if(newEnv.size() > 0)
+		if (newEnv.size() > 0)
 		{
 			newEnv.append(":");
 		}
 		newEnv.append(split);
 	}
 
-	if(newEnv.size())
+	if (newEnv.size())
 	{
 		setenv(varName, newEnv.c_str(), true);
 	}
@@ -92,7 +92,7 @@ static bool cleanEnvVar(const char* varName, const char* endsWith)
 	{
 		unsetenv(varName);
 	}
-	//g_pLog->debug("Set %s to %s\n", varName, newEnv.c_str());
+	//LOG_DEBUG("Set %s to %s\n", varName, newEnv.c_str());
 
 	return true;
 }
@@ -181,6 +181,8 @@ static void setup()
 	}
 
 	g_pLog = std::unique_ptr<CLog>(CLog::createDefaultLog());
+	//Won't happen, log throws a runtime exception when creation fails.
+	//But just in case I decide to refactor one day
 	if (!g_pLog)
 	{
 		unload();
@@ -259,7 +261,7 @@ static void setup()
 	cleanEnvVar("LD_AUDIT", "libSLS-library-inject.so");
 
 
-	if(!g_config.init())
+	if (!g_config.init())
 	{
 		unload();
 		return;
@@ -553,17 +555,17 @@ static void load()
 	auto path = std::filesystem::path(g_modSteamClient.path);
 	auto dir = path.parent_path();
 
-	g_pLog->info
+	LOG_INFO
 	(
-		"steamclient.so loaded from %s/%s at %p to %p\n",
+		"steamclient.so loaded from %s/%s at 0x%x to 0x%x\n",
 		dir.filename().c_str(),
 		path.filename().c_str(),
 		g_modSteamClient.base,
 		g_modSteamClient.end
 	);
-	g_pLog->info
+	LOG_INFO
 	(
-		"steamui.so loaded at %p to %p\n",
+		"steamui.so loaded at 0x%x to 0x%x\n",
 		g_modSteamUI.base,
 		g_modSteamUI.end
 	);
@@ -631,7 +633,7 @@ static void load()
 
 	if (!Steam::init())
 	{
-		g_pLog->warn("Failed to find steam exports!\n");
+		LOG_NOTIFYERROR("Failed to find steam exports!\n");
 		return;
 	}
 

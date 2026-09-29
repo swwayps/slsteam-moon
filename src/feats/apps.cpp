@@ -253,18 +253,18 @@ bool Apps::unlockApp(uint32_t appId, AppOwnershipInfo_t* info)
 
 void Apps::buildDepotDependency(uint32_t appId, CUtlVector<DepotInfo_t>* depots, CUtlVector<DepotInfo_t>* sharedDepots)
 {
-	g_pLog->debug("Vec Alloc %u, Grow %u, Size %u\n", depots->memory.alloc, depots->memory.growSize, depots->size);
+	LOG_DEBUG("Vec Alloc %u, Grow %u, Size %u\n", depots->memory.alloc, depots->memory.growSize, depots->size);
 
 	const auto depotBlacklist = g_config.depotBlacklist.get();
 	const auto manifestOverrides = g_config.manifestIds.get();
 
-	for(unsigned int i = 0; i < depots->size; i++)
+	for (unsigned int i = 0; i < depots->size; i++)
 	{
 		const auto depot = depots->at(i);
 
 		if (depotBlacklist.contains(depot->depotId))
 		{
-			g_pLog->debug("Removing %u with %llu\n", depot->depotId, depot->manifestId);
+			LOG_DEBUG("Removing %u with %llu\n", depot->depotId, depot->manifestId);
 			depots->swap(i, depots->size - 1);
 			depots->size--;
 		}
@@ -286,13 +286,13 @@ void Apps::buildDepotDependency(uint32_t appId, CUtlVector<DepotInfo_t>* depots,
 			}
 		}
 
-		g_pLog->debug("Depot %u for %u -> %llu\n", depot->depotId, depot->appId, depot->manifestId);
+		LOG_DEBUG("Depot %u for %u -> %llu\n", depot->depotId, depot->appId, depot->manifestId);
 	}
 
-	for(unsigned int i = 0; i < sharedDepots->size; i++)
+	for (unsigned int i = 0; i < sharedDepots->size; i++)
 	{
 		const auto depot = sharedDepots->at(i);
-		g_pLog->debug("Shared Depot %u for %u -> %llu\n", depot->depotId, depot->appId, depot->manifestId);
+		LOG_DEBUG("Shared Depot %u for %u -> %llu\n", depot->depotId, depot->appId, depot->manifestId);
 	}
 
 }
@@ -514,7 +514,7 @@ void Apps::sendAndRecvLastPlayedTimes(const char* name, CPlayer_GetLastPlayedTim
 			continue;
 		}
 
-		g_pLog->debug("Removed serverside PlayTime for %u\n", game->appid());
+		LOG_DEBUG("Removed serverside PlayTime for %u\n", game->appid());
 		recv->mutable_games()->DeleteSubrange(i, 1);
 	}
 }
@@ -538,7 +538,7 @@ void Apps::sendGamesPlayed(CNetPacket* pkt)
 		// Leave a non-Steam shortcut's title and 64-bit ID untouched.
 		if (gameId & GAME_TYPE_SHORTCUT)
 		{
-			g_pLog->debug("Preserving non-Steam shortcut %llu\n", gameId);
+			LOG_DEBUG("Preserving non-Steam shortcut %llu\n", gameId);
 			continue;
 		}
 
@@ -569,14 +569,14 @@ void Apps::sendGamesPlayed(CNetPacket* pkt)
 
 			if (len > 0)
 			{
-				g_pLog->debug("AppName %s (%i)\n", name, len);
+				LOG_DEBUG("AppName %s (%i)\n", name, len);
 				game->set_game_extra_info(name);
 			}
 		}
 
 		//msg->mutable_games_played(i)->ParseFromString(game.SerializeAsString());
 
-		g_pLog->debug("Playing game %llu with flags %u & pid %u\n", gameId, game->game_flags(), game->process_id());
+		LOG_DEBUG("Playing game %llu with flags %u & pid %u\n", gameId, game->game_flags(), game->process_id());
 	}
 
 	if (msg.games_played_size() < 1)
@@ -683,7 +683,7 @@ void Apps::setConfigStoreString(const char* key, const char* value)
 		return;
 	}
 
-	g_pLog->debug("%s -> %s\n", key, value);
+	LOG_DEBUG("%s -> %s\n", key, value);
 
 	// Steam stores the list as a JSON array ([730,240,440]). Anything that is
 	// not a plain app id is skipped: this runs inside a Steam caller, so a
