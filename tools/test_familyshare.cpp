@@ -131,8 +131,8 @@ int main()
 		serializedHeader.data(),
 		serializedHeader.size());
 	CNetPacket validPacket{};
-	validPacket.body = validBody;
-	validPacket.size = validStorage.size();
+	validPacket.setBody(validBody);
+	validPacket.setSize(validStorage.size());
 	CMsgProtoBufHeader parsedHeader;
 	expect(
 		validPacket.deserializeHeader(parsedHeader)
@@ -149,8 +149,8 @@ int main()
 	auto* invalidBody = reinterpret_cast<CNetPacketBody*>(invalidStorage);
 	invalidBody->type = CNetPacket::PROTOBUF_TYPE_MASK | kServiceMethod;
 	CNetPacket invalidPacket{};
-	invalidPacket.body = invalidBody;
-	invalidPacket.size = sizeof(CNetPacketBody) - 1;
+	invalidPacket.setBody(invalidBody);
+	invalidPacket.setSize(sizeof(CNetPacketBody) - 1);
 	expect(
 		invalidPacket.getType() == CNetPacket::INVALID_MESSAGE_TYPE,
 		"undersized packet type is not read");
@@ -158,20 +158,20 @@ int main()
 		!invalidPacket.deserializeHeader(parsedHeader),
 		"undersized packet header is rejected");
 
-	invalidPacket.size = sizeof(invalidStorage);
+	invalidPacket.setSize(sizeof(invalidStorage));
 	invalidBody->headerSize = 2;
 	expect(
 		!invalidPacket.deserializeHeader(parsedHeader),
 		"header larger than packet payload is rejected");
 
-	invalidPacket.size = std::numeric_limits<std::uint32_t>::max();
+	invalidPacket.setSize(std::numeric_limits<std::uint32_t>::max());
 	invalidBody->headerSize =
 		static_cast<std::uint32_t>(std::numeric_limits<int>::max()) + 1u;
 	expect(
 		!invalidPacket.deserializeHeader(parsedHeader),
 		"header larger than protobuf parser range is rejected");
 
-	invalidPacket.size = sizeof(invalidStorage);
+	invalidPacket.setSize(sizeof(invalidStorage));
 	invalidBody->headerSize = 1;
 	invalidStorage[sizeof(CNetPacketBody)] = 0x80;
 	expect(
@@ -196,9 +196,9 @@ int main()
 		guardedBody->type = CNetPacket::PROTOBUF_TYPE_MASK | kServiceMethod;
 		guardedBody->headerSize = 1;
 		CNetPacket guardedPacket{};
-		guardedPacket.body = guardedBody;
-		guardedPacket.originalBody = guardedBody;
-		guardedPacket.size = sizeof(CNetPacketBody);
+		guardedPacket.setBody(guardedBody);
+		guardedPacket.setOriginalBody(guardedBody);
+		guardedPacket.setSize(sizeof(CNetPacketBody));
 		CMsgProtoBufHeader emptyHeader;
 		guardedPacket.serialize(emptyHeader);
 		_exit(0);
@@ -212,15 +212,19 @@ int main()
 	CNetPacket packet{};
 	std::uint8_t body[8]{};
 	std::uint8_t originalBody[8]{};
-	packet.body = reinterpret_cast<CNetPacketBody*>(body);
-	packet.originalBody = reinterpret_cast<CNetPacketBody*>(originalBody);
-	packet.size = sizeof(body);
+	packet.setBody(reinterpret_cast<CNetPacketBody*>(body));
+	packet.setOriginalBody(reinterpret_cast<CNetPacketBody*>(originalBody));
+	packet.setSize(sizeof(body));
 	packet.free();
 	expect(
 		freeCalls == 1 && freedBody == body,
 		"packet release calls Steam::Plat_Free exactly once for body");
+	CNetPacketBody* releasedOriginal = reinterpret_cast<CNetPacketBody*>(1);
+	std::memcpy(&releasedOriginal,
+		reinterpret_cast<const std::uint8_t*>(&packet) + CNetPacket::OFF_ORIGBODY,
+		sizeof(releasedOriginal));
 	expect(
-		packet.body == nullptr && packet.originalBody == nullptr && packet.size == 0,
+		packet.body() == nullptr && releasedOriginal == nullptr && packet.sizeBytes() == 0,
 		"packet release clears body ownership fields");
 
 	return failures == 0 ? 0 : 1;

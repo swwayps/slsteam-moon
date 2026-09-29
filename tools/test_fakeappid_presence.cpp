@@ -80,9 +80,9 @@ void route(uint32_t realAppId, uint32_t fakeAppId, uint32_t expected)
 		bytes + sizeof(CNetPacketBody) + headerSize, messageSize);
 
 	CNetPacket packet{};
-	packet.body = body;
-	packet.originalBody = body;
-	packet.size = packetSize;
+	packet.setBody(body);
+	packet.setOriginalBody(body);
+	packet.setSize(packetSize);
 	FakeAppIds::sendMsg(&packet);
 
 	CMsgProtoBufHeader routed;
@@ -116,9 +116,9 @@ void preserveShortcut(uint64_t gameId)
 		bytes + sizeof(CNetPacketBody) + headerSize, messageSize);
 
 	CNetPacket packet{};
-	packet.body = body;
-	packet.originalBody = body;
-	packet.size = packetSize;
+	packet.setBody(body);
+	packet.setOriginalBody(body);
+	packet.setSize(packetSize);
 	FakeAppIds::sendMsg(&packet);
 
 	const auto result = packet.deserializeBody<CMsgClientGamesPlayed>();
