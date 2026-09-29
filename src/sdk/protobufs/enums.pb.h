@@ -26,9 +26,10 @@
 #include <google/protobuf/generated_message_table_driven.h>
 #include <google/protobuf/generated_message_util.h>
 #include <google/protobuf/metadata_lite.h>
+#include <google/protobuf/generated_message_reflection.h>
 #include <google/protobuf/repeated_field.h>  // IWYU pragma: export
 #include <google/protobuf/extension_set.h>  // IWYU pragma: export
-#include <google/protobuf/generated_enum_util.h>
+#include <google/protobuf/generated_enum_reflection.h>
 // @@protoc_insertion_point(includes)
 #include <google/protobuf/port_def.inc>
 #define PROTOBUF_INTERNAL_EXPORT_enums_2eproto
@@ -50,6 +51,8 @@ struct TableStruct_enums_2eproto {
   static const ::PROTOBUF_NAMESPACE_ID::internal::SerializationTable serialization_table[];
   static const ::PROTOBUF_NAMESPACE_ID::uint32 offsets[];
 };
+extern const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable descriptor_table_enums_2eproto;
+::PROTOBUF_NAMESPACE_ID::Metadata descriptor_table_enums_2eproto_metadata_getter(int index);
 PROTOBUF_NAMESPACE_OPEN
 PROTOBUF_NAMESPACE_CLOSE
 
@@ -84,16 +87,20 @@ constexpr EPublishedFileQueryType EPublishedFileQueryType_MIN = k_PublishedFileQ
 constexpr EPublishedFileQueryType EPublishedFileQueryType_MAX = k_PublishedFileQueryType_RankedByNumParentCollections;
 constexpr int EPublishedFileQueryType_ARRAYSIZE = EPublishedFileQueryType_MAX + 1;
 
-const std::string& EPublishedFileQueryType_Name(EPublishedFileQueryType value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EPublishedFileQueryType_descriptor();
 template<typename T>
 inline const std::string& EPublishedFileQueryType_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EPublishedFileQueryType>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EPublishedFileQueryType_Name.");
-  return EPublishedFileQueryType_Name(static_cast<EPublishedFileQueryType>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EPublishedFileQueryType_descriptor(), enum_t_value);
 }
-bool EPublishedFileQueryType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EPublishedFileQueryType* value);
+inline bool EPublishedFileQueryType_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EPublishedFileQueryType* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EPublishedFileQueryType>(
+    EPublishedFileQueryType_descriptor(), name, value);
+}
 enum EPublishedFileInappropriateProvider : int {
   k_EPublishedFileInappropriateProvider_Invalid = 0,
   k_EPublishedFileInappropriateProvider_Google = 1,
@@ -104,16 +111,20 @@ constexpr EPublishedFileInappropriateProvider EPublishedFileInappropriateProvide
 constexpr EPublishedFileInappropriateProvider EPublishedFileInappropriateProvider_MAX = k_EPublishedFileInappropriateProvider_Amazon;
 constexpr int EPublishedFileInappropriateProvider_ARRAYSIZE = EPublishedFileInappropriateProvider_MAX + 1;
 
-const std::string& EPublishedFileInappropriateProvider_Name(EPublishedFileInappropriateProvider value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EPublishedFileInappropriateProvider_descriptor();
 template<typename T>
 inline const std::string& EPublishedFileInappropriateProvider_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EPublishedFileInappropriateProvider>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EPublishedFileInappropriateProvider_Name.");
-  return EPublishedFileInappropriateProvider_Name(static_cast<EPublishedFileInappropriateProvider>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EPublishedFileInappropriateProvider_descriptor(), enum_t_value);
 }
-bool EPublishedFileInappropriateProvider_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EPublishedFileInappropriateProvider* value);
+inline bool EPublishedFileInappropriateProvider_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EPublishedFileInappropriateProvider* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EPublishedFileInappropriateProvider>(
+    EPublishedFileInappropriateProvider_descriptor(), name, value);
+}
 enum EPublishedFileInappropriateResult : int {
   k_EPublishedFileInappropriateResult_NotScanned = 0,
   k_EPublishedFileInappropriateResult_VeryUnlikely = 1,
@@ -127,16 +138,20 @@ constexpr EPublishedFileInappropriateResult EPublishedFileInappropriateResult_MI
 constexpr EPublishedFileInappropriateResult EPublishedFileInappropriateResult_MAX = k_EPublishedFileInappropriateResult_VeryLikely;
 constexpr int EPublishedFileInappropriateResult_ARRAYSIZE = EPublishedFileInappropriateResult_MAX + 1;
 
-const std::string& EPublishedFileInappropriateResult_Name(EPublishedFileInappropriateResult value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EPublishedFileInappropriateResult_descriptor();
 template<typename T>
 inline const std::string& EPublishedFileInappropriateResult_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EPublishedFileInappropriateResult>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EPublishedFileInappropriateResult_Name.");
-  return EPublishedFileInappropriateResult_Name(static_cast<EPublishedFileInappropriateResult>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EPublishedFileInappropriateResult_descriptor(), enum_t_value);
 }
-bool EPublishedFileInappropriateResult_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EPublishedFileInappropriateResult* value);
+inline bool EPublishedFileInappropriateResult_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EPublishedFileInappropriateResult* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EPublishedFileInappropriateResult>(
+    EPublishedFileInappropriateResult_descriptor(), name, value);
+}
 enum EPersonaStateFlag : int {
   k_EPersonaStateFlag_HasRichPresence = 1,
   k_EPersonaStateFlag_InJoinableGame = 2,
@@ -154,16 +169,20 @@ constexpr EPersonaStateFlag EPersonaStateFlag_MIN = k_EPersonaStateFlag_HasRichP
 constexpr EPersonaStateFlag EPersonaStateFlag_MAX = k_EPersonaStateFlag_LaunchTypeCompatTool;
 constexpr int EPersonaStateFlag_ARRAYSIZE = EPersonaStateFlag_MAX + 1;
 
-const std::string& EPersonaStateFlag_Name(EPersonaStateFlag value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EPersonaStateFlag_descriptor();
 template<typename T>
 inline const std::string& EPersonaStateFlag_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EPersonaStateFlag>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EPersonaStateFlag_Name.");
-  return EPersonaStateFlag_Name(static_cast<EPersonaStateFlag>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EPersonaStateFlag_descriptor(), enum_t_value);
 }
-bool EPersonaStateFlag_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EPersonaStateFlag* value);
+inline bool EPersonaStateFlag_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EPersonaStateFlag* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EPersonaStateFlag>(
+    EPersonaStateFlag_descriptor(), name, value);
+}
 enum EContentCheckProvider : int {
   k_EContentCheckProvider_Invalid = 0,
   k_EContentCheckProvider_Google_DEPRECATED = 1,
@@ -178,16 +197,20 @@ constexpr EContentCheckProvider EContentCheckProvider_MIN = k_EContentCheckProvi
 constexpr EContentCheckProvider EContentCheckProvider_MAX = k_EContentCheckProvider_SteamLearn;
 constexpr int EContentCheckProvider_ARRAYSIZE = EContentCheckProvider_MAX + 1;
 
-const std::string& EContentCheckProvider_Name(EContentCheckProvider value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EContentCheckProvider_descriptor();
 template<typename T>
 inline const std::string& EContentCheckProvider_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EContentCheckProvider>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EContentCheckProvider_Name.");
-  return EContentCheckProvider_Name(static_cast<EContentCheckProvider>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EContentCheckProvider_descriptor(), enum_t_value);
 }
-bool EContentCheckProvider_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EContentCheckProvider* value);
+inline bool EContentCheckProvider_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EContentCheckProvider* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EContentCheckProvider>(
+    EContentCheckProvider_descriptor(), name, value);
+}
 enum EProfileCustomizationType : int {
   k_EProfileCustomizationTypeInvalid = 0,
   k_EProfileCustomizationTypeRareAchievementShowcase = 1,
@@ -220,16 +243,20 @@ constexpr EProfileCustomizationType EProfileCustomizationType_MIN = k_EProfileCu
 constexpr EProfileCustomizationType EProfileCustomizationType_MAX = k_EProfileCustomizationTypeReplay;
 constexpr int EProfileCustomizationType_ARRAYSIZE = EProfileCustomizationType_MAX + 1;
 
-const std::string& EProfileCustomizationType_Name(EProfileCustomizationType value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EProfileCustomizationType_descriptor();
 template<typename T>
 inline const std::string& EProfileCustomizationType_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EProfileCustomizationType>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EProfileCustomizationType_Name.");
-  return EProfileCustomizationType_Name(static_cast<EProfileCustomizationType>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EProfileCustomizationType_descriptor(), enum_t_value);
 }
-bool EProfileCustomizationType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EProfileCustomizationType* value);
+inline bool EProfileCustomizationType_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EProfileCustomizationType* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EProfileCustomizationType>(
+    EProfileCustomizationType_descriptor(), name, value);
+}
 enum EPublishedFileStorageSystem : int {
   k_EPublishedFileStorageSystemInvalid = 0,
   k_EPublishedFileStorageSystemLegacyCloud = 1,
@@ -241,16 +268,20 @@ constexpr EPublishedFileStorageSystem EPublishedFileStorageSystem_MIN = k_EPubli
 constexpr EPublishedFileStorageSystem EPublishedFileStorageSystem_MAX = k_EPublishedFileStorageSystemUGCCloud;
 constexpr int EPublishedFileStorageSystem_ARRAYSIZE = EPublishedFileStorageSystem_MAX + 1;
 
-const std::string& EPublishedFileStorageSystem_Name(EPublishedFileStorageSystem value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EPublishedFileStorageSystem_descriptor();
 template<typename T>
 inline const std::string& EPublishedFileStorageSystem_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EPublishedFileStorageSystem>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EPublishedFileStorageSystem_Name.");
-  return EPublishedFileStorageSystem_Name(static_cast<EPublishedFileStorageSystem>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EPublishedFileStorageSystem_descriptor(), enum_t_value);
 }
-bool EPublishedFileStorageSystem_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EPublishedFileStorageSystem* value);
+inline bool EPublishedFileStorageSystem_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EPublishedFileStorageSystem* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EPublishedFileStorageSystem>(
+    EPublishedFileStorageSystem_descriptor(), name, value);
+}
 enum ECloudStoragePersistState : int {
   k_ECloudStoragePersistStatePersisted = 0,
   k_ECloudStoragePersistStateForgotten = 1,
@@ -261,16 +292,20 @@ constexpr ECloudStoragePersistState ECloudStoragePersistState_MIN = k_ECloudStor
 constexpr ECloudStoragePersistState ECloudStoragePersistState_MAX = k_ECloudStoragePersistStateDeleted;
 constexpr int ECloudStoragePersistState_ARRAYSIZE = ECloudStoragePersistState_MAX + 1;
 
-const std::string& ECloudStoragePersistState_Name(ECloudStoragePersistState value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ECloudStoragePersistState_descriptor();
 template<typename T>
 inline const std::string& ECloudStoragePersistState_Name(T enum_t_value) {
   static_assert(::std::is_same<T, ECloudStoragePersistState>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function ECloudStoragePersistState_Name.");
-  return ECloudStoragePersistState_Name(static_cast<ECloudStoragePersistState>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ECloudStoragePersistState_descriptor(), enum_t_value);
 }
-bool ECloudStoragePersistState_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ECloudStoragePersistState* value);
+inline bool ECloudStoragePersistState_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ECloudStoragePersistState* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ECloudStoragePersistState>(
+    ECloudStoragePersistState_descriptor(), name, value);
+}
 enum ESDCardFormatStage : int {
   k_ESDCardFormatStage_Invalid = 0,
   k_ESDCardFormatStage_Starting = 1,
@@ -284,16 +319,20 @@ constexpr ESDCardFormatStage ESDCardFormatStage_MIN = k_ESDCardFormatStage_Inval
 constexpr ESDCardFormatStage ESDCardFormatStage_MAX = k_ESDCardFormatStage_Finalizing;
 constexpr int ESDCardFormatStage_ARRAYSIZE = ESDCardFormatStage_MAX + 1;
 
-const std::string& ESDCardFormatStage_Name(ESDCardFormatStage value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESDCardFormatStage_descriptor();
 template<typename T>
 inline const std::string& ESDCardFormatStage_Name(T enum_t_value) {
   static_assert(::std::is_same<T, ESDCardFormatStage>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function ESDCardFormatStage_Name.");
-  return ESDCardFormatStage_Name(static_cast<ESDCardFormatStage>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ESDCardFormatStage_descriptor(), enum_t_value);
 }
-bool ESDCardFormatStage_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESDCardFormatStage* value);
+inline bool ESDCardFormatStage_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESDCardFormatStage* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ESDCardFormatStage>(
+    ESDCardFormatStage_descriptor(), name, value);
+}
 enum EStorageFormatStage : int {
   k_EStorageFormatStage_Invalid = 0,
   k_EStorageFormatStage_NotRunning = 1,
@@ -308,16 +347,20 @@ constexpr EStorageFormatStage EStorageFormatStage_MIN = k_EStorageFormatStage_In
 constexpr EStorageFormatStage EStorageFormatStage_MAX = k_EStorageFormatStage_Finalizing;
 constexpr int EStorageFormatStage_ARRAYSIZE = EStorageFormatStage_MAX + 1;
 
-const std::string& EStorageFormatStage_Name(EStorageFormatStage value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EStorageFormatStage_descriptor();
 template<typename T>
 inline const std::string& EStorageFormatStage_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EStorageFormatStage>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EStorageFormatStage_Name.");
-  return EStorageFormatStage_Name(static_cast<EStorageFormatStage>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EStorageFormatStage_descriptor(), enum_t_value);
 }
-bool EStorageFormatStage_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EStorageFormatStage* value);
+inline bool EStorageFormatStage_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EStorageFormatStage* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EStorageFormatStage>(
+    EStorageFormatStage_descriptor(), name, value);
+}
 enum ESystemFanControlMode : int {
   k_SystemFanControlMode_Invalid = 0,
   k_SystemFanControlMode_Disabled = 1,
@@ -328,16 +371,20 @@ constexpr ESystemFanControlMode ESystemFanControlMode_MIN = k_SystemFanControlMo
 constexpr ESystemFanControlMode ESystemFanControlMode_MAX = k_SystemFanControlMode_Default;
 constexpr int ESystemFanControlMode_ARRAYSIZE = ESystemFanControlMode_MAX + 1;
 
-const std::string& ESystemFanControlMode_Name(ESystemFanControlMode value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESystemFanControlMode_descriptor();
 template<typename T>
 inline const std::string& ESystemFanControlMode_Name(T enum_t_value) {
   static_assert(::std::is_same<T, ESystemFanControlMode>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function ESystemFanControlMode_Name.");
-  return ESystemFanControlMode_Name(static_cast<ESystemFanControlMode>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ESystemFanControlMode_descriptor(), enum_t_value);
 }
-bool ESystemFanControlMode_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESystemFanControlMode* value);
+inline bool ESystemFanControlMode_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESystemFanControlMode* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ESystemFanControlMode>(
+    ESystemFanControlMode_descriptor(), name, value);
+}
 enum EColorGamutLabelSet : int {
   k_ColorGamutLabelSet_Default = 0,
   k_ColorGamutLabelSet_sRGB_Native = 1,
@@ -348,16 +395,20 @@ constexpr EColorGamutLabelSet EColorGamutLabelSet_MIN = k_ColorGamutLabelSet_Def
 constexpr EColorGamutLabelSet EColorGamutLabelSet_MAX = k_ColorGamutLabelSet_Native_sRGB_Boosted;
 constexpr int EColorGamutLabelSet_ARRAYSIZE = EColorGamutLabelSet_MAX + 1;
 
-const std::string& EColorGamutLabelSet_Name(EColorGamutLabelSet value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EColorGamutLabelSet_descriptor();
 template<typename T>
 inline const std::string& EColorGamutLabelSet_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EColorGamutLabelSet>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EColorGamutLabelSet_Name.");
-  return EColorGamutLabelSet_Name(static_cast<EColorGamutLabelSet>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EColorGamutLabelSet_descriptor(), enum_t_value);
 }
-bool EColorGamutLabelSet_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EColorGamutLabelSet* value);
+inline bool EColorGamutLabelSet_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EColorGamutLabelSet* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EColorGamutLabelSet>(
+    EColorGamutLabelSet_descriptor(), name, value);
+}
 enum EWindowStackingOrder : int {
   k_EWindowStackingOrder_Invalid = 0,
   k_EWindowStackingOrder_Top = 1,
@@ -368,16 +419,20 @@ constexpr EWindowStackingOrder EWindowStackingOrder_MIN = k_EWindowStackingOrder
 constexpr EWindowStackingOrder EWindowStackingOrder_MAX = k_EWindowStackingOrder_Bottom;
 constexpr int EWindowStackingOrder_ARRAYSIZE = EWindowStackingOrder_MAX + 1;
 
-const std::string& EWindowStackingOrder_Name(EWindowStackingOrder value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EWindowStackingOrder_descriptor();
 template<typename T>
 inline const std::string& EWindowStackingOrder_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EWindowStackingOrder>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EWindowStackingOrder_Name.");
-  return EWindowStackingOrder_Name(static_cast<EWindowStackingOrder>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EWindowStackingOrder_descriptor(), enum_t_value);
 }
-bool EWindowStackingOrder_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EWindowStackingOrder* value);
+inline bool EWindowStackingOrder_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EWindowStackingOrder* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EWindowStackingOrder>(
+    EWindowStackingOrder_descriptor(), name, value);
+}
 enum EBluetoothDeviceType : int {
   k_BluetoothDeviceType_Invalid = 0,
   k_BluetoothDeviceType_Unknown = 1,
@@ -397,16 +452,20 @@ constexpr EBluetoothDeviceType EBluetoothDeviceType_MIN = k_BluetoothDeviceType_
 constexpr EBluetoothDeviceType EBluetoothDeviceType_MAX = k_BluetoothDeviceType_Keyboard;
 constexpr int EBluetoothDeviceType_ARRAYSIZE = EBluetoothDeviceType_MAX + 1;
 
-const std::string& EBluetoothDeviceType_Name(EBluetoothDeviceType value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EBluetoothDeviceType_descriptor();
 template<typename T>
 inline const std::string& EBluetoothDeviceType_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EBluetoothDeviceType>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EBluetoothDeviceType_Name.");
-  return EBluetoothDeviceType_Name(static_cast<EBluetoothDeviceType>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EBluetoothDeviceType_descriptor(), enum_t_value);
 }
-bool EBluetoothDeviceType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EBluetoothDeviceType* value);
+inline bool EBluetoothDeviceType_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EBluetoothDeviceType* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EBluetoothDeviceType>(
+    EBluetoothDeviceType_descriptor(), name, value);
+}
 enum ESpeakerConfiguration : int {
   k_ESpeakerConfiguration_Other = 0,
   k_ESpeakerConfiguration_Stereo = 1,
@@ -419,16 +478,20 @@ constexpr ESpeakerConfiguration ESpeakerConfiguration_MIN = k_ESpeakerConfigurat
 constexpr ESpeakerConfiguration ESpeakerConfiguration_MAX = k_ESpeakerConfiguration_51_Ac3;
 constexpr int ESpeakerConfiguration_ARRAYSIZE = ESpeakerConfiguration_MAX + 1;
 
-const std::string& ESpeakerConfiguration_Name(ESpeakerConfiguration value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESpeakerConfiguration_descriptor();
 template<typename T>
 inline const std::string& ESpeakerConfiguration_Name(T enum_t_value) {
   static_assert(::std::is_same<T, ESpeakerConfiguration>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function ESpeakerConfiguration_Name.");
-  return ESpeakerConfiguration_Name(static_cast<ESpeakerConfiguration>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ESpeakerConfiguration_descriptor(), enum_t_value);
 }
-bool ESpeakerConfiguration_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESpeakerConfiguration* value);
+inline bool ESpeakerConfiguration_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESpeakerConfiguration* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ESpeakerConfiguration>(
+    ESpeakerConfiguration_descriptor(), name, value);
+}
 enum ESystemAudioDirection : int {
   k_SystemAudioDirection_Invalid = 0,
   k_SystemAudioDirection_Input = 1,
@@ -439,16 +502,20 @@ constexpr ESystemAudioDirection ESystemAudioDirection_MIN = k_SystemAudioDirecti
 constexpr ESystemAudioDirection ESystemAudioDirection_MAX = k_SystemAudioDirection_Output;
 constexpr int ESystemAudioDirection_ARRAYSIZE = ESystemAudioDirection_MAX + 1;
 
-const std::string& ESystemAudioDirection_Name(ESystemAudioDirection value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESystemAudioDirection_descriptor();
 template<typename T>
 inline const std::string& ESystemAudioDirection_Name(T enum_t_value) {
   static_assert(::std::is_same<T, ESystemAudioDirection>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function ESystemAudioDirection_Name.");
-  return ESystemAudioDirection_Name(static_cast<ESystemAudioDirection>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ESystemAudioDirection_descriptor(), enum_t_value);
 }
-bool ESystemAudioDirection_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESystemAudioDirection* value);
+inline bool ESystemAudioDirection_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESystemAudioDirection* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ESystemAudioDirection>(
+    ESystemAudioDirection_descriptor(), name, value);
+}
 enum ESystemAudioChannel : int {
   k_SystemAudioChannel_Invalid = 0,
   k_SystemAudioChannel_Aggregated = 1,
@@ -466,16 +533,20 @@ constexpr ESystemAudioChannel ESystemAudioChannel_MIN = k_SystemAudioChannel_Inv
 constexpr ESystemAudioChannel ESystemAudioChannel_MAX = k_SystemAudioChannel_Mono;
 constexpr int ESystemAudioChannel_ARRAYSIZE = ESystemAudioChannel_MAX + 1;
 
-const std::string& ESystemAudioChannel_Name(ESystemAudioChannel value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESystemAudioChannel_descriptor();
 template<typename T>
 inline const std::string& ESystemAudioChannel_Name(T enum_t_value) {
   static_assert(::std::is_same<T, ESystemAudioChannel>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function ESystemAudioChannel_Name.");
-  return ESystemAudioChannel_Name(static_cast<ESystemAudioChannel>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ESystemAudioChannel_descriptor(), enum_t_value);
 }
-bool ESystemAudioChannel_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESystemAudioChannel* value);
+inline bool ESystemAudioChannel_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESystemAudioChannel* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ESystemAudioChannel>(
+    ESystemAudioChannel_descriptor(), name, value);
+}
 enum ESystemAudioPortType : int {
   k_SystemAudioPortType_Invalid = 0,
   k_SystemAudioPortType_Unknown = 1,
@@ -488,16 +559,20 @@ constexpr ESystemAudioPortType ESystemAudioPortType_MIN = k_SystemAudioPortType_
 constexpr ESystemAudioPortType ESystemAudioPortType_MAX = k_SystemAudioPortType_Video32RGBA;
 constexpr int ESystemAudioPortType_ARRAYSIZE = ESystemAudioPortType_MAX + 1;
 
-const std::string& ESystemAudioPortType_Name(ESystemAudioPortType value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESystemAudioPortType_descriptor();
 template<typename T>
 inline const std::string& ESystemAudioPortType_Name(T enum_t_value) {
   static_assert(::std::is_same<T, ESystemAudioPortType>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function ESystemAudioPortType_Name.");
-  return ESystemAudioPortType_Name(static_cast<ESystemAudioPortType>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ESystemAudioPortType_descriptor(), enum_t_value);
 }
-bool ESystemAudioPortType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESystemAudioPortType* value);
+inline bool ESystemAudioPortType_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESystemAudioPortType* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ESystemAudioPortType>(
+    ESystemAudioPortType_descriptor(), name, value);
+}
 enum ESystemAudioPortDirection : int {
   k_SystemAudioPortDirection_Invalid = 0,
   k_SystemAudioPortDirection_Input = 1,
@@ -508,16 +583,20 @@ constexpr ESystemAudioPortDirection ESystemAudioPortDirection_MIN = k_SystemAudi
 constexpr ESystemAudioPortDirection ESystemAudioPortDirection_MAX = k_SystemAudioPortDirection_Output;
 constexpr int ESystemAudioPortDirection_ARRAYSIZE = ESystemAudioPortDirection_MAX + 1;
 
-const std::string& ESystemAudioPortDirection_Name(ESystemAudioPortDirection value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESystemAudioPortDirection_descriptor();
 template<typename T>
 inline const std::string& ESystemAudioPortDirection_Name(T enum_t_value) {
   static_assert(::std::is_same<T, ESystemAudioPortDirection>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function ESystemAudioPortDirection_Name.");
-  return ESystemAudioPortDirection_Name(static_cast<ESystemAudioPortDirection>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ESystemAudioPortDirection_descriptor(), enum_t_value);
 }
-bool ESystemAudioPortDirection_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESystemAudioPortDirection* value);
+inline bool ESystemAudioPortDirection_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESystemAudioPortDirection* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ESystemAudioPortDirection>(
+    ESystemAudioPortDirection_descriptor(), name, value);
+}
 enum ESystemServiceState : int {
   k_ESystemServiceState_Unavailable = 0,
   k_ESystemServiceState_Disabled = 1,
@@ -528,16 +607,20 @@ constexpr ESystemServiceState ESystemServiceState_MIN = k_ESystemServiceState_Un
 constexpr ESystemServiceState ESystemServiceState_MAX = k_ESystemServiceState_Enabled;
 constexpr int ESystemServiceState_ARRAYSIZE = ESystemServiceState_MAX + 1;
 
-const std::string& ESystemServiceState_Name(ESystemServiceState value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESystemServiceState_descriptor();
 template<typename T>
 inline const std::string& ESystemServiceState_Name(T enum_t_value) {
   static_assert(::std::is_same<T, ESystemServiceState>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function ESystemServiceState_Name.");
-  return ESystemServiceState_Name(static_cast<ESystemServiceState>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ESystemServiceState_descriptor(), enum_t_value);
 }
-bool ESystemServiceState_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESystemServiceState* value);
+inline bool ESystemServiceState_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESystemServiceState* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ESystemServiceState>(
+    ESystemServiceState_descriptor(), name, value);
+}
 enum EGraphicsPerfOverlayLevel : int {
   k_EGraphicsPerfOverlayLevel_Hidden = 0,
   k_EGraphicsPerfOverlayLevel_Basic = 1,
@@ -550,16 +633,20 @@ constexpr EGraphicsPerfOverlayLevel EGraphicsPerfOverlayLevel_MIN = k_EGraphicsP
 constexpr EGraphicsPerfOverlayLevel EGraphicsPerfOverlayLevel_MAX = k_EGraphicsPerfOverlayLevel_Minimal;
 constexpr int EGraphicsPerfOverlayLevel_ARRAYSIZE = EGraphicsPerfOverlayLevel_MAX + 1;
 
-const std::string& EGraphicsPerfOverlayLevel_Name(EGraphicsPerfOverlayLevel value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EGraphicsPerfOverlayLevel_descriptor();
 template<typename T>
 inline const std::string& EGraphicsPerfOverlayLevel_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EGraphicsPerfOverlayLevel>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EGraphicsPerfOverlayLevel_Name.");
-  return EGraphicsPerfOverlayLevel_Name(static_cast<EGraphicsPerfOverlayLevel>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EGraphicsPerfOverlayLevel_descriptor(), enum_t_value);
 }
-bool EGraphicsPerfOverlayLevel_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EGraphicsPerfOverlayLevel* value);
+inline bool EGraphicsPerfOverlayLevel_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EGraphicsPerfOverlayLevel* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EGraphicsPerfOverlayLevel>(
+    EGraphicsPerfOverlayLevel_descriptor(), name, value);
+}
 enum EGPUPerformanceLevel : int {
   k_EGPUPerformanceLevel_Invalid = 0,
   k_EGPUPerformanceLevel_Auto = 1,
@@ -573,16 +660,20 @@ constexpr EGPUPerformanceLevel EGPUPerformanceLevel_MIN = k_EGPUPerformanceLevel
 constexpr EGPUPerformanceLevel EGPUPerformanceLevel_MAX = k_EGPUPerformanceLevel_Profiling;
 constexpr int EGPUPerformanceLevel_ARRAYSIZE = EGPUPerformanceLevel_MAX + 1;
 
-const std::string& EGPUPerformanceLevel_Name(EGPUPerformanceLevel value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EGPUPerformanceLevel_descriptor();
 template<typename T>
 inline const std::string& EGPUPerformanceLevel_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EGPUPerformanceLevel>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EGPUPerformanceLevel_Name.");
-  return EGPUPerformanceLevel_Name(static_cast<EGPUPerformanceLevel>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EGPUPerformanceLevel_descriptor(), enum_t_value);
 }
-bool EGPUPerformanceLevel_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EGPUPerformanceLevel* value);
+inline bool EGPUPerformanceLevel_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EGPUPerformanceLevel* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EGPUPerformanceLevel>(
+    EGPUPerformanceLevel_descriptor(), name, value);
+}
 enum ESplitScalingFilter : int {
   k_ESplitScalingFilter_Invalid = 0,
   k_ESplitScalingFilter_Linear = 1,
@@ -595,16 +686,20 @@ constexpr ESplitScalingFilter ESplitScalingFilter_MIN = k_ESplitScalingFilter_In
 constexpr ESplitScalingFilter ESplitScalingFilter_MAX = k_ESplitScalingFilter_NIS_Deprecated;
 constexpr int ESplitScalingFilter_ARRAYSIZE = ESplitScalingFilter_MAX + 1;
 
-const std::string& ESplitScalingFilter_Name(ESplitScalingFilter value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESplitScalingFilter_descriptor();
 template<typename T>
 inline const std::string& ESplitScalingFilter_Name(T enum_t_value) {
   static_assert(::std::is_same<T, ESplitScalingFilter>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function ESplitScalingFilter_Name.");
-  return ESplitScalingFilter_Name(static_cast<ESplitScalingFilter>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ESplitScalingFilter_descriptor(), enum_t_value);
 }
-bool ESplitScalingFilter_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESplitScalingFilter* value);
+inline bool ESplitScalingFilter_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESplitScalingFilter* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ESplitScalingFilter>(
+    ESplitScalingFilter_descriptor(), name, value);
+}
 enum ESplitScalingScaler : int {
   k_ESplitScalingScaler_Invalid = 0,
   k_ESplitScalingScaler_Auto = 1,
@@ -618,16 +713,20 @@ constexpr ESplitScalingScaler ESplitScalingScaler_MIN = k_ESplitScalingScaler_In
 constexpr ESplitScalingScaler ESplitScalingScaler_MAX = k_ESplitScalingScaler_Stretch;
 constexpr int ESplitScalingScaler_ARRAYSIZE = ESplitScalingScaler_MAX + 1;
 
-const std::string& ESplitScalingScaler_Name(ESplitScalingScaler value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESplitScalingScaler_descriptor();
 template<typename T>
 inline const std::string& ESplitScalingScaler_Name(T enum_t_value) {
   static_assert(::std::is_same<T, ESplitScalingScaler>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function ESplitScalingScaler_Name.");
-  return ESplitScalingScaler_Name(static_cast<ESplitScalingScaler>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ESplitScalingScaler_descriptor(), enum_t_value);
 }
-bool ESplitScalingScaler_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESplitScalingScaler* value);
+inline bool ESplitScalingScaler_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESplitScalingScaler* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ESplitScalingScaler>(
+    ESplitScalingScaler_descriptor(), name, value);
+}
 enum EGamescopeBlurMode : int {
   k_EGamescopeBlurMode_Disabled = 0,
   k_EGamescopeBlurMode_IfOccluded = 1,
@@ -638,16 +737,20 @@ constexpr EGamescopeBlurMode EGamescopeBlurMode_MIN = k_EGamescopeBlurMode_Disab
 constexpr EGamescopeBlurMode EGamescopeBlurMode_MAX = k_EGamescopeBlurMode_Always;
 constexpr int EGamescopeBlurMode_ARRAYSIZE = EGamescopeBlurMode_MAX + 1;
 
-const std::string& EGamescopeBlurMode_Name(EGamescopeBlurMode value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EGamescopeBlurMode_descriptor();
 template<typename T>
 inline const std::string& EGamescopeBlurMode_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EGamescopeBlurMode>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EGamescopeBlurMode_Name.");
-  return EGamescopeBlurMode_Name(static_cast<EGamescopeBlurMode>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EGamescopeBlurMode_descriptor(), enum_t_value);
 }
-bool EGamescopeBlurMode_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EGamescopeBlurMode* value);
+inline bool EGamescopeBlurMode_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EGamescopeBlurMode* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EGamescopeBlurMode>(
+    EGamescopeBlurMode_descriptor(), name, value);
+}
 enum ESLSHelper : int {
   k_ESLSHelper_Invalid = 0,
   k_ESLSHelper_Minidump = 1,
@@ -662,16 +765,20 @@ constexpr ESLSHelper ESLSHelper_MIN = k_ESLSHelper_Invalid;
 constexpr ESLSHelper ESLSHelper_MAX = k_ESLSHelper_Devcoredump;
 constexpr int ESLSHelper_ARRAYSIZE = ESLSHelper_MAX + 1;
 
-const std::string& ESLSHelper_Name(ESLSHelper value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESLSHelper_descriptor();
 template<typename T>
 inline const std::string& ESLSHelper_Name(T enum_t_value) {
   static_assert(::std::is_same<T, ESLSHelper>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function ESLSHelper_Name.");
-  return ESLSHelper_Name(static_cast<ESLSHelper>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ESLSHelper_descriptor(), enum_t_value);
 }
-bool ESLSHelper_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESLSHelper* value);
+inline bool ESLSHelper_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESLSHelper* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ESLSHelper>(
+    ESLSHelper_descriptor(), name, value);
+}
 enum EHDRVisualization : int {
   k_EHDRVisualization_None = 0,
   k_EHDRVisualization_Heatmap = 1,
@@ -684,16 +791,20 @@ constexpr EHDRVisualization EHDRVisualization_MIN = k_EHDRVisualization_None;
 constexpr EHDRVisualization EHDRVisualization_MAX = k_EHDRVisualization_HeatmapClassic;
 constexpr int EHDRVisualization_ARRAYSIZE = EHDRVisualization_MAX + 1;
 
-const std::string& EHDRVisualization_Name(EHDRVisualization value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EHDRVisualization_descriptor();
 template<typename T>
 inline const std::string& EHDRVisualization_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EHDRVisualization>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EHDRVisualization_Name.");
-  return EHDRVisualization_Name(static_cast<EHDRVisualization>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EHDRVisualization_descriptor(), enum_t_value);
 }
-bool EHDRVisualization_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EHDRVisualization* value);
+inline bool EHDRVisualization_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EHDRVisualization* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EHDRVisualization>(
+    EHDRVisualization_descriptor(), name, value);
+}
 enum EHDRToneMapOperator : int {
   k_EHDRToneMapOperator_Invalid = 0,
   k_EHDRToneMapOperator_Uncharted = 1,
@@ -704,16 +815,20 @@ constexpr EHDRToneMapOperator EHDRToneMapOperator_MIN = k_EHDRToneMapOperator_In
 constexpr EHDRToneMapOperator EHDRToneMapOperator_MAX = k_EHDRToneMapOperator_Reinhard;
 constexpr int EHDRToneMapOperator_ARRAYSIZE = EHDRToneMapOperator_MAX + 1;
 
-const std::string& EHDRToneMapOperator_Name(EHDRToneMapOperator value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EHDRToneMapOperator_descriptor();
 template<typename T>
 inline const std::string& EHDRToneMapOperator_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EHDRToneMapOperator>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EHDRToneMapOperator_Name.");
-  return EHDRToneMapOperator_Name(static_cast<EHDRToneMapOperator>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EHDRToneMapOperator_descriptor(), enum_t_value);
 }
-bool EHDRToneMapOperator_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EHDRToneMapOperator* value);
+inline bool EHDRToneMapOperator_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EHDRToneMapOperator* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EHDRToneMapOperator>(
+    EHDRToneMapOperator_descriptor(), name, value);
+}
 enum ECPUGovernor : int {
   k_ECPUGovernor_Invalid = 0,
   k_ECPUGovernor_Perf = 1,
@@ -725,16 +840,20 @@ constexpr ECPUGovernor ECPUGovernor_MIN = k_ECPUGovernor_Invalid;
 constexpr ECPUGovernor ECPUGovernor_MAX = k_ECPUGovernor_Manual;
 constexpr int ECPUGovernor_ARRAYSIZE = ECPUGovernor_MAX + 1;
 
-const std::string& ECPUGovernor_Name(ECPUGovernor value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ECPUGovernor_descriptor();
 template<typename T>
 inline const std::string& ECPUGovernor_Name(T enum_t_value) {
   static_assert(::std::is_same<T, ECPUGovernor>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function ECPUGovernor_Name.");
-  return ECPUGovernor_Name(static_cast<ECPUGovernor>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ECPUGovernor_descriptor(), enum_t_value);
 }
-bool ECPUGovernor_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ECPUGovernor* value);
+inline bool ECPUGovernor_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ECPUGovernor* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ECPUGovernor>(
+    ECPUGovernor_descriptor(), name, value);
+}
 enum EUpdaterType : int {
   k_EUpdaterType_Invalid = 0,
   k_EUpdaterType_Client = 1,
@@ -750,16 +869,20 @@ constexpr EUpdaterType EUpdaterType_MIN = k_EUpdaterType_Invalid;
 constexpr EUpdaterType EUpdaterType_MAX = k_EUpdaterType_Dummy;
 constexpr int EUpdaterType_ARRAYSIZE = EUpdaterType_MAX + 1;
 
-const std::string& EUpdaterType_Name(EUpdaterType value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EUpdaterType_descriptor();
 template<typename T>
 inline const std::string& EUpdaterType_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EUpdaterType>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EUpdaterType_Name.");
-  return EUpdaterType_Name(static_cast<EUpdaterType>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EUpdaterType_descriptor(), enum_t_value);
 }
-bool EUpdaterType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EUpdaterType* value);
+inline bool EUpdaterType_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EUpdaterType* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EUpdaterType>(
+    EUpdaterType_descriptor(), name, value);
+}
 enum EUpdaterState : int {
   k_EUpdaterState_Invalid = 0,
   k_EUpdaterState_UpToDate = 2,
@@ -775,16 +898,20 @@ constexpr EUpdaterState EUpdaterState_MIN = k_EUpdaterState_Invalid;
 constexpr EUpdaterState EUpdaterState_MAX = k_EUpdaterState_RollBack;
 constexpr int EUpdaterState_ARRAYSIZE = EUpdaterState_MAX + 1;
 
-const std::string& EUpdaterState_Name(EUpdaterState value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EUpdaterState_descriptor();
 template<typename T>
 inline const std::string& EUpdaterState_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EUpdaterState>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EUpdaterState_Name.");
-  return EUpdaterState_Name(static_cast<EUpdaterState>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EUpdaterState_descriptor(), enum_t_value);
 }
-bool EUpdaterState_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EUpdaterState* value);
+inline bool EUpdaterState_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EUpdaterState* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EUpdaterState>(
+    EUpdaterState_descriptor(), name, value);
+}
 enum EStorageBlockContentType : int {
   k_EStorageBlockContentType_Invalid = 0,
   k_EStorageBlockContentType_Unknown = 1,
@@ -797,16 +924,20 @@ constexpr EStorageBlockContentType EStorageBlockContentType_MIN = k_EStorageBloc
 constexpr EStorageBlockContentType EStorageBlockContentType_MAX = k_EStorageBlockContentType_Raid;
 constexpr int EStorageBlockContentType_ARRAYSIZE = EStorageBlockContentType_MAX + 1;
 
-const std::string& EStorageBlockContentType_Name(EStorageBlockContentType value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EStorageBlockContentType_descriptor();
 template<typename T>
 inline const std::string& EStorageBlockContentType_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EStorageBlockContentType>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EStorageBlockContentType_Name.");
-  return EStorageBlockContentType_Name(static_cast<EStorageBlockContentType>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EStorageBlockContentType_descriptor(), enum_t_value);
 }
-bool EStorageBlockContentType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EStorageBlockContentType* value);
+inline bool EStorageBlockContentType_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EStorageBlockContentType* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EStorageBlockContentType>(
+    EStorageBlockContentType_descriptor(), name, value);
+}
 enum EStorageBlockFileSystemType : int {
   k_EStorageBlockFileSystemType_Invalid = 0,
   k_EStorageBlockFileSystemType_Unknown = 1,
@@ -818,16 +949,20 @@ constexpr EStorageBlockFileSystemType EStorageBlockFileSystemType_MIN = k_EStora
 constexpr EStorageBlockFileSystemType EStorageBlockFileSystemType_MAX = k_EStorageBlockFileSystemType_Ext4;
 constexpr int EStorageBlockFileSystemType_ARRAYSIZE = EStorageBlockFileSystemType_MAX + 1;
 
-const std::string& EStorageBlockFileSystemType_Name(EStorageBlockFileSystemType value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EStorageBlockFileSystemType_descriptor();
 template<typename T>
 inline const std::string& EStorageBlockFileSystemType_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EStorageBlockFileSystemType>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EStorageBlockFileSystemType_Name.");
-  return EStorageBlockFileSystemType_Name(static_cast<EStorageBlockFileSystemType>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EStorageBlockFileSystemType_descriptor(), enum_t_value);
 }
-bool EStorageBlockFileSystemType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EStorageBlockFileSystemType* value);
+inline bool EStorageBlockFileSystemType_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EStorageBlockFileSystemType* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EStorageBlockFileSystemType>(
+    EStorageBlockFileSystemType_descriptor(), name, value);
+}
 enum EStorageDriveMediaType : int {
   k_EStorageDriveMediaType_Invalid = 0,
   k_EStorageDriveMediaType_Unknown = 1,
@@ -840,16 +975,20 @@ constexpr EStorageDriveMediaType EStorageDriveMediaType_MIN = k_EStorageDriveMed
 constexpr EStorageDriveMediaType EStorageDriveMediaType_MAX = k_EStorageDriveMediaType_Removable;
 constexpr int EStorageDriveMediaType_ARRAYSIZE = EStorageDriveMediaType_MAX + 1;
 
-const std::string& EStorageDriveMediaType_Name(EStorageDriveMediaType value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EStorageDriveMediaType_descriptor();
 template<typename T>
 inline const std::string& EStorageDriveMediaType_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EStorageDriveMediaType>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EStorageDriveMediaType_Name.");
-  return EStorageDriveMediaType_Name(static_cast<EStorageDriveMediaType>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EStorageDriveMediaType_descriptor(), enum_t_value);
 }
-bool EStorageDriveMediaType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EStorageDriveMediaType* value);
+inline bool EStorageDriveMediaType_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EStorageDriveMediaType* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EStorageDriveMediaType>(
+    EStorageDriveMediaType_descriptor(), name, value);
+}
 enum ESystemDisplayCompatibilityMode : int {
   k_ESystemDisplayCompatibilityMode_Invalid = 0,
   k_ESystemDisplayCompatibilityMode_None = 1,
@@ -860,16 +999,20 @@ constexpr ESystemDisplayCompatibilityMode ESystemDisplayCompatibilityMode_MIN = 
 constexpr ESystemDisplayCompatibilityMode ESystemDisplayCompatibilityMode_MAX = k_ESystemDisplayCompatibilityMode_MinimalBandwith;
 constexpr int ESystemDisplayCompatibilityMode_ARRAYSIZE = ESystemDisplayCompatibilityMode_MAX + 1;
 
-const std::string& ESystemDisplayCompatibilityMode_Name(ESystemDisplayCompatibilityMode value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESystemDisplayCompatibilityMode_descriptor();
 template<typename T>
 inline const std::string& ESystemDisplayCompatibilityMode_Name(T enum_t_value) {
   static_assert(::std::is_same<T, ESystemDisplayCompatibilityMode>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function ESystemDisplayCompatibilityMode_Name.");
-  return ESystemDisplayCompatibilityMode_Name(static_cast<ESystemDisplayCompatibilityMode>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ESystemDisplayCompatibilityMode_descriptor(), enum_t_value);
 }
-bool ESystemDisplayCompatibilityMode_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESystemDisplayCompatibilityMode* value);
+inline bool ESystemDisplayCompatibilityMode_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESystemDisplayCompatibilityMode* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ESystemDisplayCompatibilityMode>(
+    ESystemDisplayCompatibilityMode_descriptor(), name, value);
+}
 enum ESteamOSCompatibilityCategory : int {
   k_ESteamOSCompatibilityCategory_Unknown = 0,
   k_ESteamOSCompatibilityCategory_Unsupported = 1,
@@ -880,16 +1023,20 @@ constexpr ESteamOSCompatibilityCategory ESteamOSCompatibilityCategory_MIN = k_ES
 constexpr ESteamOSCompatibilityCategory ESteamOSCompatibilityCategory_MAX = k_ESteamOSCompatibilityCategory_Compatible;
 constexpr int ESteamOSCompatibilityCategory_ARRAYSIZE = ESteamOSCompatibilityCategory_MAX + 1;
 
-const std::string& ESteamOSCompatibilityCategory_Name(ESteamOSCompatibilityCategory value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESteamOSCompatibilityCategory_descriptor();
 template<typename T>
 inline const std::string& ESteamOSCompatibilityCategory_Name(T enum_t_value) {
   static_assert(::std::is_same<T, ESteamOSCompatibilityCategory>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function ESteamOSCompatibilityCategory_Name.");
-  return ESteamOSCompatibilityCategory_Name(static_cast<ESteamOSCompatibilityCategory>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ESteamOSCompatibilityCategory_descriptor(), enum_t_value);
 }
-bool ESteamOSCompatibilityCategory_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESteamOSCompatibilityCategory* value);
+inline bool ESteamOSCompatibilityCategory_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESteamOSCompatibilityCategory* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ESteamOSCompatibilityCategory>(
+    ESteamOSCompatibilityCategory_descriptor(), name, value);
+}
 enum ESteamOSCompatibilityResultDisplayType : int {
   k_ESteamOSCompatibilityResultDisplayType_Invisible = 0,
   k_ESteamOSCompatibilityResultDisplayType_Informational = 1,
@@ -901,16 +1048,20 @@ constexpr ESteamOSCompatibilityResultDisplayType ESteamOSCompatibilityResultDisp
 constexpr ESteamOSCompatibilityResultDisplayType ESteamOSCompatibilityResultDisplayType_MAX = k_ESteamOSCompatibilityResultDisplayType_Compatible;
 constexpr int ESteamOSCompatibilityResultDisplayType_ARRAYSIZE = ESteamOSCompatibilityResultDisplayType_MAX + 1;
 
-const std::string& ESteamOSCompatibilityResultDisplayType_Name(ESteamOSCompatibilityResultDisplayType value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESteamOSCompatibilityResultDisplayType_descriptor();
 template<typename T>
 inline const std::string& ESteamOSCompatibilityResultDisplayType_Name(T enum_t_value) {
   static_assert(::std::is_same<T, ESteamOSCompatibilityResultDisplayType>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function ESteamOSCompatibilityResultDisplayType_Name.");
-  return ESteamOSCompatibilityResultDisplayType_Name(static_cast<ESteamOSCompatibilityResultDisplayType>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ESteamOSCompatibilityResultDisplayType_descriptor(), enum_t_value);
 }
-bool ESteamOSCompatibilityResultDisplayType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESteamOSCompatibilityResultDisplayType* value);
+inline bool ESteamOSCompatibilityResultDisplayType_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESteamOSCompatibilityResultDisplayType* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ESteamOSCompatibilityResultDisplayType>(
+    ESteamOSCompatibilityResultDisplayType_descriptor(), name, value);
+}
 enum ESteamDeckCompatibilityCategory : int {
   k_ESteamDeckCompatibilityCategory_Unknown = 0,
   k_ESteamDeckCompatibilityCategory_Unsupported = 1,
@@ -922,16 +1073,20 @@ constexpr ESteamDeckCompatibilityCategory ESteamDeckCompatibilityCategory_MIN = 
 constexpr ESteamDeckCompatibilityCategory ESteamDeckCompatibilityCategory_MAX = k_ESteamDeckCompatibilityCategory_Verified;
 constexpr int ESteamDeckCompatibilityCategory_ARRAYSIZE = ESteamDeckCompatibilityCategory_MAX + 1;
 
-const std::string& ESteamDeckCompatibilityCategory_Name(ESteamDeckCompatibilityCategory value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESteamDeckCompatibilityCategory_descriptor();
 template<typename T>
 inline const std::string& ESteamDeckCompatibilityCategory_Name(T enum_t_value) {
   static_assert(::std::is_same<T, ESteamDeckCompatibilityCategory>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function ESteamDeckCompatibilityCategory_Name.");
-  return ESteamDeckCompatibilityCategory_Name(static_cast<ESteamDeckCompatibilityCategory>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ESteamDeckCompatibilityCategory_descriptor(), enum_t_value);
 }
-bool ESteamDeckCompatibilityCategory_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESteamDeckCompatibilityCategory* value);
+inline bool ESteamDeckCompatibilityCategory_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESteamDeckCompatibilityCategory* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ESteamDeckCompatibilityCategory>(
+    ESteamDeckCompatibilityCategory_descriptor(), name, value);
+}
 enum ESteamDeckCompatibilityResultDisplayType : int {
   k_ESteamDeckCompatibilityResultDisplayType_Invisible = 0,
   k_ESteamDeckCompatibilityResultDisplayType_Informational = 1,
@@ -944,16 +1099,20 @@ constexpr ESteamDeckCompatibilityResultDisplayType ESteamDeckCompatibilityResult
 constexpr ESteamDeckCompatibilityResultDisplayType ESteamDeckCompatibilityResultDisplayType_MAX = k_ESteamDeckCompatibilityResultDisplayType_Verified;
 constexpr int ESteamDeckCompatibilityResultDisplayType_ARRAYSIZE = ESteamDeckCompatibilityResultDisplayType_MAX + 1;
 
-const std::string& ESteamDeckCompatibilityResultDisplayType_Name(ESteamDeckCompatibilityResultDisplayType value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESteamDeckCompatibilityResultDisplayType_descriptor();
 template<typename T>
 inline const std::string& ESteamDeckCompatibilityResultDisplayType_Name(T enum_t_value) {
   static_assert(::std::is_same<T, ESteamDeckCompatibilityResultDisplayType>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function ESteamDeckCompatibilityResultDisplayType_Name.");
-  return ESteamDeckCompatibilityResultDisplayType_Name(static_cast<ESteamDeckCompatibilityResultDisplayType>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ESteamDeckCompatibilityResultDisplayType_descriptor(), enum_t_value);
 }
-bool ESteamDeckCompatibilityResultDisplayType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESteamDeckCompatibilityResultDisplayType* value);
+inline bool ESteamDeckCompatibilityResultDisplayType_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESteamDeckCompatibilityResultDisplayType* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ESteamDeckCompatibilityResultDisplayType>(
+    ESteamDeckCompatibilityResultDisplayType_descriptor(), name, value);
+}
 enum ESteamDeckCompatibilityTestResult : int {
   k_ESteamDeckCompatibilityTestResult_Invalid = 0,
   k_ESteamDeckCompatibilityTestResult_NotApplicable = 1,
@@ -966,16 +1125,20 @@ constexpr ESteamDeckCompatibilityTestResult ESteamDeckCompatibilityTestResult_MI
 constexpr ESteamDeckCompatibilityTestResult ESteamDeckCompatibilityTestResult_MAX = k_ESteamDeckCompatibilityTestResult_FailMinor;
 constexpr int ESteamDeckCompatibilityTestResult_ARRAYSIZE = ESteamDeckCompatibilityTestResult_MAX + 1;
 
-const std::string& ESteamDeckCompatibilityTestResult_Name(ESteamDeckCompatibilityTestResult value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESteamDeckCompatibilityTestResult_descriptor();
 template<typename T>
 inline const std::string& ESteamDeckCompatibilityTestResult_Name(T enum_t_value) {
   static_assert(::std::is_same<T, ESteamDeckCompatibilityTestResult>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function ESteamDeckCompatibilityTestResult_Name.");
-  return ESteamDeckCompatibilityTestResult_Name(static_cast<ESteamDeckCompatibilityTestResult>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ESteamDeckCompatibilityTestResult_descriptor(), enum_t_value);
 }
-bool ESteamDeckCompatibilityTestResult_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESteamDeckCompatibilityTestResult* value);
+inline bool ESteamDeckCompatibilityTestResult_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESteamDeckCompatibilityTestResult* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ESteamDeckCompatibilityTestResult>(
+    ESteamDeckCompatibilityTestResult_descriptor(), name, value);
+}
 enum EACState : int {
   k_EACState_Unknown = 0,
   k_EACState_Disconnected = 1,
@@ -987,16 +1150,20 @@ constexpr EACState EACState_MIN = k_EACState_Unknown;
 constexpr EACState EACState_MAX = k_EACState_ConnectedSlow;
 constexpr int EACState_ARRAYSIZE = EACState_MAX + 1;
 
-const std::string& EACState_Name(EACState value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EACState_descriptor();
 template<typename T>
 inline const std::string& EACState_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EACState>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EACState_Name.");
-  return EACState_Name(static_cast<EACState>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EACState_descriptor(), enum_t_value);
 }
-bool EACState_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EACState* value);
+inline bool EACState_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EACState* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EACState>(
+    EACState_descriptor(), name, value);
+}
 enum EBatteryState : int {
   k_EBatteryState_Unknown = 0,
   k_EBatteryState_Discharging = 1,
@@ -1008,16 +1175,20 @@ constexpr EBatteryState EBatteryState_MIN = k_EBatteryState_Unknown;
 constexpr EBatteryState EBatteryState_MAX = k_EBatteryState_Full;
 constexpr int EBatteryState_ARRAYSIZE = EBatteryState_MAX + 1;
 
-const std::string& EBatteryState_Name(EBatteryState value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EBatteryState_descriptor();
 template<typename T>
 inline const std::string& EBatteryState_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EBatteryState>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EBatteryState_Name.");
-  return EBatteryState_Name(static_cast<EBatteryState>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EBatteryState_descriptor(), enum_t_value);
 }
-bool EBatteryState_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EBatteryState* value);
+inline bool EBatteryState_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EBatteryState* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EBatteryState>(
+    EBatteryState_descriptor(), name, value);
+}
 enum EOSBranch : int {
   k_EOSBranch_Unknown = 0,
   k_EOSBranch_Release = 1,
@@ -1034,16 +1205,20 @@ constexpr EOSBranch EOSBranch_MIN = k_EOSBranch_Unknown;
 constexpr EOSBranch EOSBranch_MAX = k_EOSBranch_Staging;
 constexpr int EOSBranch_ARRAYSIZE = EOSBranch_MAX + 1;
 
-const std::string& EOSBranch_Name(EOSBranch value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EOSBranch_descriptor();
 template<typename T>
 inline const std::string& EOSBranch_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EOSBranch>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EOSBranch_Name.");
-  return EOSBranch_Name(static_cast<EOSBranch>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EOSBranch_descriptor(), enum_t_value);
 }
-bool EOSBranch_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EOSBranch* value);
+inline bool EOSBranch_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EOSBranch* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EOSBranch>(
+    EOSBranch_descriptor(), name, value);
+}
 enum EBrowserGPUStatus : int {
   k_EBrowserGPUStatus_Invalid = 0,
   k_EBrowserGPUStatus_Enabled = 1,
@@ -1061,16 +1236,20 @@ constexpr EBrowserGPUStatus EBrowserGPUStatus_MIN = k_EBrowserGPUStatus_Invalid;
 constexpr EBrowserGPUStatus EBrowserGPUStatus_MAX = k_EBrowserGPUStatus_DisabledCompositingCommandLine;
 constexpr int EBrowserGPUStatus_ARRAYSIZE = EBrowserGPUStatus_MAX + 1;
 
-const std::string& EBrowserGPUStatus_Name(EBrowserGPUStatus value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EBrowserGPUStatus_descriptor();
 template<typename T>
 inline const std::string& EBrowserGPUStatus_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EBrowserGPUStatus>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EBrowserGPUStatus_Name.");
-  return EBrowserGPUStatus_Name(static_cast<EBrowserGPUStatus>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EBrowserGPUStatus_descriptor(), enum_t_value);
 }
-bool EBrowserGPUStatus_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EBrowserGPUStatus* value);
+inline bool EBrowserGPUStatus_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EBrowserGPUStatus* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EBrowserGPUStatus>(
+    EBrowserGPUStatus_descriptor(), name, value);
+}
 enum EBrowserFeatureStatus : int {
   k_EBrowserFeatureStatus_Invalid = 0,
   k_EBrowserFeatureStatus_NotFound = 1,
@@ -1092,16 +1271,20 @@ constexpr EBrowserFeatureStatus EBrowserFeatureStatus_MIN = k_EBrowserFeatureSta
 constexpr EBrowserFeatureStatus EBrowserFeatureStatus_MAX = k_EBrowserFeatureStatus_EnabledForceOn;
 constexpr int EBrowserFeatureStatus_ARRAYSIZE = EBrowserFeatureStatus_MAX + 1;
 
-const std::string& EBrowserFeatureStatus_Name(EBrowserFeatureStatus value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EBrowserFeatureStatus_descriptor();
 template<typename T>
 inline const std::string& EBrowserFeatureStatus_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EBrowserFeatureStatus>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EBrowserFeatureStatus_Name.");
-  return EBrowserFeatureStatus_Name(static_cast<EBrowserFeatureStatus>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EBrowserFeatureStatus_descriptor(), enum_t_value);
 }
-bool EBrowserFeatureStatus_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EBrowserFeatureStatus* value);
+inline bool EBrowserFeatureStatus_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EBrowserFeatureStatus* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EBrowserFeatureStatus>(
+    EBrowserFeatureStatus_descriptor(), name, value);
+}
 enum EGpuDriverId : int {
   k_EGpuDriverId_Invalid = 0,
   k_EGpuDriverId_Unknown = 1,
@@ -1129,16 +1312,20 @@ constexpr EGpuDriverId EGpuDriverId_MIN = k_EGpuDriverId_Invalid;
 constexpr EGpuDriverId EGpuDriverId_MAX = k_EGpuDriverId_MesaHoneyKrisp;
 constexpr int EGpuDriverId_ARRAYSIZE = EGpuDriverId_MAX + 1;
 
-const std::string& EGpuDriverId_Name(EGpuDriverId value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EGpuDriverId_descriptor();
 template<typename T>
 inline const std::string& EGpuDriverId_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EGpuDriverId>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EGpuDriverId_Name.");
-  return EGpuDriverId_Name(static_cast<EGpuDriverId>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EGpuDriverId_descriptor(), enum_t_value);
 }
-bool EGpuDriverId_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EGpuDriverId* value);
+inline bool EGpuDriverId_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EGpuDriverId* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EGpuDriverId>(
+    EGpuDriverId_descriptor(), name, value);
+}
 enum ECommunityItemClass : int {
   k_ECommunityItemClass_Invalid = 0,
   k_ECommunityItemClass_Badge = 1,
@@ -1164,16 +1351,20 @@ constexpr ECommunityItemClass ECommunityItemClass_MIN = k_ECommunityItemClass_In
 constexpr ECommunityItemClass ECommunityItemClass_MAX = k_ECommunityItemClass_SteamDeckStartupMovie;
 constexpr int ECommunityItemClass_ARRAYSIZE = ECommunityItemClass_MAX + 1;
 
-const std::string& ECommunityItemClass_Name(ECommunityItemClass value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ECommunityItemClass_descriptor();
 template<typename T>
 inline const std::string& ECommunityItemClass_Name(T enum_t_value) {
   static_assert(::std::is_same<T, ECommunityItemClass>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function ECommunityItemClass_Name.");
-  return ECommunityItemClass_Name(static_cast<ECommunityItemClass>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ECommunityItemClass_descriptor(), enum_t_value);
 }
-bool ECommunityItemClass_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ECommunityItemClass* value);
+inline bool ECommunityItemClass_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ECommunityItemClass* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ECommunityItemClass>(
+    ECommunityItemClass_descriptor(), name, value);
+}
 enum ESteamDeckCompatibilityFeedback : int {
   k_ESteamDeckCompatibilityFeedback_Unset = 0,
   k_ESteamDeckCompatibilityFeedback_Agree = 1,
@@ -1185,16 +1376,20 @@ constexpr ESteamDeckCompatibilityFeedback ESteamDeckCompatibilityFeedback_MIN = 
 constexpr ESteamDeckCompatibilityFeedback ESteamDeckCompatibilityFeedback_MAX = k_ESteamDeckCompatibilityFeedback_Ignore;
 constexpr int ESteamDeckCompatibilityFeedback_ARRAYSIZE = ESteamDeckCompatibilityFeedback_MAX + 1;
 
-const std::string& ESteamDeckCompatibilityFeedback_Name(ESteamDeckCompatibilityFeedback value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESteamDeckCompatibilityFeedback_descriptor();
 template<typename T>
 inline const std::string& ESteamDeckCompatibilityFeedback_Name(T enum_t_value) {
   static_assert(::std::is_same<T, ESteamDeckCompatibilityFeedback>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function ESteamDeckCompatibilityFeedback_Name.");
-  return ESteamDeckCompatibilityFeedback_Name(static_cast<ESteamDeckCompatibilityFeedback>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ESteamDeckCompatibilityFeedback_descriptor(), enum_t_value);
 }
-bool ESteamDeckCompatibilityFeedback_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESteamDeckCompatibilityFeedback* value);
+inline bool ESteamDeckCompatibilityFeedback_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESteamDeckCompatibilityFeedback* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ESteamDeckCompatibilityFeedback>(
+    ESteamDeckCompatibilityFeedback_descriptor(), name, value);
+}
 enum EProvideDeckFeedbackPreference : int {
   k_EProvideDeckFeedbackPreference_Unset = 0,
   k_EProvideDeckFeedbackPreference_Yes = 1,
@@ -1205,16 +1400,20 @@ constexpr EProvideDeckFeedbackPreference EProvideDeckFeedbackPreference_MIN = k_
 constexpr EProvideDeckFeedbackPreference EProvideDeckFeedbackPreference_MAX = k_EProvideDeckFeedbackPreference_No;
 constexpr int EProvideDeckFeedbackPreference_ARRAYSIZE = EProvideDeckFeedbackPreference_MAX + 1;
 
-const std::string& EProvideDeckFeedbackPreference_Name(EProvideDeckFeedbackPreference value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EProvideDeckFeedbackPreference_descriptor();
 template<typename T>
 inline const std::string& EProvideDeckFeedbackPreference_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EProvideDeckFeedbackPreference>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EProvideDeckFeedbackPreference_Name.");
-  return EProvideDeckFeedbackPreference_Name(static_cast<EProvideDeckFeedbackPreference>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EProvideDeckFeedbackPreference_descriptor(), enum_t_value);
 }
-bool EProvideDeckFeedbackPreference_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EProvideDeckFeedbackPreference* value);
+inline bool EProvideDeckFeedbackPreference_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EProvideDeckFeedbackPreference* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EProvideDeckFeedbackPreference>(
+    EProvideDeckFeedbackPreference_descriptor(), name, value);
+}
 enum EHardwareCompatibilityFeedbackDetails : int {
   k_EHardwareCompatibilityFeedbackDetails_Unset = 0,
   k_EHardwareCompatibilityFeedbackDetails_Performance = 1,
@@ -1228,16 +1427,20 @@ constexpr EHardwareCompatibilityFeedbackDetails EHardwareCompatibilityFeedbackDe
 constexpr EHardwareCompatibilityFeedbackDetails EHardwareCompatibilityFeedbackDetails_MAX = k_EHardwareCompatibilityFeedbackDetails_Other;
 constexpr int EHardwareCompatibilityFeedbackDetails_ARRAYSIZE = EHardwareCompatibilityFeedbackDetails_MAX + 1;
 
-const std::string& EHardwareCompatibilityFeedbackDetails_Name(EHardwareCompatibilityFeedbackDetails value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EHardwareCompatibilityFeedbackDetails_descriptor();
 template<typename T>
 inline const std::string& EHardwareCompatibilityFeedbackDetails_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EHardwareCompatibilityFeedbackDetails>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EHardwareCompatibilityFeedbackDetails_Name.");
-  return EHardwareCompatibilityFeedbackDetails_Name(static_cast<EHardwareCompatibilityFeedbackDetails>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EHardwareCompatibilityFeedbackDetails_descriptor(), enum_t_value);
 }
-bool EHardwareCompatibilityFeedbackDetails_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EHardwareCompatibilityFeedbackDetails* value);
+inline bool EHardwareCompatibilityFeedbackDetails_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EHardwareCompatibilityFeedbackDetails* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EHardwareCompatibilityFeedbackDetails>(
+    EHardwareCompatibilityFeedbackDetails_descriptor(), name, value);
+}
 enum EGameFrameRateReportingPreference : int {
   k_EGameFrameRateReportingPreference_Unset = 0,
   k_EGameFrameRateReportingPreference_No = 1,
@@ -1249,16 +1452,20 @@ constexpr EGameFrameRateReportingPreference EGameFrameRateReportingPreference_MI
 constexpr EGameFrameRateReportingPreference EGameFrameRateReportingPreference_MAX = k_EGameFrameRateReportingPreference_Yes_NonAnonymous;
 constexpr int EGameFrameRateReportingPreference_ARRAYSIZE = EGameFrameRateReportingPreference_MAX + 1;
 
-const std::string& EGameFrameRateReportingPreference_Name(EGameFrameRateReportingPreference value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EGameFrameRateReportingPreference_descriptor();
 template<typename T>
 inline const std::string& EGameFrameRateReportingPreference_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EGameFrameRateReportingPreference>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EGameFrameRateReportingPreference_Name.");
-  return EGameFrameRateReportingPreference_Name(static_cast<EGameFrameRateReportingPreference>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EGameFrameRateReportingPreference_descriptor(), enum_t_value);
 }
-bool EGameFrameRateReportingPreference_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EGameFrameRateReportingPreference* value);
+inline bool EGameFrameRateReportingPreference_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EGameFrameRateReportingPreference* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EGameFrameRateReportingPreference>(
+    EGameFrameRateReportingPreference_descriptor(), name, value);
+}
 enum ETouchGesture : int {
   k_ETouchGestureNone = 0,
   k_ETouchGestureTouch = 1,
@@ -1280,16 +1487,20 @@ constexpr ETouchGesture ETouchGesture_MIN = k_ETouchGestureNone;
 constexpr ETouchGesture ETouchGesture_MAX = k_ETouchGestureFlingCancelled;
 constexpr int ETouchGesture_ARRAYSIZE = ETouchGesture_MAX + 1;
 
-const std::string& ETouchGesture_Name(ETouchGesture value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ETouchGesture_descriptor();
 template<typename T>
 inline const std::string& ETouchGesture_Name(T enum_t_value) {
   static_assert(::std::is_same<T, ETouchGesture>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function ETouchGesture_Name.");
-  return ETouchGesture_Name(static_cast<ETouchGesture>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ETouchGesture_descriptor(), enum_t_value);
 }
-bool ETouchGesture_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ETouchGesture* value);
+inline bool ETouchGesture_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ETouchGesture* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ETouchGesture>(
+    ETouchGesture_descriptor(), name, value);
+}
 enum ESessionPersistence : int {
   k_ESessionPersistence_Invalid = -1,
   k_ESessionPersistence_Ephemeral = 0,
@@ -1300,16 +1511,20 @@ constexpr ESessionPersistence ESessionPersistence_MIN = k_ESessionPersistence_In
 constexpr ESessionPersistence ESessionPersistence_MAX = k_ESessionPersistence_Persistent;
 constexpr int ESessionPersistence_ARRAYSIZE = ESessionPersistence_MAX + 1;
 
-const std::string& ESessionPersistence_Name(ESessionPersistence value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESessionPersistence_descriptor();
 template<typename T>
 inline const std::string& ESessionPersistence_Name(T enum_t_value) {
   static_assert(::std::is_same<T, ESessionPersistence>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function ESessionPersistence_Name.");
-  return ESessionPersistence_Name(static_cast<ESessionPersistence>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ESessionPersistence_descriptor(), enum_t_value);
 }
-bool ESessionPersistence_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESessionPersistence* value);
+inline bool ESessionPersistence_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESessionPersistence* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ESessionPersistence>(
+    ESessionPersistence_descriptor(), name, value);
+}
 enum ENewSteamAnnouncementState : int {
   k_ENewSteamAnnouncementState_Invalid = 0,
   k_ENewSteamAnnouncementState_AllRead = 1,
@@ -1321,16 +1536,20 @@ constexpr ENewSteamAnnouncementState ENewSteamAnnouncementState_MIN = k_ENewStea
 constexpr ENewSteamAnnouncementState ENewSteamAnnouncementState_MAX = k_ENewSteamAnnouncementState_FeaturedAnnouncement;
 constexpr int ENewSteamAnnouncementState_ARRAYSIZE = ENewSteamAnnouncementState_MAX + 1;
 
-const std::string& ENewSteamAnnouncementState_Name(ENewSteamAnnouncementState value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ENewSteamAnnouncementState_descriptor();
 template<typename T>
 inline const std::string& ENewSteamAnnouncementState_Name(T enum_t_value) {
   static_assert(::std::is_same<T, ENewSteamAnnouncementState>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function ENewSteamAnnouncementState_Name.");
-  return ENewSteamAnnouncementState_Name(static_cast<ENewSteamAnnouncementState>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ENewSteamAnnouncementState_descriptor(), enum_t_value);
 }
-bool ENewSteamAnnouncementState_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ENewSteamAnnouncementState* value);
+inline bool ENewSteamAnnouncementState_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ENewSteamAnnouncementState* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ENewSteamAnnouncementState>(
+    ENewSteamAnnouncementState_descriptor(), name, value);
+}
 enum EForumType : int {
   k_EForumType_Invalid = 0,
   k_EForumType_General = 1,
@@ -1347,16 +1566,20 @@ constexpr EForumType EForumType_MIN = k_EForumType_Invalid;
 constexpr EForumType EForumType_MAX = k_EForumType_Max;
 constexpr int EForumType_ARRAYSIZE = EForumType_MAX + 1;
 
-const std::string& EForumType_Name(EForumType value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EForumType_descriptor();
 template<typename T>
 inline const std::string& EForumType_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EForumType>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EForumType_Name.");
-  return EForumType_Name(static_cast<EForumType>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EForumType_descriptor(), enum_t_value);
 }
-bool EForumType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EForumType* value);
+inline bool EForumType_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EForumType* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EForumType>(
+    EForumType_descriptor(), name, value);
+}
 enum ECommentThreadType : int {
   k_ECommentThreadTypeInvalid = 0,
   k_ECommentThreadTypeScreenshot_Deprecated = 1,
@@ -1386,16 +1609,20 @@ constexpr ECommentThreadType ECommentThreadType_MIN = k_ECommentThreadTypeInvali
 constexpr ECommentThreadType ECommentThreadType_MAX = k_ECommentThreadTypeMax;
 constexpr int ECommentThreadType_ARRAYSIZE = ECommentThreadType_MAX + 1;
 
-const std::string& ECommentThreadType_Name(ECommentThreadType value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ECommentThreadType_descriptor();
 template<typename T>
 inline const std::string& ECommentThreadType_Name(T enum_t_value) {
   static_assert(::std::is_same<T, ECommentThreadType>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function ECommentThreadType_Name.");
-  return ECommentThreadType_Name(static_cast<ECommentThreadType>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ECommentThreadType_descriptor(), enum_t_value);
 }
-bool ECommentThreadType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ECommentThreadType* value);
+inline bool ECommentThreadType_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ECommentThreadType* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ECommentThreadType>(
+    ECommentThreadType_descriptor(), name, value);
+}
 enum EBroadcastPermission : int {
   k_EBroadcastPermissionDisabled = 0,
   k_EBroadcastPermissionFriendsApprove = 1,
@@ -1408,16 +1635,20 @@ constexpr EBroadcastPermission EBroadcastPermission_MIN = k_EBroadcastPermission
 constexpr EBroadcastPermission EBroadcastPermission_MAX = k_EBroadcastPermissionSubscribers;
 constexpr int EBroadcastPermission_ARRAYSIZE = EBroadcastPermission_MAX + 1;
 
-const std::string& EBroadcastPermission_Name(EBroadcastPermission value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EBroadcastPermission_descriptor();
 template<typename T>
 inline const std::string& EBroadcastPermission_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EBroadcastPermission>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EBroadcastPermission_Name.");
-  return EBroadcastPermission_Name(static_cast<EBroadcastPermission>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EBroadcastPermission_descriptor(), enum_t_value);
 }
-bool EBroadcastPermission_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EBroadcastPermission* value);
+inline bool EBroadcastPermission_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EBroadcastPermission* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EBroadcastPermission>(
+    EBroadcastPermission_descriptor(), name, value);
+}
 enum EBroadcastEncoderSetting : int {
   k_EBroadcastEncoderBestQuality = 0,
   k_EBroadcastEncoderBestPerformance = 1
@@ -1427,16 +1658,20 @@ constexpr EBroadcastEncoderSetting EBroadcastEncoderSetting_MIN = k_EBroadcastEn
 constexpr EBroadcastEncoderSetting EBroadcastEncoderSetting_MAX = k_EBroadcastEncoderBestPerformance;
 constexpr int EBroadcastEncoderSetting_ARRAYSIZE = EBroadcastEncoderSetting_MAX + 1;
 
-const std::string& EBroadcastEncoderSetting_Name(EBroadcastEncoderSetting value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EBroadcastEncoderSetting_descriptor();
 template<typename T>
 inline const std::string& EBroadcastEncoderSetting_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EBroadcastEncoderSetting>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EBroadcastEncoderSetting_Name.");
-  return EBroadcastEncoderSetting_Name(static_cast<EBroadcastEncoderSetting>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EBroadcastEncoderSetting_descriptor(), enum_t_value);
 }
-bool EBroadcastEncoderSetting_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EBroadcastEncoderSetting* value);
+inline bool EBroadcastEncoderSetting_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EBroadcastEncoderSetting* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EBroadcastEncoderSetting>(
+    EBroadcastEncoderSetting_descriptor(), name, value);
+}
 enum ECloudGamingPlatform : int {
   k_ECloudGamingPlatformNone = 0,
   k_ECloudGamingPlatformValve = 1,
@@ -1447,16 +1682,20 @@ constexpr ECloudGamingPlatform ECloudGamingPlatform_MIN = k_ECloudGamingPlatform
 constexpr ECloudGamingPlatform ECloudGamingPlatform_MAX = k_ECloudGamingPlatformNVIDIA;
 constexpr int ECloudGamingPlatform_ARRAYSIZE = ECloudGamingPlatform_MAX + 1;
 
-const std::string& ECloudGamingPlatform_Name(ECloudGamingPlatform value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ECloudGamingPlatform_descriptor();
 template<typename T>
 inline const std::string& ECloudGamingPlatform_Name(T enum_t_value) {
   static_assert(::std::is_same<T, ECloudGamingPlatform>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function ECloudGamingPlatform_Name.");
-  return ECloudGamingPlatform_Name(static_cast<ECloudGamingPlatform>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ECloudGamingPlatform_descriptor(), enum_t_value);
 }
-bool ECloudGamingPlatform_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ECloudGamingPlatform* value);
+inline bool ECloudGamingPlatform_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ECloudGamingPlatform* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ECloudGamingPlatform>(
+    ECloudGamingPlatform_descriptor(), name, value);
+}
 enum ECompromiseDetectionType : int {
   k_ECompromiseDetectionType_None = 0,
   k_ECompromiseDetectionType_TradeEvent = 1,
@@ -1472,16 +1711,20 @@ constexpr ECompromiseDetectionType ECompromiseDetectionType_MIN = k_ECompromiseD
 constexpr ECompromiseDetectionType ECompromiseDetectionType_MAX = k_ECompromiseDetectionType_DeviceType;
 constexpr int ECompromiseDetectionType_ARRAYSIZE = ECompromiseDetectionType_MAX + 1;
 
-const std::string& ECompromiseDetectionType_Name(ECompromiseDetectionType value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ECompromiseDetectionType_descriptor();
 template<typename T>
 inline const std::string& ECompromiseDetectionType_Name(T enum_t_value) {
   static_assert(::std::is_same<T, ECompromiseDetectionType>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function ECompromiseDetectionType_Name.");
-  return ECompromiseDetectionType_Name(static_cast<ECompromiseDetectionType>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ECompromiseDetectionType_descriptor(), enum_t_value);
 }
-bool ECompromiseDetectionType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ECompromiseDetectionType* value);
+inline bool ECompromiseDetectionType_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ECompromiseDetectionType* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ECompromiseDetectionType>(
+    ECompromiseDetectionType_descriptor(), name, value);
+}
 enum EAsyncGameSessionUserState : int {
   k_EAsyncGameSessionUserStateUnknown = -1,
   k_EAsyncGameSessionUserStateWaitingForOthers = 0,
@@ -1493,16 +1736,20 @@ constexpr EAsyncGameSessionUserState EAsyncGameSessionUserState_MIN = k_EAsyncGa
 constexpr EAsyncGameSessionUserState EAsyncGameSessionUserState_MAX = k_EAsyncGameSessionUserStateDone;
 constexpr int EAsyncGameSessionUserState_ARRAYSIZE = EAsyncGameSessionUserState_MAX + 1;
 
-const std::string& EAsyncGameSessionUserState_Name(EAsyncGameSessionUserState value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EAsyncGameSessionUserState_descriptor();
 template<typename T>
 inline const std::string& EAsyncGameSessionUserState_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EAsyncGameSessionUserState>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EAsyncGameSessionUserState_Name.");
-  return EAsyncGameSessionUserState_Name(static_cast<EAsyncGameSessionUserState>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EAsyncGameSessionUserState_descriptor(), enum_t_value);
 }
-bool EAsyncGameSessionUserState_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EAsyncGameSessionUserState* value);
+inline bool EAsyncGameSessionUserState_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EAsyncGameSessionUserState* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EAsyncGameSessionUserState>(
+    EAsyncGameSessionUserState_descriptor(), name, value);
+}
 enum EAsyncGameSessionUserVisibility : int {
   k_EAsyncGameSessionUserVisibilityEnvelopeAndSessionList = 0,
   k_EAsyncGameSessionUserVisibilitySessionListOnly = 1,
@@ -1513,16 +1760,20 @@ constexpr EAsyncGameSessionUserVisibility EAsyncGameSessionUserVisibility_MIN = 
 constexpr EAsyncGameSessionUserVisibility EAsyncGameSessionUserVisibility_MAX = k_EAsyncGameSessionUserVisibilityDismissed;
 constexpr int EAsyncGameSessionUserVisibility_ARRAYSIZE = EAsyncGameSessionUserVisibility_MAX + 1;
 
-const std::string& EAsyncGameSessionUserVisibility_Name(EAsyncGameSessionUserVisibility value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EAsyncGameSessionUserVisibility_descriptor();
 template<typename T>
 inline const std::string& EAsyncGameSessionUserVisibility_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EAsyncGameSessionUserVisibility>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EAsyncGameSessionUserVisibility_Name.");
-  return EAsyncGameSessionUserVisibility_Name(static_cast<EAsyncGameSessionUserVisibility>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EAsyncGameSessionUserVisibility_descriptor(), enum_t_value);
 }
-bool EAsyncGameSessionUserVisibility_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EAsyncGameSessionUserVisibility* value);
+inline bool EAsyncGameSessionUserVisibility_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EAsyncGameSessionUserVisibility* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EAsyncGameSessionUserVisibility>(
+    EAsyncGameSessionUserVisibility_descriptor(), name, value);
+}
 enum EGameRecordingType : int {
   k_EGameRecordingType_Unknown = 0,
   k_EGameRecordingType_NotRecording = 1,
@@ -1535,16 +1786,20 @@ constexpr EGameRecordingType EGameRecordingType_MIN = k_EGameRecordingType_Unkno
 constexpr EGameRecordingType EGameRecordingType_MAX = k_EGameRecordingType_Clip;
 constexpr int EGameRecordingType_ARRAYSIZE = EGameRecordingType_MAX + 1;
 
-const std::string& EGameRecordingType_Name(EGameRecordingType value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EGameRecordingType_descriptor();
 template<typename T>
 inline const std::string& EGameRecordingType_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EGameRecordingType>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EGameRecordingType_Name.");
-  return EGameRecordingType_Name(static_cast<EGameRecordingType>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EGameRecordingType_descriptor(), enum_t_value);
 }
-bool EGameRecordingType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EGameRecordingType* value);
+inline bool EGameRecordingType_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EGameRecordingType* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EGameRecordingType>(
+    EGameRecordingType_descriptor(), name, value);
+}
 enum EGRMode : int {
   k_EGRMode_Never = 0,
   k_EGRMode_Always = 1,
@@ -1555,16 +1810,20 @@ constexpr EGRMode EGRMode_MIN = k_EGRMode_Never;
 constexpr EGRMode EGRMode_MAX = k_EGRMode_Manual;
 constexpr int EGRMode_ARRAYSIZE = EGRMode_MAX + 1;
 
-const std::string& EGRMode_Name(EGRMode value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EGRMode_descriptor();
 template<typename T>
 inline const std::string& EGRMode_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EGRMode>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EGRMode_Name.");
-  return EGRMode_Name(static_cast<EGRMode>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EGRMode_descriptor(), enum_t_value);
 }
-bool EGRMode_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EGRMode* value);
+inline bool EGRMode_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EGRMode* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EGRMode>(
+    EGRMode_descriptor(), name, value);
+}
 enum EExportCodec : int {
   k_EExportCodec_Default = 0,
   k_EExportCodec_H264 = 1,
@@ -1575,16 +1834,20 @@ constexpr EExportCodec EExportCodec_MIN = k_EExportCodec_Default;
 constexpr EExportCodec EExportCodec_MAX = k_EExportCodec_H265;
 constexpr int EExportCodec_ARRAYSIZE = EExportCodec_MAX + 1;
 
-const std::string& EExportCodec_Name(EExportCodec value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EExportCodec_descriptor();
 template<typename T>
 inline const std::string& EExportCodec_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EExportCodec>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EExportCodec_Name.");
-  return EExportCodec_Name(static_cast<EExportCodec>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EExportCodec_descriptor(), enum_t_value);
 }
-bool EExportCodec_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EExportCodec* value);
+inline bool EExportCodec_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EExportCodec* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EExportCodec>(
+    EExportCodec_descriptor(), name, value);
+}
 enum EProtoAppType : int {
   k_EAppTypeInvalid = 0,
   k_EAppTypeGame = 1,
@@ -1612,16 +1875,20 @@ constexpr EProtoAppType EProtoAppType_MIN = k_EAppTypeDepotOnly;
 constexpr EProtoAppType EProtoAppType_MAX = k_EAppTypeShortcut;
 constexpr int EProtoAppType_ARRAYSIZE = EProtoAppType_MAX + 1;
 
-const std::string& EProtoAppType_Name(EProtoAppType value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EProtoAppType_descriptor();
 template<typename T>
 inline const std::string& EProtoAppType_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EProtoAppType>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EProtoAppType_Name.");
-  return EProtoAppType_Name(static_cast<EProtoAppType>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EProtoAppType_descriptor(), enum_t_value);
 }
-bool EProtoAppType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EProtoAppType* value);
+inline bool EProtoAppType_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EProtoAppType* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EProtoAppType>(
+    EProtoAppType_descriptor(), name, value);
+}
 enum EAppTestType : int {
   k_EAppTestType_BuildReview = 0,
   k_EAppTestType_StorePageReview = 1,
@@ -1637,16 +1904,20 @@ constexpr EAppTestType EAppTestType_MIN = k_EAppTestType_BuildReview;
 constexpr EAppTestType EAppTestType_MAX = k_EAppTestType_SteamFrameCompatibilityReview;
 constexpr int EAppTestType_ARRAYSIZE = EAppTestType_MAX + 1;
 
-const std::string& EAppTestType_Name(EAppTestType value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EAppTestType_descriptor();
 template<typename T>
 inline const std::string& EAppTestType_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EAppTestType>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EAppTestType_Name.");
-  return EAppTestType_Name(static_cast<EAppTestType>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EAppTestType_descriptor(), enum_t_value);
 }
-bool EAppTestType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EAppTestType* value);
+inline bool EAppTestType_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EAppTestType* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EAppTestType>(
+    EAppTestType_descriptor(), name, value);
+}
 enum EChildProcessQueryCommand : int {
   k_EChildProcessQueryCommand_Invalid = 0,
   k_EChildProcessQueryCommand_GpuTopology = 1,
@@ -1657,16 +1928,20 @@ constexpr EChildProcessQueryCommand EChildProcessQueryCommand_MIN = k_EChildProc
 constexpr EChildProcessQueryCommand EChildProcessQueryCommand_MAX = k_EChildProcessQueryCommand_Max;
 constexpr int EChildProcessQueryCommand_ARRAYSIZE = EChildProcessQueryCommand_MAX + 1;
 
-const std::string& EChildProcessQueryCommand_Name(EChildProcessQueryCommand value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EChildProcessQueryCommand_descriptor();
 template<typename T>
 inline const std::string& EChildProcessQueryCommand_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EChildProcessQueryCommand>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EChildProcessQueryCommand_Name.");
-  return EChildProcessQueryCommand_Name(static_cast<EChildProcessQueryCommand>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EChildProcessQueryCommand_descriptor(), enum_t_value);
 }
-bool EChildProcessQueryCommand_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EChildProcessQueryCommand* value);
+inline bool EChildProcessQueryCommand_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EChildProcessQueryCommand* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EChildProcessQueryCommand>(
+    EChildProcessQueryCommand_descriptor(), name, value);
+}
 enum EChildProcessQueryExitCode : int {
   k_EChildProcessQueryExitCode_Success = 0,
   k_EChildProcessQueryExitCode_ErrorCommandline = -1,
@@ -1680,16 +1955,20 @@ constexpr EChildProcessQueryExitCode EChildProcessQueryExitCode_MIN = k_EChildPr
 constexpr EChildProcessQueryExitCode EChildProcessQueryExitCode_MAX = k_EChildProcessQueryExitCode_Success;
 constexpr int EChildProcessQueryExitCode_ARRAYSIZE = EChildProcessQueryExitCode_MAX + 1;
 
-const std::string& EChildProcessQueryExitCode_Name(EChildProcessQueryExitCode value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EChildProcessQueryExitCode_descriptor();
 template<typename T>
 inline const std::string& EChildProcessQueryExitCode_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EChildProcessQueryExitCode>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EChildProcessQueryExitCode_Name.");
-  return EChildProcessQueryExitCode_Name(static_cast<EChildProcessQueryExitCode>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EChildProcessQueryExitCode_descriptor(), enum_t_value);
 }
-bool EChildProcessQueryExitCode_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EChildProcessQueryExitCode* value);
+inline bool EChildProcessQueryExitCode_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EChildProcessQueryExitCode* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EChildProcessQueryExitCode>(
+    EChildProcessQueryExitCode_descriptor(), name, value);
+}
 enum EWindowsUpdateInstallationImpact : int {
   k_EWindowsUpdateInstallationImpact_Unknown = -1,
   k_EWindowsUpdateInstallationImpact_Normal = 0,
@@ -1701,16 +1980,20 @@ constexpr EWindowsUpdateInstallationImpact EWindowsUpdateInstallationImpact_MIN 
 constexpr EWindowsUpdateInstallationImpact EWindowsUpdateInstallationImpact_MAX = k_EWindowsUpdateInstallationImpact_ExclusiveHandling;
 constexpr int EWindowsUpdateInstallationImpact_ARRAYSIZE = EWindowsUpdateInstallationImpact_MAX + 1;
 
-const std::string& EWindowsUpdateInstallationImpact_Name(EWindowsUpdateInstallationImpact value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EWindowsUpdateInstallationImpact_descriptor();
 template<typename T>
 inline const std::string& EWindowsUpdateInstallationImpact_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EWindowsUpdateInstallationImpact>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EWindowsUpdateInstallationImpact_Name.");
-  return EWindowsUpdateInstallationImpact_Name(static_cast<EWindowsUpdateInstallationImpact>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EWindowsUpdateInstallationImpact_descriptor(), enum_t_value);
 }
-bool EWindowsUpdateInstallationImpact_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EWindowsUpdateInstallationImpact* value);
+inline bool EWindowsUpdateInstallationImpact_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EWindowsUpdateInstallationImpact* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EWindowsUpdateInstallationImpact>(
+    EWindowsUpdateInstallationImpact_descriptor(), name, value);
+}
 enum EWindowsUpdateRebootBehavior : int {
   k_EWindowsUpdateRebootBehavior_Unknown = -1,
   k_EWindowsUpdateRebootBehavior_NeverNeedsReboot = 0,
@@ -1722,16 +2005,20 @@ constexpr EWindowsUpdateRebootBehavior EWindowsUpdateRebootBehavior_MIN = k_EWin
 constexpr EWindowsUpdateRebootBehavior EWindowsUpdateRebootBehavior_MAX = k_EWindowsUpdateRebootBehavior_MightNeedReboot;
 constexpr int EWindowsUpdateRebootBehavior_ARRAYSIZE = EWindowsUpdateRebootBehavior_MAX + 1;
 
-const std::string& EWindowsUpdateRebootBehavior_Name(EWindowsUpdateRebootBehavior value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EWindowsUpdateRebootBehavior_descriptor();
 template<typename T>
 inline const std::string& EWindowsUpdateRebootBehavior_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EWindowsUpdateRebootBehavior>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EWindowsUpdateRebootBehavior_Name.");
-  return EWindowsUpdateRebootBehavior_Name(static_cast<EWindowsUpdateRebootBehavior>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EWindowsUpdateRebootBehavior_descriptor(), enum_t_value);
 }
-bool EWindowsUpdateRebootBehavior_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EWindowsUpdateRebootBehavior* value);
+inline bool EWindowsUpdateRebootBehavior_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EWindowsUpdateRebootBehavior* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EWindowsUpdateRebootBehavior>(
+    EWindowsUpdateRebootBehavior_descriptor(), name, value);
+}
 enum EExternalSaleEventType : int {
   k_EExternalSaleEventType_Unknown = 0,
   k_EExternalSaleEventType_Publisher = 1,
@@ -1745,16 +2032,20 @@ constexpr EExternalSaleEventType EExternalSaleEventType_MIN = k_EExternalSaleEve
 constexpr EExternalSaleEventType EExternalSaleEventType_MAX = k_EExternalSaleEventType_Franchise;
 constexpr int EExternalSaleEventType_ARRAYSIZE = EExternalSaleEventType_MAX + 1;
 
-const std::string& EExternalSaleEventType_Name(EExternalSaleEventType value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EExternalSaleEventType_descriptor();
 template<typename T>
 inline const std::string& EExternalSaleEventType_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EExternalSaleEventType>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EExternalSaleEventType_Name.");
-  return EExternalSaleEventType_Name(static_cast<EExternalSaleEventType>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EExternalSaleEventType_descriptor(), enum_t_value);
 }
-bool EExternalSaleEventType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EExternalSaleEventType* value);
+inline bool EExternalSaleEventType_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EExternalSaleEventType* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EExternalSaleEventType>(
+    EExternalSaleEventType_descriptor(), name, value);
+}
 enum EEnhancedMarketAppearanceStatus : int {
   k_EnhancedMarketAppearanceStatus_None = 0,
   k_EnhancedMarketAppearanceStatus_Pending = 1,
@@ -1766,16 +2057,20 @@ constexpr EEnhancedMarketAppearanceStatus EEnhancedMarketAppearanceStatus_MIN = 
 constexpr EEnhancedMarketAppearanceStatus EEnhancedMarketAppearanceStatus_MAX = k_EnhancedMarketAppearanceStatus_Completed;
 constexpr int EEnhancedMarketAppearanceStatus_ARRAYSIZE = EEnhancedMarketAppearanceStatus_MAX + 1;
 
-const std::string& EEnhancedMarketAppearanceStatus_Name(EEnhancedMarketAppearanceStatus value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EEnhancedMarketAppearanceStatus_descriptor();
 template<typename T>
 inline const std::string& EEnhancedMarketAppearanceStatus_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EEnhancedMarketAppearanceStatus>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EEnhancedMarketAppearanceStatus_Name.");
-  return EEnhancedMarketAppearanceStatus_Name(static_cast<EEnhancedMarketAppearanceStatus>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EEnhancedMarketAppearanceStatus_descriptor(), enum_t_value);
 }
-bool EEnhancedMarketAppearanceStatus_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EEnhancedMarketAppearanceStatus* value);
+inline bool EEnhancedMarketAppearanceStatus_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EEnhancedMarketAppearanceStatus* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EEnhancedMarketAppearanceStatus>(
+    EEnhancedMarketAppearanceStatus_descriptor(), name, value);
+}
 enum EContentReportSubjectType : int {
   k_EContentReportSubjectType_Invalid = 0,
   k_EContentReportSubjectType_ForumPost = 1,
@@ -1791,16 +2086,20 @@ constexpr EContentReportSubjectType EContentReportSubjectType_MIN = k_EContentRe
 constexpr EContentReportSubjectType EContentReportSubjectType_MAX = k_EContentReportSubjectType_MAX;
 constexpr int EContentReportSubjectType_ARRAYSIZE = EContentReportSubjectType_MAX + 1;
 
-const std::string& EContentReportSubjectType_Name(EContentReportSubjectType value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EContentReportSubjectType_descriptor();
 template<typename T>
 inline const std::string& EContentReportSubjectType_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EContentReportSubjectType>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EContentReportSubjectType_Name.");
-  return EContentReportSubjectType_Name(static_cast<EContentReportSubjectType>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EContentReportSubjectType_descriptor(), enum_t_value);
 }
-bool EContentReportSubjectType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EContentReportSubjectType* value);
+inline bool EContentReportSubjectType_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EContentReportSubjectType* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EContentReportSubjectType>(
+    EContentReportSubjectType_descriptor(), name, value);
+}
 enum EControlledLegalCategoryStatus : int {
   k_EControlledLegalCategoryStatus_None = 0,
   k_EControlledLegalCategoryStatus_Accused = 1,
@@ -1812,16 +2111,20 @@ constexpr EControlledLegalCategoryStatus EControlledLegalCategoryStatus_MIN = k_
 constexpr EControlledLegalCategoryStatus EControlledLegalCategoryStatus_MAX = k_EControlledLegalCategoryStatus_Acquitted;
 constexpr int EControlledLegalCategoryStatus_ARRAYSIZE = EControlledLegalCategoryStatus_MAX + 1;
 
-const std::string& EControlledLegalCategoryStatus_Name(EControlledLegalCategoryStatus value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EControlledLegalCategoryStatus_descriptor();
 template<typename T>
 inline const std::string& EControlledLegalCategoryStatus_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EControlledLegalCategoryStatus>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EControlledLegalCategoryStatus_Name.");
-  return EControlledLegalCategoryStatus_Name(static_cast<EControlledLegalCategoryStatus>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EControlledLegalCategoryStatus_descriptor(), enum_t_value);
 }
-bool EControlledLegalCategoryStatus_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EControlledLegalCategoryStatus* value);
+inline bool EControlledLegalCategoryStatus_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EControlledLegalCategoryStatus* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EControlledLegalCategoryStatus>(
+    EControlledLegalCategoryStatus_descriptor(), name, value);
+}
 enum EContentModeratorLevel : int {
   k_EContentModeratorLevel_Any = 0,
   k_EContentModeratorLevel_Supervisor = 1,
@@ -1833,16 +2136,20 @@ constexpr EContentModeratorLevel EContentModeratorLevel_MIN = k_EContentModerato
 constexpr EContentModeratorLevel EContentModeratorLevel_MAX = k_EContentModeratorLevel_MAX;
 constexpr int EContentModeratorLevel_ARRAYSIZE = EContentModeratorLevel_MAX + 1;
 
-const std::string& EContentModeratorLevel_Name(EContentModeratorLevel value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EContentModeratorLevel_descriptor();
 template<typename T>
 inline const std::string& EContentModeratorLevel_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EContentModeratorLevel>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EContentModeratorLevel_Name.");
-  return EContentModeratorLevel_Name(static_cast<EContentModeratorLevel>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EContentModeratorLevel_descriptor(), enum_t_value);
 }
-bool EContentModeratorLevel_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EContentModeratorLevel* value);
+inline bool EContentModeratorLevel_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EContentModeratorLevel* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EContentModeratorLevel>(
+    EContentModeratorLevel_descriptor(), name, value);
+}
 enum EContentReportResolution : int {
   k_EContentReportResolution_Unresolved = 0,
   k_EContentReportResolution_Acquitted = 1,
@@ -1868,16 +2175,20 @@ constexpr EContentReportResolution EContentReportResolution_MIN = k_EContentRepo
 constexpr EContentReportResolution EContentReportResolution_MAX = k_EContentReportResolution_MAX;
 constexpr int EContentReportResolution_ARRAYSIZE = EContentReportResolution_MAX + 1;
 
-const std::string& EContentReportResolution_Name(EContentReportResolution value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EContentReportResolution_descriptor();
 template<typename T>
 inline const std::string& EContentReportResolution_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EContentReportResolution>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EContentReportResolution_Name.");
-  return EContentReportResolution_Name(static_cast<EContentReportResolution>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EContentReportResolution_descriptor(), enum_t_value);
 }
-bool EContentReportResolution_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EContentReportResolution* value);
+inline bool EContentReportResolution_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EContentReportResolution* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EContentReportResolution>(
+    EContentReportResolution_descriptor(), name, value);
+}
 enum EContentModerationSanction : int {
   k_EContentModerationSanction_Invalid = 0,
   k_EContentModerationSanction_Deleted = 1,
@@ -1897,16 +2208,20 @@ constexpr EContentModerationSanction EContentModerationSanction_MIN = k_EContent
 constexpr EContentModerationSanction EContentModerationSanction_MAX = k_EContentModerationSanction_MAX;
 constexpr int EContentModerationSanction_ARRAYSIZE = EContentModerationSanction_MAX + 1;
 
-const std::string& EContentModerationSanction_Name(EContentModerationSanction value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EContentModerationSanction_descriptor();
 template<typename T>
 inline const std::string& EContentModerationSanction_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EContentModerationSanction>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EContentModerationSanction_Name.");
-  return EContentModerationSanction_Name(static_cast<EContentModerationSanction>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EContentModerationSanction_descriptor(), enum_t_value);
 }
-bool EContentModerationSanction_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EContentModerationSanction* value);
+inline bool EContentModerationSanction_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EContentModerationSanction* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EContentModerationSanction>(
+    EContentModerationSanction_descriptor(), name, value);
+}
 enum EContentReportSubjectAction : int {
   k_EContentReportSubjectAction_Invalid = 0,
   k_EContentReportSubjectAction_Unresolved = 1,
@@ -1938,16 +2253,20 @@ constexpr EContentReportSubjectAction EContentReportSubjectAction_MIN = k_EConte
 constexpr EContentReportSubjectAction EContentReportSubjectAction_MAX = k_EContentReportSubjectAction_OwnerDisputed;
 constexpr int EContentReportSubjectAction_ARRAYSIZE = EContentReportSubjectAction_MAX + 1;
 
-const std::string& EContentReportSubjectAction_Name(EContentReportSubjectAction value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EContentReportSubjectAction_descriptor();
 template<typename T>
 inline const std::string& EContentReportSubjectAction_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EContentReportSubjectAction>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EContentReportSubjectAction_Name.");
-  return EContentReportSubjectAction_Name(static_cast<EContentReportSubjectAction>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EContentReportSubjectAction_descriptor(), enum_t_value);
 }
-bool EContentReportSubjectAction_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EContentReportSubjectAction* value);
+inline bool EContentReportSubjectAction_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EContentReportSubjectAction* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EContentReportSubjectAction>(
+    EContentReportSubjectAction_descriptor(), name, value);
+}
 enum EContentReportReason : int {
   k_EContentReportReason_Invalid = 0,
   k_EContentReportReason_None = 1,
@@ -2021,16 +2340,20 @@ constexpr EContentReportReason EContentReportReason_MIN = k_EContentReportReason
 constexpr EContentReportReason EContentReportReason_MAX = k_EContentReportReason_MAX;
 constexpr int EContentReportReason_ARRAYSIZE = EContentReportReason_MAX + 1;
 
-const std::string& EContentReportReason_Name(EContentReportReason value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EContentReportReason_descriptor();
 template<typename T>
 inline const std::string& EContentReportReason_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EContentReportReason>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EContentReportReason_Name.");
-  return EContentReportReason_Name(static_cast<EContentReportReason>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EContentReportReason_descriptor(), enum_t_value);
 }
-bool EContentReportReason_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EContentReportReason* value);
+inline bool EContentReportReason_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EContentReportReason* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EContentReportReason>(
+    EContentReportReason_descriptor(), name, value);
+}
 enum EResolutionAutomation : int {
   k_EResolutionAutomation_Manual = 0,
   k_EResolutionAutomation_PartiallyAutomated = 1,
@@ -2042,16 +2365,20 @@ constexpr EResolutionAutomation EResolutionAutomation_MIN = k_EResolutionAutomat
 constexpr EResolutionAutomation EResolutionAutomation_MAX = k_EResolutionAutomation_MAX;
 constexpr int EResolutionAutomation_ARRAYSIZE = EResolutionAutomation_MAX + 1;
 
-const std::string& EResolutionAutomation_Name(EResolutionAutomation value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EResolutionAutomation_descriptor();
 template<typename T>
 inline const std::string& EResolutionAutomation_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EResolutionAutomation>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EResolutionAutomation_Name.");
-  return EResolutionAutomation_Name(static_cast<EResolutionAutomation>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EResolutionAutomation_descriptor(), enum_t_value);
 }
-bool EResolutionAutomation_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EResolutionAutomation* value);
+inline bool EResolutionAutomation_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EResolutionAutomation* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EResolutionAutomation>(
+    EResolutionAutomation_descriptor(), name, value);
+}
 enum EPressOutletAction : int {
   k_EPressOutletAction_Invalid = 0,
   k_EPressOutletAction_Granted = 1,
@@ -2073,16 +2400,20 @@ constexpr EPressOutletAction EPressOutletAction_MIN = k_EPressOutletAction_Inval
 constexpr EPressOutletAction EPressOutletAction_MAX = k_EPressOutletAction_MAX;
 constexpr int EPressOutletAction_ARRAYSIZE = EPressOutletAction_MAX + 1;
 
-const std::string& EPressOutletAction_Name(EPressOutletAction value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EPressOutletAction_descriptor();
 template<typename T>
 inline const std::string& EPressOutletAction_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EPressOutletAction>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EPressOutletAction_Name.");
-  return EPressOutletAction_Name(static_cast<EPressOutletAction>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EPressOutletAction_descriptor(), enum_t_value);
 }
-bool EPressOutletAction_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EPressOutletAction* value);
+inline bool EPressOutletAction_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EPressOutletAction* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EPressOutletAction>(
+    EPressOutletAction_descriptor(), name, value);
+}
 enum EPressOutletMemberPendingState : int {
   k_EPressOutletMemberPendingState_Member = 0,
   k_EPressOutletMemberPendingState_StagedDelete = 1,
@@ -2094,16 +2425,20 @@ constexpr EPressOutletMemberPendingState EPressOutletMemberPendingState_MIN = k_
 constexpr EPressOutletMemberPendingState EPressOutletMemberPendingState_MAX = k_EPressOutletMemberPendingState_MAX;
 constexpr int EPressOutletMemberPendingState_ARRAYSIZE = EPressOutletMemberPendingState_MAX + 1;
 
-const std::string& EPressOutletMemberPendingState_Name(EPressOutletMemberPendingState value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EPressOutletMemberPendingState_descriptor();
 template<typename T>
 inline const std::string& EPressOutletMemberPendingState_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EPressOutletMemberPendingState>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EPressOutletMemberPendingState_Name.");
-  return EPressOutletMemberPendingState_Name(static_cast<EPressOutletMemberPendingState>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EPressOutletMemberPendingState_descriptor(), enum_t_value);
 }
-bool EPressOutletMemberPendingState_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EPressOutletMemberPendingState* value);
+inline bool EPressOutletMemberPendingState_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EPressOutletMemberPendingState* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EPressOutletMemberPendingState>(
+    EPressOutletMemberPendingState_descriptor(), name, value);
+}
 enum ECommentDeleteReason : int {
   k_ECommentDeleteReason_Invalid = 0,
   k_ECommentDeleteReason_User = 1,
@@ -2118,16 +2453,20 @@ constexpr ECommentDeleteReason ECommentDeleteReason_MIN = k_ECommentDeleteReason
 constexpr ECommentDeleteReason ECommentDeleteReason_MAX = k_ECommentDeleteReason_AccountDeletion;
 constexpr int ECommentDeleteReason_ARRAYSIZE = ECommentDeleteReason_MAX + 1;
 
-const std::string& ECommentDeleteReason_Name(ECommentDeleteReason value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ECommentDeleteReason_descriptor();
 template<typename T>
 inline const std::string& ECommentDeleteReason_Name(T enum_t_value) {
   static_assert(::std::is_same<T, ECommentDeleteReason>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function ECommentDeleteReason_Name.");
-  return ECommentDeleteReason_Name(static_cast<ECommentDeleteReason>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ECommentDeleteReason_descriptor(), enum_t_value);
 }
-bool ECommentDeleteReason_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ECommentDeleteReason* value);
+inline bool ECommentDeleteReason_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ECommentDeleteReason* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ECommentDeleteReason>(
+    ECommentDeleteReason_descriptor(), name, value);
+}
 // ===================================================================
 
 
@@ -2150,89 +2489,425 @@ bool ECommentDeleteReason_Parse(
 PROTOBUF_NAMESPACE_OPEN
 
 template <> struct is_proto_enum< ::EPublishedFileQueryType> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EPublishedFileQueryType>() {
+  return ::EPublishedFileQueryType_descriptor();
+}
 template <> struct is_proto_enum< ::EPublishedFileInappropriateProvider> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EPublishedFileInappropriateProvider>() {
+  return ::EPublishedFileInappropriateProvider_descriptor();
+}
 template <> struct is_proto_enum< ::EPublishedFileInappropriateResult> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EPublishedFileInappropriateResult>() {
+  return ::EPublishedFileInappropriateResult_descriptor();
+}
 template <> struct is_proto_enum< ::EPersonaStateFlag> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EPersonaStateFlag>() {
+  return ::EPersonaStateFlag_descriptor();
+}
 template <> struct is_proto_enum< ::EContentCheckProvider> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EContentCheckProvider>() {
+  return ::EContentCheckProvider_descriptor();
+}
 template <> struct is_proto_enum< ::EProfileCustomizationType> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EProfileCustomizationType>() {
+  return ::EProfileCustomizationType_descriptor();
+}
 template <> struct is_proto_enum< ::EPublishedFileStorageSystem> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EPublishedFileStorageSystem>() {
+  return ::EPublishedFileStorageSystem_descriptor();
+}
 template <> struct is_proto_enum< ::ECloudStoragePersistState> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ECloudStoragePersistState>() {
+  return ::ECloudStoragePersistState_descriptor();
+}
 template <> struct is_proto_enum< ::ESDCardFormatStage> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ESDCardFormatStage>() {
+  return ::ESDCardFormatStage_descriptor();
+}
 template <> struct is_proto_enum< ::EStorageFormatStage> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EStorageFormatStage>() {
+  return ::EStorageFormatStage_descriptor();
+}
 template <> struct is_proto_enum< ::ESystemFanControlMode> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ESystemFanControlMode>() {
+  return ::ESystemFanControlMode_descriptor();
+}
 template <> struct is_proto_enum< ::EColorGamutLabelSet> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EColorGamutLabelSet>() {
+  return ::EColorGamutLabelSet_descriptor();
+}
 template <> struct is_proto_enum< ::EWindowStackingOrder> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EWindowStackingOrder>() {
+  return ::EWindowStackingOrder_descriptor();
+}
 template <> struct is_proto_enum< ::EBluetoothDeviceType> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EBluetoothDeviceType>() {
+  return ::EBluetoothDeviceType_descriptor();
+}
 template <> struct is_proto_enum< ::ESpeakerConfiguration> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ESpeakerConfiguration>() {
+  return ::ESpeakerConfiguration_descriptor();
+}
 template <> struct is_proto_enum< ::ESystemAudioDirection> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ESystemAudioDirection>() {
+  return ::ESystemAudioDirection_descriptor();
+}
 template <> struct is_proto_enum< ::ESystemAudioChannel> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ESystemAudioChannel>() {
+  return ::ESystemAudioChannel_descriptor();
+}
 template <> struct is_proto_enum< ::ESystemAudioPortType> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ESystemAudioPortType>() {
+  return ::ESystemAudioPortType_descriptor();
+}
 template <> struct is_proto_enum< ::ESystemAudioPortDirection> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ESystemAudioPortDirection>() {
+  return ::ESystemAudioPortDirection_descriptor();
+}
 template <> struct is_proto_enum< ::ESystemServiceState> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ESystemServiceState>() {
+  return ::ESystemServiceState_descriptor();
+}
 template <> struct is_proto_enum< ::EGraphicsPerfOverlayLevel> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EGraphicsPerfOverlayLevel>() {
+  return ::EGraphicsPerfOverlayLevel_descriptor();
+}
 template <> struct is_proto_enum< ::EGPUPerformanceLevel> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EGPUPerformanceLevel>() {
+  return ::EGPUPerformanceLevel_descriptor();
+}
 template <> struct is_proto_enum< ::ESplitScalingFilter> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ESplitScalingFilter>() {
+  return ::ESplitScalingFilter_descriptor();
+}
 template <> struct is_proto_enum< ::ESplitScalingScaler> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ESplitScalingScaler>() {
+  return ::ESplitScalingScaler_descriptor();
+}
 template <> struct is_proto_enum< ::EGamescopeBlurMode> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EGamescopeBlurMode>() {
+  return ::EGamescopeBlurMode_descriptor();
+}
 template <> struct is_proto_enum< ::ESLSHelper> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ESLSHelper>() {
+  return ::ESLSHelper_descriptor();
+}
 template <> struct is_proto_enum< ::EHDRVisualization> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EHDRVisualization>() {
+  return ::EHDRVisualization_descriptor();
+}
 template <> struct is_proto_enum< ::EHDRToneMapOperator> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EHDRToneMapOperator>() {
+  return ::EHDRToneMapOperator_descriptor();
+}
 template <> struct is_proto_enum< ::ECPUGovernor> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ECPUGovernor>() {
+  return ::ECPUGovernor_descriptor();
+}
 template <> struct is_proto_enum< ::EUpdaterType> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EUpdaterType>() {
+  return ::EUpdaterType_descriptor();
+}
 template <> struct is_proto_enum< ::EUpdaterState> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EUpdaterState>() {
+  return ::EUpdaterState_descriptor();
+}
 template <> struct is_proto_enum< ::EStorageBlockContentType> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EStorageBlockContentType>() {
+  return ::EStorageBlockContentType_descriptor();
+}
 template <> struct is_proto_enum< ::EStorageBlockFileSystemType> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EStorageBlockFileSystemType>() {
+  return ::EStorageBlockFileSystemType_descriptor();
+}
 template <> struct is_proto_enum< ::EStorageDriveMediaType> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EStorageDriveMediaType>() {
+  return ::EStorageDriveMediaType_descriptor();
+}
 template <> struct is_proto_enum< ::ESystemDisplayCompatibilityMode> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ESystemDisplayCompatibilityMode>() {
+  return ::ESystemDisplayCompatibilityMode_descriptor();
+}
 template <> struct is_proto_enum< ::ESteamOSCompatibilityCategory> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ESteamOSCompatibilityCategory>() {
+  return ::ESteamOSCompatibilityCategory_descriptor();
+}
 template <> struct is_proto_enum< ::ESteamOSCompatibilityResultDisplayType> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ESteamOSCompatibilityResultDisplayType>() {
+  return ::ESteamOSCompatibilityResultDisplayType_descriptor();
+}
 template <> struct is_proto_enum< ::ESteamDeckCompatibilityCategory> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ESteamDeckCompatibilityCategory>() {
+  return ::ESteamDeckCompatibilityCategory_descriptor();
+}
 template <> struct is_proto_enum< ::ESteamDeckCompatibilityResultDisplayType> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ESteamDeckCompatibilityResultDisplayType>() {
+  return ::ESteamDeckCompatibilityResultDisplayType_descriptor();
+}
 template <> struct is_proto_enum< ::ESteamDeckCompatibilityTestResult> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ESteamDeckCompatibilityTestResult>() {
+  return ::ESteamDeckCompatibilityTestResult_descriptor();
+}
 template <> struct is_proto_enum< ::EACState> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EACState>() {
+  return ::EACState_descriptor();
+}
 template <> struct is_proto_enum< ::EBatteryState> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EBatteryState>() {
+  return ::EBatteryState_descriptor();
+}
 template <> struct is_proto_enum< ::EOSBranch> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EOSBranch>() {
+  return ::EOSBranch_descriptor();
+}
 template <> struct is_proto_enum< ::EBrowserGPUStatus> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EBrowserGPUStatus>() {
+  return ::EBrowserGPUStatus_descriptor();
+}
 template <> struct is_proto_enum< ::EBrowserFeatureStatus> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EBrowserFeatureStatus>() {
+  return ::EBrowserFeatureStatus_descriptor();
+}
 template <> struct is_proto_enum< ::EGpuDriverId> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EGpuDriverId>() {
+  return ::EGpuDriverId_descriptor();
+}
 template <> struct is_proto_enum< ::ECommunityItemClass> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ECommunityItemClass>() {
+  return ::ECommunityItemClass_descriptor();
+}
 template <> struct is_proto_enum< ::ESteamDeckCompatibilityFeedback> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ESteamDeckCompatibilityFeedback>() {
+  return ::ESteamDeckCompatibilityFeedback_descriptor();
+}
 template <> struct is_proto_enum< ::EProvideDeckFeedbackPreference> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EProvideDeckFeedbackPreference>() {
+  return ::EProvideDeckFeedbackPreference_descriptor();
+}
 template <> struct is_proto_enum< ::EHardwareCompatibilityFeedbackDetails> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EHardwareCompatibilityFeedbackDetails>() {
+  return ::EHardwareCompatibilityFeedbackDetails_descriptor();
+}
 template <> struct is_proto_enum< ::EGameFrameRateReportingPreference> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EGameFrameRateReportingPreference>() {
+  return ::EGameFrameRateReportingPreference_descriptor();
+}
 template <> struct is_proto_enum< ::ETouchGesture> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ETouchGesture>() {
+  return ::ETouchGesture_descriptor();
+}
 template <> struct is_proto_enum< ::ESessionPersistence> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ESessionPersistence>() {
+  return ::ESessionPersistence_descriptor();
+}
 template <> struct is_proto_enum< ::ENewSteamAnnouncementState> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ENewSteamAnnouncementState>() {
+  return ::ENewSteamAnnouncementState_descriptor();
+}
 template <> struct is_proto_enum< ::EForumType> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EForumType>() {
+  return ::EForumType_descriptor();
+}
 template <> struct is_proto_enum< ::ECommentThreadType> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ECommentThreadType>() {
+  return ::ECommentThreadType_descriptor();
+}
 template <> struct is_proto_enum< ::EBroadcastPermission> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EBroadcastPermission>() {
+  return ::EBroadcastPermission_descriptor();
+}
 template <> struct is_proto_enum< ::EBroadcastEncoderSetting> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EBroadcastEncoderSetting>() {
+  return ::EBroadcastEncoderSetting_descriptor();
+}
 template <> struct is_proto_enum< ::ECloudGamingPlatform> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ECloudGamingPlatform>() {
+  return ::ECloudGamingPlatform_descriptor();
+}
 template <> struct is_proto_enum< ::ECompromiseDetectionType> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ECompromiseDetectionType>() {
+  return ::ECompromiseDetectionType_descriptor();
+}
 template <> struct is_proto_enum< ::EAsyncGameSessionUserState> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EAsyncGameSessionUserState>() {
+  return ::EAsyncGameSessionUserState_descriptor();
+}
 template <> struct is_proto_enum< ::EAsyncGameSessionUserVisibility> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EAsyncGameSessionUserVisibility>() {
+  return ::EAsyncGameSessionUserVisibility_descriptor();
+}
 template <> struct is_proto_enum< ::EGameRecordingType> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EGameRecordingType>() {
+  return ::EGameRecordingType_descriptor();
+}
 template <> struct is_proto_enum< ::EGRMode> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EGRMode>() {
+  return ::EGRMode_descriptor();
+}
 template <> struct is_proto_enum< ::EExportCodec> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EExportCodec>() {
+  return ::EExportCodec_descriptor();
+}
 template <> struct is_proto_enum< ::EProtoAppType> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EProtoAppType>() {
+  return ::EProtoAppType_descriptor();
+}
 template <> struct is_proto_enum< ::EAppTestType> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EAppTestType>() {
+  return ::EAppTestType_descriptor();
+}
 template <> struct is_proto_enum< ::EChildProcessQueryCommand> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EChildProcessQueryCommand>() {
+  return ::EChildProcessQueryCommand_descriptor();
+}
 template <> struct is_proto_enum< ::EChildProcessQueryExitCode> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EChildProcessQueryExitCode>() {
+  return ::EChildProcessQueryExitCode_descriptor();
+}
 template <> struct is_proto_enum< ::EWindowsUpdateInstallationImpact> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EWindowsUpdateInstallationImpact>() {
+  return ::EWindowsUpdateInstallationImpact_descriptor();
+}
 template <> struct is_proto_enum< ::EWindowsUpdateRebootBehavior> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EWindowsUpdateRebootBehavior>() {
+  return ::EWindowsUpdateRebootBehavior_descriptor();
+}
 template <> struct is_proto_enum< ::EExternalSaleEventType> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EExternalSaleEventType>() {
+  return ::EExternalSaleEventType_descriptor();
+}
 template <> struct is_proto_enum< ::EEnhancedMarketAppearanceStatus> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EEnhancedMarketAppearanceStatus>() {
+  return ::EEnhancedMarketAppearanceStatus_descriptor();
+}
 template <> struct is_proto_enum< ::EContentReportSubjectType> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EContentReportSubjectType>() {
+  return ::EContentReportSubjectType_descriptor();
+}
 template <> struct is_proto_enum< ::EControlledLegalCategoryStatus> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EControlledLegalCategoryStatus>() {
+  return ::EControlledLegalCategoryStatus_descriptor();
+}
 template <> struct is_proto_enum< ::EContentModeratorLevel> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EContentModeratorLevel>() {
+  return ::EContentModeratorLevel_descriptor();
+}
 template <> struct is_proto_enum< ::EContentReportResolution> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EContentReportResolution>() {
+  return ::EContentReportResolution_descriptor();
+}
 template <> struct is_proto_enum< ::EContentModerationSanction> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EContentModerationSanction>() {
+  return ::EContentModerationSanction_descriptor();
+}
 template <> struct is_proto_enum< ::EContentReportSubjectAction> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EContentReportSubjectAction>() {
+  return ::EContentReportSubjectAction_descriptor();
+}
 template <> struct is_proto_enum< ::EContentReportReason> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EContentReportReason>() {
+  return ::EContentReportReason_descriptor();
+}
 template <> struct is_proto_enum< ::EResolutionAutomation> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EResolutionAutomation>() {
+  return ::EResolutionAutomation_descriptor();
+}
 template <> struct is_proto_enum< ::EPressOutletAction> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EPressOutletAction>() {
+  return ::EPressOutletAction_descriptor();
+}
 template <> struct is_proto_enum< ::EPressOutletMemberPendingState> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EPressOutletMemberPendingState>() {
+  return ::EPressOutletMemberPendingState_descriptor();
+}
 template <> struct is_proto_enum< ::ECommentDeleteReason> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ECommentDeleteReason>() {
+  return ::ECommentDeleteReason_descriptor();
+}
 
 PROTOBUF_NAMESPACE_CLOSE
 

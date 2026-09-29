@@ -26,9 +26,11 @@
 #include <google/protobuf/generated_message_table_driven.h>
 #include <google/protobuf/generated_message_util.h>
 #include <google/protobuf/metadata_lite.h>
-#include <google/protobuf/message_lite.h>
+#include <google/protobuf/generated_message_reflection.h>
+#include <google/protobuf/message.h>
 #include <google/protobuf/repeated_field.h>  // IWYU pragma: export
 #include <google/protobuf/extension_set.h>  // IWYU pragma: export
+#include <google/protobuf/unknown_field_set.h>
 // @@protoc_insertion_point(includes)
 #include <google/protobuf/port_def.inc>
 #define PROTOBUF_INTERNAL_EXPORT_encrypted_5fapp_5fticket_2eproto
@@ -50,6 +52,8 @@ struct TableStruct_encrypted_5fapp_5fticket_2eproto {
   static const ::PROTOBUF_NAMESPACE_ID::internal::SerializationTable serialization_table[];
   static const ::PROTOBUF_NAMESPACE_ID::uint32 offsets[];
 };
+extern const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable descriptor_table_encrypted_5fapp_5fticket_2eproto;
+::PROTOBUF_NAMESPACE_ID::Metadata descriptor_table_encrypted_5fapp_5fticket_2eproto_metadata_getter(int index);
 class EncryptedAppTicket;
 struct EncryptedAppTicketDefaultTypeInternal;
 extern EncryptedAppTicketDefaultTypeInternal _EncryptedAppTicket_default_instance_;
@@ -60,7 +64,7 @@ PROTOBUF_NAMESPACE_CLOSE
 // ===================================================================
 
 class EncryptedAppTicket PROTOBUF_FINAL :
-    public ::PROTOBUF_NAMESPACE_ID::MessageLite /* @@protoc_insertion_point(class_definition:EncryptedAppTicket) */ {
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:EncryptedAppTicket) */ {
  public:
   inline EncryptedAppTicket() : EncryptedAppTicket(nullptr) {}
   virtual ~EncryptedAppTicket();
@@ -85,13 +89,22 @@ class EncryptedAppTicket PROTOBUF_FINAL :
     return *this;
   }
 
-  inline const std::string& unknown_fields() const {
-    return _internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString);
+  inline const ::PROTOBUF_NAMESPACE_ID::UnknownFieldSet& unknown_fields() const {
+    return _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance);
   }
-  inline std::string* mutable_unknown_fields() {
-    return _internal_metadata_.mutable_unknown_fields<std::string>();
+  inline ::PROTOBUF_NAMESPACE_ID::UnknownFieldSet* mutable_unknown_fields() {
+    return _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
   }
 
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return GetMetadataStatic().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return GetMetadataStatic().reflection;
+  }
   static const EncryptedAppTicket& default_instance() {
     return *internal_default_instance();
   }
@@ -128,8 +141,8 @@ class EncryptedAppTicket PROTOBUF_FINAL :
   EncryptedAppTicket* New(::PROTOBUF_NAMESPACE_ID::Arena* arena) const final {
     return CreateMaybeMessage<EncryptedAppTicket>(arena);
   }
-  void CheckTypeAndMergeFrom(const ::PROTOBUF_NAMESPACE_ID::MessageLite& from)
-    final;
+  void CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) final;
+  void MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) final;
   void CopyFrom(const EncryptedAppTicket& from);
   void MergeFrom(const EncryptedAppTicket& from);
   PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
@@ -139,13 +152,12 @@ class EncryptedAppTicket PROTOBUF_FINAL :
   const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
   ::PROTOBUF_NAMESPACE_ID::uint8* _InternalSerialize(
       ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
-  void DiscardUnknownFields();
   int GetCachedSize() const final { return _cached_size_.Get(); }
 
   private:
   inline void SharedCtor();
   inline void SharedDtor();
-  void SetCachedSize(int size) const;
+  void SetCachedSize(int size) const final;
   void InternalSwap(EncryptedAppTicket* other);
   friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
   static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
@@ -158,7 +170,13 @@ class EncryptedAppTicket PROTOBUF_FINAL :
   inline void RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena* arena);
   public:
 
-  std::string GetTypeName() const final;
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+  private:
+  static ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadataStatic() {
+    return ::descriptor_table_encrypted_5fapp_5fticket_2eproto_metadata_getter(kIndexInFileMessages);
+  }
+
+  public:
 
   // nested types ----------------------------------------------------
 

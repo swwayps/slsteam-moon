@@ -26,9 +26,10 @@
 #include <google/protobuf/generated_message_table_driven.h>
 #include <google/protobuf/generated_message_util.h>
 #include <google/protobuf/metadata_lite.h>
+#include <google/protobuf/generated_message_reflection.h>
 #include <google/protobuf/repeated_field.h>  // IWYU pragma: export
 #include <google/protobuf/extension_set.h>  // IWYU pragma: export
-#include <google/protobuf/generated_enum_util.h>
+#include <google/protobuf/generated_enum_reflection.h>
 // @@protoc_insertion_point(includes)
 #include <google/protobuf/port_def.inc>
 #define PROTOBUF_INTERNAL_EXPORT_enums_5fclientserver_2eproto
@@ -50,6 +51,8 @@ struct TableStruct_enums_5fclientserver_2eproto {
   static const ::PROTOBUF_NAMESPACE_ID::internal::SerializationTable serialization_table[];
   static const ::PROTOBUF_NAMESPACE_ID::uint32 offsets[];
 };
+extern const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable descriptor_table_enums_5fclientserver_2eproto;
+::PROTOBUF_NAMESPACE_ID::Metadata descriptor_table_enums_5fclientserver_2eproto_metadata_getter(int index);
 PROTOBUF_NAMESPACE_OPEN
 PROTOBUF_NAMESPACE_CLOSE
 
@@ -1496,16 +1499,20 @@ constexpr EMsg EMsg_MIN = k_EMsgInvalid;
 constexpr EMsg EMsg_MAX = k_EMsgClientPendingGameLaunchResponse;
 constexpr int EMsg_ARRAYSIZE = EMsg_MAX + 1;
 
-const std::string& EMsg_Name(EMsg value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EMsg_descriptor();
 template<typename T>
 inline const std::string& EMsg_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EMsg>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EMsg_Name.");
-  return EMsg_Name(static_cast<EMsg>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EMsg_descriptor(), enum_t_value);
 }
-bool EMsg_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EMsg* value);
+inline bool EMsg_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EMsg* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EMsg>(
+    EMsg_descriptor(), name, value);
+}
 enum EClientPersonaStateFlag : int {
   k_EClientPersonaStateFlagStatus = 1,
   k_EClientPersonaStateFlagPlayerName = 2,
@@ -1526,16 +1533,20 @@ constexpr EClientPersonaStateFlag EClientPersonaStateFlag_MIN = k_EClientPersona
 constexpr EClientPersonaStateFlag EClientPersonaStateFlag_MAX = k_EClientPersonaStateFlagWatching;
 constexpr int EClientPersonaStateFlag_ARRAYSIZE = EClientPersonaStateFlag_MAX + 1;
 
-const std::string& EClientPersonaStateFlag_Name(EClientPersonaStateFlag value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EClientPersonaStateFlag_descriptor();
 template<typename T>
 inline const std::string& EClientPersonaStateFlag_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EClientPersonaStateFlag>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EClientPersonaStateFlag_Name.");
-  return EClientPersonaStateFlag_Name(static_cast<EClientPersonaStateFlag>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EClientPersonaStateFlag_descriptor(), enum_t_value);
 }
-bool EClientPersonaStateFlag_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EClientPersonaStateFlag* value);
+inline bool EClientPersonaStateFlag_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EClientPersonaStateFlag* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EClientPersonaStateFlag>(
+    EClientPersonaStateFlag_descriptor(), name, value);
+}
 enum EMsgClanAccountFlags : int {
   k_EMsgClanAccountFlagPublic = 1,
   k_EMsgClanAccountFlagLarge = 2,
@@ -1548,16 +1559,20 @@ constexpr EMsgClanAccountFlags EMsgClanAccountFlags_MIN = k_EMsgClanAccountFlagP
 constexpr EMsgClanAccountFlags EMsgClanAccountFlags_MAX = k_EMsgClanAccountFlagOGG;
 constexpr int EMsgClanAccountFlags_ARRAYSIZE = EMsgClanAccountFlags_MAX + 1;
 
-const std::string& EMsgClanAccountFlags_Name(EMsgClanAccountFlags value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EMsgClanAccountFlags_descriptor();
 template<typename T>
 inline const std::string& EMsgClanAccountFlags_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EMsgClanAccountFlags>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EMsgClanAccountFlags_Name.");
-  return EMsgClanAccountFlags_Name(static_cast<EMsgClanAccountFlags>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EMsgClanAccountFlags_descriptor(), enum_t_value);
 }
-bool EMsgClanAccountFlags_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EMsgClanAccountFlags* value);
+inline bool EMsgClanAccountFlags_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EMsgClanAccountFlags* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EMsgClanAccountFlags>(
+    EMsgClanAccountFlags_descriptor(), name, value);
+}
 enum ESteamReviewScore : int {
   k_ESteamReviewScore_OverwhelminglyPositive = 9,
   k_ESteamReviewScore_VeryPositive = 8,
@@ -1575,16 +1590,20 @@ constexpr ESteamReviewScore ESteamReviewScore_MIN = k_ESteamReviewScore_None;
 constexpr ESteamReviewScore ESteamReviewScore_MAX = k_ESteamReviewScore_OverwhelminglyPositive;
 constexpr int ESteamReviewScore_ARRAYSIZE = ESteamReviewScore_MAX + 1;
 
-const std::string& ESteamReviewScore_Name(ESteamReviewScore value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESteamReviewScore_descriptor();
 template<typename T>
 inline const std::string& ESteamReviewScore_Name(T enum_t_value) {
   static_assert(::std::is_same<T, ESteamReviewScore>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function ESteamReviewScore_Name.");
-  return ESteamReviewScore_Name(static_cast<ESteamReviewScore>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ESteamReviewScore_descriptor(), enum_t_value);
 }
-bool ESteamReviewScore_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESteamReviewScore* value);
+inline bool ESteamReviewScore_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESteamReviewScore* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ESteamReviewScore>(
+    ESteamReviewScore_descriptor(), name, value);
+}
 enum ECodecUsagePlatform : int {
   k_ECodecUsagePlatformUnknown = 0,
   k_ECodecUsagePlatformWindows = 1,
@@ -1597,16 +1616,20 @@ constexpr ECodecUsagePlatform ECodecUsagePlatform_MIN = k_ECodecUsagePlatformUnk
 constexpr ECodecUsagePlatform ECodecUsagePlatform_MAX = k_ECodecUsagePlatformSteamHardware;
 constexpr int ECodecUsagePlatform_ARRAYSIZE = ECodecUsagePlatform_MAX + 1;
 
-const std::string& ECodecUsagePlatform_Name(ECodecUsagePlatform value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ECodecUsagePlatform_descriptor();
 template<typename T>
 inline const std::string& ECodecUsagePlatform_Name(T enum_t_value) {
   static_assert(::std::is_same<T, ECodecUsagePlatform>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function ECodecUsagePlatform_Name.");
-  return ECodecUsagePlatform_Name(static_cast<ECodecUsagePlatform>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ECodecUsagePlatform_descriptor(), enum_t_value);
 }
-bool ECodecUsagePlatform_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ECodecUsagePlatform* value);
+inline bool ECodecUsagePlatform_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ECodecUsagePlatform* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ECodecUsagePlatform>(
+    ECodecUsagePlatform_descriptor(), name, value);
+}
 enum ECodecUsageReason : int {
   k_ECodecUsageReasonUnknown = 0,
   k_ECodecUsageReasonRemotePlay = 1,
@@ -1619,16 +1642,20 @@ constexpr ECodecUsageReason ECodecUsageReason_MIN = k_ECodecUsageReasonUnknown;
 constexpr ECodecUsageReason ECodecUsageReason_MAX = k_ECodecUsageReasonGameRecording;
 constexpr int ECodecUsageReason_ARRAYSIZE = ECodecUsageReason_MAX + 1;
 
-const std::string& ECodecUsageReason_Name(ECodecUsageReason value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ECodecUsageReason_descriptor();
 template<typename T>
 inline const std::string& ECodecUsageReason_Name(T enum_t_value) {
   static_assert(::std::is_same<T, ECodecUsageReason>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function ECodecUsageReason_Name.");
-  return ECodecUsageReason_Name(static_cast<ECodecUsageReason>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ECodecUsageReason_descriptor(), enum_t_value);
 }
-bool ECodecUsageReason_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ECodecUsageReason* value);
+inline bool ECodecUsageReason_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ECodecUsageReason* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ECodecUsageReason>(
+    ECodecUsageReason_descriptor(), name, value);
+}
 // ===================================================================
 
 
@@ -1651,11 +1678,35 @@ bool ECodecUsageReason_Parse(
 PROTOBUF_NAMESPACE_OPEN
 
 template <> struct is_proto_enum< ::EMsg> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EMsg>() {
+  return ::EMsg_descriptor();
+}
 template <> struct is_proto_enum< ::EClientPersonaStateFlag> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EClientPersonaStateFlag>() {
+  return ::EClientPersonaStateFlag_descriptor();
+}
 template <> struct is_proto_enum< ::EMsgClanAccountFlags> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EMsgClanAccountFlags>() {
+  return ::EMsgClanAccountFlags_descriptor();
+}
 template <> struct is_proto_enum< ::ESteamReviewScore> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ESteamReviewScore>() {
+  return ::ESteamReviewScore_descriptor();
+}
 template <> struct is_proto_enum< ::ECodecUsagePlatform> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ECodecUsagePlatform>() {
+  return ::ECodecUsagePlatform_descriptor();
+}
 template <> struct is_proto_enum< ::ECodecUsageReason> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ECodecUsageReason>() {
+  return ::ECodecUsageReason_descriptor();
+}
 
 PROTOBUF_NAMESPACE_CLOSE
 

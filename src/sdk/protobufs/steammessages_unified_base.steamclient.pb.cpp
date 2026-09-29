@@ -8,7 +8,10 @@
 #include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/extension_set.h>
 #include <google/protobuf/wire_format_lite.h>
-#include <google/protobuf/io/zero_copy_stream_impl_lite.h>
+#include <google/protobuf/descriptor.h>
+#include <google/protobuf/generated_message_reflection.h>
+#include <google/protobuf/reflection_ops.h>
+#include <google/protobuf/wire_format.h>
 // @@protoc_insertion_point(includes)
 #include <google/protobuf/port_def.inc>
 
@@ -24,6 +27,57 @@ struct NoResponseDefaultTypeInternal {
   };
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT NoResponseDefaultTypeInternal _NoResponse_default_instance_;
+static ::PROTOBUF_NAMESPACE_ID::Metadata file_level_metadata_steammessages_5funified_5fbase_2esteamclient_2eproto[1];
+static const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* file_level_enum_descriptors_steammessages_5funified_5fbase_2esteamclient_2eproto[2];
+static constexpr ::PROTOBUF_NAMESPACE_ID::ServiceDescriptor const** file_level_service_descriptors_steammessages_5funified_5fbase_2esteamclient_2eproto = nullptr;
+
+const ::PROTOBUF_NAMESPACE_ID::uint32 TableStruct_steammessages_5funified_5fbase_2esteamclient_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::NoResponse, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+};
+static const ::PROTOBUF_NAMESPACE_ID::internal::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
+  { 0, -1, sizeof(::NoResponse)},
+};
+
+static ::PROTOBUF_NAMESPACE_ID::Message const * const file_default_instances[] = {
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::_NoResponse_default_instance_),
+};
+
+const char descriptor_table_protodef_steammessages_5funified_5fbase_2esteamclient_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
+  "\n,steammessages_unified_base.steamclient"
+  ".proto\032 google/protobuf/descriptor.proto"
+  "\"\014\n\nNoResponse*]\n\023EProtoExecutionSite\022 \n"
+  "\034k_EProtoExecutionSiteUnknown\020\000\022$\n k_EPr"
+  "otoExecutionSiteSteamClient\020\002*e\n\021EProtoS"
+  "erviceType\022$\n k_EProtoServiceTypeSteamMe"
+  "ssages\020\000\022*\n&k_EProtoServiceTypeVRGamepad"
+  "UIMessages\020\001"
+  ;
+static const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable*const descriptor_table_steammessages_5funified_5fbase_2esteamclient_2eproto_deps[1] = {
+  &::descriptor_table_google_2fprotobuf_2fdescriptor_2eproto,
+};
+static ::PROTOBUF_NAMESPACE_ID::internal::once_flag descriptor_table_steammessages_5funified_5fbase_2esteamclient_2eproto_once;
+const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable descriptor_table_steammessages_5funified_5fbase_2esteamclient_2eproto = {
+  false, false, 292, descriptor_table_protodef_steammessages_5funified_5fbase_2esteamclient_2eproto, "steammessages_unified_base.steamclient.proto", 
+  &descriptor_table_steammessages_5funified_5fbase_2esteamclient_2eproto_once, descriptor_table_steammessages_5funified_5fbase_2esteamclient_2eproto_deps, 1, 1,
+  schemas, file_default_instances, TableStruct_steammessages_5funified_5fbase_2esteamclient_2eproto::offsets,
+  file_level_metadata_steammessages_5funified_5fbase_2esteamclient_2eproto, file_level_enum_descriptors_steammessages_5funified_5fbase_2esteamclient_2eproto, file_level_service_descriptors_steammessages_5funified_5fbase_2esteamclient_2eproto,
+};
+PROTOBUF_ATTRIBUTE_WEAK ::PROTOBUF_NAMESPACE_ID::Metadata
+descriptor_table_steammessages_5funified_5fbase_2esteamclient_2eproto_metadata_getter(int index) {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_steammessages_5funified_5fbase_2esteamclient_2eproto);
+  return descriptor_table_steammessages_5funified_5fbase_2esteamclient_2eproto.file_level_metadata[index];
+}
+
+// Force running AddDescriptors() at dynamic initialization time.
+PROTOBUF_ATTRIBUTE_INIT_PRIORITY static ::PROTOBUF_NAMESPACE_ID::internal::AddDescriptorsRunner dynamic_init_dummy_steammessages_5funified_5fbase_2esteamclient_2eproto(&descriptor_table_steammessages_5funified_5fbase_2esteamclient_2eproto);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EProtoExecutionSite_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_steammessages_5funified_5fbase_2esteamclient_2eproto);
+  return file_level_enum_descriptors_steammessages_5funified_5fbase_2esteamclient_2eproto[0];
+}
 bool EProtoExecutionSite_IsValid(int value) {
   switch (value) {
     case 0:
@@ -34,46 +88,9 @@ bool EProtoExecutionSite_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EProtoExecutionSite_strings[2] = {};
-
-static const char EProtoExecutionSite_names[] =
-  "k_EProtoExecutionSiteSteamClient"
-  "k_EProtoExecutionSiteUnknown";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EProtoExecutionSite_entries[] = {
-  { {EProtoExecutionSite_names + 0, 32}, 2 },
-  { {EProtoExecutionSite_names + 32, 28}, 0 },
-};
-
-static const int EProtoExecutionSite_entries_by_number[] = {
-  1, // 0 -> k_EProtoExecutionSiteUnknown
-  0, // 2 -> k_EProtoExecutionSiteSteamClient
-};
-
-const std::string& EProtoExecutionSite_Name(
-    EProtoExecutionSite value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EProtoExecutionSite_entries,
-          EProtoExecutionSite_entries_by_number,
-          2, EProtoExecutionSite_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EProtoExecutionSite_entries,
-      EProtoExecutionSite_entries_by_number,
-      2, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EProtoExecutionSite_strings[idx].get();
-}
-bool EProtoExecutionSite_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EProtoExecutionSite* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EProtoExecutionSite_entries, 2, name, &int_value);
-  if (success) {
-    *value = static_cast<EProtoExecutionSite>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EProtoServiceType_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_steammessages_5funified_5fbase_2esteamclient_2eproto);
+  return file_level_enum_descriptors_steammessages_5funified_5fbase_2esteamclient_2eproto[1];
 }
 bool EProtoServiceType_IsValid(int value) {
   switch (value) {
@@ -85,47 +102,6 @@ bool EProtoServiceType_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EProtoServiceType_strings[2] = {};
-
-static const char EProtoServiceType_names[] =
-  "k_EProtoServiceTypeSteamMessages"
-  "k_EProtoServiceTypeVRGamepadUIMessages";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EProtoServiceType_entries[] = {
-  { {EProtoServiceType_names + 0, 32}, 0 },
-  { {EProtoServiceType_names + 32, 38}, 1 },
-};
-
-static const int EProtoServiceType_entries_by_number[] = {
-  0, // 0 -> k_EProtoServiceTypeSteamMessages
-  1, // 1 -> k_EProtoServiceTypeVRGamepadUIMessages
-};
-
-const std::string& EProtoServiceType_Name(
-    EProtoServiceType value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EProtoServiceType_entries,
-          EProtoServiceType_entries_by_number,
-          2, EProtoServiceType_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EProtoServiceType_entries,
-      EProtoServiceType_entries_by_number,
-      2, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EProtoServiceType_strings[idx].get();
-}
-bool EProtoServiceType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EProtoServiceType* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EProtoServiceType_entries, 2, name, &int_value);
-  if (success) {
-    *value = static_cast<EProtoServiceType>(int_value);
-  }
-  return success;
-}
 
 // ===================================================================
 
@@ -134,14 +110,14 @@ class NoResponse::_Internal {
 };
 
 NoResponse::NoResponse(::PROTOBUF_NAMESPACE_ID::Arena* arena)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(arena) {
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
   SharedCtor();
   RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:NoResponse)
 }
 NoResponse::NoResponse(const NoResponse& from)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite() {
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   // @@protoc_insertion_point(copy_constructor:NoResponse)
 }
 
@@ -151,7 +127,7 @@ void NoResponse::SharedCtor() {
 NoResponse::~NoResponse() {
   // @@protoc_insertion_point(destructor:NoResponse)
   SharedDtor();
-  _internal_metadata_.Delete<std::string>();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 void NoResponse::SharedDtor() {
@@ -174,7 +150,7 @@ void NoResponse::Clear() {
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  _internal_metadata_.Clear<std::string>();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 const char* NoResponse::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
@@ -188,7 +164,7 @@ const char* NoResponse::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID:
           goto success;
         }
         ptr = UnknownFieldParse(tag,
-            _internal_metadata_.mutable_unknown_fields<std::string>(),
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
             ptr, ctx);
         CHK_(ptr != nullptr);
         continue;
@@ -208,8 +184,8 @@ failure:
   (void) cached_has_bits;
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = stream->WriteRaw(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).data(),
-        static_cast<int>(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size()), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:NoResponse)
   return target;
@@ -224,26 +200,43 @@ size_t NoResponse::ByteSizeLong() const {
   (void) cached_has_bits;
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    total_size += _internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size();
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
   }
   int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
   SetCachedSize(cached_size);
   return total_size;
 }
 
-void NoResponse::CheckTypeAndMergeFrom(
-    const ::PROTOBUF_NAMESPACE_ID::MessageLite& from) {
-  MergeFrom(*::PROTOBUF_NAMESPACE_ID::internal::DownCast<const NoResponse*>(
-      &from));
+void NoResponse::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:NoResponse)
+  GOOGLE_DCHECK_NE(&from, this);
+  const NoResponse* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<NoResponse>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:NoResponse)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:NoResponse)
+    MergeFrom(*source);
+  }
 }
 
 void NoResponse::MergeFrom(const NoResponse& from) {
 // @@protoc_insertion_point(class_specific_merge_from_start:NoResponse)
   GOOGLE_DCHECK_NE(&from, this);
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
+}
+
+void NoResponse::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:NoResponse)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
 }
 
 void NoResponse::CopyFrom(const NoResponse& from) {
@@ -259,11 +252,11 @@ bool NoResponse::IsInitialized() const {
 
 void NoResponse::InternalSwap(NoResponse* other) {
   using std::swap;
-  _internal_metadata_.Swap<std::string>(&other->_internal_metadata_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
 }
 
-std::string NoResponse::GetTypeName() const {
-  return "NoResponse";
+::PROTOBUF_NAMESPACE_ID::Metadata NoResponse::GetMetadata() const {
+  return GetMetadataStatic();
 }
 
 

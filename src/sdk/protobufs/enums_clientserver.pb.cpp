@@ -8,10 +8,1371 @@
 #include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/extension_set.h>
 #include <google/protobuf/wire_format_lite.h>
+#include <google/protobuf/descriptor.h>
+#include <google/protobuf/generated_message_reflection.h>
+#include <google/protobuf/reflection_ops.h>
+#include <google/protobuf/wire_format.h>
 // @@protoc_insertion_point(includes)
 #include <google/protobuf/port_def.inc>
 
 PROTOBUF_PRAGMA_INIT_SEG
+static constexpr ::PROTOBUF_NAMESPACE_ID::Metadata* file_level_metadata_enums_5fclientserver_2eproto = nullptr;
+static const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* file_level_enum_descriptors_enums_5fclientserver_2eproto[6];
+static constexpr ::PROTOBUF_NAMESPACE_ID::ServiceDescriptor const** file_level_service_descriptors_enums_5fclientserver_2eproto = nullptr;
+const ::PROTOBUF_NAMESPACE_ID::uint32 TableStruct_enums_5fclientserver_2eproto::offsets[1] = {};
+static constexpr ::PROTOBUF_NAMESPACE_ID::internal::MigrationSchema* schemas = nullptr;
+static constexpr ::PROTOBUF_NAMESPACE_ID::Message* const* file_default_instances = nullptr;
+
+const char descriptor_table_protodef_enums_5fclientserver_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
+  "\n\030enums_clientserver.proto*\342\222\003\n\004EMsg\022\021\n\r"
+  "k_EMsgInvalid\020\000\022\017\n\013k_EMsgMulti\020\001\022\031\n\025k_EM"
+  "sgProtobufWrapped\020\002\022\025\n\021k_EMsgBaseGeneral"
+  "\020d\022\026\n\022k_EMsgGenericReply\020d\022\027\n\023k_EMsgDest"
+  "JobFailed\020q\022\017\n\013k_EMsgAlert\020s\022\025\n\021k_EMsgSC"
+  "IDRequest\020x\022\026\n\022k_EMsgSCIDResponse\020y\022\026\n\022k"
+  "_EMsgJobHeartbeat\020{\022\024\n\020k_EMsgHubConnect\020"
+  "|\022\023\n\017k_EMsgSubscribe\020~\022\024\n\020k_EMRouteMessa"
+  "ge\020\177\022\024\n\017k_EMsgWGRequest\020\202\001\022\025\n\020k_EMsgWGRe"
+  "sponse\020\203\001\022\024\n\017k_EMsgKeepAlive\020\204\001\022\033\n\026k_EMs"
+  "gWebAPIJobRequest\020\205\001\022\034\n\027k_EMsgWebAPIJobR"
+  "esponse\020\206\001\022\035\n\030k_EMsgClientSessionStart\020\207"
+  "\001\022\033\n\026k_EMsgClientSessionEnd\020\210\001\022\036\n\031k_EMsg"
+  "ClientSessionUpdate\020\211\001\022\032\n\025k_EMsgStatsDep"
+  "recated\020\212\001\022\017\n\nk_EMsgPing\020\213\001\022\027\n\022k_EMsgPin"
+  "gResponse\020\214\001\022\020\n\013k_EMsgStats\020\215\001\022 \n\033k_EMsg"
+  "RequestFullStatsBlock\020\216\001\022\033\n\026k_EMsgLoadDB"
+  "OCacheItem\020\217\001\022#\n\036k_EMsgLoadDBOCacheItemR"
+  "esponse\020\220\001\022\"\n\035k_EMsgInvalidateDBOCacheIt"
+  "ems\020\221\001\022\030\n\023k_EMsgServiceMethod\020\222\001\022 \n\033k_EM"
+  "sgServiceMethodResponse\020\223\001\022 \n\033k_EMsgClie"
+  "ntPackageVersions\020\224\001\022\033\n\026k_EMsgTimestampR"
+  "equest\020\225\001\022\034\n\027k_EMsgTimestampResponse\020\226\001\022"
+  "&\n!k_EMsgServiceMethodCallFromClient\020\227\001\022"
+  "$\n\037k_EMsgServiceMethodSendToClient\020\230\001\022\024\n"
+  "\017k_EMsgBaseShell\020\310\001\022\026\n\021k_EMsgAssignSysID"
+  "\020\310\001\022\017\n\nk_EMsgExit\020\311\001\022\025\n\020k_EMsgDirRequest"
+  "\020\312\001\022\026\n\021k_EMsgDirResponse\020\313\001\022\025\n\020k_EMsgZip"
+  "Request\020\314\001\022\026\n\021k_EMsgZipResponse\020\315\001\022\037\n\032k_"
+  "EMsgUpdateRecordResponse\020\327\001\022\"\n\035k_EMsgUpd"
+  "ateCreditCardRequest\020\335\001\022 \n\033k_EMsgUpdateU"
+  "serBanResponse\020\341\001\022\030\n\023k_EMsgPrepareToExit"
+  "\020\342\001\022#\n\036k_EMsgContentDescriptionUpdate\020\343\001"
+  "\022\032\n\025k_EMsgTestResetServer\020\344\001\022\032\n\025k_EMsgUn"
+  "iverseChanged\020\345\001\022 \n\033k_EMsgShellConfigInf"
+  "oUpdate\020\346\001\022(\n#k_EMsgRequestWindowsEventL"
+  "ogEntries\020\351\001\022(\n#k_EMsgProvideWindowsEven"
+  "tLogEntries\020\352\001\022\032\n\025k_EMsgShellSearchLogs\020"
+  "\353\001\022\"\n\035k_EMsgShellSearchLogsResponse\020\354\001\022#"
+  "\n\036k_EMsgShellCheckWindowsUpdates\020\355\001\022+\n&k"
+  "_EMsgShellCheckWindowsUpdatesResponse\020\356\001"
+  "\022\036\n\031k_EMsgTestFlushDelayedSQL\020\360\001\022&\n!k_EM"
+  "sgTestFlushDelayedSQLResponse\020\361\001\022*\n%k_EM"
+  "sgEnsureExecuteScheduledTask_TEST\020\362\001\0222\n-"
+  "k_EMsgEnsureExecuteScheduledTaskResponse"
+  "_TEST\020\363\001\022.\n)k_EMsgUpdateScheduledTaskEna"
+  "bleState_TEST\020\364\001\0226\n1k_EMsgUpdateSchedule"
+  "dTaskEnableStateResponse_TEST\020\365\001\022(\n#k_EM"
+  "sgContentDescriptionDeltaUpdate\020\366\001\022)\n$k_"
+  "EMsgGMShellAndServerAddressUpdates\020\367\001\022!\n"
+  "\034k_EMsgGMDynamicRoutingUpdate\020\370\001\022)\n$k_EM"
+  "sgEnsureBillingConfigReload_TEST\020\371\001\0221\n,k"
+  "_EMsgEnsureBillingConfigReloadResponse_T"
+  "EST\020\372\001\022\021\n\014k_EMsgBaseGM\020\254\002\022\024\n\017k_EMsgHeart"
+  "beat\020\254\002\022\026\n\021k_EMsgShellFailed\020\255\002\022\025\n\020k_EMs"
+  "gExitShells\020\263\002\022\024\n\017k_EMsgExitShell\020\264\002\022\034\n\027"
+  "k_EMsgGracefulExitShell\020\265\002\022$\n\037k_EMsgLice"
+  "nseProcessingComplete\020\274\002\022\026\n\021k_EMsgSetTes"
+  "tFlag\020\275\002\022\037\n\032k_EMsgQueuedEmailsComplete\020\276"
+  "\002\022\024\n\017k_EMsgGMDRMSync\020\300\002\022\037\n\032k_EMsgPhysica"
+  "lBoxInventory\020\301\002\022\033\n\026k_EMsgUpdateConfigFi"
+  "le\020\302\002\022\025\n\020k_EMsgTestInitDB\020\303\002\022\035\n\030k_EMsgGM"
+  "WriteConfigToSQL\020\304\002\022 \n\033k_EMsgGMLoadActiv"
+  "ationCodes\020\305\002\022\030\n\023k_EMsgGMQueueForFBS\020\306\002\022"
+  "$\n\037k_EMsgGMSchemaConversionResults\020\307\002\022#\n"
+  "\036k_EMsgGMWriteShellFailureToSQL\020\311\002\022$\n\037k_"
+  "EMsgGMGetServiceMethodRouting\020\313\002\022,\n\'k_EM"
+  "sgGMGetServiceMethodRoutingResponse\020\314\002\022*"
+  "\n%k_EMsgGMTestNextBuildSchemaConversion\020"
+  "\316\002\0222\n-k_EMsgGMTestNextBuildSchemaConvers"
+  "ionResponse\020\317\002\022\035\n\030k_EMsgExpectShellResta"
+  "rt\020\320\002\022\031\n\024k_EMsgHotFixProgress\020\321\002\022+\n&k_EM"
+  "sgGMStatsForwardToAdminConnections\020\322\002\022\037\n"
+  "\032k_EMsgGMGetModifiedConVars\020\323\002\022\'\n\"k_EMsg"
+  "GMGetModifiedConVarsResponse\020\324\002\022(\n#k_EMs"
+  "gGMNeedShellAndServerAddresses\020\325\002\022\022\n\rk_E"
+  "MsgBaseAIS\020\220\003\022\'\n\"k_EMsgAISRequestContent"
+  "Description\020\222\003\022$\n\037k_EMsgAISGetPackageCha"
+  "ngeNumber\020\225\003\022,\n\'k_EMsgAISGetPackageChang"
+  "eNumberResponse\020\226\003\022\032\n\025k_EMsgAIGetAppGCFl"
+  "ags\020\247\003\022\"\n\035k_EMsgAIGetAppGCFlagsResponse\020"
+  "\250\003\022\027\n\022k_EMsgAIGetAppList\020\251\003\022\037\n\032k_EMsgAIG"
+  "etAppListResponse\020\252\003\0221\n,k_EMsgAISUpdateS"
+  "ubordinateContentDescription\020\257\003\0229\n4k_EMs"
+  "gAISUpdateSubordinateContentDescriptionR"
+  "esponse\020\260\003\0224\n/k_EMsgAISBroadcastSubordin"
+  "ateContentDescription\020\262\003\022)\n$k_EMsgProduc"
+  "tInfoChangedNotification\020\263\003\022!\n\034k_EMsgPro"
+  "ductInfoCacheStatus\020\264\003\022\021\n\014k_EMsgBaseAM\020\364"
+  "\003\022!\n\034k_EMsgAMUpdateUserBanRequest\020\370\003\022\027\n\022"
+  "k_EMsgAMAddLicense\020\371\003\022\037\n\032k_EMsgAMSendSys"
+  "temIMToUser\020\374\003\022\032\n\025k_EMsgAMExtendLicense\020"
+  "\375\003\022 \n\033k_EMsgAMAddMinutesToLicense\020\376\003\022\032\n\025"
+  "k_EMsgAMCancelLicense\020\377\003\022\031\n\024k_EMsgAMInit"
+  "Purchase\020\200\004\022\035\n\030k_EMsgAMPurchaseResponse\020"
+  "\201\004\022\035\n\030k_EMsgAMGetLegacyGameKey\020\204\004\022%\n k_E"
+  "MsgAMGetLegacyGameKeyResponse\020\205\004\022!\n\034k_EM"
+  "sgAMFindHungTransactions\020\206\004\022%\n k_EMsgAMS"
+  "etAccountTrustedRequest\020\207\004\022\033\n\026k_EMsgAMCa"
+  "ncelPurchase\020\212\004\022\031\n\024k_EMsgAMNewChallenge\020"
+  "\213\004\022\037\n\032k_EMsgAMFixPendingPurchase\020\215\004\022\'\n\"k"
+  "_EMsgAMFixPendingPurchaseResponse\020\216\004\022\031\n\024"
+  "k_EMsgAMIsUserBanned\020\217\004\022\030\n\023k_EMsgAMRegis"
+  "terKey\020\220\004\022 \n\033k_EMsgAMLoadActivationCodes"
+  "\020\221\004\022(\n#k_EMsgAMLoadActivationCodesRespon"
+  "se\020\222\004\022\036\n\031k_EMsgAMLookupKeyResponse\020\223\004\022\026\n"
+  "\021k_EMsgAMLookupKey\020\224\004\022\030\n\023k_EMsgAMChatCle"
+  "anup\020\225\004\022\030\n\023k_EMsgAMClanCleanup\020\226\004\022\035\n\030k_E"
+  "MsgAMFixPendingRefund\020\227\004\022\036\n\031k_EMsgAMReve"
+  "rseChargeback\020\230\004\022&\n!k_EMsgAMReverseCharg"
+  "ebackResponse\020\231\004\022\034\n\027k_EMsgAMClanCleanupL"
+  "ist\020\232\004\022\037\n\032k_EMsgAMSendCartRepurchase\020\235\004\022"
+  "\'\n\"k_EMsgAMSendCartRepurchaseResponse\020\236\004"
+  "\022\037\n\032k_EMsgAllowUserToPlayQuery\020\246\004\022\"\n\035k_E"
+  "MsgAllowUserToPlayResponse\020\247\004\022\027\n\022k_EMsgA"
+  "MVerfiyUser\020\250\004\022\035\n\030k_EMsgAMClientNotPlayi"
+  "ng\020\251\004\022$\n\037k_EMsgAMClientRequestFriendship"
+  "\020\252\004\022\037\n\032k_EMsgAMRelayPublishStatus\020\253\004\022!\n\034"
+  "k_EMsgAMInitPurchaseResponse\020\260\004\022#\n\036k_EMs"
+  "gAMRevokePurchaseResponse\020\261\004\022\037\n\032k_EMsgAM"
+  "RefreshGuestPasses\020\263\004\022\035\n\030k_EMsgAMGrantGu"
+  "estPasses\020\266\004\022\034\n\027k_EMsgAMClanDataUpdated\020"
+  "\267\004\022\032\n\025k_EMsgAMReloadAccount\020\270\004\022\037\n\032k_EMsg"
+  "AMClientChatMsgRelay\020\271\004\022\026\n\021k_EMsgAMChatM"
+  "ulti\020\272\004\022\"\n\035k_EMsgAMClientChatInviteRelay"
+  "\020\273\004\022\027\n\022k_EMsgAMChatInvite\020\274\004\022 \n\033k_EMsgAM"
+  "ClientJoinChatRelay\020\275\004\022&\n!k_EMsgAMClient"
+  "ChatMemberInfoRelay\020\276\004\022\"\n\035k_EMsgAMPublis"
+  "hChatMemberInfo\020\277\004\022%\n k_EMsgAMClientAcce"
+  "ptFriendInvite\020\300\004\022\026\n\021k_EMsgAMChatEnter\020\301"
+  "\004\022+\n&k_EMsgAMClientPublishRemovalFromSou"
+  "rce\020\302\004\022\035\n\030k_EMsgAMChatActionResult\020\303\004\022\031\n"
+  "\024k_EMsgAMFindAccounts\020\304\004\022!\n\034k_EMsgAMFind"
+  "AccountsResponse\020\305\004\022\037\n\032k_EMsgAMIsAccount"
+  "NameInUse\020\306\004\022\'\n\"k_EMsgAMIsAccountNameInU"
+  "seResponse\020\307\004\022\034\n\027k_EMsgAMSetAccountFlags"
+  "\020\310\004\022\027\n\022k_EMsgAMCreateClan\020\312\004\022\037\n\032k_EMsgAM"
+  "CreateClanResponse\020\313\004\022\033\n\026k_EMsgAMGetClan"
+  "Details\020\314\004\022#\n\036k_EMsgAMGetClanDetailsResp"
+  "onse\020\315\004\022\033\n\026k_EMsgAMSetPersonaName\020\316\004\022\026\n\021"
+  "k_EMsgAMSetAvatar\020\317\004\022\035\n\030k_EMsgAMAuthenti"
+  "cateUser\020\320\004\022%\n k_EMsgAMAuthenticateUserR"
+  "esponse\020\321\004\022!\n\034k_EMsgAMP2PIntroducerMessa"
+  "ge\020\324\004\022\033\n\026k_EMsgClientChatAction\020\325\004\022\"\n\035k_"
+  "EMsgAMClientChatActionRelay\020\326\004\022\021\n\014k_EMsg"
+  "BaseVS\020\330\004\022\027\n\022k_EMsgReqChallenge\020\330\004\022\026\n\021k_"
+  "EMsgVACResponse\020\331\004\022\033\n\026k_EMsgReqChallenge"
+  "Test\020\332\004\022\026\n\021k_EMsgVSMarkCheat\020\334\004\022\025\n\020k_EMs"
+  "gVSAddCheat\020\335\004\022\033\n\026k_EMsgVSPurgeCodeModDB"
+  "\020\336\004\022 \n\033k_EMsgVSGetChallengeResults\020\337\004\022 \n"
+  "\033k_EMsgVSChallengeResultText\020\340\004\022\033\n\026k_EMs"
+  "gVSReportLingerer\020\341\004\022$\n\037k_EMsgVSRequestM"
+  "anagedChallenge\020\342\004\022\033\n\026k_EMsgVSLoadDBFini"
+  "shed\020\343\004\022\023\n\016k_EMsgBaseDRMS\020\361\004\022\036\n\031k_EMsgDR"
+  "MBuildBlobRequest\020\364\004\022\037\n\032k_EMsgDRMBuildBl"
+  "obResponse\020\365\004\022 \n\033k_EMsgDRMResolveGuidReq"
+  "uest\020\366\004\022!\n\034k_EMsgDRMResolveGuidResponse\020"
+  "\367\004\022\037\n\032k_EMsgDRMVariabilityReport\020\371\004\022\'\n\"k"
+  "_EMsgDRMVariabilityReportResponse\020\372\004\022\035\n\030"
+  "k_EMsgDRMStabilityReport\020\373\004\022%\n k_EMsgDRM"
+  "StabilityReportResponse\020\374\004\022\"\n\035k_EMsgDRMD"
+  "etailsReportRequest\020\375\004\022#\n\036k_EMsgDRMDetai"
+  "lsReportResponse\020\376\004\022\031\n\024k_EMsgDRMProcessF"
+  "ile\020\377\004\022\031\n\024k_EMsgDRMAdminUpdate\020\200\005\022!\n\034k_E"
+  "MsgDRMAdminUpdateResponse\020\201\005\022\022\n\rk_EMsgDR"
+  "MSync\020\202\005\022\032\n\025k_EMsgDRMSyncResponse\020\203\005\022!\n\034"
+  "k_EMsgDRMProcessFileResponse\020\204\005\022\034\n\027k_EMs"
+  "gDRMEmptyGuidCache\020\205\005\022$\n\037k_EMsgDRMEmptyG"
+  "uidCacheResponse\020\206\005\022\021\n\014k_EMsgBaseCS\020\212\005\022\025"
+  "\n\020k_EMsgBaseClient\020\274\005\022!\n\034k_EMsgClientLog"
+  "On_Deprecated\020\275\005\022%\n k_EMsgClientAnonLogO"
+  "n_Deprecated\020\276\005\022\032\n\025k_EMsgClientHeartBeat"
+  "\020\277\005\022\034\n\027k_EMsgClientVACResponse\020\300\005\022%\n k_E"
+  "MsgClientGamesPlayed_obsolete\020\301\005\022\027\n\022k_EM"
+  "sgClientLogOff\020\302\005\022\"\n\035k_EMsgClientNoUDPCo"
+  "nnectivity\020\303\005\022 \n\033k_EMsgClientConnectionS"
+  "tats\020\306\005\022\035\n\030k_EMsgClientPingResponse\020\310\005\022\035"
+  "\n\030k_EMsgClientRemoveFriend\020\312\005\022&\n!k_EMsgC"
+  "lientGamesPlayedNoDataBlob\020\313\005\022\035\n\030k_EMsgC"
+  "lientChangeStatus\020\314\005\022\032\n\025k_EMsgClientFrie"
+  "ndMsg\020\316\005\022%\n k_EMsgClientGameConnect_obso"
+  "lete\020\317\005\022&\n!k_EMsgClientGamesPlayed2_obso"
+  "lete\020\320\005\022#\n\036k_EMsgClientGameEnded_obsolet"
+  "e\020\321\005\022\031\n\024k_EMsgClientSystemIM\020\326\005\022\034\n\027k_EMs"
+  "gClientSystemIMAck\020\327\005\022!\n\034k_EMsgClientGet"
+  "LegacyGameKey\020\332\005\022.\n)k_EMsgClientContentS"
+  "erverLogOn_Deprecated\020\333\005\022&\n!k_EMsgClient"
+  "GamesPlayed3_obsolete\020\342\005\022\035\n\030k_EMsgClient"
+  "AckGuestPass\020\344\005\022 \n\033k_EMsgClientRedeemGue"
+  "stPass\020\345\005\022\034\n\027k_EMsgClientGamesPlayed\020\346\005\022"
+  "\034\n\027k_EMsgClientRegisterKey\020\347\005\022!\n\034k_EMsgC"
+  "lientInviteUserToClan\020\350\005\022&\n!k_EMsgClient"
+  "AcknowledgeClanInvite\020\351\005\022\036\n\031k_EMsgClient"
+  "AppUsageEvent\020\353\005\022\036\n\031k_EMsgClientLogOnRes"
+  "ponse\020\357\005\022!\n\034k_EMsgClientSetHeartbeatRate"
+  "\020\363\005\022&\n!k_EMsgClientNotLoggedOnDeprecated"
+  "\020\364\005\022\032\n\025k_EMsgClientLoggedOff\020\365\005\022\024\n\017k_EMs"
+  "gGSApprove\020\366\005\022\021\n\014k_EMsgGSDeny\020\367\005\022\021\n\014k_EM"
+  "sgGSKick\020\370\005\022!\n\034k_EMsgClientPurchaseRespo"
+  "nse\020\373\005\022\025\n\020k_EMsgClientPing\020\374\005\022\024\n\017k_EMsgC"
+  "lientNOP\020\375\005\022\035\n\030k_EMsgClientPersonaState\020"
+  "\376\005\022\034\n\027k_EMsgClientFriendsList\020\377\005\022\034\n\027k_EM"
+  "sgClientAccountInfo\020\200\006\022\033\n\026k_EMsgClientNe"
+  "wsUpdate\020\203\006\022 \n\033k_EMsgClientGameConnectDe"
+  "ny\020\205\006\022\030\n\023k_EMsgGSStatusReply\020\206\006\022\"\n\035k_EMs"
+  "gClientGameConnectTokens\020\213\006\022\034\n\027k_EMsgCli"
+  "entLicenseList\020\214\006\022\035\n\030k_EMsgClientVACBanS"
+  "tatus\020\216\006\022)\n$k_EMsgClientGetLegacyGameKey"
+  "Response\020\221\006\022\032\n\025k_EMsgClientAddFriend\020\227\006\022"
+  "\"\n\035k_EMsgClientAddFriendResponse\020\230\006\022%\n k"
+  "_EMsgClientAckGuestPassResponse\020\234\006\022(\n#k_"
+  "EMsgClientRedeemGuestPassResponse\020\235\006\022&\n!"
+  "k_EMsgClientUpdateGuestPassesList\020\236\006\022\030\n\023"
+  "k_EMsgClientChatMsg\020\237\006\022\033\n\026k_EMsgClientCh"
+  "atInvite\020\240\006\022\031\n\024k_EMsgClientJoinChat\020\241\006\022\037"
+  "\n\032k_EMsgClientChatMemberInfo\020\242\006\0220\n+k_EMs"
+  "gClientLogOnWithCredentials_Deprecated\020\243"
+  "\006\022\'\n\"k_EMsgClientPasswordChangeResponse\020"
+  "\245\006\022\032\n\025k_EMsgClientChatEnter\020\247\006\022(\n#k_EMsg"
+  "ClientFriendRemovedFromSource\020\250\006\022\033\n\026k_EM"
+  "sgClientCreateChat\020\251\006\022#\n\036k_EMsgClientCre"
+  "ateChatResponse\020\252\006\022%\n k_EMsgClientP2PInt"
+  "roducerMessage\020\255\006\022!\n\034k_EMsgClientChatAct"
+  "ionResult\020\256\006\022\"\n\035k_EMsgClientRequestFrien"
+  "dData\020\257\006\022\035\n\030k_EMsgClientGetUserStats\020\262\006\022"
+  "%\n k_EMsgClientGetUserStatsResponse\020\263\006\022\037"
+  "\n\032k_EMsgClientStoreUserStats\020\264\006\022\'\n\"k_EMs"
+  "gClientStoreUserStatsResponse\020\265\006\022\032\n\025k_EM"
+  "sgClientClanState\020\266\006\022\036\n\031k_EMsgClientServ"
+  "iceModule\020\276\006\022\034\n\027k_EMsgClientServiceCall\020"
+  "\277\006\022$\n\037k_EMsgClientServiceCallResponse\020\300\006"
+  "\022&\n!k_EMsgClientNatTraversalStatEvent\020\307\006"
+  "\022 \n\033k_EMsgClientSteamUsageEvent\020\312\006\022\036\n\031k_"
+  "EMsgClientCheckPassword\020\315\006\022\036\n\031k_EMsgClie"
+  "ntResetPassword\020\316\006\022&\n!k_EMsgClientCheckP"
+  "asswordResponse\020\320\006\022&\n!k_EMsgClientResetP"
+  "asswordResponse\020\321\006\022\035\n\030k_EMsgClientSessio"
+  "nToken\020\322\006\022!\n\034k_EMsgClientDRMProblemRepor"
+  "t\020\323\006\022 \n\033k_EMsgClientSetIgnoreFriend\020\327\006\022("
+  "\n#k_EMsgClientSetIgnoreFriendResponse\020\330\006"
+  "\022&\n!k_EMsgClientGetAppOwnershipTicket\020\331\006"
+  "\022.\n)k_EMsgClientGetAppOwnershipTicketRes"
+  "ponse\020\332\006\022%\n k_EMsgClientGetLobbyListResp"
+  "onse\020\334\006\022\033\n\026k_EMsgClientServerList\020\360\006\022\037\n\032"
+  "k_EMsgClientDRMBlobRequest\020\200\007\022 \n\033k_EMsgC"
+  "lientDRMBlobResponse\020\201\007\022\031\n\024k_EMsgBaseGam"
+  "eServer\020\204\007\022\035\n\030k_EMsgGSDisconnectNotice\020\205"
+  "\007\022\023\n\016k_EMsgGSStatus\020\207\007\022\030\n\023k_EMsgGSUserPl"
+  "aying\020\211\007\022\024\n\017k_EMsgGSStatus2\020\212\007\022 \n\033k_EMsg"
+  "GSStatusUpdate_Unused\020\213\007\022\027\n\022k_EMsgGSServ"
+  "erType\020\214\007\022\027\n\022k_EMsgGSPlayerList\020\215\007\022\031\n\024k_"
+  "EMsgGSGetPlayStats\020\226\007\022!\n\034k_EMsgGSGetPlay"
+  "StatsResponse\020\227\007\022\037\n\032k_EMsgGSGetUserGroup"
+  "Status\020\230\007\022\037\n\032k_EMsgAMGetUserGroupStatus\020"
+  "\231\007\022\'\n\"k_EMsgAMGetUserGroupStatusResponse"
+  "\020\232\007\022\'\n\"k_EMsgGSGetUserGroupStatusRespons"
+  "e\020\233\007\022\032\n\025k_EMsgGSGetReputation\020\250\007\022\"\n\035k_EM"
+  "sgGSGetReputationResponse\020\251\007\022\036\n\031k_EMsgGS"
+  "AssociateWithClan\020\252\007\022&\n!k_EMsgGSAssociat"
+  "eWithClanResponse\020\253\007\022*\n%k_EMsgGSComputeN"
+  "ewPlayerCompatibility\020\254\007\0222\n-k_EMsgGSComp"
+  "uteNewPlayerCompatibilityResponse\020\255\007\022\024\n\017"
+  "k_EMsgBaseAdmin\020\350\007\022\023\n\016k_EMsgAdminCmd\020\350\007\022"
+  "\033\n\026k_EMsgAdminCmdResponse\020\354\007\022 \n\033k_EMsgAd"
+  "minLogListenRequest\020\355\007\022\030\n\023k_EMsgAdminLog"
+  "Event\020\356\007\022\027\n\022k_EMsgUniverseData\020\362\007\022\024\n\017k_E"
+  "MsgAdminSpew\020\373\007\022\034\n\027k_EMsgAdminConsoleTit"
+  "le\020\374\007\022\026\n\021k_EMsgAdminGCSpew\020\377\007\022\031\n\024k_EMsgA"
+  "dminGCCommand\020\200\010\022 \n\033k_EMsgAdminGCGetComm"
+  "andList\020\201\010\022(\n#k_EMsgAdminGCGetCommandLis"
+  "tResponse\020\202\010\022\034\n\027k_EMsgFBSConnectionData\020"
+  "\203\010\022\027\n\022k_EMsgAdminMsgSpew\020\204\010\022\022\n\rk_EMsgBas"
+  "eFBS\020\314\010\022\030\n\023k_EMsgFBSReqVersion\020\314\010\022\031\n\024k_E"
+  "MsgFBSVersionInfo\020\315\010\022\032\n\025k_EMsgFBSForceRe"
+  "fresh\020\316\010\022\031\n\024k_EMsgFBSForceBounce\020\317\010\022\033\n\026k"
+  "_EMsgFBSDeployPackage\020\320\010\022\034\n\027k_EMsgFBSDep"
+  "loyResponse\020\321\010\022 \n\033k_EMsgFBSUpdateBootstr"
+  "apper\020\322\010\022\026\n\021k_EMsgFBSSetState\020\323\010\022\034\n\027k_EM"
+  "sgFBSApplyOSUpdates\020\324\010\022\032\n\025k_EMsgFBSRunCM"
+  "DScript\020\325\010\022\027\n\022k_EMsgFBSRebootBox\020\326\010\022\037\n\032k"
+  "_EMsgFBSSetBigBrotherMode\020\327\010\022\034\n\027k_EMsgFB"
+  "SMinidumpServer\020\330\010\022!\n\034k_EMsgFBSDeployHot"
+  "FixPackage\020\332\010\022\"\n\035k_EMsgFBSDeployHotFixRe"
+  "sponse\020\333\010\022\034\n\027k_EMsgFBSDownloadHotFix\020\334\010\022"
+  "$\n\037k_EMsgFBSDownloadHotFixResponse\020\335\010\022$\n"
+  "\037k_EMsgFBSUpdateTargetConfigFile\020\336\010\022\036\n\031k"
+  "_EMsgFBSApplyAccountCred\020\337\010\022&\n!k_EMsgFBS"
+  "ApplyAccountCredResponse\020\340\010\022\033\n\026k_EMsgFBS"
+  "SetShellCount\020\341\010\022\034\n\027k_EMsgFBSTerminateSh"
+  "ell\020\342\010\022\037\n\032k_EMsgFBSQueryGMForRequest\020\343\010\022"
+  "\035\n\030k_EMsgFBSQueryGMResponse\020\344\010\022\036\n\031k_EMsg"
+  "FBSTerminateZombies\020\345\010\022\"\n\035k_EMsgFBSInfoF"
+  "romBootstrapper\020\346\010\022\037\n\032k_EMsgFBSRebootBox"
+  "Response\020\347\010\022(\n#k_EMsgFBSBootstrapperPack"
+  "ageRequest\020\350\010\022)\n$k_EMsgFBSBootstrapperPa"
+  "ckageResponse\020\351\010\022)\n$k_EMsgFBSBootstrappe"
+  "rGetPackageChunk\020\352\010\0221\n,k_EMsgFBSBootstra"
+  "pperGetPackageChunkResponse\020\353\010\0221\n,k_EMsg"
+  "FBSBootstrapperPackageTransferProgress\020\354"
+  "\010\022!\n\034k_EMsgFBSRestartBootstrapper\020\355\010\022\036\n\031"
+  "k_EMsgFBSPauseFrozenDumps\020\356\010\022\027\n\022k_EMsgBa"
+  "seFileXfer\020\260\t\022\032\n\025k_EMsgFileXferRequest\020\260"
+  "\t\022\033\n\026k_EMsgFileXferResponse\020\261\t\022\027\n\022k_EMsg"
+  "FileXferData\020\262\t\022\026\n\021k_EMsgFileXferEnd\020\263\t\022"
+  "\032\n\025k_EMsgFileXferDataAck\020\264\t\022\032\n\025k_EMsgBas"
+  "eChannelAuth\020\224\n\022\037\n\032k_EMsgChannelAuthChal"
+  "lenge\020\224\n\022\036\n\031k_EMsgChannelAuthResponse\020\225\n"
+  "\022\034\n\027k_EMsgChannelAuthResult\020\226\n\022 \n\033k_EMsg"
+  "ChannelEncryptRequest\020\227\n\022!\n\034k_EMsgChanne"
+  "lEncryptResponse\020\230\n\022\037\n\032k_EMsgChannelEncr"
+  "yptResult\020\231\n\022\021\n\014k_EMsgBaseBS\020\370\n\022\032\n\025k_EMs"
+  "gBSPurchaseStart\020\371\n\022\035\n\030k_EMsgBSPurchaseR"
+  "esponse\020\372\n\022 \n\033k_EMsgBSAuthenticateCCTran"
+  "s\020\373\n\022(\n#k_EMsgBSAuthenticateCCTransRespo"
+  "nse\020\374\n\022\033\n\026k_EMsgBSSettleComplete\020\376\n\022\032\n\025k"
+  "_EMsgBSInitPayPalTxn\020\200\013\022\"\n\035k_EMsgBSInitP"
+  "ayPalTxnResponse\020\201\013\022\036\n\031k_EMsgBSGetPayPal"
+  "UserInfo\020\202\013\022&\n!k_EMsgBSGetPayPalUserInfo"
+  "Response\020\203\013\022\034\n\027k_EMsgBSPaymentInstrBan\020\211"
+  "\013\022$\n\037k_EMsgBSPaymentInstrBanResponse\020\212\013\022"
+  "\036\n\031k_EMsgBSInitGCBankXferTxn\020\215\013\022&\n!k_EMs"
+  "gBSInitGCBankXferTxnResponse\020\216\013\022\030\n\023k_EMs"
+  "gBSCommitGCTxn\020\221\013\022#\n\036k_EMsgBSQueryTransa"
+  "ctionStatus\020\222\013\022+\n&k_EMsgBSQueryTransacti"
+  "onStatusResponse\020\223\013\022!\n\034k_EMsgBSQueryTxnE"
+  "xtendedInfo\020\231\013\022)\n$k_EMsgBSQueryTxnExtend"
+  "edInfoResponse\020\232\013\022\"\n\035k_EMsgBSUpdateConve"
+  "rsionRates\020\233\013\022#\n\036k_EMsgBSPurchaseRunFrau"
+  "dChecks\020\235\013\022+\n&k_EMsgBSPurchaseRunFraudCh"
+  "ecksResponse\020\236\013\022!\n\034k_EMsgBSQueryBankInfo"
+  "rmation\020\240\013\022)\n$k_EMsgBSQueryBankInformati"
+  "onResponse\020\241\013\022$\n\037k_EMsgBSValidateXsollaS"
+  "ignature\020\245\013\022,\n\'k_EMsgBSValidateXsollaSig"
+  "natureResponse\020\246\013\022\036\n\031k_EMsgBSQiwiWalletI"
+  "nvoice\020\250\013\022&\n!k_EMsgBSQiwiWalletInvoiceRe"
+  "sponse\020\251\013\022\'\n\"k_EMsgBSUpdateInventoryFrom"
+  "ProPack\020\252\013\022/\n*k_EMsgBSUpdateInventoryFro"
+  "mProPackResponse\020\253\013\022 \n\033k_EMsgBSSendShipp"
+  "ingRequest\020\254\013\022(\n#k_EMsgBSSendShippingReq"
+  "uestResponse\020\255\013\022\"\n\035k_EMsgBSGetProPackOrd"
+  "erStatus\020\256\013\022*\n%k_EMsgBSGetProPackOrderSt"
+  "atusResponse\020\257\013\022\034\n\027k_EMsgBSCheckJobRunni"
+  "ng\020\260\013\022$\n\037k_EMsgBSCheckJobRunningResponse"
+  "\020\261\013\022*\n%k_EMsgBSResetPackagePurchaseRateL"
+  "imit\020\262\013\0222\n-k_EMsgBSResetPackagePurchaseR"
+  "ateLimitResponse\020\263\013\022\036\n\031k_EMsgBSUpdatePay"
+  "mentData\020\264\013\022&\n!k_EMsgBSUpdatePaymentData"
+  "Response\020\265\013\022\036\n\031k_EMsgBSGetBillingAddress"
+  "\020\266\013\022&\n!k_EMsgBSGetBillingAddressResponse"
+  "\020\267\013\022\036\n\031k_EMsgBSGetCreditCardInfo\020\270\013\022&\n!k"
+  "_EMsgBSGetCreditCardInfoResponse\020\271\013\022%\n k"
+  "_EMsgBSRemoveExpiredPaymentData\020\274\013\022-\n(k_"
+  "EMsgBSRemoveExpiredPaymentDataResponse\020\275"
+  "\013\022!\n\034k_EMsgBSConvertToCurrentKeys\020\276\013\022)\n$"
+  "k_EMsgBSConvertToCurrentKeysResponse\020\277\013\022"
+  "\031\n\024k_EMsgBSInitPurchase\020\300\013\022!\n\034k_EMsgBSIn"
+  "itPurchaseResponse\020\301\013\022\035\n\030k_EMsgBSComplet"
+  "ePurchase\020\302\013\022%\n k_EMsgBSCompletePurchase"
+  "Response\020\303\013\022 \n\033k_EMsgBSPruneCardUsageSta"
+  "ts\020\304\013\022(\n#k_EMsgBSPruneCardUsageStatsResp"
+  "onse\020\305\013\022!\n\034k_EMsgBSStoreBankInformation\020"
+  "\306\013\022)\n$k_EMsgBSStoreBankInformationRespon"
+  "se\020\307\013\022\032\n\025k_EMsgBSVerifyPOSAKey\020\310\013\022\"\n\035k_E"
+  "MsgBSVerifyPOSAKeyResponse\020\311\013\022!\n\034k_EMsgB"
+  "SReverseRedeemPOSAKey\020\312\013\022)\n$k_EMsgBSReve"
+  "rseRedeemPOSAKeyResponse\020\313\013\022 \n\033k_EMsgBSQ"
+  "ueryFindCreditCard\020\314\013\022(\n#k_EMsgBSQueryFi"
+  "ndCreditCardResponse\020\315\013\022!\n\034k_EMsgBSStatu"
+  "sInquiryPOSAKey\020\316\013\022)\n$k_EMsgBSStatusInqu"
+  "iryPOSAKeyResponse\020\317\013\022,\n\'k_EMsgBSBoaComp"
+  "raConfirmProductDelivery\020\326\013\0224\n/k_EMsgBSB"
+  "oaCompraConfirmProductDeliveryResponse\020\327"
+  "\013\022!\n\034k_EMsgBSGenerateBoaCompraMD5\020\330\013\022)\n$"
+  "k_EMsgBSGenerateBoaCompraMD5Response\020\331\013\022"
+  "\030\n\023k_EMsgBSCommitWPTxn\020\332\013\022\033\n\026k_EMsgBSCom"
+  "mitAdyenTxn\020\333\013\022\022\n\rk_EMsgBaseATS\020\334\013\022\035\n\030k_"
+  "EMsgATSStartStressTest\020\335\013\022\034\n\027k_EMsgATSSt"
+  "opStressTest\020\336\013\022\037\n\032k_EMsgATSRunFailServe"
+  "rTest\020\337\013\022\035\n\030k_EMsgATSUFSPerfTestTask\020\340\013\022"
+  "!\n\034k_EMsgATSUFSPerfTestResponse\020\341\013\022\026\n\021k_"
+  "EMsgATSCycleTCM\020\342\013\022 \n\033k_EMsgATSInitDRMSS"
+  "tressTest\020\343\013\022\026\n\021k_EMsgATSCallTest\020\344\013\022\033\n\026"
+  "k_EMsgATSCallTestReply\020\345\013\022!\n\034k_EMsgATSSt"
+  "artExternalStress\020\346\013\022$\n\037k_EMsgATSExterna"
+  "lStressJobStart\020\347\013\022%\n k_EMsgATSExternalS"
+  "tressJobQueued\020\350\013\022&\n!k_EMsgATSExternalSt"
+  "ressJobRunning\020\351\013\022&\n!k_EMsgATSExternalSt"
+  "ressJobStopped\020\352\013\022&\n!k_EMsgATSExternalSt"
+  "ressJobStopAll\020\353\013\022(\n#k_EMsgATSExternalSt"
+  "ressActionResult\020\354\013\022\025\n\020k_EMsgATSStarted\020"
+  "\355\013\022\034\n\027k_EMsgATSCSPerfTestTask\020\356\013\022 \n\033k_EM"
+  "sgATSCSPerfTestResponse\020\357\013\022\021\n\014k_EMsgBase"
+  "DP\020\300\014\022\037\n\032k_EMsgDPSetPublishingState\020\301\014\022\036"
+  "\n\031k_EMsgDPUniquePlayersStat\020\303\014\022\027\n\022k_EMsg"
+  "DPCloudStats\020\314\014\022\033\n\026k_EMsgDPGetPlayerCoun"
+  "t\020\317\014\022#\n\036k_EMsgDPGetPlayerCountResponse\020\320"
+  "\014\022$\n\037k_EMsgDPGameServersPlayersStats\020\321\014\022"
+  "%\n k_EMsgClientDPCheckSpecialSurvey\020\324\014\022-"
+  "\n(k_EMsgClientDPCheckSpecialSurveyRespon"
+  "se\020\325\014\022,\n\'k_EMsgClientDPSendSpecialSurvey"
+  "Response\020\326\014\0221\n,k_EMsgClientDPSendSpecial"
+  "SurveyResponseReply\020\327\014\022 \n\033k_EMsgDPStoreS"
+  "aleStatistics\020\330\014\022\035\n\030k_EMsgDPPartnerMicro"
+  "Txns\020\334\014\022%\n k_EMsgDPPartnerMicroTxnsRespo"
+  "nse\020\335\014\022 \n\033k_EMsgDPVRUniquePlayersStat\020\337\014"
+  "\022\021\n\014k_EMsgBaseCM\020\244\r\022\032\n\025k_EMsgCMSetAllowS"
+  "tate\020\245\r\022\033\n\026k_EMsgCMSpewAllowState\020\246\r\022\034\n\027"
+  "k_EMsgCMSessionRejected\020\247\r\022\027\n\022k_EMsgCMSe"
+  "tSecrets\020\250\r\022\027\n\022k_EMsgCMGetSecrets\020\251\r\022\"\n\035"
+  "k_EMsgCMRemotePlayReplyPacket\020\252\r\022\036\n\031k_EM"
+  "sgCMRemotePlayOffline\020\253\r\022\021\n\014k_EMsgBaseGC"
+  "\020\230\021\022\026\n\021k_EMsgGCCmdRevive\020\233\021\022\024\n\017k_EMsgGCC"
+  "mdDown\020\236\021\022\026\n\021k_EMsgGCCmdDeploy\020\237\021\022\036\n\031k_E"
+  "MsgGCCmdDeployResponse\020\240\021\022\026\n\021k_EMsgGCCmd"
+  "Switch\020\241\021\022\034\n\027k_EMsgAMRefreshSessions\020\242\021\022"
+  "\037\n\032k_EMsgGCAchievementAwarded\020\244\021\022\026\n\021k_EM"
+  "sgGCCmdStatus\020\250\021\022-\n(k_EMsgGCRegisterWebI"
+  "nterfaces_Deprecated\020\251\021\022)\n$k_EMsgGCGetAc"
+  "countDetails_DEPRECATED\020\252\021\022\034\n\027k_EMsgGCIn"
+  "terAppMessage\020\253\021\022\035\n\030k_EMsgGCGetEmailTemp"
+  "late\020\254\021\022%\n k_EMsgGCGetEmailTemplateRespo"
+  "nse\020\255\021\022\023\n\016k_EMsgGCHRelay\020\256\021\022\033\n\026k_EMsgGCH"
+  "RelayToClient\020\257\021\022\033\n\026k_EMsgGCHUpdateSessi"
+  "on\020\260\021\022\"\n\035k_EMsgGCHRequestUpdateSession\020\261"
+  "\021\022\033\n\026k_EMsgGCHRequestStatus\020\262\021\022#\n\036k_EMsg"
+  "GCHRequestStatusResponse\020\263\021\022$\n\037k_EMsgGCH"
+  "AccountVacStatusChange\020\264\021\022\025\n\020k_EMsgGCHSp"
+  "awnGC\020\265\021\022\035\n\030k_EMsgGCHSpawnGCResponse\020\266\021\022"
+  "\024\n\017k_EMsgGCHKillGC\020\267\021\022\034\n\027k_EMsgGCHKillGC"
+  "Response\020\270\021\022)\n$k_EMsgGCHAccountTradeBanS"
+  "tatusChange\020\271\021\022%\n k_EMsgGCHAccountLockSt"
+  "atusChange\020\272\021\022#\n\036k_EMsgGCHVacVerificatio"
+  "nChange\020\273\021\022&\n!k_EMsgGCHAccountPhoneNumbe"
+  "rChange\020\274\021\022$\n\037k_EMsgGCHAccountTwoFactorC"
+  "hange\020\275\021\022\037\n\032k_EMsgGCHInviteUserToLobby\020\276"
+  "\021\022$\n\037k_EMsgGCHUpdateMultipleSessions\020\277\021\022"
+  "*\n%k_EMsgGCHMarkAppSessionsAuthoritative"
+  "\020\300\021\022/\n*k_EMsgGCHRecurringSubscriptionSta"
+  "tusChange\020\301\021\022\037\n\032k_EMsgGCHAppCheersReceiv"
+  "ed\020\302\021\022&\n!k_EMsgGCHAppCheersGetAllowedTyp"
+  "es\020\303\021\022.\n)k_EMsgGCHAppCheersGetAllowedTyp"
+  "esResponse\020\304\021\022%\n k_EMsgGCHRoutingRulesFr"
+  "omGCHtoGM\020\305\021\022%\n k_EMsgGCHRoutingRulesToG"
+  "CHfromGM\020\306\021\022#\n\036k_EMsgUpdateCMMessageRate"
+  "Rules\020\307\021\022\022\n\rk_EMsgBaseP2P\020\304\023\022\037\n\032k_EMsgP2"
+  "PIntroducerMessage\020\306\023\022\021\n\014k_EMsgBaseSM\020\324\026"
+  "\022\034\n\027k_EMsgSMExpensiveReport\020\326\026\022\031\n\024k_EMsg"
+  "SMHourlyReport\020\327\026\022\035\n\030k_EMsgSMPartitionRe"
+  "names\020\331\026\022*\n%k_EMsgSMTestNextBuildSchemaC"
+  "onversion\020\333\026\0222\n-k_EMsgSMTestNextBuildSch"
+  "emaConversionResponse\020\334\026\022\023\n\016k_EMsgBaseTe"
+  "st\020\270\027\022\025\n\020k_EMsgFailServer\020\270\027\022\033\n\026k_EMsgJo"
+  "bHeartbeatTest\020\271\027\022#\n\036k_EMsgJobHeartbeatT"
+  "estResponse\020\272\027\022\027\n\022k_EMsgBaseFTSRange\020\234\030\022"
+  "\027\n\022k_EMsgBaseCCSRange\020\316\030\022\'\n\"k_EMsgCCSDel"
+  "eteAllCommentsByAuthor\020\331\030\022/\n*k_EMsgCCSDe"
+  "leteAllCommentsByAuthorResponse\020\332\030\022\027\n\022k_"
+  "EMsgBaseLBSRange\020\200\031\022\026\n\021k_EMsgLBSSetScore"
+  "\020\201\031\022\036\n\031k_EMsgLBSSetScoreResponse\020\202\031\022\034\n\027k"
+  "_EMsgLBSFindOrCreateLB\020\203\031\022$\n\037k_EMsgLBSFi"
+  "ndOrCreateLBResponse\020\204\031\022\032\n\025k_EMsgLBSGetL"
+  "BEntries\020\205\031\022\"\n\035k_EMsgLBSGetLBEntriesResp"
+  "onse\020\206\031\022\027\n\022k_EMsgLBSGetLBList\020\207\031\022\037\n\032k_EM"
+  "sgLBSGetLBListResponse\020\210\031\022\032\n\025k_EMsgLBSSe"
+  "tLBDetails\020\211\031\022\026\n\021k_EMsgLBSDeleteLB\020\212\031\022\033\n"
+  "\026k_EMsgLBSDeleteLBEntry\020\213\031\022\025\n\020k_EMsgLBSR"
+  "esetLB\020\214\031\022\035\n\030k_EMsgLBSResetLBResponse\020\215\031"
+  "\022\036\n\031k_EMsgLBSDeleteLBResponse\020\216\031\022\022\n\rk_EM"
+  "sgBaseOGS\020\310\032\022\032\n\025k_EMsgOGSBeginSession\020\311\032"
+  "\022\"\n\035k_EMsgOGSBeginSessionResponse\020\312\032\022\030\n\023"
+  "k_EMsgOGSEndSession\020\313\032\022 \n\033k_EMsgOGSEndSe"
+  "ssionResponse\020\314\032\022 \n\033k_EMsgOGSWriteAppSes"
+  "sionRow\020\316\032\022\022\n\rk_EMsgBaseBRP\020\220\034\022\027\n\022k_EMsg"
+  "BaseAMRange2\020\240\037\022\027\n\022k_EMsgAMCreateChat\020\241\037"
+  "\022\037\n\032k_EMsgAMCreateChatResponse\020\242\037\022#\n\036k_E"
+  "MsgAMGetAccountEmailAddress\020\246\037\022+\n&k_EMsg"
+  "AMGetAccountEmailAddressResponse\020\247\037\022\034\n\027k"
+  "_EMsgAMRequestClanData\020\250\037\022\033\n\026k_EMsgAMRou"
+  "teToClients\020\251\037\022\026\n\021k_EMsgAMLeaveClan\020\252\037\022\034"
+  "\n\027k_EMsgAMClanPermissions\020\253\037\022$\n\037k_EMsgAM"
+  "ClanPermissionsResponse\020\254\037\0220\n+k_EMsgAMCr"
+  "eateClanEventDummyForRateLimiting\020\255\037\0220\n+"
+  "k_EMsgAMUpdateClanEventDummyForRateLimit"
+  "ing\020\257\037\022&\n!k_EMsgAMSetClanPermissionSetti"
+  "ngs\020\265\037\022.\n)k_EMsgAMSetClanPermissionSetti"
+  "ngsResponse\020\266\037\022&\n!k_EMsgAMGetClanPermiss"
+  "ionSettings\020\267\037\022.\n)k_EMsgAMGetClanPermiss"
+  "ionSettingsResponse\020\270\037\022 \n\033k_EMsgAMPublis"
+  "hChatRoomInfo\020\271\037\022\035\n\030k_EMsgClientChatRoom"
+  "Info\020\272\037\022\033\n\026k_EMsgAMGetClanHistory\020\307\037\022#\n\036"
+  "k_EMsgAMGetClanHistoryResponse\020\310\037\022\"\n\035k_E"
+  "MsgAMGetClanPermissionBits\020\311\037\022*\n%k_EMsgA"
+  "MGetClanPermissionBitsResponse\020\312\037\022\"\n\035k_E"
+  "MsgAMSetClanPermissionBits\020\313\037\022*\n%k_EMsgA"
+  "MSetClanPermissionBitsResponse\020\314\037\022\037\n\032k_E"
+  "MsgAMSessionInfoRequest\020\315\037\022 \n\033k_EMsgAMSe"
+  "ssionInfoResponse\020\316\037\022\034\n\027k_EMsgAMValidate"
+  "WGToken\020\317\037\022\030\n\023k_EMsgAMGetClanRank\020\322\037\022 \n\033"
+  "k_EMsgAMGetClanRankResponse\020\323\037\022\030\n\023k_EMsg"
+  "AMSetClanRank\020\324\037\022 \n\033k_EMsgAMSetClanRankR"
+  "esponse\020\325\037\022\030\n\023k_EMsgAMGetClanPOTW\020\326\037\022 \n\033"
+  "k_EMsgAMGetClanPOTWResponse\020\327\037\022\030\n\023k_EMsg"
+  "AMSetClanPOTW\020\330\037\022 \n\033k_EMsgAMSetClanPOTWR"
+  "esponse\020\331\037\022\025\n\020k_EMsgAMDumpUser\020\333\037\022\035\n\030k_E"
+  "MsgAMKickUserFromClan\020\334\037\022\035\n\030k_EMsgAMAddF"
+  "ounderToClan\020\335\037\022$\n\037k_EMsgAMValidateWGTok"
+  "enResponse\020\336\037\022\036\n\031k_EMsgAMSetAccountDetai"
+  "ls\020\340\037\022\033\n\026k_EMsgAMGetChatBanList\020\341\037\022#\n\036k_"
+  "EMsgAMGetChatBanListResponse\020\342\037\022\032\n\025k_EMs"
+  "gAMUnBanFromChat\020\343\037\022\033\n\026k_EMsgAMSetClanDe"
+  "tails\020\344\037\022\036\n\031k_EMsgUGSGetUserGameStats\020\351\037"
+  "\022&\n!k_EMsgUGSGetUserGameStatsResponse\020\352\037"
+  "\022 \n\033k_EMsgAMCheckClanMembership\020\353\037\022\033\n\026k_"
+  "EMsgAMGetClanMembers\020\354\037\022#\n\036k_EMsgAMGetCl"
+  "anMembersResponse\020\355\037\022#\n\036k_EMsgAMNotifyCh"
+  "atOfClanChange\020\357\037\022\035\n\030k_EMsgAMResubmitPur"
+  "chase\020\360\037\022\026\n\021k_EMsgAMAddFriend\020\361\037\022\036\n\031k_EM"
+  "sgAMAddFriendResponse\020\362\037\022\031\n\024k_EMsgAMRemo"
+  "veFriend\020\363\037\022\025\n\020k_EMsgAMDumpClan\020\364\037\022\034\n\027k_"
+  "EMsgAMChangeClanOwner\020\365\037\022\036\n\031k_EMsgAMCanc"
+  "elEasyCollect\020\366\037\022&\n!k_EMsgAMCancelEasyCo"
+  "llectResponse\020\367\037\022\032\n\025k_EMsgAMClansInCommo"
+  "n\020\372\037\022\"\n\035k_EMsgAMClansInCommonResponse\020\373\037"
+  "\022\035\n\030k_EMsgAMIsValidAccountID\020\374\037\022\034\n\027k_EMs"
+  "gAMWipeFriendsList\020\377\037\022\027\n\022k_EMsgAMSetIgno"
+  "red\020\200 \022\'\n\"k_EMsgAMClansInCommonCountResp"
+  "onse\020\201 \022\030\n\023k_EMsgAMFriendsList\020\202 \022 \n\033k_E"
+  "MsgAMFriendsListResponse\020\203 \022\034\n\027k_EMsgAMF"
+  "riendsInCommon\020\204 \022$\n\037k_EMsgAMFriendsInCo"
+  "mmonResponse\020\205 \022)\n$k_EMsgAMFriendsInComm"
+  "onCountResponse\020\206 \022\037\n\032k_EMsgAMClansInCom"
+  "monCount\020\207 \022\035\n\030k_EMsgAMChallengeVerdict\020"
+  "\210 \022\"\n\035k_EMsgAMChallengeNotification\020\211 \022\027"
+  "\n\022k_EMsgAMFindGSByIP\020\212 \022\030\n\023k_EMsgAMFound"
+  "GSByIP\020\213 \022\030\n\023k_EMsgAMGiftRevoked\020\214 \022\031\n\024k"
+  "_EMsgAMUserClanList\020\216 \022!\n\034k_EMsgAMUserCl"
+  "anListResponse\020\217 \022\037\n\032k_EMsgAMGetAccountD"
+  "etails2\020\220 \022\'\n\"k_EMsgAMGetAccountDetailsR"
+  "esponse2\020\221 \022(\n#k_EMsgAMSetCommunityProfi"
+  "leSettings\020\222 \0220\n+k_EMsgAMSetCommunityPro"
+  "fileSettingsResponse\020\223 \022%\n k_EMsgAMGetCo"
+  "mmunityPrivacyState\020\224 \022-\n(k_EMsgAMGetCom"
+  "munityPrivacyStateResponse\020\225 \022(\n#k_EMsgA"
+  "MCheckClanInviteRateLimiting\020\226 \022\027\n\022k_EMs"
+  "gAMGetIgnored\020\230 \022\037\n\032k_EMsgAMGetIgnoredRe"
+  "sponse\020\231 \022\037\n\032k_EMsgAMSetIgnoredResponse\020"
+  "\232 \022&\n!k_EMsgAMSetFriendRelationshipNone\020"
+  "\233 \022\"\n\035k_EMsgAMGetFriendRelationship\020\234 \022*"
+  "\n%k_EMsgAMGetFriendRelationshipResponse\020"
+  "\235 \022 \n\033k_EMsgAMServiceModulesCache\020\236 \022\037\n\032"
+  "k_EMsgAMServiceModulesCall\020\237 \022\'\n\"k_EMsgA"
+  "MServiceModulesCallResponse\020\240 \022!\n\034k_EMsg"
+  "CommunityAddFriendNews\020\254 \022\031\n\024k_EMsgAMFin"
+  "dClanUser\020\257 \022!\n\034k_EMsgAMFindClanUserResp"
+  "onse\020\260 \022\030\n\023k_EMsgAMBanFromChat\020\261 \022%\n k_E"
+  "MsgAMGetUserNewsSubscriptions\020\263 \022-\n(k_EM"
+  "sgAMGetUserNewsSubscriptionsResponse\020\264 \022"
+  "%\n k_EMsgAMSetUserNewsSubscriptions\020\265 \022\035"
+  "\n\030k_EMsgAMSendQueuedEmails\020\270 \022\034\n\027k_EMsgA"
+  "MSetLicenseFlags\020\271 \022\035\n\030k_EMsgAMGetAccoun"
+  "tStatus\020\276 \022%\n k_EMsgAMGetAccountStatusRe"
+  "sponse\020\277 \022\032\n\025k_EMsgAMEditBanReason\020\300 \022(\n"
+  "#k_EMsgAMCheckClanMembershipResponse\020\301 \022"
+  "$\n\037k_EMsgAMProbeClanMembershipList\020\302 \022,\n"
+  "\'k_EMsgAMProbeClanMembershipListResponse"
+  "\020\303 \022\036\n\031k_EMsgAMGetFriendsLobbies\020\305 \022&\n!k"
+  "_EMsgAMGetFriendsLobbiesResponse\020\306 \022&\n!k"
+  "_EMsgAMGetUserFriendNewsResponse\020\314 \022%\n k"
+  "_EMsgCommunityGetUserFriendNews\020\315 \022%\n k_"
+  "EMsgAMGetUserClansNewsResponse\020\316 \022\035\n\030k_E"
+  "MsgAMGetUserClansNews\020\317 \022!\n\034k_EMsgAMGetP"
+  "reviousCBAccount\020\330 \022)\n$k_EMsgAMGetPrevio"
+  "usCBAccountResponse\020\331 \022\"\n\035k_EMsgAMGetUse"
+  "rLicenseHistory\020\336 \022*\n%k_EMsgAMGetUserLic"
+  "enseHistoryResponse\020\337 \022\"\n\035k_EMsgAMSuppor"
+  "tChangePassword\020\342 \022\037\n\032k_EMsgAMSupportCha"
+  "ngeEmail\020\343 \022(\n#k_EMsgAMResetUserVerifica"
+  "tionGSByIP\020\345 \022\036\n\031k_EMsgAMUpdateGSPlaySta"
+  "ts\020\346 \022#\n\036k_EMsgAMSupportEnableOrDisable\020"
+  "\347 \022\036\n\031k_EMsgAMGetPurchaseStatus\020\356 \022$\n\037k_"
+  "EMsgAMSupportIsAccountEnabled\020\361 \022,\n\'k_EM"
+  "sgAMSupportIsAccountEnabledResponse\020\362 \022\032"
+  "\n\025k_EMsgUGSGetUserStats\020\363 \022\025\n\020k_EMsgAMGS"
+  "Search\020\365 \022#\n\036k_EMsgChatServerRouteFriend"
+  "Msg\020\373 \022(\n#k_EMsgAMTicketAuthRequestOrRes"
+  "ponse\020\374 \022\033\n\026k_EMsgAMAddFreeLicense\020\200!\022\036\n"
+  "\031k_EMsgAMValidateEmailLink\020\207!\022&\n!k_EMsgA"
+  "MValidateEmailLinkResponse\020\210!\022\034\n\027k_EMsgU"
+  "GSStoreUserStats\020\214!\022\035\n\030k_EMsgAMDeleteSto"
+  "redCard\020\221!\022!\n\034k_EMsgAMRevokeLegacyGameKe"
+  "ys\020\222!\022\035\n\030k_EMsgAMGetWalletDetails\020\224!\022%\n "
+  "k_EMsgAMGetWalletDetailsResponse\020\225!\022$\n\037k"
+  "_EMsgAMDeleteStoredPaymentInfo\020\226!\022$\n\037k_E"
+  "MsgAMGetStoredPaymentSummary\020\227!\022,\n\'k_EMs"
+  "gAMGetStoredPaymentSummaryResponse\020\230!\022$\n"
+  "\037k_EMsgAMGetWalletConversionRate\020\231!\022,\n\'k"
+  "_EMsgAMGetWalletConversionRateResponse\020\232"
+  "!\022\032\n\025k_EMsgAMConvertWallet\020\233!\022\"\n\035k_EMsgA"
+  "MConvertWalletResponse\020\234!\022\033\n\026k_EMsgAMSet"
+  "PreApproval\020\237!\022#\n\036k_EMsgAMSetPreApproval"
+  "Response\020\240!\022\031\n\024k_EMsgAMCreateRefund\020\242!\022\035"
+  "\n\030k_EMsgAMCreateChargeback\020\244!\022\032\n\025k_EMsgA"
+  "MCreateDispute\020\246!\022\031\n\024k_EMsgAMClearDisput"
+  "e\020\250!\022&\n!k_EMsgAMCreateFinancialAdjustmen"
+  "t\020\251!\022\037\n\032k_EMsgAMPlayerNicknameList\020\252!\022\'\n"
+  "\"k_EMsgAMPlayerNicknameListResponse\020\253!\022#"
+  "\n\036k_EMsgAMGetUserCurrentGameInfo\020\255!\022+\n&k"
+  "_EMsgAMGetUserCurrentGameInfoResponse\020\256!"
+  "\022\034\n\027k_EMsgAMGetGSPlayerList\020\257!\022$\n\037k_EMsg"
+  "AMGetGSPlayerListResponse\020\260!\022\"\n\035k_EMsgAM"
+  "GetSteamIDForMicroTxn\020\266!\022*\n%k_EMsgAMGetS"
+  "teamIDForMicroTxnResponse\020\267!\022\035\n\030k_EMsgAM"
+  "SetPartnerMember\020\270!\022 \n\033k_EMsgAMRemovePub"
+  "lisherUser\020\271!\022\037\n\032k_EMsgAMGetUserLicenseL"
+  "ist\020\272!\022\'\n\"k_EMsgAMGetUserLicenseListResp"
+  "onse\020\273!\022\"\n\035k_EMsgAMReloadGameGroupPolicy"
+  "\020\274!\022#\n\036k_EMsgAMAddFreeLicenseResponse\020\275!"
+  "\022\034\n\027k_EMsgAMVACStatusUpdate\020\276!\022\036\n\031k_EMsg"
+  "AMGetAccountDetails\020\277!\022&\n!k_EMsgAMGetAcc"
+  "ountDetailsResponse\020\300!\022!\n\034k_EMsgAMGetPla"
+  "yerLinkDetails\020\301!\022)\n$k_EMsgAMGetPlayerLi"
+  "nkDetailsResponse\020\302!\022)\n$k_EMsgAMGetAccou"
+  "ntFlagsForWGSpoofing\020\306!\0221\n,k_EMsgAMGetAc"
+  "countFlagsForWGSpoofingResponse\020\307!\022\034\n\027k_"
+  "EMsgAMGetClanOfficers\020\312!\022$\n\037k_EMsgAMGetC"
+  "lanOfficersResponse\020\313!\022\027\n\022k_EMsgAMNameCh"
+  "ange\020\314!\022\033\n\026k_EMsgAMGetNameHistory\020\315!\022#\n\036"
+  "k_EMsgAMGetNameHistoryResponse\020\316!\022)\n$k_E"
+  "MsgAMSupportRemoveAccountSecurity\020\323!\022*\n%"
+  "k_EMsgAMIsAccountInCaptchaGracePeriod\020\324!"
+  "\0222\n-k_EMsgAMIsAccountInCaptchaGracePerio"
+  "dResponse\020\325!\022\035\n\030k_EMsgAMAccountPS3Unlink"
+  "\020\326!\022%\n k_EMsgAMAccountPS3UnlinkResponse\020"
+  "\327!\022$\n\037k_EMsgUGSStoreUserStatsResponse\020\330!"
+  "\022\036\n\031k_EMsgAMGetAccountPSNInfo\020\331!\022&\n!k_EM"
+  "sgAMGetAccountPSNInfoResponse\020\332!\022$\n\037k_EM"
+  "sgAMAuthenticatedPlayerList\020\333!\022\031\n\024k_EMsg"
+  "AMGetUserGifts\020\334!\022!\n\034k_EMsgAMGetUserGift"
+  "sResponse\020\335!\022 \n\033k_EMsgAMTransferLockedGi"
+  "fts\020\340!\022(\n#k_EMsgAMTransferLockedGiftsRes"
+  "ponse\020\341!\022%\n k_EMsgAMPlayerHostedOnGameSe"
+  "rver\020\342!\022\036\n\031k_EMsgAMGetAccountBanInfo\020\343!\022"
+  "&\n!k_EMsgAMGetAccountBanInfoResponse\020\344!\022"
+  "!\n\034k_EMsgAMRecordBanEnforcement\020\345!\022!\n\034k_"
+  "EMsgAMRollbackGiftTransfer\020\346!\022)\n$k_EMsgA"
+  "MRollbackGiftTransferResponse\020\347!\022%\n k_EM"
+  "sgAMHandlePendingTransaction\020\350!\022\037\n\032k_EMs"
+  "gAMRequestClanDetails\020\351!\022(\n#k_EMsgAMDele"
+  "teStoredPaypalAgreement\020\352!\022\035\n\030k_EMsgAMGa"
+  "meServerUpdate\020\353!\022\035\n\030k_EMsgAMGameServerR"
+  "emove\020\354!\022 \n\033k_EMsgAMGetPaypalAgreements\020"
+  "\355!\022(\n#k_EMsgAMGetPaypalAgreementsRespons"
+  "e\020\356!\022/\n*k_EMsgAMGameServerPlayerCompatib"
+  "ilityCheck\020\357!\0227\n2k_EMsgAMGameServerPlaye"
+  "rCompatibilityCheckResponse\020\360!\022\031\n\024k_EMsg"
+  "AMRenewLicense\020\361!\022\'\n\"k_EMsgAMGetAccountC"
+  "ommunityBanInfo\020\362!\022/\n*k_EMsgAMGetAccount"
+  "CommunityBanInfoResponse\020\363!\022,\n\'k_EMsgAMG"
+  "ameServerAccountChangePassword\020\364!\022+\n&k_E"
+  "MsgAMGameServerAccountDeleteAccount\020\365!\022\033"
+  "\n\026k_EMsgAMRenewAgreement\020\366!\022\032\n\025k_EMsgAMX"
+  "sollaPayment\020\370!\022\"\n\035k_EMsgAMXsollaPayment"
+  "Response\020\371!\022\"\n\035k_EMsgAMAcctAllowedToPurc"
+  "hase\020\372!\022*\n%k_EMsgAMAcctAllowedToPurchase"
+  "Response\020\373!\022\035\n\030k_EMsgAMSwapKioskDeposit\020"
+  "\374!\022%\n k_EMsgAMSwapKioskDepositResponse\020\375"
+  "!\022\037\n\032k_EMsgAMSetUserGiftUnowned\020\376!\022\'\n\"k_"
+  "EMsgAMSetUserGiftUnownedResponse\020\377!\022!\n\034k"
+  "_EMsgAMClaimUnownedUserGift\020\200\"\022)\n$k_EMsg"
+  "AMClaimUnownedUserGiftResponse\020\201\"\022\030\n\023k_E"
+  "MsgAMSetClanName\020\202\"\022 \n\033k_EMsgAMSetClanNa"
+  "meResponse\020\203\"\022\030\n\023k_EMsgAMGrantCoupon\020\204\"\022"
+  " \n\033k_EMsgAMGrantCouponResponse\020\205\"\022-\n(k_E"
+  "MsgAMIsPackageRestrictedInUserCountry\020\206\""
+  "\0225\n0k_EMsgAMIsPackageRestrictedInUserCou"
+  "ntryResponse\020\207\"\022-\n(k_EMsgAMHandlePending"
+  "TransactionResponse\020\210\"\022\036\n\031k_EMsgAMGrantG"
+  "uestPasses2\020\211\"\022&\n!k_EMsgAMGrantGuestPass"
+  "es2Response\020\212\"\022 \n\033k_EMsgAMGetPlayerBanDe"
+  "tails\020\215\"\022(\n#k_EMsgAMGetPlayerBanDetailsR"
+  "esponse\020\216\"\022\035\n\030k_EMsgAMFinalizePurchase\020\217"
+  "\"\022%\n k_EMsgAMFinalizePurchaseResponse\020\220\""
+  "\022\"\n\035k_EMsgAMPersonaChangeResponse\020\224\"\022+\n&"
+  "k_EMsgAMGetClanDetailsForForumCreation\020\225"
+  "\"\0223\n.k_EMsgAMGetClanDetailsForForumCreat"
+  "ionResponse\020\226\"\022(\n#k_EMsgAMGetPendingNoti"
+  "ficationCount\020\227\"\0220\n+k_EMsgAMGetPendingNo"
+  "tificationCountResponse\020\230\"\022 \n\033k_EMsgAMPa"
+  "sswordHashUpgrade\020\231\"\022\035\n\030k_EMsgAMBoaCompr"
+  "aPayment\020\234\"\022%\n k_EMsgAMBoaCompraPaymentR"
+  "esponse\020\235\"\022%\n k_EMsgAMCompleteExternalPu"
+  "rchase\020\237\"\022-\n(k_EMsgAMCompleteExternalPur"
+  "chaseResponse\020\240\"\022)\n$k_EMsgAMResolveNegat"
+  "iveWalletCredits\020\241\"\0221\n,k_EMsgAMResolveNe"
+  "gativeWalletCreditsResponse\020\242\"\022&\n!k_EMsg"
+  "AMPlayerGetClanBasicDetails\020\245\"\022.\n)k_EMsg"
+  "AMPlayerGetClanBasicDetailsResponse\020\246\"\022\027"
+  "\n\022k_EMsgAMMOLPayment\020\247\"\022\037\n\032k_EMsgAMMOLPa"
+  "ymentResponse\020\250\"\022\033\n\026k_EMsgGetUserIPCount"
+  "ry\020\251\"\022#\n\036k_EMsgGetUserIPCountryResponse\020"
+  "\252\"\022+\n&k_EMsgNotificationOfSuspiciousActi"
+  "vity\020\253\"\022\032\n\025k_EMsgAMDegicaPayment\020\254\"\022\"\n\035k"
+  "_EMsgAMDegicaPaymentResponse\020\255\"\022\031\n\024k_EMs"
+  "gAMEClubPayment\020\256\"\022!\n\034k_EMsgAMEClubPayme"
+  "ntResponse\020\257\"\022%\n k_EMsgAMPayPalPaymentsH"
+  "ubPayment\020\260\"\022-\n(k_EMsgAMPayPalPaymentsHu"
+  "bPaymentResponse\020\261\"\0221\n,k_EMsgAMTwoFactor"
+  "RecoverAuthenticatorRequest\020\262\"\0222\n-k_EMsg"
+  "AMTwoFactorRecoverAuthenticatorResponse\020"
+  "\263\"\022\035\n\030k_EMsgAMSmart2PayPayment\020\264\"\022%\n k_E"
+  "MsgAMSmart2PayPaymentResponse\020\265\"\0227\n2k_EM"
+  "sgAMValidatePasswordResetCodeAndSendSmsR"
+  "equest\020\266\"\0228\n3k_EMsgAMValidatePasswordRes"
+  "etCodeAndSendSmsResponse\020\267\"\022*\n%k_EMsgAMG"
+  "etAccountResetDetailsRequest\020\270\"\022+\n&k_EMs"
+  "gAMGetAccountResetDetailsResponse\020\271\"\022\032\n\025"
+  "k_EMsgAMBitPayPayment\020\272\"\022\"\n\035k_EMsgAMBitP"
+  "ayPaymentResponse\020\273\"\022\"\n\035k_EMsgAMSendAcco"
+  "untInfoUpdate\020\274\"\022\036\n\031k_EMsgAMSendSchedule"
+  "dGift\020\275\"\022\032\n\025k_EMsgAMNodwinPayment\020\276\"\022\"\n\035"
+  "k_EMsgAMNodwinPaymentResponse\020\277\"\022 \n\033k_EM"
+  "sgAMResolveWalletRevoke\020\300\"\022\'\n\"k_EMsgAMRe"
+  "solveWalletReverseRevoke\020\301\"\022\032\n\025k_EMsgAMF"
+  "undedPayment\020\302\"\022\"\n\035k_EMsgAMFundedPayment"
+  "Response\020\303\"\022.\n)k_EMsgAMRequestPersonaUpd"
+  "ateForChatServer\020\304\"\022 \n\033k_EMsgAMPerfectWo"
+  "rldPayment\020\305\"\022(\n#k_EMsgAMPerfectWorldPay"
+  "mentResponse\020\306\"\022\034\n\027k_EMsgAMECommPayPayme"
+  "nt\020\307\"\022$\n\037k_EMsgAMECommPayPaymentResponse"
+  "\020\310\"\022\036\n\031k_EMsgAMSetRemoteClientID\020\311\"\022\031\n\024k"
+  "_EMsgAMNuveiPayment\020\312\"\022!\n\034k_EMsgAMNuveiP"
+  "aymentResponse\020\313\"\022\026\n\021k_EMsgBasePSRange\020\210"
+  "\'\022 \n\033k_EMsgPSIsValidShoppingCart\020\213\'\022(\n#k"
+  "_EMsgPSIsValidShoppingCartResponse\020\214\'\022$\n"
+  "\037k_EMsgPSGetShoppingCartContents\020\221\'\022,\n\'k"
+  "_EMsgPSGetShoppingCartContentsResponse\020\222"
+  "\'\022*\n%k_EMsgPSAddWalletCreditToShoppingCa"
+  "rt\020\223\'\0222\n-k_EMsgPSAddWalletCreditToShoppi"
+  "ngCartResponse\020\224\'\022#\n\036k_EMsgPSGetAccountC"
+  "artContents\020\225\'\022+\n&k_EMsgPSGetAccountCart"
+  "ContentsResponse\020\226\'\022\027\n\022k_EMsgBaseUFSRang"
+  "e\020\320(\022!\n\034k_EMsgUFSReloadPartitionInfo\020\337(\022"
+  "\035\n\030k_EMsgUFSSynchronizeFile\020\341(\022%\n k_EMsg"
+  "UFSSynchronizeFileResponse\020\342(\022!\n\034k_EMsgC"
+  "lientUFSGetUGCDetails\020\352(\022)\n$k_EMsgClient"
+  "UFSGetUGCDetailsResponse\020\353(\022\035\n\030k_EMsgUFS"
+  "UpdateFileFlags\020\354(\022%\n k_EMsgUFSUpdateFil"
+  "eFlagsResponse\020\355(\022%\n k_EMsgClientUFSGetS"
+  "ingleFileInfo\020\356(\022-\n(k_EMsgClientUFSGetSi"
+  "ngleFileInfoResponse\020\357(\022\035\n\030k_EMsgClientU"
+  "FSShareFile\020\360(\022%\n k_EMsgClientUFSShareFi"
+  "leResponse\020\361(\022\033\n\026k_EMsgUFSReloadAccount\020"
+  "\362(\022#\n\036k_EMsgUFSReloadAccountResponse\020\363(\022"
+  "!\n\034k_EMsgUFSUpdateRecordBatched\020\364(\022)\n$k_"
+  "EMsgUFSUpdateRecordBatchedResponse\020\365(\022\031\n"
+  "\024k_EMsgUFSMigrateFile\020\366(\022!\n\034k_EMsgUFSMig"
+  "rateFileResponse\020\367(\022\030\n\023k_EMsgUFSGetUGCUR"
+  "Ls\020\370(\022 \n\033k_EMsgUFSGetUGCURLsResponse\020\371(\022"
+  ")\n$k_EMsgUFSHttpUploadFileFinishRequest\020"
+  "\372(\022*\n%k_EMsgUFSHttpUploadFileFinishRespo"
+  "nse\020\373(\022\"\n\035k_EMsgUFSDownloadStartRequest\020"
+  "\374(\022#\n\036k_EMsgUFSDownloadStartResponse\020\375(\022"
+  "\"\n\035k_EMsgUFSDownloadChunkRequest\020\376(\022#\n\036k"
+  "_EMsgUFSDownloadChunkResponse\020\377(\022#\n\036k_EM"
+  "sgUFSDownloadFinishRequest\020\200)\022$\n\037k_EMsgU"
+  "FSDownloadFinishResponse\020\201)\022\033\n\026k_EMsgUFS"
+  "FlushURLCache\020\202)\022\036\n\031k_EMsgUFSMigrateFile"
+  "AppID\020\205)\022&\n!k_EMsgUFSMigrateFileAppIDRes"
+  "ponse\020\206)\022\026\n\021k_EMsgBaseClient2\020\230*\022.\n)k_EM"
+  "sgClientRequestForgottenPasswordEmail\020\231*"
+  "\0226\n1k_EMsgClientRequestForgottenPassword"
+  "EmailResponse\020\232*\022&\n!k_EMsgClientCreateAc"
+  "countResponse\020\233*\022\'\n\"k_EMsgClientResetFor"
+  "gottenPassword\020\234*\022/\n*k_EMsgClientResetFo"
+  "rgottenPasswordResponse\020\235*\022/\n*k_EMsgClie"
+  "ntInformOfResetForgottenPassword\020\237*\0227\n2k"
+  "_EMsgClientInformOfResetForgottenPasswor"
+  "dResponse\020\240*\022)\n$k_EMsgClientAnonUserLogO"
+  "n_Deprecated\020\241*\022(\n#k_EMsgClientGamesPlay"
+  "edWithDataBlob\020\242*\022#\n\036k_EMsgClientUpdateU"
+  "serGameInfo\020\243*\022\037\n\032k_EMsgClientFileToDown"
+  "load\020\244*\022\'\n\"k_EMsgClientFileToDownloadRes"
+  "ponse\020\245*\022\034\n\027k_EMsgClientLBSSetScore\020\246*\022$"
+  "\n\037k_EMsgClientLBSSetScoreResponse\020\247*\022\"\n\035"
+  "k_EMsgClientLBSFindOrCreateLB\020\250*\022*\n%k_EM"
+  "sgClientLBSFindOrCreateLBResponse\020\251*\022 \n\033"
+  "k_EMsgClientLBSGetLBEntries\020\252*\022(\n#k_EMsg"
+  "ClientLBSGetLBEntriesResponse\020\253*\022\035\n\030k_EM"
+  "sgClientChatDeclined\020\262*\022\"\n\035k_EMsgClientF"
+  "riendMsgIncoming\020\263*\022$\n\037k_EMsgClientAuthL"
+  "ist_Deprecated\020\264*\022#\n\036k_EMsgClientTicketA"
+  "uthComplete\020\265*\022!\n\034k_EMsgClientIsLimitedA"
+  "ccount\020\266*\022 \n\033k_EMsgClientRequestAuthList"
+  "\020\267*\022\031\n\024k_EMsgClientAuthList\020\270*\022 \n\033k_EMsg"
+  "ClientStat_Deprecated\020\271*\022\"\n\035k_EMsgClient"
+  "P2PConnectionInfo\020\272*\022&\n!k_EMsgClientP2PC"
+  "onnectionFailInfo\020\273*\022&\n!k_EMsgClientGetD"
+  "epotDecryptionKey\020\276*\022.\n)k_EMsgClientGetD"
+  "epotDecryptionKeyResponse\020\277*\022\"\n\035k_EMsgCl"
+  "ientEnableTestLicense\020\303*\022*\n%k_EMsgClient"
+  "EnableTestLicenseResponse\020\304*\022#\n\036k_EMsgCl"
+  "ientDisableTestLicense\020\305*\022+\n&k_EMsgClien"
+  "tDisableTestLicenseResponse\020\306*\022%\n k_EMsg"
+  "ClientCheckAppBetaPassword\020\312*\022-\n(k_EMsgC"
+  "lientCheckAppBetaPasswordResponse\020\313*\022\025\n\020"
+  "k_EMsgClientToGC\020\314*\022\027\n\022k_EMsgClientFromG"
+  "C\020\315*\022\036\n\031k_EMsgClientEmailAddrInfo\020\320*\022 \n\033"
+  "k_EMsgClientPasswordChange3\020\321*\022\035\n\030k_EMsg"
+  "ClientEmailChange3\020\322*\022\"\n\035k_EMsgClientPer"
+  "sonalQAChange3\020\323*\022(\n#k_EMsgClientResetFo"
+  "rgottenPassword3\020\324*\022/\n*k_EMsgClientReque"
+  "stForgottenPasswordEmail3\020\325*\022\034\n\027k_EMsgCl"
+  "ientNewLoginKey\020\327*\022/\n*k_EMsgClientNewLog"
+  "inKeyAccepted_Deprecated\020\330*\022)\n$k_EMsgCli"
+  "entLogOnWithHash_Deprecated\020\331*\022 \n\033k_EMsg"
+  "ClientStoreUserStats2\020\332*\022\035\n\030k_EMsgClient"
+  "StatsUpdated\020\333*\0220\n+k_EMsgClientRequested"
+  "ClientStats_Deprecated\020\350*\022&\n!k_EMsgClien"
+  "tStat2Int32_Deprecated\020\351*\022!\n\034k_EMsgClien"
+  "tStat2_Deprecated\020\352*\022#\n\036k_EMsgClientDRMD"
+  "ownloadRequest\020\355*\022$\n\037k_EMsgClientDRMDown"
+  "loadResponse\020\356*\022\037\n\032k_EMsgClientDRMFinalR"
+  "esult\020\357*\022&\n!k_EMsgClientGetFriendsWhoPla"
+  "yGame\020\360*\022.\n)k_EMsgClientGetFriendsWhoPla"
+  "yGameResponse\020\361*\022 \n\033k_EMsgClientOGSBegin"
+  "Session\020\362*\022(\n#k_EMsgClientOGSBeginSessio"
+  "nResponse\020\363*\022\036\n\031k_EMsgClientOGSEndSessio"
+  "n\020\364*\022&\n!k_EMsgClientOGSEndSessionRespons"
+  "e\020\365*\022\034\n\027k_EMsgClientOGSWriteRow\020\366*\022#\n\036k_"
+  "EMsgClientGetPeerContentInfo\020\367*\022+\n&k_EMs"
+  "gClientGetPeerContentInfoResponse\020\370*\022\'\n\""
+  "k_EMsgClientStartPeerContentServer\020\371*\022/\n"
+  "*k_EMsgClientStartPeerContentServerRespo"
+  "nse\020\372*\022\"\n\035k_EMsgClientServerUnavailable\020"
+  "\374*\022!\n\034k_EMsgClientServersAvailable\020\375*\022)\n"
+  "$k_EMsgClientRegisterAuthTicketWithCM\020\376*"
+  "\022\034\n\027k_EMsgClientGCMsgFailed\020\377*\022$\n\037k_EMsg"
+  "ClientMicroTxnAuthRequest\020\200+\022\"\n\035k_EMsgCl"
+  "ientMicroTxnAuthorize\020\201+\022*\n%k_EMsgClient"
+  "MicroTxnAuthorizeResponse\020\202+\022 \n\033k_EMsgCl"
+  "ientGetMicroTxnInfo\020\204+\022(\n#k_EMsgClientGe"
+  "tMicroTxnInfoResponse\020\205+\022%\n k_EMsgClient"
+  "DeregisterWithServer\020\207+\022\'\n\"k_EMsgClientS"
+  "ubscribeToPersonaFeed\020\210+\022\026\n\021k_EMsgClient"
+  "Logon\020\212+\022!\n\034k_EMsgClientGetClientDetails"
+  "\020\213+\022)\n$k_EMsgClientGetClientDetailsRespo"
+  "nse\020\214+\022+\n&k_EMsgClientReportOverlayDetou"
+  "rFailure\020\215+\022!\n\034k_EMsgClientGetClientAppL"
+  "ist\020\216+\022)\n$k_EMsgClientGetClientAppListRe"
+  "sponse\020\217+\022!\n\034k_EMsgClientInstallClientAp"
+  "p\020\220+\022)\n$k_EMsgClientInstallClientAppResp"
+  "onse\020\221+\022#\n\036k_EMsgClientUninstallClientAp"
+  "p\020\222+\022+\n&k_EMsgClientUninstallClientAppRe"
+  "sponse\020\223+\022(\n#k_EMsgClientSetClientAppUpd"
+  "ateState\020\224+\0220\n+k_EMsgClientSetClientAppU"
+  "pdateStateResponse\020\225+\022*\n%k_EMsgClientReq"
+  "uestEncryptedAppTicket\020\226+\0222\n-k_EMsgClien"
+  "tRequestEncryptedAppTicketResponse\020\227+\022!\n"
+  "\034k_EMsgClientWalletInfoUpdate\020\230+\022\032\n\025k_EM"
+  "sgClientLBSSetUGC\020\231+\022\"\n\035k_EMsgClientLBSS"
+  "etUGCResponse\020\232+\022\"\n\035k_EMsgClientAMGetCla"
+  "nOfficers\020\233+\022*\n%k_EMsgClientAMGetClanOff"
+  "icersResponse\020\234+\022\"\n\035k_EMsgClientFriendPr"
+  "ofileInfo\020\237+\022*\n%k_EMsgClientFriendProfil"
+  "eInfoResponse\020\240+\022#\n\036k_EMsgClientScreensh"
+  "otsChanged\020\247+\022 \n\033k_EMsgClientLaunchClien"
+  "tApp\020\250+\022(\n#k_EMsgClientLaunchClientAppRe"
+  "sponse\020\251+\022#\n\036k_EMsgClientRequestAccountD"
+  "ata\020\255+\022+\n&k_EMsgClientRequestAccountData"
+  "Response\020\256+\022(\n#k_EMsgClientResetForgotte"
+  "nPassword4\020\257+\022\033\n\026k_EMsgClientHideFriend\020"
+  "\260+\022\"\n\035k_EMsgClientFriendsGroupsList\020\261+\022&"
+  "\n!k_EMsgClientGetClanActivityCounts\020\262+\022."
+  "\n)k_EMsgClientGetClanActivityCountsRespo"
+  "nse\020\263+\022 \n\033k_EMsgClientOGSReportString\020\264+"
+  "\022\035\n\030k_EMsgClientOGSReportBug\020\265+\022\031\n\024k_EMs"
+  "gClientSentLogs\020\266+\022 \n\033k_EMsgClientLogonG"
+  "ameServer\020\267+\022%\n k_EMsgAMClientCreateFrie"
+  "ndsGroup\020\270+\022-\n(k_EMsgAMClientCreateFrien"
+  "dsGroupResponse\020\271+\022%\n k_EMsgAMClientDele"
+  "teFriendsGroup\020\272+\022-\n(k_EMsgAMClientDelet"
+  "eFriendsGroupResponse\020\273+\022%\n k_EMsgAMClie"
+  "ntManageFriendsGroup\020\274+\022-\n(k_EMsgAMClien"
+  "tManageFriendsGroupResponse\020\275+\022#\n\036k_EMsg"
+  "AMClientAddFriendToGroup\020\276+\022+\n&k_EMsgAMC"
+  "lientAddFriendToGroupResponse\020\277+\022(\n#k_EM"
+  "sgAMClientRemoveFriendFromGroup\020\300+\0220\n+k_"
+  "EMsgAMClientRemoveFriendFromGroupRespons"
+  "e\020\301+\022(\n#k_EMsgClientAMGetPersonaNameHist"
+  "ory\020\302+\0220\n+k_EMsgClientAMGetPersonaNameHi"
+  "storyResponse\020\303+\022#\n\036k_EMsgClientRequestF"
+  "reeLicense\020\304+\022+\n&k_EMsgClientRequestFree"
+  "LicenseResponse\020\305+\0220\n+k_EMsgClientDRMDow"
+  "nloadRequestWithCrashData\020\306+\022\034\n\027k_EMsgCl"
+  "ientAuthListAck\020\307+\022\"\n\035k_EMsgClientItemAn"
+  "nouncements\020\310+\022)\n$k_EMsgClientRequestIte"
+  "mAnnouncements\020\311+\022&\n!k_EMsgClientFriendM"
+  "sgEchoToSender\020\312+\022%\n k_EMsgClientComment"
+  "Notifications\020\316+\022,\n\'k_EMsgClientRequestC"
+  "ommentNotifications\020\317+\022&\n!k_EMsgClientPe"
+  "rsonaChangeResponse\020\320+\022>\n9k_EMsgClientRe"
+  "questWebAPIAuthenticateUserNonce_Depreca"
+  "ted\020\321+\022F\nAk_EMsgClientRequestWebAPIAuthe"
+  "nticateUserNonceResponse_Deprecated\020\322+\022#"
+  "\n\036k_EMsgClientPlayerNicknameList\020\323+\022$\n\037k"
+  "_EMsgAMClientSetPlayerNickname\020\324+\022,\n\'k_E"
+  "MsgAMClientSetPlayerNicknameResponse\020\325+\022"
+  ",\n\'k_EMsgClientGetNumberOfCurrentPlayers"
+  "DP\020\330+\0224\n/k_EMsgClientGetNumberOfCurrentP"
+  "layersDPResponse\020\331+\022$\n\037k_EMsgClientServi"
+  "ceMethodLegacy\020\332+\022,\n\'k_EMsgClientService"
+  "MethodLegacyResponse\020\333+\022*\n%k_EMsgClientF"
+  "riendUserStatusPublished\020\334+\022\036\n\031k_EMsgCli"
+  "entCurrentUIMode\020\335+\022-\n(k_EMsgClientVanit"
+  "yURLChangedNotification\020\336+\022\"\n\035k_EMsgClie"
+  "ntUserNotifications\020\337+\022\022\n\rk_EMsgBaseDFS\020"
+  "\340+\022\025\n\020k_EMsgDFSGetFile\020\341+\022\036\n\031k_EMsgDFSIn"
+  "stallLocalFile\020\342+\022\030\n\023k_EMsgDFSConnection"
+  "\020\343+\022\035\n\030k_EMsgDFSConnectionReply\020\344+\022\'\n\"k_"
+  "EMsgClientDFSAuthenticateRequest\020\345+\022(\n#k"
+  "_EMsgClientDFSAuthenticateResponse\020\346+\022\036\n"
+  "\031k_EMsgClientDFSEndSession\020\347+\022\027\n\022k_EMsgD"
+  "FSPurgeFile\020\350+\022\027\n\022k_EMsgDFSRouteFile\020\351+\022"
+  "\037\n\032k_EMsgDFSGetFileFromServer\020\352+\022\036\n\031k_EM"
+  "sgDFSAcceptedResponse\020\353+\022\035\n\030k_EMsgDFSReq"
+  "uestPingback\020\354+\022\036\n\031k_EMsgDFSRecvTransmit"
+  "File\020\355+\022\036\n\031k_EMsgDFSSendTransmitFile\020\356+\022"
+  "\036\n\031k_EMsgDFSRequestPingback2\020\357+\022\037\n\032k_EMs"
+  "gDFSResponsePingback2\020\360+\022\"\n\035k_EMsgClient"
+  "DFSDownloadStatus\020\361+\022\033\n\026k_EMsgDFSStartTr"
+  "ansfer\020\362+\022\036\n\031k_EMsgDFSTransferComplete\020\363"
+  "+\022\037\n\032k_EMsgDFSRouteFileResponse\020\364+\022&\n!k_"
+  "EMsgClientNetworkingCertRequest\020\365+\022.\n)k_"
+  "EMsgClientNetworkingCertRequestResponse\020"
+  "\366+\022!\n\034k_EMsgClientChallengeRequest\020\367+\022\"\n"
+  "\035k_EMsgClientChallengeResponse\020\370+\022#\n\036k_E"
+  "MsgBadgeCraftedNotification\020\371+\022,\n\'k_EMsg"
+  "ClientNetworkingMobileCertRequest\020\372+\0224\n/"
+  "k_EMsgClientNetworkingMobileCertRequestR"
+  "esponse\020\373+\022\022\n\rk_EMsgBaseMDS\020\250-\022#\n\036k_EMsg"
+  "MDSGetDepotDecryptionKey\020\264-\022+\n&k_EMsgMDS"
+  "GetDepotDecryptionKeyResponse\020\265-\022(\n#k_EM"
+  "sgMDSContentServerConfigRequest\020\303-\022!\n\034k_"
+  "EMsgMDSContentServerConfig\020\304-\022\036\n\031k_EMsgM"
+  "DSGetDepotManifest\020\305-\022&\n!k_EMsgMDSGetDep"
+  "otManifestResponse\020\306-\022#\n\036k_EMsgMDSGetDep"
+  "otManifestChunk\020\307-\022\034\n\027k_EMsgMDSToCSFlush"
+  "Chunk\020\324-\022\032\n\025k_EMsgMDSMigrateChunk\020\327-\022\"\n\035"
+  "k_EMsgMDSMigrateChunkResponse\020\330-\022\037\n\032k_EM"
+  "sgMDSToCSFlushManifest\020\331-\022\021\n\014k_EMsgCSBas"
+  "e\020\2700\022\021\n\014k_EMsgCSPing\020\2710\022\031\n\024k_EMsgCSPingR"
+  "esponse\020\2720\022\022\n\rk_EMsgGMSBase\020\2002\022!\n\034k_EMsg"
+  "GMSGameServerReplicate\020\2012\022\037\n\032k_EMsgClien"
+  "tGMSServerQuery\020\2032\022\'\n\"k_EMsgGMSClientSer"
+  "verQueryResponse\020\2042\022 \n\033k_EMsgAMGMSGameSe"
+  "rverUpdate\020\2052\022 \n\033k_EMsgAMGMSGameServerRe"
+  "move\020\2062\022\036\n\031k_EMsgGameServerOutOfDate\020\2072\022"
+  "\022\n\rk_EMsgMMSBase\020\3103\022\037\n\032k_EMsgClientMMSCr"
+  "eateLobby\020\3113\022\'\n\"k_EMsgClientMMSCreateLob"
+  "byResponse\020\3123\022\035\n\030k_EMsgClientMMSJoinLobb"
+  "y\020\3133\022%\n k_EMsgClientMMSJoinLobbyResponse"
+  "\020\3143\022\036\n\031k_EMsgClientMMSLeaveLobby\020\3153\022&\n!k"
+  "_EMsgClientMMSLeaveLobbyResponse\020\3163\022 \n\033k"
+  "_EMsgClientMMSGetLobbyList\020\3173\022(\n#k_EMsgC"
+  "lientMMSGetLobbyListResponse\020\3203\022 \n\033k_EMs"
+  "gClientMMSSetLobbyData\020\3213\022(\n#k_EMsgClien"
+  "tMMSSetLobbyDataResponse\020\3223\022 \n\033k_EMsgCli"
+  "entMMSGetLobbyData\020\3233\022\035\n\030k_EMsgClientMMS"
+  "LobbyData\020\3243\022$\n\037k_EMsgClientMMSSendLobby"
+  "ChatMsg\020\3253\022 \n\033k_EMsgClientMMSLobbyChatMs"
+  "g\020\3263\022!\n\034k_EMsgClientMMSSetLobbyOwner\020\3273\022"
+  ")\n$k_EMsgClientMMSSetLobbyOwnerResponse\020"
+  "\3303\022&\n!k_EMsgClientMMSSetLobbyGameServer\020"
+  "\3313\022&\n!k_EMsgClientMMSLobbyGameServerSet\020"
+  "\3323\022#\n\036k_EMsgClientMMSUserJoinedLobby\020\3333\022"
+  "!\n\034k_EMsgClientMMSUserLeftLobby\020\3343\022!\n\034k_"
+  "EMsgClientMMSInviteToLobby\020\3353\022)\n$k_EMsgC"
+  "lientMMSFlushFrenemyListCache\020\3363\0221\n,k_EM"
+  "sgClientMMSFlushFrenemyListCacheResponse"
+  "\020\3373\022\"\n\035k_EMsgClientMMSSetLobbyLinked\020\3403\022"
+  ".\n)k_EMsgClientMMSSetRatelimitPolicyOnCl"
+  "ient\020\3413\022\"\n\035k_EMsgClientMMSGetLobbyStatus"
+  "\020\3423\022*\n%k_EMsgClientMMSGetLobbyStatusResp"
+  "onse\020\3433\022\032\n\025k_EMsgMMSGetLobbyList\020\3443\022\"\n\035k"
+  "_EMsgMMSGetLobbyListResponse\020\3453\022\035\n\030k_EMs"
+  "gMMSRoutingOverride\020\3463\022!\n\034k_EMsgGameServ"
+  "erPolicyUpdate\020\3473\022\030\n\023k_EMsgNonStdMsgBase"
+  "\020\2205\022\035\n\030k_EMsgNonStdMsgMemcached\020\2215\022\036\n\031k_"
+  "EMsgNonStdMsgHTTPServer\020\2225\022\036\n\031k_EMsgNonS"
+  "tdMsgHTTPClient\020\2235\022\036\n\031k_EMsgNonStdMsgWGR"
+  "esponse\020\2245\022 \n\033k_EMsgNonStdMsgPHPSimulato"
+  "r\020\2255\022\031\n\024k_EMsgNonStdMsgChase\020\2265\022\037\n\032k_EMs"
+  "gNonStdMsgDFSTransfer\020\2275\022\031\n\024k_EMsgNonStd"
+  "MsgTests\020\2305\022\037\n\032k_EMsgNonStdMsgUMQpipeAAP"
+  "L\020\2315\022\032\n\025k_EMSgNonStdMsgSyslog\020\2325\022\"\n\035k_EM"
+  "sgNonStdMsgSteam2Emulator\020\2345\022\036\n\031k_EMsgNo"
+  "nStdMsgRTMPServer\020\2355\022\035\n\030k_EMsgNonStdMsgW"
+  "ebSocket\020\2365\022\031\n\024k_EMsgNonStdMsgRedis\020\2375\022\022"
+  "\n\rk_EMsgUDSBase\020\3306\022%\n k_EMsgClientUDSP2P"
+  "SessionStarted\020\3316\022#\n\036k_EMsgClientUDSP2PS"
+  "essionEnded\020\3326\022\034\n\027k_EMsgUDSRenderUserAut"
+  "h\020\3336\022$\n\037k_EMsgUDSRenderUserAuthResponse\020"
+  "\3346\022\035\n\030k_EMsgClientInviteToGame\020\3356\022\030\n\023k_E"
+  "MsgUDSHasSession\020\3366\022 \n\033k_EMsgUDSHasSessi"
+  "onResponse\020\3376\022\023\n\016k_EMsgMPASBase\020\2747\022\032\n\025k_"
+  "EMsgMPASVacBanReset\020\2757\022\022\n\rk_EMsgKGSBase\020"
+  "\2408\022\022\n\rk_EMsgUCMBase\020\2049\022!\n\034k_EMsgClientUC"
+  "MAddScreenshot\020\2059\022)\n$k_EMsgClientUCMAddS"
+  "creenshotResponse\020\2069\022#\n\036k_EMsgUCMResetCo"
+  "mmunityContent\020\2139\022+\n&k_EMsgUCMResetCommu"
+  "nityContentResponse\020\2149\022$\n\037k_EMsgClientUC"
+  "MDeleteScreenshot\020\2159\022,\n\'k_EMsgClientUCMD"
+  "eleteScreenshotResponse\020\2169\022\037\n\032k_EMsgClie"
+  "ntUCMPublishFile\020\2179\022\'\n\"k_EMsgClientUCMPu"
+  "blishFileResponse\020\2209\022\'\n\"k_EMsgClientUCMD"
+  "eletePublishedFile\020\2239\022/\n*k_EMsgClientUCM"
+  "DeletePublishedFileResponse\020\2249\022\'\n\"k_EMsg"
+  "ClientUCMUpdatePublishedFile\020\2359\022/\n*k_EMs"
+  "gClientUCMUpdatePublishedFileResponse\020\2369"
+  "\022!\n\034k_EMsgUCMUpdatePublishedFile\020\2379\022)\n$k"
+  "_EMsgUCMUpdatePublishedFileResponse\020\2409\022%"
+  "\n k_EMsgUCMUpdatePublishedFileStat\020\2439\022!\n"
+  "\034k_EMsgUCMReloadPublishedFile\020\2519\022&\n!k_EM"
+  "sgUCMReloadUserFileListCaches\020\2529\022#\n\036k_EM"
+  "sgUCMPublishedFileReported\020\2539\022%\n k_EMsgU"
+  "CMPublishedFilePreviewAdd\020\2559\022-\n(k_EMsgUC"
+  "MPublishedFilePreviewAddResponse\020\2569\022(\n#k"
+  "_EMsgUCMPublishedFilePreviewRemove\020\2579\0220\n"
+  "+k_EMsgUCMPublishedFilePreviewRemoveResp"
+  "onse\020\2609\022%\n k_EMsgUCMPublishedFileSubscri"
+  "bed\020\2659\022\'\n\"k_EMsgUCMPublishedFileUnsubscr"
+  "ibed\020\2669\022\031\n\024k_EMsgUCMPublishFile\020\2679\022!\n\034k_"
+  "EMsgUCMPublishFileResponse\020\2709\022#\n\036k_EMsgU"
+  "CMPublishedFileChildAdd\020\2719\022+\n&k_EMsgUCMP"
+  "ublishedFileChildAddResponse\020\2729\022&\n!k_EMs"
+  "gUCMPublishedFileChildRemove\020\2739\022.\n)k_EMs"
+  "gUCMPublishedFileChildRemoveResponse\020\2749\022"
+  "(\n#k_EMsgUCMPublishedFileParentChanged\020\277"
+  "9\022.\n)k_EMsgClientUCMSetUserPublishedFile"
+  "Action\020\3049\0226\n1k_EMsgClientUCMSetUserPubli"
+  "shedFileActionResponse\020\3059\0227\n2k_EMsgClien"
+  "tUCMEnumeratePublishedFilesByUserAction\020"
+  "\3069\022\?\n:k_EMsgClientUCMEnumeratePublishedF"
+  "ilesByUserActionResponse\020\3079\022$\n\037k_EMsgUCM"
+  "GetUserSubscribedFiles\020\3119\022,\n\'k_EMsgUCMGe"
+  "tUserSubscribedFilesResponse\020\3129\022#\n\036k_EMs"
+  "gUCMFixStatsPublishedFile\020\3139\022;\n6k_EMsgCl"
+  "ientUCMEnumerateUserSubscribedFilesWithU"
+  "pdates\020\3229\022C\n>k_EMsgClientUCMEnumerateUse"
+  "rSubscribedFilesWithUpdatesResponse\020\3239\022)"
+  "\n$k_EMsgUCMPublishedFileContentUpdated\020\324"
+  "9\022(\n#k_EMsgClientUCMPublishedFileUpdated"
+  "\020\3259\022\021\n\014k_EMsgFSBase\020\314:\022#\n\036k_EMsgClientRi"
+  "chPresenceUpload\020\315:\022$\n\037k_EMsgClientRichP"
+  "resenceRequest\020\316:\022!\n\034k_EMsgClientRichPre"
+  "senceInfo\020\317:\022 \n\033k_EMsgFSRichPresenceRequ"
+  "est\020\320:\022!\n\034k_EMsgFSRichPresenceResponse\020\321"
+  ":\022\037\n\032k_EMsgFSComputeFrenematrix\020\322:\022\'\n\"k_"
+  "EMsgFSComputeFrenematrixResponse\020\323:\022#\n\036k"
+  "_EMsgFSPlayStatusNotification\020\324:\022 \n\033k_EM"
+  "sgFSAddOrRemoveFollower\020\326:\022(\n#k_EMsgFSAd"
+  "dOrRemoveFollowerResponse\020\327:\022 \n\033k_EMsgFS"
+  "UpdateFollowingList\020\330:\022 \n\033k_EMsgFSCommen"
+  "tNotification\020\331:\022&\n!k_EMsgFSCommentNotif"
+  "icationViewed\020\332:\022#\n\036k_EMsgClientFSGetFol"
+  "lowerCount\020\333:\022+\n&k_EMsgClientFSGetFollow"
+  "erCountResponse\020\334:\022!\n\034k_EMsgClientFSGetI"
+  "sFollowing\020\335:\022)\n$k_EMsgClientFSGetIsFoll"
+  "owingResponse\020\336:\022)\n$k_EMsgClientFSEnumer"
+  "ateFollowingList\020\337:\0221\n,k_EMsgClientFSEnu"
+  "merateFollowingListResponse\020\340:\022(\n#k_EMsg"
+  "FSGetPendingNotificationCount\020\341:\0220\n+k_EM"
+  "sgFSGetPendingNotificationCountResponse\020"
+  "\342:\022/\n*k_EMsgClientChatOfflineMessageNoti"
+  "fication\020\343:\022/\n*k_EMsgClientChatRequestOf"
+  "flineMessageCount\020\344:\022,\n\'k_EMsgClientChat"
+  "GetFriendMessageHistory\020\345:\0224\n/k_EMsgClie"
+  "ntChatGetFriendMessageHistoryResponse\020\346:"
+  "\022>\n9k_EMsgClientChatGetFriendMessageHist"
+  "oryForOfflineMessages\020\347:\022(\n#k_EMsgClient"
+  "FSGetFriendsSteamLevels\020\350:\0220\n+k_EMsgClie"
+  "ntFSGetFriendsSteamLevelsResponse\020\351:\022\036\n\031"
+  "k_EMsgAMRequestFriendData\020\352:\022\024\n\017k_EMsgDR"
+  "MRange2\020\260;\022,\n\'k_EMsgCEGVersionSetEnableD"
+  "isableRequest\020\260;\022-\n(k_EMsgCEGVersionSetE"
+  "nableDisableResponse\020\261;\022#\n\036k_EMsgCEGProp"
+  "StatusDRMSRequest\020\262;\022$\n\037k_EMsgCEGPropSta"
+  "tusDRMSResponse\020\263;\022\'\n\"k_EMsgCEGWhackFail"
+  "ureReportRequest\020\264;\022(\n#k_EMsgCEGWhackFai"
+  "lureReportResponse\020\265;\022\036\n\031k_EMsgDRMSFetch"
+  "VersionSet\020\266;\022&\n!k_EMsgDRMSFetchVersionS"
+  "etResponse\020\267;\022\023\n\016k_EMsgEconBase\020\224<\022+\n&k_"
+  "EMsgEconTrading_InitiateTradeRequest\020\225<\022"
+  ",\n\'k_EMsgEconTrading_InitiateTradePropos"
+  "ed\020\226<\022,\n\'k_EMsgEconTrading_InitiateTrade"
+  "Response\020\227<\022*\n%k_EMsgEconTrading_Initiat"
+  "eTradeResult\020\230<\022#\n\036k_EMsgEconTrading_Sta"
+  "rtSession\020\231<\022)\n$k_EMsgEconTrading_Cancel"
+  "TradeRequest\020\232<\022\"\n\035k_EMsgEconFlushInvent"
+  "oryCache\020\233<\022*\n%k_EMsgEconFlushInventoryC"
+  "acheResponse\020\234<\022&\n!k_EMsgEconCDKeyProces"
+  "sTransaction\020\237<\022.\n)k_EMsgEconCDKeyProces"
+  "sTransactionResponse\020\240<\022\033\n\026k_EMsgEconGet"
+  "ErrorLogs\020\241<\022#\n\036k_EMsgEconGetErrorLogsRe"
+  "sponse\020\242<\022\022\n\rk_EMsgRMRange\020\370<\022\034\n\027k_EMsgR"
+  "MTestVerisignOTP\020\370<\022$\n\037k_EMsgRMTestVeris"
+  "ignOTPResponse\020\371<\022 \n\033k_EMsgRMDeleteMemca"
+  "chedKeys\020\373<\022\031\n\024k_EMsgRMRemoteInvoke\020\374<\022\031"
+  "\n\024k_EMsgBadLoginIPList\020\375<\022\'\n\"k_EMsgRMMsg"
+  "TraceAddOrUpdateTrigger\020\376<\022#\n\036k_EMsgRMMs"
+  "gTraceRemoveTriggers\020\377<\022\032\n\025k_EMsgRMMsgTr"
+  "aceEvent\020\200=\022\022\n\rk_EMsgUGSBase\020\334=\022\037\n\032k_EMs"
+  "gUGSUpdateGlobalStats\020\334=\022\"\n\035k_EMsgClient"
+  "UGSGetGlobalStats\020\335=\022*\n%k_EMsgClientUGSG"
+  "etGlobalStatsResponse\020\336=\022\024\n\017k_EMsgStoreB"
+  "ase\020\300>\022\022\n\rk_EMsgUMQBase\020\244\?\022\027\n\022k_EMsgWork"
+  "shopBase\020\210@\022\025\n\020k_EMsgWebAPIBase\020\354@\022$\n\037k_"
+  "EMsgWebAPIValidateOAuth2Token\020\354@\022,\n\'k_EM"
+  "sgWebAPIValidateOAuth2TokenResponse\020\355@\022%"
+  "\n k_EMsgWebAPIRegisterGCInterfaces\020\357@\022+\n"
+  "&k_EMsgWebAPIInvalidateOAuthClientCache\020"
+  "\360@\022*\n%k_EMsgWebAPIInvalidateOAuthTokenCa"
+  "che\020\361@\022\033\n\026k_EMsgWebAPISetSecrets\020\362@\022\027\n\022k"
+  "_EMsgBackpackBase\020\320A\022 \n\033k_EMsgBackpackAd"
+  "dToCurrency\020\321A\022(\n#k_EMsgBackpackAddToCur"
+  "rencyResponse\020\322A\022\022\n\rk_EMsgCREBase\020\264B\022\035\n\030"
+  "k_EMsgCREItemVoteSummary\020\267B\022%\n k_EMsgCRE"
+  "ItemVoteSummaryResponse\020\270B\022)\n$k_EMsgCREU"
+  "pdateUserPublishedItemVote\020\273B\0221\n,k_EMsgC"
+  "REUpdateUserPublishedItemVoteResponse\020\274B"
+  "\022-\n(k_EMsgCREGetUserPublishedItemVoteDet"
+  "ails\020\275B\0225\n0k_EMsgCREGetUserPublishedItem"
+  "VoteDetailsResponse\020\276B\022\026\n\021k_EMsgSecretsB"
+  "ase\020\230C\022\'\n\"k_EMsgSecretsRequestCredential"
+  "Pair\020\230C\022(\n#k_EMsgSecretsCredentialPairRe"
+  "sponse\020\231C\022\031\n\024k_EMsgBoxMonitorBase\020\374C\022\"\n\035"
+  "k_EMsgBoxMonitorReportRequest\020\374C\022#\n\036k_EM"
+  "sgBoxMonitorReportResponse\020\375C\022\023\n\016k_EMsgP"
+  "ICSBase\020\304E\022(\n#k_EMsgClientPICSChangesSin"
+  "ceRequest\020\305E\022)\n$k_EMsgClientPICSChangesS"
+  "inceResponse\020\306E\022\'\n\"k_EMsgClientPICSProdu"
+  "ctInfoRequest\020\307E\022(\n#k_EMsgClientPICSProd"
+  "uctInfoResponse\020\310E\022\'\n\"k_EMsgClientPICSAc"
+  "cessTokenRequest\020\311E\022(\n#k_EMsgClientPICSA"
+  "ccessTokenResponse\020\312E\022\'\n\"k_EMsgClientPIC"
+  "SPrivateBetaRequest\020\313E\022(\n#k_EMsgClientPI"
+  "CSPrivateBetaResponse\020\314E\022\030\n\023k_EMsgWorker"
+  "Process\020\250F\022#\n\036k_EMsgWorkerProcessPingReq"
+  "uest\020\250F\022$\n\037k_EMsgWorkerProcessPingRespon"
+  "se\020\251F\022 \n\033k_EMsgWorkerProcessShutdown\020\252F\022"
+  "\033\n\026k_EMsgDRMWorkerProcess\020\214G\022%\n k_EMsgDR"
+  "MWorkerProcessDRMAndSign\020\214G\022-\n(k_EMsgDRM"
+  "WorkerProcessDRMAndSignResponse\020\215G\0220\n+k_"
+  "EMsgDRMWorkerProcessSteamworksInfoReques"
+  "t\020\216G\0221\n,k_EMsgDRMWorkerProcessSteamworks"
+  "InfoResponse\020\217G\022/\n*k_EMsgDRMWorkerProces"
+  "sInstallDRMDLLRequest\020\220G\0220\n+k_EMsgDRMWor"
+  "kerProcessInstallDRMDLLResponse\020\221G\0220\n+k_"
+  "EMsgDRMWorkerProcessSecretIdStringReques"
+  "t\020\222G\0221\n,k_EMsgDRMWorkerProcessSecretIdSt"
+  "ringResponse\020\223G\0227\n2k_EMsgDRMWorkerProces"
+  "sInstallProcessedFilesRequest\020\226G\0228\n3k_EM"
+  "sgDRMWorkerProcessInstallProcessedFilesR"
+  "esponse\020\227G\022-\n(k_EMsgDRMWorkerProcessExam"
+  "ineBlobRequest\020\230G\022.\n)k_EMsgDRMWorkerProc"
+  "essExamineBlobResponse\020\231G\0220\n+k_EMsgDRMWo"
+  "rkerProcessDescribeSecretRequest\020\232G\0221\n,k"
+  "_EMsgDRMWorkerProcessDescribeSecretRespo"
+  "nse\020\233G\0222\n-k_EMsgDRMWorkerProcessBackfill"
+  "OriginalRequest\020\234G\0223\n.k_EMsgDRMWorkerPro"
+  "cessBackfillOriginalResponse\020\235G\0220\n+k_EMs"
+  "gDRMWorkerProcessValidateDRMDLLRequest\020\236"
+  "G\0221\n,k_EMsgDRMWorkerProcessValidateDRMDL"
+  "LResponse\020\237G\022.\n)k_EMsgDRMWorkerProcessVa"
+  "lidateFileRequest\020\240G\022/\n*k_EMsgDRMWorkerP"
+  "rocessValidateFileResponse\020\241G\0221\n,k_EMsgD"
+  "RMWorkerProcessSplitAndInstallRequest\020\242G"
+  "\0222\n-k_EMsgDRMWorkerProcessSplitAndInstal"
+  "lResponse\020\243G\022)\n$k_EMsgDRMWorkerProcessGe"
+  "tBlobRequest\020\244G\022*\n%k_EMsgDRMWorkerProces"
+  "sGetBlobResponse\020\245G\022/\n*k_EMsgDRMWorkerPr"
+  "ocessEvaluateCrashRequest\020\246G\0220\n+k_EMsgDR"
+  "MWorkerProcessEvaluateCrashResponse\020\247G\022-"
+  "\n(k_EMsgDRMWorkerProcessAnalyzeFileReque"
+  "st\020\250G\022.\n)k_EMsgDRMWorkerProcessAnalyzeFi"
+  "leResponse\020\251G\022,\n\'k_EMsgDRMWorkerProcessU"
+  "npackBlobRequest\020\252G\022-\n(k_EMsgDRMWorkerPr"
+  "ocessUnpackBlobResponse\020\253G\022,\n\'k_EMsgDRMW"
+  "orkerProcessInstallAllRequest\020\254G\022-\n(k_EM"
+  "sgDRMWorkerProcessInstallAllResponse\020\255G\022"
+  "#\n\036k_EMsgDRMWorkerProcessSignFile\020\256G\022+\n&"
+  "k_EMsgDRMWorkerProcessSignFileResponse\020\257"
+  "G\022\034\n\027k_EMsgTestWorkerProcess\020\360G\0223\n.k_EMs"
+  "gTestWorkerProcessLoadUnloadModuleReques"
+  "t\020\360G\0224\n/k_EMsgTestWorkerProcessLoadUnloa"
+  "dModuleResponse\020\361G\0224\n/k_EMsgTestWorkerPr"
+  "ocessServiceModuleCallRequest\020\362G\0225\n0k_EM"
+  "sgTestWorkerProcessServiceModuleCallResp"
+  "onse\020\363G\022\032\n\025k_EMsgQuestServerBase\020\324H\022 \n\033k"
+  "_EMsgClientGetEmoticonList\020\362H\022\035\n\030k_EMsgC"
+  "lientEmoticonList\020\363H\022\022\n\rk_EMsgSLCBase\020\270I"
+  "\022)\n$k_EMsgClientSharedLibraryStopPlaying"
+  "\020\276I\022\033\n\026k_EMsgRemoteClientBase\020\234J\022$\n\037k_EM"
+  "sgRemoteClientAuth_OBSOLETE\020\234J\022,\n\'k_EMsg"
+  "RemoteClientAuthResponse_OBSOLETE\020\235J\022 \n\033"
+  "k_EMsgRemoteClientAppStatus\020\236J\022\"\n\035k_EMsg"
+  "RemoteClientStartStream\020\237J\022*\n%k_EMsgRemo"
+  "teClientStartStreamResponse\020\240J\022\033\n\026k_EMsg"
+  "RemoteClientPing\020\241J\022#\n\036k_EMsgRemoteClien"
+  "tPingResponse\020\242J\022\033\n\026k_EMsgClientUnlockH2"
+  "64\020\243J\022#\n\036k_EMsgClientUnlockH264Response\020"
+  "\244J\022!\n\034k_EMsgRemoteClientAcceptEULA\020\245J\022*\n"
+  "%k_EMsgRemoteClientGetControllerConfig\020\246"
+  "J\0222\n-k_EMsgRemoteClientGetControllerConf"
+  "igResponse\020\247J\022\'\n\"k_EMsgRemoteClientStrea"
+  "mingEnabled\020\250J\022$\n\037k_EMsgClientUnlockHEVC"
+  "_OBSOLETE\020\251J\022,\n\'k_EMsgClientUnlockHEVCRe"
+  "sponse_OBSOLETE\020\252J\022$\n\037k_EMsgRemoteClient"
+  "StatusRequest\020\253J\022%\n k_EMsgRemoteClientSt"
+  "atusResponse\020\254J\022+\n&k_EMsgRemoteClientAut"
+  "horizationRequest\020\255J\022,\n\'k_EMsgRemoteClie"
+  "ntAuthorizationResponse\020\256J\0221\n,k_EMsgRemo"
+  "teClientAuthorizationCancelRequest\020\257J\022-\n"
+  "(k_EMsgRemoteClientAuthorizationConfirme"
+  "d\020\260J\022#\n\036k_EMsgRemoteClientProofRequest\020\261"
+  "J\022$\n\037k_EMsgRemoteClientProofResponse\020\262J\022"
+  "#\n\036k_EMsgRemoteClientWifiAPStatus\020\263J\022!\n\034"
+  "k_EMsgRemoteClientPairWifiAP\020\264J\022)\n$k_EMs"
+  "gRemoteClientPairWifiAPResponse\020\265J\022.\n)k_"
+  "EMsgRemoteClientDownloadScheduleChanged\020"
+  "\266J\0222\n-k_EMsgRemoteClientDownloadItemSche"
+  "duleChanged\020\267J\022\'\n\"k_EMsgRemoteClientAppU"
+  "pdateStopped\020\270J\022\'\n\"k_EMsgRemoteClientApp"
+  "DownloadStats\020\271J\022%\n k_EMsgRemoteClientAp"
+  "pUploadStats\020\272J\022,\n\'k_EMsgRemoteClientApp"
+  "InfoUpdateComplete\020\273J\022*\n%k_eMsgRemoteCli"
+  "entDownloadsManagement\020\274J\022\'\n\"k_eMsgRemot"
+  "eClientDownloadingAppID\020\275J\022/\n*k_eMsgRemo"
+  "teClientPeerContentServerChanged\020\276J\0221\n,k"
+  "_eMsgRemoteClientRestrictAutoUpdatesChan"
+  "ged\020\277J\022,\n\'k_eMsgRemoteClientSuspendLanPe"
+  "erContent\020\300J\0220\n+k_eMsgRemoteClientUpdate"
+  "DownloadsController\020\301J\022%\n k_EMsgRemoteCl"
+  "ientAcceptAllEULAs\020\302J\022\'\n\"k_EMsgClientCon"
+  "currentSessionsBase\020\200K\022$\n\037k_EMsgClientPl"
+  "ayingSessionState\020\200K\022#\n\036k_EMsgClientKick"
+  "PlayingSession\020\201K\022\036\n\031k_EMsgClientBroadca"
+  "stBase\020\344K\022\036\n\031k_EMsgClientBroadcastInit\020\344"
+  "K\022 \n\033k_EMsgClientBroadcastFrames\020\345K\022$\n\037k"
+  "_EMsgClientBroadcastDisconnect\020\346K\022&\n!k_E"
+  "MsgClientBroadcastUploadConfig\020\350K\022\026\n\021k_E"
+  "MsgBaseClient3\020\310L\022&\n!k_EMsgClientVoiceCa"
+  "llPreAuthorize\020\310L\022.\n)k_EMsgClientVoiceCa"
+  "llPreAuthorizeResponse\020\311L\022\'\n\"k_EMsgClien"
+  "tServerTimestampRequest\020\312L\022(\n#k_EMsgClie"
+  "ntServerTimestampResponse\020\313L\022/\n*k_EMsgSe"
+  "rviceMethodCallFromClientNonAuthed\020\314L\022\026\n"
+  "\021k_EMsgClientHello\020\315L\022)\n$k_EMsgClientEna"
+  "bleOrDisableDownloads\020\316L\0221\n,k_EMsgClient"
+  "EnableOrDisableDownloadsResponse\020\317L\022!\n\034k"
+  "_EMsgClientFeatureGroupInfo\020\320L\022\033\n\026k_EMsg"
+  "ClientLANP2PBase\020\254M\022#\n\036k_EMsgClientLANP2"
+  "PRequestChunk\020\254M\022+\n&k_EMsgClientLANP2PRe"
+  "questChunkResponse\020\255M\022!\n\034k_EMsgClientPee"
+  "rChunkRequest\020\256M\022\"\n\035k_EMsgClientPeerChun"
+  "kResponse\020\257M\022\032\n\025k_EMsgClientLANP2PMax\020\217N"
+  "\022\035\n\030k_EMsgBaseWatchdogServer\020\220N\022\031\n\024k_EMs"
+  "gNotifyWatchdog\020\220N\022 \n\033k_EMsgClientSiteLi"
+  "censeBase\020\364N\0220\n+k_EMsgClientSiteLicenseS"
+  "iteInfoNotification\020\364N\022$\n\037k_EMsgClientSi"
+  "teLicenseCheckout\020\365N\022,\n\'k_EMsgClientSite"
+  "LicenseCheckoutResponse\020\366N\022-\n(k_EMsgClie"
+  "ntSiteLicenseGetAvailableSeats\020\367N\0225\n0k_E"
+  "MsgClientSiteLicenseGetAvailableSeatsRes"
+  "ponse\020\370N\022/\n*k_EMsgClientSiteLicenseGetCo"
+  "ntentCacheInfo\020\371N\0227\n2k_EMsgClientSiteLic"
+  "enseGetContentCacheInfoResponse\020\372N\022\031\n\024k_"
+  "EMsgBaseChatServer\020\340]\0220\n+k_EMsgChatServe"
+  "rGetPendingNotificationCount\020\340]\0228\n3k_EMs"
+  "gChatServerGetPendingNotificationCountRe"
+  "sponse\020\341]\022\033\n\026k_EMsgBaseSecretServer\020\304^\022\036"
+  "\n\031k_EMsgServerSecretChanged\020\304^\022\021\n\014k_EMsg"
+  "BaseWG\020\250_\022$\n\037k_EMsgWGConnectionProtocolE"
+  "rror\020\250_\022(\n#k_EMsgWGConnectionValidateUse"
+  "rToken\020\251_\0220\n+k_EMsgWGConnectionValidateU"
+  "serTokenResponse\020\252_\022&\n!k_EMsgWGConnectio"
+  "nLegacyWGRequest\020\253_\022\'\n\"k_EMsgWGConnectio"
+  "nLegacyWGResponse\020\254_\022\"\n\035k_EMsgClientPend"
+  "ingGameLaunch\020\214`\022*\n%k_EMsgClientPendingG"
+  "ameLaunchResponse\020\215`\032\002\020\001*\247\004\n\027EClientPers"
+  "onaStateFlag\022#\n\037k_EClientPersonaStateFla"
+  "gStatus\020\001\022\'\n#k_EClientPersonaStateFlagPl"
+  "ayerName\020\002\022&\n\"k_EClientPersonaStateFlagQ"
+  "ueryPort\020\004\022%\n!k_EClientPersonaStateFlagS"
+  "ourceID\020\010\022%\n!k_EClientPersonaStateFlagPr"
+  "esence\020\020\022%\n!k_EClientPersonaStateFlagLas"
+  "tSeen\020@\022*\n%k_EClientPersonaStateFlagUser"
+  "ClanRank\020\200\001\022\'\n\"k_EClientPersonaStateGame"
+  "ExtraInfo\020\200\002\022&\n!k_EClientPersonaStateGam"
+  "eDataBlob\020\200\004\022&\n!k_EClientPersonaStateFla"
+  "gClanData\020\200\010\022*\n%k_EClientPersonaStateFla"
+  "gRichPresence\020\200 \022\'\n\"k_EClientPersonaStat"
+  "eFlagBroadcast\020\200@\022\'\n!k_EClientPersonaSta"
+  "teFlagWatching\020\200\200\001*\271\001\n\024EMsgClanAccountFl"
+  "ags\022\037\n\033k_EMsgClanAccountFlagPublic\020\001\022\036\n\032"
+  "k_EMsgClanAccountFlagLarge\020\002\022\037\n\033k_EMsgCl"
+  "anAccountFlagLocked\020\004\022!\n\035k_EMsgClanAccou"
+  "ntFlagDisabled\020\010\022\034\n\030k_EMsgClanAccountFla"
+  "gOGG\020\020*\220\003\n\021ESteamReviewScore\022.\n*k_ESteam"
+  "ReviewScore_OverwhelminglyPositive\020\t\022$\n "
+  "k_ESteamReviewScore_VeryPositive\020\010\022 \n\034k_"
+  "ESteamReviewScore_Positive\020\007\022&\n\"k_ESteam"
+  "ReviewScore_MostlyPositive\020\006\022\035\n\031k_ESteam"
+  "ReviewScore_Mixed\020\005\022&\n\"k_ESteamReviewSco"
+  "re_MostlyNegative\020\004\022 \n\034k_ESteamReviewSco"
+  "re_Negative\020\003\022$\n k_ESteamReviewScore_Ver"
+  "yNegative\020\002\022.\n*k_ESteamReviewScore_Overw"
+  "helminglyNegative\020\001\022\034\n\030k_ESteamReviewSco"
+  "re_None\020\000*\301\001\n\023ECodecUsagePlatform\022 \n\034k_E"
+  "CodecUsagePlatformUnknown\020\000\022 \n\034k_ECodecU"
+  "sagePlatformWindows\020\001\022\036\n\032k_ECodecUsagePl"
+  "atformMacOS\020\002\022\036\n\032k_ECodecUsagePlatformLi"
+  "nux\020\003\022&\n\"k_ECodecUsagePlatformSteamHardw"
+  "are\020\004*\303\001\n\021ECodecUsageReason\022\036\n\032k_ECodecU"
+  "sageReasonUnknown\020\000\022!\n\035k_ECodecUsageReas"
+  "onRemotePlay\020\001\022#\n\037k_ECodecUsageReasonBro"
+  "adcasting\020\002\022 \n\034k_ECodecUsageReasonGameVi"
+  "deo\020\003\022$\n k_ECodecUsageReasonGameRecordin"
+  "g\020\004"
+  ;
+static ::PROTOBUF_NAMESPACE_ID::internal::once_flag descriptor_table_enums_5fclientserver_2eproto_once;
+const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable descriptor_table_enums_5fclientserver_2eproto = {
+  false, false, 53123, descriptor_table_protodef_enums_5fclientserver_2eproto, "enums_clientserver.proto", 
+  &descriptor_table_enums_5fclientserver_2eproto_once, nullptr, 0, 0,
+  schemas, file_default_instances, TableStruct_enums_5fclientserver_2eproto::offsets,
+  file_level_metadata_enums_5fclientserver_2eproto, file_level_enum_descriptors_enums_5fclientserver_2eproto, file_level_service_descriptors_enums_5fclientserver_2eproto,
+};
+PROTOBUF_ATTRIBUTE_WEAK ::PROTOBUF_NAMESPACE_ID::Metadata
+descriptor_table_enums_5fclientserver_2eproto_metadata_getter(int index) {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_5fclientserver_2eproto);
+  return descriptor_table_enums_5fclientserver_2eproto.file_level_metadata[index];
+}
+
+// Force running AddDescriptors() at dynamic initialization time.
+PROTOBUF_ATTRIBUTE_INIT_PRIORITY static ::PROTOBUF_NAMESPACE_ID::internal::AddDescriptorsRunner dynamic_init_dummy_enums_5fclientserver_2eproto(&descriptor_table_enums_5fclientserver_2eproto);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EMsg_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_5fclientserver_2eproto);
+  return file_level_enum_descriptors_enums_5fclientserver_2eproto[0];
+}
 bool EMsg_IsValid(int value) {
   switch (value) {
     case 0:
@@ -1428,4320 +2789,9 @@ bool EMsg_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EMsg_strings[1408] = {};
-
-static const char EMsg_names[] =
-  "k_EMRouteMessage"
-  "k_EMSgNonStdMsgSyslog"
-  "k_EMsgAIGetAppGCFlags"
-  "k_EMsgAIGetAppGCFlagsResponse"
-  "k_EMsgAIGetAppList"
-  "k_EMsgAIGetAppListResponse"
-  "k_EMsgAISBroadcastSubordinateContentDescription"
-  "k_EMsgAISGetPackageChangeNumber"
-  "k_EMsgAISGetPackageChangeNumberResponse"
-  "k_EMsgAISRequestContentDescription"
-  "k_EMsgAISUpdateSubordinateContentDescription"
-  "k_EMsgAISUpdateSubordinateContentDescriptionResponse"
-  "k_EMsgAMAccountPS3Unlink"
-  "k_EMsgAMAccountPS3UnlinkResponse"
-  "k_EMsgAMAcctAllowedToPurchase"
-  "k_EMsgAMAcctAllowedToPurchaseResponse"
-  "k_EMsgAMAddFounderToClan"
-  "k_EMsgAMAddFreeLicense"
-  "k_EMsgAMAddFreeLicenseResponse"
-  "k_EMsgAMAddFriend"
-  "k_EMsgAMAddFriendResponse"
-  "k_EMsgAMAddLicense"
-  "k_EMsgAMAddMinutesToLicense"
-  "k_EMsgAMAuthenticateUser"
-  "k_EMsgAMAuthenticateUserResponse"
-  "k_EMsgAMAuthenticatedPlayerList"
-  "k_EMsgAMBanFromChat"
-  "k_EMsgAMBitPayPayment"
-  "k_EMsgAMBitPayPaymentResponse"
-  "k_EMsgAMBoaCompraPayment"
-  "k_EMsgAMBoaCompraPaymentResponse"
-  "k_EMsgAMCancelEasyCollect"
-  "k_EMsgAMCancelEasyCollectResponse"
-  "k_EMsgAMCancelLicense"
-  "k_EMsgAMCancelPurchase"
-  "k_EMsgAMChallengeNotification"
-  "k_EMsgAMChallengeVerdict"
-  "k_EMsgAMChangeClanOwner"
-  "k_EMsgAMChatActionResult"
-  "k_EMsgAMChatCleanup"
-  "k_EMsgAMChatEnter"
-  "k_EMsgAMChatInvite"
-  "k_EMsgAMChatMulti"
-  "k_EMsgAMCheckClanInviteRateLimiting"
-  "k_EMsgAMCheckClanMembership"
-  "k_EMsgAMCheckClanMembershipResponse"
-  "k_EMsgAMClaimUnownedUserGift"
-  "k_EMsgAMClaimUnownedUserGiftResponse"
-  "k_EMsgAMClanCleanup"
-  "k_EMsgAMClanCleanupList"
-  "k_EMsgAMClanDataUpdated"
-  "k_EMsgAMClanPermissions"
-  "k_EMsgAMClanPermissionsResponse"
-  "k_EMsgAMClansInCommon"
-  "k_EMsgAMClansInCommonCount"
-  "k_EMsgAMClansInCommonCountResponse"
-  "k_EMsgAMClansInCommonResponse"
-  "k_EMsgAMClearDispute"
-  "k_EMsgAMClientAcceptFriendInvite"
-  "k_EMsgAMClientAddFriendToGroup"
-  "k_EMsgAMClientAddFriendToGroupResponse"
-  "k_EMsgAMClientChatActionRelay"
-  "k_EMsgAMClientChatInviteRelay"
-  "k_EMsgAMClientChatMemberInfoRelay"
-  "k_EMsgAMClientChatMsgRelay"
-  "k_EMsgAMClientCreateFriendsGroup"
-  "k_EMsgAMClientCreateFriendsGroupResponse"
-  "k_EMsgAMClientDeleteFriendsGroup"
-  "k_EMsgAMClientDeleteFriendsGroupResponse"
-  "k_EMsgAMClientJoinChatRelay"
-  "k_EMsgAMClientManageFriendsGroup"
-  "k_EMsgAMClientManageFriendsGroupResponse"
-  "k_EMsgAMClientNotPlaying"
-  "k_EMsgAMClientPublishRemovalFromSource"
-  "k_EMsgAMClientRemoveFriendFromGroup"
-  "k_EMsgAMClientRemoveFriendFromGroupResponse"
-  "k_EMsgAMClientRequestFriendship"
-  "k_EMsgAMClientSetPlayerNickname"
-  "k_EMsgAMClientSetPlayerNicknameResponse"
-  "k_EMsgAMCompleteExternalPurchase"
-  "k_EMsgAMCompleteExternalPurchaseResponse"
-  "k_EMsgAMConvertWallet"
-  "k_EMsgAMConvertWalletResponse"
-  "k_EMsgAMCreateChargeback"
-  "k_EMsgAMCreateChat"
-  "k_EMsgAMCreateChatResponse"
-  "k_EMsgAMCreateClan"
-  "k_EMsgAMCreateClanEventDummyForRateLimiting"
-  "k_EMsgAMCreateClanResponse"
-  "k_EMsgAMCreateDispute"
-  "k_EMsgAMCreateFinancialAdjustment"
-  "k_EMsgAMCreateRefund"
-  "k_EMsgAMDegicaPayment"
-  "k_EMsgAMDegicaPaymentResponse"
-  "k_EMsgAMDeleteStoredCard"
-  "k_EMsgAMDeleteStoredPaymentInfo"
-  "k_EMsgAMDeleteStoredPaypalAgreement"
-  "k_EMsgAMDumpClan"
-  "k_EMsgAMDumpUser"
-  "k_EMsgAMEClubPayment"
-  "k_EMsgAMEClubPaymentResponse"
-  "k_EMsgAMECommPayPayment"
-  "k_EMsgAMECommPayPaymentResponse"
-  "k_EMsgAMEditBanReason"
-  "k_EMsgAMExtendLicense"
-  "k_EMsgAMFinalizePurchase"
-  "k_EMsgAMFinalizePurchaseResponse"
-  "k_EMsgAMFindAccounts"
-  "k_EMsgAMFindAccountsResponse"
-  "k_EMsgAMFindClanUser"
-  "k_EMsgAMFindClanUserResponse"
-  "k_EMsgAMFindGSByIP"
-  "k_EMsgAMFindHungTransactions"
-  "k_EMsgAMFixPendingPurchase"
-  "k_EMsgAMFixPendingPurchaseResponse"
-  "k_EMsgAMFixPendingRefund"
-  "k_EMsgAMFoundGSByIP"
-  "k_EMsgAMFriendsInCommon"
-  "k_EMsgAMFriendsInCommonCountResponse"
-  "k_EMsgAMFriendsInCommonResponse"
-  "k_EMsgAMFriendsList"
-  "k_EMsgAMFriendsListResponse"
-  "k_EMsgAMFundedPayment"
-  "k_EMsgAMFundedPaymentResponse"
-  "k_EMsgAMGMSGameServerRemove"
-  "k_EMsgAMGMSGameServerUpdate"
-  "k_EMsgAMGSSearch"
-  "k_EMsgAMGameServerAccountChangePassword"
-  "k_EMsgAMGameServerAccountDeleteAccount"
-  "k_EMsgAMGameServerPlayerCompatibilityCheck"
-  "k_EMsgAMGameServerPlayerCompatibilityCheckResponse"
-  "k_EMsgAMGameServerRemove"
-  "k_EMsgAMGameServerUpdate"
-  "k_EMsgAMGetAccountBanInfo"
-  "k_EMsgAMGetAccountBanInfoResponse"
-  "k_EMsgAMGetAccountCommunityBanInfo"
-  "k_EMsgAMGetAccountCommunityBanInfoResponse"
-  "k_EMsgAMGetAccountDetails"
-  "k_EMsgAMGetAccountDetails2"
-  "k_EMsgAMGetAccountDetailsResponse"
-  "k_EMsgAMGetAccountDetailsResponse2"
-  "k_EMsgAMGetAccountEmailAddress"
-  "k_EMsgAMGetAccountEmailAddressResponse"
-  "k_EMsgAMGetAccountFlagsForWGSpoofing"
-  "k_EMsgAMGetAccountFlagsForWGSpoofingResponse"
-  "k_EMsgAMGetAccountPSNInfo"
-  "k_EMsgAMGetAccountPSNInfoResponse"
-  "k_EMsgAMGetAccountResetDetailsRequest"
-  "k_EMsgAMGetAccountResetDetailsResponse"
-  "k_EMsgAMGetAccountStatus"
-  "k_EMsgAMGetAccountStatusResponse"
-  "k_EMsgAMGetChatBanList"
-  "k_EMsgAMGetChatBanListResponse"
-  "k_EMsgAMGetClanDetails"
-  "k_EMsgAMGetClanDetailsForForumCreation"
-  "k_EMsgAMGetClanDetailsForForumCreationResponse"
-  "k_EMsgAMGetClanDetailsResponse"
-  "k_EMsgAMGetClanHistory"
-  "k_EMsgAMGetClanHistoryResponse"
-  "k_EMsgAMGetClanMembers"
-  "k_EMsgAMGetClanMembersResponse"
-  "k_EMsgAMGetClanOfficers"
-  "k_EMsgAMGetClanOfficersResponse"
-  "k_EMsgAMGetClanPOTW"
-  "k_EMsgAMGetClanPOTWResponse"
-  "k_EMsgAMGetClanPermissionBits"
-  "k_EMsgAMGetClanPermissionBitsResponse"
-  "k_EMsgAMGetClanPermissionSettings"
-  "k_EMsgAMGetClanPermissionSettingsResponse"
-  "k_EMsgAMGetClanRank"
-  "k_EMsgAMGetClanRankResponse"
-  "k_EMsgAMGetCommunityPrivacyState"
-  "k_EMsgAMGetCommunityPrivacyStateResponse"
-  "k_EMsgAMGetFriendRelationship"
-  "k_EMsgAMGetFriendRelationshipResponse"
-  "k_EMsgAMGetFriendsLobbies"
-  "k_EMsgAMGetFriendsLobbiesResponse"
-  "k_EMsgAMGetGSPlayerList"
-  "k_EMsgAMGetGSPlayerListResponse"
-  "k_EMsgAMGetIgnored"
-  "k_EMsgAMGetIgnoredResponse"
-  "k_EMsgAMGetLegacyGameKey"
-  "k_EMsgAMGetLegacyGameKeyResponse"
-  "k_EMsgAMGetNameHistory"
-  "k_EMsgAMGetNameHistoryResponse"
-  "k_EMsgAMGetPaypalAgreements"
-  "k_EMsgAMGetPaypalAgreementsResponse"
-  "k_EMsgAMGetPendingNotificationCount"
-  "k_EMsgAMGetPendingNotificationCountResponse"
-  "k_EMsgAMGetPlayerBanDetails"
-  "k_EMsgAMGetPlayerBanDetailsResponse"
-  "k_EMsgAMGetPlayerLinkDetails"
-  "k_EMsgAMGetPlayerLinkDetailsResponse"
-  "k_EMsgAMGetPreviousCBAccount"
-  "k_EMsgAMGetPreviousCBAccountResponse"
-  "k_EMsgAMGetPurchaseStatus"
-  "k_EMsgAMGetSteamIDForMicroTxn"
-  "k_EMsgAMGetSteamIDForMicroTxnResponse"
-  "k_EMsgAMGetStoredPaymentSummary"
-  "k_EMsgAMGetStoredPaymentSummaryResponse"
-  "k_EMsgAMGetUserClansNews"
-  "k_EMsgAMGetUserClansNewsResponse"
-  "k_EMsgAMGetUserCurrentGameInfo"
-  "k_EMsgAMGetUserCurrentGameInfoResponse"
-  "k_EMsgAMGetUserFriendNewsResponse"
-  "k_EMsgAMGetUserGifts"
-  "k_EMsgAMGetUserGiftsResponse"
-  "k_EMsgAMGetUserGroupStatus"
-  "k_EMsgAMGetUserGroupStatusResponse"
-  "k_EMsgAMGetUserLicenseHistory"
-  "k_EMsgAMGetUserLicenseHistoryResponse"
-  "k_EMsgAMGetUserLicenseList"
-  "k_EMsgAMGetUserLicenseListResponse"
-  "k_EMsgAMGetUserNewsSubscriptions"
-  "k_EMsgAMGetUserNewsSubscriptionsResponse"
-  "k_EMsgAMGetWalletConversionRate"
-  "k_EMsgAMGetWalletConversionRateResponse"
-  "k_EMsgAMGetWalletDetails"
-  "k_EMsgAMGetWalletDetailsResponse"
-  "k_EMsgAMGiftRevoked"
-  "k_EMsgAMGrantCoupon"
-  "k_EMsgAMGrantCouponResponse"
-  "k_EMsgAMGrantGuestPasses"
-  "k_EMsgAMGrantGuestPasses2"
-  "k_EMsgAMGrantGuestPasses2Response"
-  "k_EMsgAMHandlePendingTransaction"
-  "k_EMsgAMHandlePendingTransactionResponse"
-  "k_EMsgAMInitPurchase"
-  "k_EMsgAMInitPurchaseResponse"
-  "k_EMsgAMIsAccountInCaptchaGracePeriod"
-  "k_EMsgAMIsAccountInCaptchaGracePeriodResponse"
-  "k_EMsgAMIsAccountNameInUse"
-  "k_EMsgAMIsAccountNameInUseResponse"
-  "k_EMsgAMIsPackageRestrictedInUserCountry"
-  "k_EMsgAMIsPackageRestrictedInUserCountryResponse"
-  "k_EMsgAMIsUserBanned"
-  "k_EMsgAMIsValidAccountID"
-  "k_EMsgAMKickUserFromClan"
-  "k_EMsgAMLeaveClan"
-  "k_EMsgAMLoadActivationCodes"
-  "k_EMsgAMLoadActivationCodesResponse"
-  "k_EMsgAMLookupKey"
-  "k_EMsgAMLookupKeyResponse"
-  "k_EMsgAMMOLPayment"
-  "k_EMsgAMMOLPaymentResponse"
-  "k_EMsgAMNameChange"
-  "k_EMsgAMNewChallenge"
-  "k_EMsgAMNodwinPayment"
-  "k_EMsgAMNodwinPaymentResponse"
-  "k_EMsgAMNotifyChatOfClanChange"
-  "k_EMsgAMNuveiPayment"
-  "k_EMsgAMNuveiPaymentResponse"
-  "k_EMsgAMP2PIntroducerMessage"
-  "k_EMsgAMPasswordHashUpgrade"
-  "k_EMsgAMPayPalPaymentsHubPayment"
-  "k_EMsgAMPayPalPaymentsHubPaymentResponse"
-  "k_EMsgAMPerfectWorldPayment"
-  "k_EMsgAMPerfectWorldPaymentResponse"
-  "k_EMsgAMPersonaChangeResponse"
-  "k_EMsgAMPlayerGetClanBasicDetails"
-  "k_EMsgAMPlayerGetClanBasicDetailsResponse"
-  "k_EMsgAMPlayerHostedOnGameServer"
-  "k_EMsgAMPlayerNicknameList"
-  "k_EMsgAMPlayerNicknameListResponse"
-  "k_EMsgAMProbeClanMembershipList"
-  "k_EMsgAMProbeClanMembershipListResponse"
-  "k_EMsgAMPublishChatMemberInfo"
-  "k_EMsgAMPublishChatRoomInfo"
-  "k_EMsgAMPurchaseResponse"
-  "k_EMsgAMRecordBanEnforcement"
-  "k_EMsgAMRefreshGuestPasses"
-  "k_EMsgAMRefreshSessions"
-  "k_EMsgAMRegisterKey"
-  "k_EMsgAMRelayPublishStatus"
-  "k_EMsgAMReloadAccount"
-  "k_EMsgAMReloadGameGroupPolicy"
-  "k_EMsgAMRemoveFriend"
-  "k_EMsgAMRemovePublisherUser"
-  "k_EMsgAMRenewAgreement"
-  "k_EMsgAMRenewLicense"
-  "k_EMsgAMRequestClanData"
-  "k_EMsgAMRequestClanDetails"
-  "k_EMsgAMRequestFriendData"
-  "k_EMsgAMRequestPersonaUpdateForChatServer"
-  "k_EMsgAMResetUserVerificationGSByIP"
-  "k_EMsgAMResolveNegativeWalletCredits"
-  "k_EMsgAMResolveNegativeWalletCreditsResponse"
-  "k_EMsgAMResolveWalletReverseRevoke"
-  "k_EMsgAMResolveWalletRevoke"
-  "k_EMsgAMResubmitPurchase"
-  "k_EMsgAMReverseChargeback"
-  "k_EMsgAMReverseChargebackResponse"
-  "k_EMsgAMRevokeLegacyGameKeys"
-  "k_EMsgAMRevokePurchaseResponse"
-  "k_EMsgAMRollbackGiftTransfer"
-  "k_EMsgAMRollbackGiftTransferResponse"
-  "k_EMsgAMRouteToClients"
-  "k_EMsgAMSendAccountInfoUpdate"
-  "k_EMsgAMSendCartRepurchase"
-  "k_EMsgAMSendCartRepurchaseResponse"
-  "k_EMsgAMSendQueuedEmails"
-  "k_EMsgAMSendScheduledGift"
-  "k_EMsgAMSendSystemIMToUser"
-  "k_EMsgAMServiceModulesCache"
-  "k_EMsgAMServiceModulesCall"
-  "k_EMsgAMServiceModulesCallResponse"
-  "k_EMsgAMSessionInfoRequest"
-  "k_EMsgAMSessionInfoResponse"
-  "k_EMsgAMSetAccountDetails"
-  "k_EMsgAMSetAccountFlags"
-  "k_EMsgAMSetAccountTrustedRequest"
-  "k_EMsgAMSetAvatar"
-  "k_EMsgAMSetClanDetails"
-  "k_EMsgAMSetClanName"
-  "k_EMsgAMSetClanNameResponse"
-  "k_EMsgAMSetClanPOTW"
-  "k_EMsgAMSetClanPOTWResponse"
-  "k_EMsgAMSetClanPermissionBits"
-  "k_EMsgAMSetClanPermissionBitsResponse"
-  "k_EMsgAMSetClanPermissionSettings"
-  "k_EMsgAMSetClanPermissionSettingsResponse"
-  "k_EMsgAMSetClanRank"
-  "k_EMsgAMSetClanRankResponse"
-  "k_EMsgAMSetCommunityProfileSettings"
-  "k_EMsgAMSetCommunityProfileSettingsResponse"
-  "k_EMsgAMSetFriendRelationshipNone"
-  "k_EMsgAMSetIgnored"
-  "k_EMsgAMSetIgnoredResponse"
-  "k_EMsgAMSetLicenseFlags"
-  "k_EMsgAMSetPartnerMember"
-  "k_EMsgAMSetPersonaName"
-  "k_EMsgAMSetPreApproval"
-  "k_EMsgAMSetPreApprovalResponse"
-  "k_EMsgAMSetRemoteClientID"
-  "k_EMsgAMSetUserGiftUnowned"
-  "k_EMsgAMSetUserGiftUnownedResponse"
-  "k_EMsgAMSetUserNewsSubscriptions"
-  "k_EMsgAMSmart2PayPayment"
-  "k_EMsgAMSmart2PayPaymentResponse"
-  "k_EMsgAMSupportChangeEmail"
-  "k_EMsgAMSupportChangePassword"
-  "k_EMsgAMSupportEnableOrDisable"
-  "k_EMsgAMSupportIsAccountEnabled"
-  "k_EMsgAMSupportIsAccountEnabledResponse"
-  "k_EMsgAMSupportRemoveAccountSecurity"
-  "k_EMsgAMSwapKioskDeposit"
-  "k_EMsgAMSwapKioskDepositResponse"
-  "k_EMsgAMTicketAuthRequestOrResponse"
-  "k_EMsgAMTransferLockedGifts"
-  "k_EMsgAMTransferLockedGiftsResponse"
-  "k_EMsgAMTwoFactorRecoverAuthenticatorRequest"
-  "k_EMsgAMTwoFactorRecoverAuthenticatorResponse"
-  "k_EMsgAMUnBanFromChat"
-  "k_EMsgAMUpdateClanEventDummyForRateLimiting"
-  "k_EMsgAMUpdateGSPlayStats"
-  "k_EMsgAMUpdateUserBanRequest"
-  "k_EMsgAMUserClanList"
-  "k_EMsgAMUserClanListResponse"
-  "k_EMsgAMVACStatusUpdate"
-  "k_EMsgAMValidateEmailLink"
-  "k_EMsgAMValidateEmailLinkResponse"
-  "k_EMsgAMValidatePasswordResetCodeAndSendSmsRequest"
-  "k_EMsgAMValidatePasswordResetCodeAndSendSmsResponse"
-  "k_EMsgAMValidateWGToken"
-  "k_EMsgAMValidateWGTokenResponse"
-  "k_EMsgAMVerfiyUser"
-  "k_EMsgAMWipeFriendsList"
-  "k_EMsgAMXsollaPayment"
-  "k_EMsgAMXsollaPaymentResponse"
-  "k_EMsgATSCSPerfTestResponse"
-  "k_EMsgATSCSPerfTestTask"
-  "k_EMsgATSCallTest"
-  "k_EMsgATSCallTestReply"
-  "k_EMsgATSCycleTCM"
-  "k_EMsgATSExternalStressActionResult"
-  "k_EMsgATSExternalStressJobQueued"
-  "k_EMsgATSExternalStressJobRunning"
-  "k_EMsgATSExternalStressJobStart"
-  "k_EMsgATSExternalStressJobStopAll"
-  "k_EMsgATSExternalStressJobStopped"
-  "k_EMsgATSInitDRMSStressTest"
-  "k_EMsgATSRunFailServerTest"
-  "k_EMsgATSStartExternalStress"
-  "k_EMsgATSStartStressTest"
-  "k_EMsgATSStarted"
-  "k_EMsgATSStopStressTest"
-  "k_EMsgATSUFSPerfTestResponse"
-  "k_EMsgATSUFSPerfTestTask"
-  "k_EMsgAdminCmd"
-  "k_EMsgAdminCmdResponse"
-  "k_EMsgAdminConsoleTitle"
-  "k_EMsgAdminGCCommand"
-  "k_EMsgAdminGCGetCommandList"
-  "k_EMsgAdminGCGetCommandListResponse"
-  "k_EMsgAdminGCSpew"
-  "k_EMsgAdminLogEvent"
-  "k_EMsgAdminLogListenRequest"
-  "k_EMsgAdminMsgSpew"
-  "k_EMsgAdminSpew"
-  "k_EMsgAlert"
-  "k_EMsgAllowUserToPlayQuery"
-  "k_EMsgAllowUserToPlayResponse"
-  "k_EMsgAssignSysID"
-  "k_EMsgBSAuthenticateCCTrans"
-  "k_EMsgBSAuthenticateCCTransResponse"
-  "k_EMsgBSBoaCompraConfirmProductDelivery"
-  "k_EMsgBSBoaCompraConfirmProductDeliveryResponse"
-  "k_EMsgBSCheckJobRunning"
-  "k_EMsgBSCheckJobRunningResponse"
-  "k_EMsgBSCommitAdyenTxn"
-  "k_EMsgBSCommitGCTxn"
-  "k_EMsgBSCommitWPTxn"
-  "k_EMsgBSCompletePurchase"
-  "k_EMsgBSCompletePurchaseResponse"
-  "k_EMsgBSConvertToCurrentKeys"
-  "k_EMsgBSConvertToCurrentKeysResponse"
-  "k_EMsgBSGenerateBoaCompraMD5"
-  "k_EMsgBSGenerateBoaCompraMD5Response"
-  "k_EMsgBSGetBillingAddress"
-  "k_EMsgBSGetBillingAddressResponse"
-  "k_EMsgBSGetCreditCardInfo"
-  "k_EMsgBSGetCreditCardInfoResponse"
-  "k_EMsgBSGetPayPalUserInfo"
-  "k_EMsgBSGetPayPalUserInfoResponse"
-  "k_EMsgBSGetProPackOrderStatus"
-  "k_EMsgBSGetProPackOrderStatusResponse"
-  "k_EMsgBSInitGCBankXferTxn"
-  "k_EMsgBSInitGCBankXferTxnResponse"
-  "k_EMsgBSInitPayPalTxn"
-  "k_EMsgBSInitPayPalTxnResponse"
-  "k_EMsgBSInitPurchase"
-  "k_EMsgBSInitPurchaseResponse"
-  "k_EMsgBSPaymentInstrBan"
-  "k_EMsgBSPaymentInstrBanResponse"
-  "k_EMsgBSPruneCardUsageStats"
-  "k_EMsgBSPruneCardUsageStatsResponse"
-  "k_EMsgBSPurchaseResponse"
-  "k_EMsgBSPurchaseRunFraudChecks"
-  "k_EMsgBSPurchaseRunFraudChecksResponse"
-  "k_EMsgBSPurchaseStart"
-  "k_EMsgBSQiwiWalletInvoice"
-  "k_EMsgBSQiwiWalletInvoiceResponse"
-  "k_EMsgBSQueryBankInformation"
-  "k_EMsgBSQueryBankInformationResponse"
-  "k_EMsgBSQueryFindCreditCard"
-  "k_EMsgBSQueryFindCreditCardResponse"
-  "k_EMsgBSQueryTransactionStatus"
-  "k_EMsgBSQueryTransactionStatusResponse"
-  "k_EMsgBSQueryTxnExtendedInfo"
-  "k_EMsgBSQueryTxnExtendedInfoResponse"
-  "k_EMsgBSRemoveExpiredPaymentData"
-  "k_EMsgBSRemoveExpiredPaymentDataResponse"
-  "k_EMsgBSResetPackagePurchaseRateLimit"
-  "k_EMsgBSResetPackagePurchaseRateLimitResponse"
-  "k_EMsgBSReverseRedeemPOSAKey"
-  "k_EMsgBSReverseRedeemPOSAKeyResponse"
-  "k_EMsgBSSendShippingRequest"
-  "k_EMsgBSSendShippingRequestResponse"
-  "k_EMsgBSSettleComplete"
-  "k_EMsgBSStatusInquiryPOSAKey"
-  "k_EMsgBSStatusInquiryPOSAKeyResponse"
-  "k_EMsgBSStoreBankInformation"
-  "k_EMsgBSStoreBankInformationResponse"
-  "k_EMsgBSUpdateConversionRates"
-  "k_EMsgBSUpdateInventoryFromProPack"
-  "k_EMsgBSUpdateInventoryFromProPackResponse"
-  "k_EMsgBSUpdatePaymentData"
-  "k_EMsgBSUpdatePaymentDataResponse"
-  "k_EMsgBSValidateXsollaSignature"
-  "k_EMsgBSValidateXsollaSignatureResponse"
-  "k_EMsgBSVerifyPOSAKey"
-  "k_EMsgBSVerifyPOSAKeyResponse"
-  "k_EMsgBackpackAddToCurrency"
-  "k_EMsgBackpackAddToCurrencyResponse"
-  "k_EMsgBackpackBase"
-  "k_EMsgBadLoginIPList"
-  "k_EMsgBadgeCraftedNotification"
-  "k_EMsgBaseAIS"
-  "k_EMsgBaseAM"
-  "k_EMsgBaseAMRange2"
-  "k_EMsgBaseATS"
-  "k_EMsgBaseAdmin"
-  "k_EMsgBaseBRP"
-  "k_EMsgBaseBS"
-  "k_EMsgBaseCCSRange"
-  "k_EMsgBaseCM"
-  "k_EMsgBaseCS"
-  "k_EMsgBaseChannelAuth"
-  "k_EMsgBaseChatServer"
-  "k_EMsgBaseClient"
-  "k_EMsgBaseClient2"
-  "k_EMsgBaseClient3"
-  "k_EMsgBaseDFS"
-  "k_EMsgBaseDP"
-  "k_EMsgBaseDRMS"
-  "k_EMsgBaseFBS"
-  "k_EMsgBaseFTSRange"
-  "k_EMsgBaseFileXfer"
-  "k_EMsgBaseGC"
-  "k_EMsgBaseGM"
-  "k_EMsgBaseGameServer"
-  "k_EMsgBaseGeneral"
-  "k_EMsgBaseLBSRange"
-  "k_EMsgBaseMDS"
-  "k_EMsgBaseOGS"
-  "k_EMsgBaseP2P"
-  "k_EMsgBasePSRange"
-  "k_EMsgBaseSM"
-  "k_EMsgBaseSecretServer"
-  "k_EMsgBaseShell"
-  "k_EMsgBaseTest"
-  "k_EMsgBaseUFSRange"
-  "k_EMsgBaseVS"
-  "k_EMsgBaseWG"
-  "k_EMsgBaseWatchdogServer"
-  "k_EMsgBoxMonitorBase"
-  "k_EMsgBoxMonitorReportRequest"
-  "k_EMsgBoxMonitorReportResponse"
-  "k_EMsgCCSDeleteAllCommentsByAuthor"
-  "k_EMsgCCSDeleteAllCommentsByAuthorResponse"
-  "k_EMsgCEGPropStatusDRMSRequest"
-  "k_EMsgCEGPropStatusDRMSResponse"
-  "k_EMsgCEGVersionSetEnableDisableRequest"
-  "k_EMsgCEGVersionSetEnableDisableResponse"
-  "k_EMsgCEGWhackFailureReportRequest"
-  "k_EMsgCEGWhackFailureReportResponse"
-  "k_EMsgCMGetSecrets"
-  "k_EMsgCMRemotePlayOffline"
-  "k_EMsgCMRemotePlayReplyPacket"
-  "k_EMsgCMSessionRejected"
-  "k_EMsgCMSetAllowState"
-  "k_EMsgCMSetSecrets"
-  "k_EMsgCMSpewAllowState"
-  "k_EMsgCREBase"
-  "k_EMsgCREGetUserPublishedItemVoteDetails"
-  "k_EMsgCREGetUserPublishedItemVoteDetailsResponse"
-  "k_EMsgCREItemVoteSummary"
-  "k_EMsgCREItemVoteSummaryResponse"
-  "k_EMsgCREUpdateUserPublishedItemVote"
-  "k_EMsgCREUpdateUserPublishedItemVoteResponse"
-  "k_EMsgCSBase"
-  "k_EMsgCSPing"
-  "k_EMsgCSPingResponse"
-  "k_EMsgChannelAuthChallenge"
-  "k_EMsgChannelAuthResponse"
-  "k_EMsgChannelAuthResult"
-  "k_EMsgChannelEncryptRequest"
-  "k_EMsgChannelEncryptResponse"
-  "k_EMsgChannelEncryptResult"
-  "k_EMsgChatServerGetPendingNotificationCount"
-  "k_EMsgChatServerGetPendingNotificationCountResponse"
-  "k_EMsgChatServerRouteFriendMsg"
-  "k_EMsgClientAMGetClanOfficers"
-  "k_EMsgClientAMGetClanOfficersResponse"
-  "k_EMsgClientAMGetPersonaNameHistory"
-  "k_EMsgClientAMGetPersonaNameHistoryResponse"
-  "k_EMsgClientAccountInfo"
-  "k_EMsgClientAckGuestPass"
-  "k_EMsgClientAckGuestPassResponse"
-  "k_EMsgClientAcknowledgeClanInvite"
-  "k_EMsgClientAddFriend"
-  "k_EMsgClientAddFriendResponse"
-  "k_EMsgClientAnonLogOn_Deprecated"
-  "k_EMsgClientAnonUserLogOn_Deprecated"
-  "k_EMsgClientAppUsageEvent"
-  "k_EMsgClientAuthList"
-  "k_EMsgClientAuthListAck"
-  "k_EMsgClientAuthList_Deprecated"
-  "k_EMsgClientBroadcastBase"
-  "k_EMsgClientBroadcastDisconnect"
-  "k_EMsgClientBroadcastFrames"
-  "k_EMsgClientBroadcastInit"
-  "k_EMsgClientBroadcastUploadConfig"
-  "k_EMsgClientChallengeRequest"
-  "k_EMsgClientChallengeResponse"
-  "k_EMsgClientChangeStatus"
-  "k_EMsgClientChatAction"
-  "k_EMsgClientChatActionResult"
-  "k_EMsgClientChatDeclined"
-  "k_EMsgClientChatEnter"
-  "k_EMsgClientChatGetFriendMessageHistory"
-  "k_EMsgClientChatGetFriendMessageHistoryForOfflineMessages"
-  "k_EMsgClientChatGetFriendMessageHistoryResponse"
-  "k_EMsgClientChatInvite"
-  "k_EMsgClientChatMemberInfo"
-  "k_EMsgClientChatMsg"
-  "k_EMsgClientChatOfflineMessageNotification"
-  "k_EMsgClientChatRequestOfflineMessageCount"
-  "k_EMsgClientChatRoomInfo"
-  "k_EMsgClientCheckAppBetaPassword"
-  "k_EMsgClientCheckAppBetaPasswordResponse"
-  "k_EMsgClientCheckPassword"
-  "k_EMsgClientCheckPasswordResponse"
-  "k_EMsgClientClanState"
-  "k_EMsgClientCommentNotifications"
-  "k_EMsgClientConcurrentSessionsBase"
-  "k_EMsgClientConnectionStats"
-  "k_EMsgClientContentServerLogOn_Deprecated"
-  "k_EMsgClientCreateAccountResponse"
-  "k_EMsgClientCreateChat"
-  "k_EMsgClientCreateChatResponse"
-  "k_EMsgClientCurrentUIMode"
-  "k_EMsgClientDFSAuthenticateRequest"
-  "k_EMsgClientDFSAuthenticateResponse"
-  "k_EMsgClientDFSDownloadStatus"
-  "k_EMsgClientDFSEndSession"
-  "k_EMsgClientDPCheckSpecialSurvey"
-  "k_EMsgClientDPCheckSpecialSurveyResponse"
-  "k_EMsgClientDPSendSpecialSurveyResponse"
-  "k_EMsgClientDPSendSpecialSurveyResponseReply"
-  "k_EMsgClientDRMBlobRequest"
-  "k_EMsgClientDRMBlobResponse"
-  "k_EMsgClientDRMDownloadRequest"
-  "k_EMsgClientDRMDownloadRequestWithCrashData"
-  "k_EMsgClientDRMDownloadResponse"
-  "k_EMsgClientDRMFinalResult"
-  "k_EMsgClientDRMProblemReport"
-  "k_EMsgClientDeregisterWithServer"
-  "k_EMsgClientDisableTestLicense"
-  "k_EMsgClientDisableTestLicenseResponse"
-  "k_EMsgClientEmailAddrInfo"
-  "k_EMsgClientEmailChange3"
-  "k_EMsgClientEmoticonList"
-  "k_EMsgClientEnableOrDisableDownloads"
-  "k_EMsgClientEnableOrDisableDownloadsResponse"
-  "k_EMsgClientEnableTestLicense"
-  "k_EMsgClientEnableTestLicenseResponse"
-  "k_EMsgClientFSEnumerateFollowingList"
-  "k_EMsgClientFSEnumerateFollowingListResponse"
-  "k_EMsgClientFSGetFollowerCount"
-  "k_EMsgClientFSGetFollowerCountResponse"
-  "k_EMsgClientFSGetFriendsSteamLevels"
-  "k_EMsgClientFSGetFriendsSteamLevelsResponse"
-  "k_EMsgClientFSGetIsFollowing"
-  "k_EMsgClientFSGetIsFollowingResponse"
-  "k_EMsgClientFeatureGroupInfo"
-  "k_EMsgClientFileToDownload"
-  "k_EMsgClientFileToDownloadResponse"
-  "k_EMsgClientFriendMsg"
-  "k_EMsgClientFriendMsgEchoToSender"
-  "k_EMsgClientFriendMsgIncoming"
-  "k_EMsgClientFriendProfileInfo"
-  "k_EMsgClientFriendProfileInfoResponse"
-  "k_EMsgClientFriendRemovedFromSource"
-  "k_EMsgClientFriendUserStatusPublished"
-  "k_EMsgClientFriendsGroupsList"
-  "k_EMsgClientFriendsList"
-  "k_EMsgClientFromGC"
-  "k_EMsgClientGCMsgFailed"
-  "k_EMsgClientGMSServerQuery"
-  "k_EMsgClientGameConnectDeny"
-  "k_EMsgClientGameConnectTokens"
-  "k_EMsgClientGameConnect_obsolete"
-  "k_EMsgClientGameEnded_obsolete"
-  "k_EMsgClientGamesPlayed"
-  "k_EMsgClientGamesPlayed2_obsolete"
-  "k_EMsgClientGamesPlayed3_obsolete"
-  "k_EMsgClientGamesPlayedNoDataBlob"
-  "k_EMsgClientGamesPlayedWithDataBlob"
-  "k_EMsgClientGamesPlayed_obsolete"
-  "k_EMsgClientGetAppOwnershipTicket"
-  "k_EMsgClientGetAppOwnershipTicketResponse"
-  "k_EMsgClientGetClanActivityCounts"
-  "k_EMsgClientGetClanActivityCountsResponse"
-  "k_EMsgClientGetClientAppList"
-  "k_EMsgClientGetClientAppListResponse"
-  "k_EMsgClientGetClientDetails"
-  "k_EMsgClientGetClientDetailsResponse"
-  "k_EMsgClientGetDepotDecryptionKey"
-  "k_EMsgClientGetDepotDecryptionKeyResponse"
-  "k_EMsgClientGetEmoticonList"
-  "k_EMsgClientGetFriendsWhoPlayGame"
-  "k_EMsgClientGetFriendsWhoPlayGameResponse"
-  "k_EMsgClientGetLegacyGameKey"
-  "k_EMsgClientGetLegacyGameKeyResponse"
-  "k_EMsgClientGetLobbyListResponse"
-  "k_EMsgClientGetMicroTxnInfo"
-  "k_EMsgClientGetMicroTxnInfoResponse"
-  "k_EMsgClientGetNumberOfCurrentPlayersDP"
-  "k_EMsgClientGetNumberOfCurrentPlayersDPResponse"
-  "k_EMsgClientGetPeerContentInfo"
-  "k_EMsgClientGetPeerContentInfoResponse"
-  "k_EMsgClientGetUserStats"
-  "k_EMsgClientGetUserStatsResponse"
-  "k_EMsgClientHeartBeat"
-  "k_EMsgClientHello"
-  "k_EMsgClientHideFriend"
-  "k_EMsgClientInformOfResetForgottenPassword"
-  "k_EMsgClientInformOfResetForgottenPasswordResponse"
-  "k_EMsgClientInstallClientApp"
-  "k_EMsgClientInstallClientAppResponse"
-  "k_EMsgClientInviteToGame"
-  "k_EMsgClientInviteUserToClan"
-  "k_EMsgClientIsLimitedAccount"
-  "k_EMsgClientItemAnnouncements"
-  "k_EMsgClientJoinChat"
-  "k_EMsgClientKickPlayingSession"
-  "k_EMsgClientLANP2PBase"
-  "k_EMsgClientLANP2PMax"
-  "k_EMsgClientLANP2PRequestChunk"
-  "k_EMsgClientLANP2PRequestChunkResponse"
-  "k_EMsgClientLBSFindOrCreateLB"
-  "k_EMsgClientLBSFindOrCreateLBResponse"
-  "k_EMsgClientLBSGetLBEntries"
-  "k_EMsgClientLBSGetLBEntriesResponse"
-  "k_EMsgClientLBSSetScore"
-  "k_EMsgClientLBSSetScoreResponse"
-  "k_EMsgClientLBSSetUGC"
-  "k_EMsgClientLBSSetUGCResponse"
-  "k_EMsgClientLaunchClientApp"
-  "k_EMsgClientLaunchClientAppResponse"
-  "k_EMsgClientLicenseList"
-  "k_EMsgClientLogOff"
-  "k_EMsgClientLogOnResponse"
-  "k_EMsgClientLogOnWithCredentials_Deprecated"
-  "k_EMsgClientLogOnWithHash_Deprecated"
-  "k_EMsgClientLogOn_Deprecated"
-  "k_EMsgClientLoggedOff"
-  "k_EMsgClientLogon"
-  "k_EMsgClientLogonGameServer"
-  "k_EMsgClientMMSCreateLobby"
-  "k_EMsgClientMMSCreateLobbyResponse"
-  "k_EMsgClientMMSFlushFrenemyListCache"
-  "k_EMsgClientMMSFlushFrenemyListCacheResponse"
-  "k_EMsgClientMMSGetLobbyData"
-  "k_EMsgClientMMSGetLobbyList"
-  "k_EMsgClientMMSGetLobbyListResponse"
-  "k_EMsgClientMMSGetLobbyStatus"
-  "k_EMsgClientMMSGetLobbyStatusResponse"
-  "k_EMsgClientMMSInviteToLobby"
-  "k_EMsgClientMMSJoinLobby"
-  "k_EMsgClientMMSJoinLobbyResponse"
-  "k_EMsgClientMMSLeaveLobby"
-  "k_EMsgClientMMSLeaveLobbyResponse"
-  "k_EMsgClientMMSLobbyChatMsg"
-  "k_EMsgClientMMSLobbyData"
-  "k_EMsgClientMMSLobbyGameServerSet"
-  "k_EMsgClientMMSSendLobbyChatMsg"
-  "k_EMsgClientMMSSetLobbyData"
-  "k_EMsgClientMMSSetLobbyDataResponse"
-  "k_EMsgClientMMSSetLobbyGameServer"
-  "k_EMsgClientMMSSetLobbyLinked"
-  "k_EMsgClientMMSSetLobbyOwner"
-  "k_EMsgClientMMSSetLobbyOwnerResponse"
-  "k_EMsgClientMMSSetRatelimitPolicyOnClient"
-  "k_EMsgClientMMSUserJoinedLobby"
-  "k_EMsgClientMMSUserLeftLobby"
-  "k_EMsgClientMicroTxnAuthRequest"
-  "k_EMsgClientMicroTxnAuthorize"
-  "k_EMsgClientMicroTxnAuthorizeResponse"
-  "k_EMsgClientNOP"
-  "k_EMsgClientNatTraversalStatEvent"
-  "k_EMsgClientNetworkingCertRequest"
-  "k_EMsgClientNetworkingCertRequestResponse"
-  "k_EMsgClientNetworkingMobileCertRequest"
-  "k_EMsgClientNetworkingMobileCertRequestResponse"
-  "k_EMsgClientNewLoginKey"
-  "k_EMsgClientNewLoginKeyAccepted_Deprecated"
-  "k_EMsgClientNewsUpdate"
-  "k_EMsgClientNoUDPConnectivity"
-  "k_EMsgClientNotLoggedOnDeprecated"
-  "k_EMsgClientOGSBeginSession"
-  "k_EMsgClientOGSBeginSessionResponse"
-  "k_EMsgClientOGSEndSession"
-  "k_EMsgClientOGSEndSessionResponse"
-  "k_EMsgClientOGSReportBug"
-  "k_EMsgClientOGSReportString"
-  "k_EMsgClientOGSWriteRow"
-  "k_EMsgClientP2PConnectionFailInfo"
-  "k_EMsgClientP2PConnectionInfo"
-  "k_EMsgClientP2PIntroducerMessage"
-  "k_EMsgClientPICSAccessTokenRequest"
-  "k_EMsgClientPICSAccessTokenResponse"
-  "k_EMsgClientPICSChangesSinceRequest"
-  "k_EMsgClientPICSChangesSinceResponse"
-  "k_EMsgClientPICSPrivateBetaRequest"
-  "k_EMsgClientPICSPrivateBetaResponse"
-  "k_EMsgClientPICSProductInfoRequest"
-  "k_EMsgClientPICSProductInfoResponse"
-  "k_EMsgClientPackageVersions"
-  "k_EMsgClientPasswordChange3"
-  "k_EMsgClientPasswordChangeResponse"
-  "k_EMsgClientPeerChunkRequest"
-  "k_EMsgClientPeerChunkResponse"
-  "k_EMsgClientPendingGameLaunch"
-  "k_EMsgClientPendingGameLaunchResponse"
-  "k_EMsgClientPersonaChangeResponse"
-  "k_EMsgClientPersonaState"
-  "k_EMsgClientPersonalQAChange3"
-  "k_EMsgClientPing"
-  "k_EMsgClientPingResponse"
-  "k_EMsgClientPlayerNicknameList"
-  "k_EMsgClientPlayingSessionState"
-  "k_EMsgClientPurchaseResponse"
-  "k_EMsgClientRedeemGuestPass"
-  "k_EMsgClientRedeemGuestPassResponse"
-  "k_EMsgClientRegisterAuthTicketWithCM"
-  "k_EMsgClientRegisterKey"
-  "k_EMsgClientRemoveFriend"
-  "k_EMsgClientReportOverlayDetourFailure"
-  "k_EMsgClientRequestAccountData"
-  "k_EMsgClientRequestAccountDataResponse"
-  "k_EMsgClientRequestAuthList"
-  "k_EMsgClientRequestCommentNotifications"
-  "k_EMsgClientRequestEncryptedAppTicket"
-  "k_EMsgClientRequestEncryptedAppTicketResponse"
-  "k_EMsgClientRequestForgottenPasswordEmail"
-  "k_EMsgClientRequestForgottenPasswordEmail3"
-  "k_EMsgClientRequestForgottenPasswordEmailResponse"
-  "k_EMsgClientRequestFreeLicense"
-  "k_EMsgClientRequestFreeLicenseResponse"
-  "k_EMsgClientRequestFriendData"
-  "k_EMsgClientRequestItemAnnouncements"
-  "k_EMsgClientRequestWebAPIAuthenticateUserNonceResponse_Deprecated"
-  "k_EMsgClientRequestWebAPIAuthenticateUserNonce_Deprecated"
-  "k_EMsgClientRequestedClientStats_Deprecated"
-  "k_EMsgClientResetForgottenPassword"
-  "k_EMsgClientResetForgottenPassword3"
-  "k_EMsgClientResetForgottenPassword4"
-  "k_EMsgClientResetForgottenPasswordResponse"
-  "k_EMsgClientResetPassword"
-  "k_EMsgClientResetPasswordResponse"
-  "k_EMsgClientRichPresenceInfo"
-  "k_EMsgClientRichPresenceRequest"
-  "k_EMsgClientRichPresenceUpload"
-  "k_EMsgClientScreenshotsChanged"
-  "k_EMsgClientSentLogs"
-  "k_EMsgClientServerList"
-  "k_EMsgClientServerTimestampRequest"
-  "k_EMsgClientServerTimestampResponse"
-  "k_EMsgClientServerUnavailable"
-  "k_EMsgClientServersAvailable"
-  "k_EMsgClientServiceCall"
-  "k_EMsgClientServiceCallResponse"
-  "k_EMsgClientServiceMethodLegacy"
-  "k_EMsgClientServiceMethodLegacyResponse"
-  "k_EMsgClientServiceModule"
-  "k_EMsgClientSessionEnd"
-  "k_EMsgClientSessionStart"
-  "k_EMsgClientSessionToken"
-  "k_EMsgClientSessionUpdate"
-  "k_EMsgClientSetClientAppUpdateState"
-  "k_EMsgClientSetClientAppUpdateStateResponse"
-  "k_EMsgClientSetHeartbeatRate"
-  "k_EMsgClientSetIgnoreFriend"
-  "k_EMsgClientSetIgnoreFriendResponse"
-  "k_EMsgClientSharedLibraryStopPlaying"
-  "k_EMsgClientSiteLicenseBase"
-  "k_EMsgClientSiteLicenseCheckout"
-  "k_EMsgClientSiteLicenseCheckoutResponse"
-  "k_EMsgClientSiteLicenseGetAvailableSeats"
-  "k_EMsgClientSiteLicenseGetAvailableSeatsResponse"
-  "k_EMsgClientSiteLicenseGetContentCacheInfo"
-  "k_EMsgClientSiteLicenseGetContentCacheInfoResponse"
-  "k_EMsgClientSiteLicenseSiteInfoNotification"
-  "k_EMsgClientStartPeerContentServer"
-  "k_EMsgClientStartPeerContentServerResponse"
-  "k_EMsgClientStat2Int32_Deprecated"
-  "k_EMsgClientStat2_Deprecated"
-  "k_EMsgClientStat_Deprecated"
-  "k_EMsgClientStatsUpdated"
-  "k_EMsgClientSteamUsageEvent"
-  "k_EMsgClientStoreUserStats"
-  "k_EMsgClientStoreUserStats2"
-  "k_EMsgClientStoreUserStatsResponse"
-  "k_EMsgClientSubscribeToPersonaFeed"
-  "k_EMsgClientSystemIM"
-  "k_EMsgClientSystemIMAck"
-  "k_EMsgClientTicketAuthComplete"
-  "k_EMsgClientToGC"
-  "k_EMsgClientUCMAddScreenshot"
-  "k_EMsgClientUCMAddScreenshotResponse"
-  "k_EMsgClientUCMDeletePublishedFile"
-  "k_EMsgClientUCMDeletePublishedFileResponse"
-  "k_EMsgClientUCMDeleteScreenshot"
-  "k_EMsgClientUCMDeleteScreenshotResponse"
-  "k_EMsgClientUCMEnumeratePublishedFilesByUserAction"
-  "k_EMsgClientUCMEnumeratePublishedFilesByUserActionResponse"
-  "k_EMsgClientUCMEnumerateUserSubscribedFilesWithUpdates"
-  "k_EMsgClientUCMEnumerateUserSubscribedFilesWithUpdatesResponse"
-  "k_EMsgClientUCMPublishFile"
-  "k_EMsgClientUCMPublishFileResponse"
-  "k_EMsgClientUCMPublishedFileUpdated"
-  "k_EMsgClientUCMSetUserPublishedFileAction"
-  "k_EMsgClientUCMSetUserPublishedFileActionResponse"
-  "k_EMsgClientUCMUpdatePublishedFile"
-  "k_EMsgClientUCMUpdatePublishedFileResponse"
-  "k_EMsgClientUDSP2PSessionEnded"
-  "k_EMsgClientUDSP2PSessionStarted"
-  "k_EMsgClientUFSGetSingleFileInfo"
-  "k_EMsgClientUFSGetSingleFileInfoResponse"
-  "k_EMsgClientUFSGetUGCDetails"
-  "k_EMsgClientUFSGetUGCDetailsResponse"
-  "k_EMsgClientUFSShareFile"
-  "k_EMsgClientUFSShareFileResponse"
-  "k_EMsgClientUGSGetGlobalStats"
-  "k_EMsgClientUGSGetGlobalStatsResponse"
-  "k_EMsgClientUninstallClientApp"
-  "k_EMsgClientUninstallClientAppResponse"
-  "k_EMsgClientUnlockH264"
-  "k_EMsgClientUnlockH264Response"
-  "k_EMsgClientUnlockHEVCResponse_OBSOLETE"
-  "k_EMsgClientUnlockHEVC_OBSOLETE"
-  "k_EMsgClientUpdateGuestPassesList"
-  "k_EMsgClientUpdateUserGameInfo"
-  "k_EMsgClientUserNotifications"
-  "k_EMsgClientVACBanStatus"
-  "k_EMsgClientVACResponse"
-  "k_EMsgClientVanityURLChangedNotification"
-  "k_EMsgClientVoiceCallPreAuthorize"
-  "k_EMsgClientVoiceCallPreAuthorizeResponse"
-  "k_EMsgClientWalletInfoUpdate"
-  "k_EMsgCommunityAddFriendNews"
-  "k_EMsgCommunityGetUserFriendNews"
-  "k_EMsgContentDescriptionDeltaUpdate"
-  "k_EMsgContentDescriptionUpdate"
-  "k_EMsgDFSAcceptedResponse"
-  "k_EMsgDFSConnection"
-  "k_EMsgDFSConnectionReply"
-  "k_EMsgDFSGetFile"
-  "k_EMsgDFSGetFileFromServer"
-  "k_EMsgDFSInstallLocalFile"
-  "k_EMsgDFSPurgeFile"
-  "k_EMsgDFSRecvTransmitFile"
-  "k_EMsgDFSRequestPingback"
-  "k_EMsgDFSRequestPingback2"
-  "k_EMsgDFSResponsePingback2"
-  "k_EMsgDFSRouteFile"
-  "k_EMsgDFSRouteFileResponse"
-  "k_EMsgDFSSendTransmitFile"
-  "k_EMsgDFSStartTransfer"
-  "k_EMsgDFSTransferComplete"
-  "k_EMsgDPCloudStats"
-  "k_EMsgDPGameServersPlayersStats"
-  "k_EMsgDPGetPlayerCount"
-  "k_EMsgDPGetPlayerCountResponse"
-  "k_EMsgDPPartnerMicroTxns"
-  "k_EMsgDPPartnerMicroTxnsResponse"
-  "k_EMsgDPSetPublishingState"
-  "k_EMsgDPStoreSaleStatistics"
-  "k_EMsgDPUniquePlayersStat"
-  "k_EMsgDPVRUniquePlayersStat"
-  "k_EMsgDRMAdminUpdate"
-  "k_EMsgDRMAdminUpdateResponse"
-  "k_EMsgDRMBuildBlobRequest"
-  "k_EMsgDRMBuildBlobResponse"
-  "k_EMsgDRMDetailsReportRequest"
-  "k_EMsgDRMDetailsReportResponse"
-  "k_EMsgDRMEmptyGuidCache"
-  "k_EMsgDRMEmptyGuidCacheResponse"
-  "k_EMsgDRMProcessFile"
-  "k_EMsgDRMProcessFileResponse"
-  "k_EMsgDRMRange2"
-  "k_EMsgDRMResolveGuidRequest"
-  "k_EMsgDRMResolveGuidResponse"
-  "k_EMsgDRMSFetchVersionSet"
-  "k_EMsgDRMSFetchVersionSetResponse"
-  "k_EMsgDRMStabilityReport"
-  "k_EMsgDRMStabilityReportResponse"
-  "k_EMsgDRMSync"
-  "k_EMsgDRMSyncResponse"
-  "k_EMsgDRMVariabilityReport"
-  "k_EMsgDRMVariabilityReportResponse"
-  "k_EMsgDRMWorkerProcess"
-  "k_EMsgDRMWorkerProcessAnalyzeFileRequest"
-  "k_EMsgDRMWorkerProcessAnalyzeFileResponse"
-  "k_EMsgDRMWorkerProcessBackfillOriginalRequest"
-  "k_EMsgDRMWorkerProcessBackfillOriginalResponse"
-  "k_EMsgDRMWorkerProcessDRMAndSign"
-  "k_EMsgDRMWorkerProcessDRMAndSignResponse"
-  "k_EMsgDRMWorkerProcessDescribeSecretRequest"
-  "k_EMsgDRMWorkerProcessDescribeSecretResponse"
-  "k_EMsgDRMWorkerProcessEvaluateCrashRequest"
-  "k_EMsgDRMWorkerProcessEvaluateCrashResponse"
-  "k_EMsgDRMWorkerProcessExamineBlobRequest"
-  "k_EMsgDRMWorkerProcessExamineBlobResponse"
-  "k_EMsgDRMWorkerProcessGetBlobRequest"
-  "k_EMsgDRMWorkerProcessGetBlobResponse"
-  "k_EMsgDRMWorkerProcessInstallAllRequest"
-  "k_EMsgDRMWorkerProcessInstallAllResponse"
-  "k_EMsgDRMWorkerProcessInstallDRMDLLRequest"
-  "k_EMsgDRMWorkerProcessInstallDRMDLLResponse"
-  "k_EMsgDRMWorkerProcessInstallProcessedFilesRequest"
-  "k_EMsgDRMWorkerProcessInstallProcessedFilesResponse"
-  "k_EMsgDRMWorkerProcessSecretIdStringRequest"
-  "k_EMsgDRMWorkerProcessSecretIdStringResponse"
-  "k_EMsgDRMWorkerProcessSignFile"
-  "k_EMsgDRMWorkerProcessSignFileResponse"
-  "k_EMsgDRMWorkerProcessSplitAndInstallRequest"
-  "k_EMsgDRMWorkerProcessSplitAndInstallResponse"
-  "k_EMsgDRMWorkerProcessSteamworksInfoRequest"
-  "k_EMsgDRMWorkerProcessSteamworksInfoResponse"
-  "k_EMsgDRMWorkerProcessUnpackBlobRequest"
-  "k_EMsgDRMWorkerProcessUnpackBlobResponse"
-  "k_EMsgDRMWorkerProcessValidateDRMDLLRequest"
-  "k_EMsgDRMWorkerProcessValidateDRMDLLResponse"
-  "k_EMsgDRMWorkerProcessValidateFileRequest"
-  "k_EMsgDRMWorkerProcessValidateFileResponse"
-  "k_EMsgDestJobFailed"
-  "k_EMsgDirRequest"
-  "k_EMsgDirResponse"
-  "k_EMsgEconBase"
-  "k_EMsgEconCDKeyProcessTransaction"
-  "k_EMsgEconCDKeyProcessTransactionResponse"
-  "k_EMsgEconFlushInventoryCache"
-  "k_EMsgEconFlushInventoryCacheResponse"
-  "k_EMsgEconGetErrorLogs"
-  "k_EMsgEconGetErrorLogsResponse"
-  "k_EMsgEconTrading_CancelTradeRequest"
-  "k_EMsgEconTrading_InitiateTradeProposed"
-  "k_EMsgEconTrading_InitiateTradeRequest"
-  "k_EMsgEconTrading_InitiateTradeResponse"
-  "k_EMsgEconTrading_InitiateTradeResult"
-  "k_EMsgEconTrading_StartSession"
-  "k_EMsgEnsureBillingConfigReloadResponse_TEST"
-  "k_EMsgEnsureBillingConfigReload_TEST"
-  "k_EMsgEnsureExecuteScheduledTaskResponse_TEST"
-  "k_EMsgEnsureExecuteScheduledTask_TEST"
-  "k_EMsgExit"
-  "k_EMsgExitShell"
-  "k_EMsgExitShells"
-  "k_EMsgExpectShellRestart"
-  "k_EMsgFBSApplyAccountCred"
-  "k_EMsgFBSApplyAccountCredResponse"
-  "k_EMsgFBSApplyOSUpdates"
-  "k_EMsgFBSBootstrapperGetPackageChunk"
-  "k_EMsgFBSBootstrapperGetPackageChunkResponse"
-  "k_EMsgFBSBootstrapperPackageRequest"
-  "k_EMsgFBSBootstrapperPackageResponse"
-  "k_EMsgFBSBootstrapperPackageTransferProgress"
-  "k_EMsgFBSConnectionData"
-  "k_EMsgFBSDeployHotFixPackage"
-  "k_EMsgFBSDeployHotFixResponse"
-  "k_EMsgFBSDeployPackage"
-  "k_EMsgFBSDeployResponse"
-  "k_EMsgFBSDownloadHotFix"
-  "k_EMsgFBSDownloadHotFixResponse"
-  "k_EMsgFBSForceBounce"
-  "k_EMsgFBSForceRefresh"
-  "k_EMsgFBSInfoFromBootstrapper"
-  "k_EMsgFBSMinidumpServer"
-  "k_EMsgFBSPauseFrozenDumps"
-  "k_EMsgFBSQueryGMForRequest"
-  "k_EMsgFBSQueryGMResponse"
-  "k_EMsgFBSRebootBox"
-  "k_EMsgFBSRebootBoxResponse"
-  "k_EMsgFBSReqVersion"
-  "k_EMsgFBSRestartBootstrapper"
-  "k_EMsgFBSRunCMDScript"
-  "k_EMsgFBSSetBigBrotherMode"
-  "k_EMsgFBSSetShellCount"
-  "k_EMsgFBSSetState"
-  "k_EMsgFBSTerminateShell"
-  "k_EMsgFBSTerminateZombies"
-  "k_EMsgFBSUpdateBootstrapper"
-  "k_EMsgFBSUpdateTargetConfigFile"
-  "k_EMsgFBSVersionInfo"
-  "k_EMsgFSAddOrRemoveFollower"
-  "k_EMsgFSAddOrRemoveFollowerResponse"
-  "k_EMsgFSBase"
-  "k_EMsgFSCommentNotification"
-  "k_EMsgFSCommentNotificationViewed"
-  "k_EMsgFSComputeFrenematrix"
-  "k_EMsgFSComputeFrenematrixResponse"
-  "k_EMsgFSGetPendingNotificationCount"
-  "k_EMsgFSGetPendingNotificationCountResponse"
-  "k_EMsgFSPlayStatusNotification"
-  "k_EMsgFSRichPresenceRequest"
-  "k_EMsgFSRichPresenceResponse"
-  "k_EMsgFSUpdateFollowingList"
-  "k_EMsgFailServer"
-  "k_EMsgFileXferData"
-  "k_EMsgFileXferDataAck"
-  "k_EMsgFileXferEnd"
-  "k_EMsgFileXferRequest"
-  "k_EMsgFileXferResponse"
-  "k_EMsgGCAchievementAwarded"
-  "k_EMsgGCCmdDeploy"
-  "k_EMsgGCCmdDeployResponse"
-  "k_EMsgGCCmdDown"
-  "k_EMsgGCCmdRevive"
-  "k_EMsgGCCmdStatus"
-  "k_EMsgGCCmdSwitch"
-  "k_EMsgGCGetAccountDetails_DEPRECATED"
-  "k_EMsgGCGetEmailTemplate"
-  "k_EMsgGCGetEmailTemplateResponse"
-  "k_EMsgGCHAccountLockStatusChange"
-  "k_EMsgGCHAccountPhoneNumberChange"
-  "k_EMsgGCHAccountTradeBanStatusChange"
-  "k_EMsgGCHAccountTwoFactorChange"
-  "k_EMsgGCHAccountVacStatusChange"
-  "k_EMsgGCHAppCheersGetAllowedTypes"
-  "k_EMsgGCHAppCheersGetAllowedTypesResponse"
-  "k_EMsgGCHAppCheersReceived"
-  "k_EMsgGCHInviteUserToLobby"
-  "k_EMsgGCHKillGC"
-  "k_EMsgGCHKillGCResponse"
-  "k_EMsgGCHMarkAppSessionsAuthoritative"
-  "k_EMsgGCHRecurringSubscriptionStatusChange"
-  "k_EMsgGCHRelay"
-  "k_EMsgGCHRelayToClient"
-  "k_EMsgGCHRequestStatus"
-  "k_EMsgGCHRequestStatusResponse"
-  "k_EMsgGCHRequestUpdateSession"
-  "k_EMsgGCHRoutingRulesFromGCHtoGM"
-  "k_EMsgGCHRoutingRulesToGCHfromGM"
-  "k_EMsgGCHSpawnGC"
-  "k_EMsgGCHSpawnGCResponse"
-  "k_EMsgGCHUpdateMultipleSessions"
-  "k_EMsgGCHUpdateSession"
-  "k_EMsgGCHVacVerificationChange"
-  "k_EMsgGCInterAppMessage"
-  "k_EMsgGCRegisterWebInterfaces_Deprecated"
-  "k_EMsgGMDRMSync"
-  "k_EMsgGMDynamicRoutingUpdate"
-  "k_EMsgGMGetModifiedConVars"
-  "k_EMsgGMGetModifiedConVarsResponse"
-  "k_EMsgGMGetServiceMethodRouting"
-  "k_EMsgGMGetServiceMethodRoutingResponse"
-  "k_EMsgGMLoadActivationCodes"
-  "k_EMsgGMNeedShellAndServerAddresses"
-  "k_EMsgGMQueueForFBS"
-  "k_EMsgGMSBase"
-  "k_EMsgGMSClientServerQueryResponse"
-  "k_EMsgGMSGameServerReplicate"
-  "k_EMsgGMSchemaConversionResults"
-  "k_EMsgGMShellAndServerAddressUpdates"
-  "k_EMsgGMStatsForwardToAdminConnections"
-  "k_EMsgGMTestNextBuildSchemaConversion"
-  "k_EMsgGMTestNextBuildSchemaConversionResponse"
-  "k_EMsgGMWriteConfigToSQL"
-  "k_EMsgGMWriteShellFailureToSQL"
-  "k_EMsgGSApprove"
-  "k_EMsgGSAssociateWithClan"
-  "k_EMsgGSAssociateWithClanResponse"
-  "k_EMsgGSComputeNewPlayerCompatibility"
-  "k_EMsgGSComputeNewPlayerCompatibilityResponse"
-  "k_EMsgGSDeny"
-  "k_EMsgGSDisconnectNotice"
-  "k_EMsgGSGetPlayStats"
-  "k_EMsgGSGetPlayStatsResponse"
-  "k_EMsgGSGetReputation"
-  "k_EMsgGSGetReputationResponse"
-  "k_EMsgGSGetUserGroupStatus"
-  "k_EMsgGSGetUserGroupStatusResponse"
-  "k_EMsgGSKick"
-  "k_EMsgGSPlayerList"
-  "k_EMsgGSServerType"
-  "k_EMsgGSStatus"
-  "k_EMsgGSStatus2"
-  "k_EMsgGSStatusReply"
-  "k_EMsgGSStatusUpdate_Unused"
-  "k_EMsgGSUserPlaying"
-  "k_EMsgGameServerOutOfDate"
-  "k_EMsgGameServerPolicyUpdate"
-  "k_EMsgGenericReply"
-  "k_EMsgGetUserIPCountry"
-  "k_EMsgGetUserIPCountryResponse"
-  "k_EMsgGracefulExitShell"
-  "k_EMsgHeartbeat"
-  "k_EMsgHotFixProgress"
-  "k_EMsgHubConnect"
-  "k_EMsgInvalid"
-  "k_EMsgInvalidateDBOCacheItems"
-  "k_EMsgJobHeartbeat"
-  "k_EMsgJobHeartbeatTest"
-  "k_EMsgJobHeartbeatTestResponse"
-  "k_EMsgKGSBase"
-  "k_EMsgKeepAlive"
-  "k_EMsgLBSDeleteLB"
-  "k_EMsgLBSDeleteLBEntry"
-  "k_EMsgLBSDeleteLBResponse"
-  "k_EMsgLBSFindOrCreateLB"
-  "k_EMsgLBSFindOrCreateLBResponse"
-  "k_EMsgLBSGetLBEntries"
-  "k_EMsgLBSGetLBEntriesResponse"
-  "k_EMsgLBSGetLBList"
-  "k_EMsgLBSGetLBListResponse"
-  "k_EMsgLBSResetLB"
-  "k_EMsgLBSResetLBResponse"
-  "k_EMsgLBSSetLBDetails"
-  "k_EMsgLBSSetScore"
-  "k_EMsgLBSSetScoreResponse"
-  "k_EMsgLicenseProcessingComplete"
-  "k_EMsgLoadDBOCacheItem"
-  "k_EMsgLoadDBOCacheItemResponse"
-  "k_EMsgMDSContentServerConfig"
-  "k_EMsgMDSContentServerConfigRequest"
-  "k_EMsgMDSGetDepotDecryptionKey"
-  "k_EMsgMDSGetDepotDecryptionKeyResponse"
-  "k_EMsgMDSGetDepotManifest"
-  "k_EMsgMDSGetDepotManifestChunk"
-  "k_EMsgMDSGetDepotManifestResponse"
-  "k_EMsgMDSMigrateChunk"
-  "k_EMsgMDSMigrateChunkResponse"
-  "k_EMsgMDSToCSFlushChunk"
-  "k_EMsgMDSToCSFlushManifest"
-  "k_EMsgMMSBase"
-  "k_EMsgMMSGetLobbyList"
-  "k_EMsgMMSGetLobbyListResponse"
-  "k_EMsgMMSRoutingOverride"
-  "k_EMsgMPASBase"
-  "k_EMsgMPASVacBanReset"
-  "k_EMsgMulti"
-  "k_EMsgNonStdMsgBase"
-  "k_EMsgNonStdMsgChase"
-  "k_EMsgNonStdMsgDFSTransfer"
-  "k_EMsgNonStdMsgHTTPClient"
-  "k_EMsgNonStdMsgHTTPServer"
-  "k_EMsgNonStdMsgMemcached"
-  "k_EMsgNonStdMsgPHPSimulator"
-  "k_EMsgNonStdMsgRTMPServer"
-  "k_EMsgNonStdMsgRedis"
-  "k_EMsgNonStdMsgSteam2Emulator"
-  "k_EMsgNonStdMsgTests"
-  "k_EMsgNonStdMsgUMQpipeAAPL"
-  "k_EMsgNonStdMsgWGResponse"
-  "k_EMsgNonStdMsgWebSocket"
-  "k_EMsgNotificationOfSuspiciousActivity"
-  "k_EMsgNotifyWatchdog"
-  "k_EMsgOGSBeginSession"
-  "k_EMsgOGSBeginSessionResponse"
-  "k_EMsgOGSEndSession"
-  "k_EMsgOGSEndSessionResponse"
-  "k_EMsgOGSWriteAppSessionRow"
-  "k_EMsgP2PIntroducerMessage"
-  "k_EMsgPICSBase"
-  "k_EMsgPSAddWalletCreditToShoppingCart"
-  "k_EMsgPSAddWalletCreditToShoppingCartResponse"
-  "k_EMsgPSGetAccountCartContents"
-  "k_EMsgPSGetAccountCartContentsResponse"
-  "k_EMsgPSGetShoppingCartContents"
-  "k_EMsgPSGetShoppingCartContentsResponse"
-  "k_EMsgPSIsValidShoppingCart"
-  "k_EMsgPSIsValidShoppingCartResponse"
-  "k_EMsgPhysicalBoxInventory"
-  "k_EMsgPing"
-  "k_EMsgPingResponse"
-  "k_EMsgPrepareToExit"
-  "k_EMsgProductInfoCacheStatus"
-  "k_EMsgProductInfoChangedNotification"
-  "k_EMsgProtobufWrapped"
-  "k_EMsgProvideWindowsEventLogEntries"
-  "k_EMsgQuestServerBase"
-  "k_EMsgQueuedEmailsComplete"
-  "k_EMsgRMDeleteMemcachedKeys"
-  "k_EMsgRMMsgTraceAddOrUpdateTrigger"
-  "k_EMsgRMMsgTraceEvent"
-  "k_EMsgRMMsgTraceRemoveTriggers"
-  "k_EMsgRMRange"
-  "k_EMsgRMRemoteInvoke"
-  "k_EMsgRMTestVerisignOTP"
-  "k_EMsgRMTestVerisignOTPResponse"
-  "k_EMsgRemoteClientAcceptAllEULAs"
-  "k_EMsgRemoteClientAcceptEULA"
-  "k_EMsgRemoteClientAppDownloadStats"
-  "k_EMsgRemoteClientAppInfoUpdateComplete"
-  "k_EMsgRemoteClientAppStatus"
-  "k_EMsgRemoteClientAppUpdateStopped"
-  "k_EMsgRemoteClientAppUploadStats"
-  "k_EMsgRemoteClientAuthResponse_OBSOLETE"
-  "k_EMsgRemoteClientAuth_OBSOLETE"
-  "k_EMsgRemoteClientAuthorizationCancelRequest"
-  "k_EMsgRemoteClientAuthorizationConfirmed"
-  "k_EMsgRemoteClientAuthorizationRequest"
-  "k_EMsgRemoteClientAuthorizationResponse"
-  "k_EMsgRemoteClientBase"
-  "k_EMsgRemoteClientDownloadItemScheduleChanged"
-  "k_EMsgRemoteClientDownloadScheduleChanged"
-  "k_EMsgRemoteClientGetControllerConfig"
-  "k_EMsgRemoteClientGetControllerConfigResponse"
-  "k_EMsgRemoteClientPairWifiAP"
-  "k_EMsgRemoteClientPairWifiAPResponse"
-  "k_EMsgRemoteClientPing"
-  "k_EMsgRemoteClientPingResponse"
-  "k_EMsgRemoteClientProofRequest"
-  "k_EMsgRemoteClientProofResponse"
-  "k_EMsgRemoteClientStartStream"
-  "k_EMsgRemoteClientStartStreamResponse"
-  "k_EMsgRemoteClientStatusRequest"
-  "k_EMsgRemoteClientStatusResponse"
-  "k_EMsgRemoteClientStreamingEnabled"
-  "k_EMsgRemoteClientWifiAPStatus"
-  "k_EMsgReqChallenge"
-  "k_EMsgReqChallengeTest"
-  "k_EMsgRequestFullStatsBlock"
-  "k_EMsgRequestWindowsEventLogEntries"
-  "k_EMsgSCIDRequest"
-  "k_EMsgSCIDResponse"
-  "k_EMsgSLCBase"
-  "k_EMsgSMExpensiveReport"
-  "k_EMsgSMHourlyReport"
-  "k_EMsgSMPartitionRenames"
-  "k_EMsgSMTestNextBuildSchemaConversion"
-  "k_EMsgSMTestNextBuildSchemaConversionResponse"
-  "k_EMsgSecretsBase"
-  "k_EMsgSecretsCredentialPairResponse"
-  "k_EMsgSecretsRequestCredentialPair"
-  "k_EMsgServerSecretChanged"
-  "k_EMsgServiceMethod"
-  "k_EMsgServiceMethodCallFromClient"
-  "k_EMsgServiceMethodCallFromClientNonAuthed"
-  "k_EMsgServiceMethodResponse"
-  "k_EMsgServiceMethodSendToClient"
-  "k_EMsgSetTestFlag"
-  "k_EMsgShellCheckWindowsUpdates"
-  "k_EMsgShellCheckWindowsUpdatesResponse"
-  "k_EMsgShellConfigInfoUpdate"
-  "k_EMsgShellFailed"
-  "k_EMsgShellSearchLogs"
-  "k_EMsgShellSearchLogsResponse"
-  "k_EMsgStats"
-  "k_EMsgStatsDeprecated"
-  "k_EMsgStoreBase"
-  "k_EMsgSubscribe"
-  "k_EMsgTestFlushDelayedSQL"
-  "k_EMsgTestFlushDelayedSQLResponse"
-  "k_EMsgTestInitDB"
-  "k_EMsgTestResetServer"
-  "k_EMsgTestWorkerProcess"
-  "k_EMsgTestWorkerProcessLoadUnloadModuleRequest"
-  "k_EMsgTestWorkerProcessLoadUnloadModuleResponse"
-  "k_EMsgTestWorkerProcessServiceModuleCallRequest"
-  "k_EMsgTestWorkerProcessServiceModuleCallResponse"
-  "k_EMsgTimestampRequest"
-  "k_EMsgTimestampResponse"
-  "k_EMsgUCMBase"
-  "k_EMsgUCMFixStatsPublishedFile"
-  "k_EMsgUCMGetUserSubscribedFiles"
-  "k_EMsgUCMGetUserSubscribedFilesResponse"
-  "k_EMsgUCMPublishFile"
-  "k_EMsgUCMPublishFileResponse"
-  "k_EMsgUCMPublishedFileChildAdd"
-  "k_EMsgUCMPublishedFileChildAddResponse"
-  "k_EMsgUCMPublishedFileChildRemove"
-  "k_EMsgUCMPublishedFileChildRemoveResponse"
-  "k_EMsgUCMPublishedFileContentUpdated"
-  "k_EMsgUCMPublishedFileParentChanged"
-  "k_EMsgUCMPublishedFilePreviewAdd"
-  "k_EMsgUCMPublishedFilePreviewAddResponse"
-  "k_EMsgUCMPublishedFilePreviewRemove"
-  "k_EMsgUCMPublishedFilePreviewRemoveResponse"
-  "k_EMsgUCMPublishedFileReported"
-  "k_EMsgUCMPublishedFileSubscribed"
-  "k_EMsgUCMPublishedFileUnsubscribed"
-  "k_EMsgUCMReloadPublishedFile"
-  "k_EMsgUCMReloadUserFileListCaches"
-  "k_EMsgUCMResetCommunityContent"
-  "k_EMsgUCMResetCommunityContentResponse"
-  "k_EMsgUCMUpdatePublishedFile"
-  "k_EMsgUCMUpdatePublishedFileResponse"
-  "k_EMsgUCMUpdatePublishedFileStat"
-  "k_EMsgUDSBase"
-  "k_EMsgUDSHasSession"
-  "k_EMsgUDSHasSessionResponse"
-  "k_EMsgUDSRenderUserAuth"
-  "k_EMsgUDSRenderUserAuthResponse"
-  "k_EMsgUFSDownloadChunkRequest"
-  "k_EMsgUFSDownloadChunkResponse"
-  "k_EMsgUFSDownloadFinishRequest"
-  "k_EMsgUFSDownloadFinishResponse"
-  "k_EMsgUFSDownloadStartRequest"
-  "k_EMsgUFSDownloadStartResponse"
-  "k_EMsgUFSFlushURLCache"
-  "k_EMsgUFSGetUGCURLs"
-  "k_EMsgUFSGetUGCURLsResponse"
-  "k_EMsgUFSHttpUploadFileFinishRequest"
-  "k_EMsgUFSHttpUploadFileFinishResponse"
-  "k_EMsgUFSMigrateFile"
-  "k_EMsgUFSMigrateFileAppID"
-  "k_EMsgUFSMigrateFileAppIDResponse"
-  "k_EMsgUFSMigrateFileResponse"
-  "k_EMsgUFSReloadAccount"
-  "k_EMsgUFSReloadAccountResponse"
-  "k_EMsgUFSReloadPartitionInfo"
-  "k_EMsgUFSSynchronizeFile"
-  "k_EMsgUFSSynchronizeFileResponse"
-  "k_EMsgUFSUpdateFileFlags"
-  "k_EMsgUFSUpdateFileFlagsResponse"
-  "k_EMsgUFSUpdateRecordBatched"
-  "k_EMsgUFSUpdateRecordBatchedResponse"
-  "k_EMsgUGSBase"
-  "k_EMsgUGSGetUserGameStats"
-  "k_EMsgUGSGetUserGameStatsResponse"
-  "k_EMsgUGSGetUserStats"
-  "k_EMsgUGSStoreUserStats"
-  "k_EMsgUGSStoreUserStatsResponse"
-  "k_EMsgUGSUpdateGlobalStats"
-  "k_EMsgUMQBase"
-  "k_EMsgUniverseChanged"
-  "k_EMsgUniverseData"
-  "k_EMsgUpdateCMMessageRateRules"
-  "k_EMsgUpdateConfigFile"
-  "k_EMsgUpdateCreditCardRequest"
-  "k_EMsgUpdateRecordResponse"
-  "k_EMsgUpdateScheduledTaskEnableStateResponse_TEST"
-  "k_EMsgUpdateScheduledTaskEnableState_TEST"
-  "k_EMsgUpdateUserBanResponse"
-  "k_EMsgVACResponse"
-  "k_EMsgVSAddCheat"
-  "k_EMsgVSChallengeResultText"
-  "k_EMsgVSGetChallengeResults"
-  "k_EMsgVSLoadDBFinished"
-  "k_EMsgVSMarkCheat"
-  "k_EMsgVSPurgeCodeModDB"
-  "k_EMsgVSReportLingerer"
-  "k_EMsgVSRequestManagedChallenge"
-  "k_EMsgWGConnectionLegacyWGRequest"
-  "k_EMsgWGConnectionLegacyWGResponse"
-  "k_EMsgWGConnectionProtocolError"
-  "k_EMsgWGConnectionValidateUserToken"
-  "k_EMsgWGConnectionValidateUserTokenResponse"
-  "k_EMsgWGRequest"
-  "k_EMsgWGResponse"
-  "k_EMsgWebAPIBase"
-  "k_EMsgWebAPIInvalidateOAuthClientCache"
-  "k_EMsgWebAPIInvalidateOAuthTokenCache"
-  "k_EMsgWebAPIJobRequest"
-  "k_EMsgWebAPIJobResponse"
-  "k_EMsgWebAPIRegisterGCInterfaces"
-  "k_EMsgWebAPISetSecrets"
-  "k_EMsgWebAPIValidateOAuth2Token"
-  "k_EMsgWebAPIValidateOAuth2TokenResponse"
-  "k_EMsgWorkerProcess"
-  "k_EMsgWorkerProcessPingRequest"
-  "k_EMsgWorkerProcessPingResponse"
-  "k_EMsgWorkerProcessShutdown"
-  "k_EMsgWorkshopBase"
-  "k_EMsgZipRequest"
-  "k_EMsgZipResponse"
-  "k_eMsgRemoteClientDownloadingAppID"
-  "k_eMsgRemoteClientDownloadsManagement"
-  "k_eMsgRemoteClientPeerContentServerChanged"
-  "k_eMsgRemoteClientRestrictAutoUpdatesChanged"
-  "k_eMsgRemoteClientSuspendLanPeerContent"
-  "k_eMsgRemoteClientUpdateDownloadsController";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EMsg_entries[] = {
-  { {EMsg_names + 0, 16}, 127 },
-  { {EMsg_names + 16, 21}, 6810 },
-  { {EMsg_names + 37, 21}, 423 },
-  { {EMsg_names + 58, 29}, 424 },
-  { {EMsg_names + 87, 18}, 425 },
-  { {EMsg_names + 105, 26}, 426 },
-  { {EMsg_names + 131, 47}, 434 },
-  { {EMsg_names + 178, 31}, 405 },
-  { {EMsg_names + 209, 39}, 406 },
-  { {EMsg_names + 248, 34}, 402 },
-  { {EMsg_names + 282, 44}, 431 },
-  { {EMsg_names + 326, 52}, 432 },
-  { {EMsg_names + 378, 24}, 4310 },
-  { {EMsg_names + 402, 32}, 4311 },
-  { {EMsg_names + 434, 29}, 4346 },
-  { {EMsg_names + 463, 37}, 4347 },
-  { {EMsg_names + 500, 24}, 4061 },
-  { {EMsg_names + 524, 22}, 4224 },
-  { {EMsg_names + 546, 30}, 4285 },
-  { {EMsg_names + 576, 17}, 4081 },
-  { {EMsg_names + 593, 25}, 4082 },
-  { {EMsg_names + 618, 18}, 505 },
-  { {EMsg_names + 636, 27}, 510 },
-  { {EMsg_names + 663, 24}, 592 },
-  { {EMsg_names + 687, 32}, 593 },
-  { {EMsg_names + 719, 31}, 4315 },
-  { {EMsg_names + 750, 19}, 4145 },
-  { {EMsg_names + 769, 21}, 4410 },
-  { {EMsg_names + 790, 29}, 4411 },
-  { {EMsg_names + 819, 24}, 4380 },
-  { {EMsg_names + 843, 32}, 4381 },
-  { {EMsg_names + 875, 25}, 4086 },
-  { {EMsg_names + 900, 33}, 4087 },
-  { {EMsg_names + 933, 21}, 511 },
-  { {EMsg_names + 954, 22}, 522 },
-  { {EMsg_names + 976, 29}, 4105 },
-  { {EMsg_names + 1005, 24}, 4104 },
-  { {EMsg_names + 1029, 23}, 4085 },
-  { {EMsg_names + 1052, 24}, 579 },
-  { {EMsg_names + 1076, 19}, 533 },
-  { {EMsg_names + 1095, 17}, 577 },
-  { {EMsg_names + 1112, 18}, 572 },
-  { {EMsg_names + 1130, 17}, 570 },
-  { {EMsg_names + 1147, 35}, 4118 },
-  { {EMsg_names + 1182, 27}, 4075 },
-  { {EMsg_names + 1209, 35}, 4161 },
-  { {EMsg_names + 1244, 28}, 4352 },
-  { {EMsg_names + 1272, 36}, 4353 },
-  { {EMsg_names + 1308, 19}, 534 },
-  { {EMsg_names + 1327, 23}, 538 },
-  { {EMsg_names + 1350, 23}, 567 },
-  { {EMsg_names + 1373, 23}, 4011 },
-  { {EMsg_names + 1396, 31}, 4012 },
-  { {EMsg_names + 1427, 21}, 4090 },
-  { {EMsg_names + 1448, 26}, 4103 },
-  { {EMsg_names + 1474, 34}, 4097 },
-  { {EMsg_names + 1508, 29}, 4091 },
-  { {EMsg_names + 1537, 20}, 4264 },
-  { {EMsg_names + 1557, 32}, 576 },
-  { {EMsg_names + 1589, 30}, 5566 },
-  { {EMsg_names + 1619, 38}, 5567 },
-  { {EMsg_names + 1657, 29}, 598 },
-  { {EMsg_names + 1686, 29}, 571 },
-  { {EMsg_names + 1715, 33}, 574 },
-  { {EMsg_names + 1748, 26}, 569 },
-  { {EMsg_names + 1774, 32}, 5560 },
-  { {EMsg_names + 1806, 40}, 5561 },
-  { {EMsg_names + 1846, 32}, 5562 },
-  { {EMsg_names + 1878, 40}, 5563 },
-  { {EMsg_names + 1918, 27}, 573 },
-  { {EMsg_names + 1945, 32}, 5564 },
-  { {EMsg_names + 1977, 40}, 5565 },
-  { {EMsg_names + 2017, 24}, 553 },
-  { {EMsg_names + 2041, 38}, 578 },
-  { {EMsg_names + 2079, 35}, 5568 },
-  { {EMsg_names + 2114, 43}, 5569 },
-  { {EMsg_names + 2157, 31}, 554 },
-  { {EMsg_names + 2188, 31}, 5588 },
-  { {EMsg_names + 2219, 39}, 5589 },
-  { {EMsg_names + 2258, 32}, 4383 },
-  { {EMsg_names + 2290, 40}, 4384 },
-  { {EMsg_names + 2330, 21}, 4251 },
-  { {EMsg_names + 2351, 29}, 4252 },
-  { {EMsg_names + 2380, 24}, 4260 },
-  { {EMsg_names + 2404, 18}, 4001 },
-  { {EMsg_names + 2422, 26}, 4002 },
-  { {EMsg_names + 2448, 18}, 586 },
-  { {EMsg_names + 2466, 43}, 4013 },
-  { {EMsg_names + 2509, 26}, 587 },
-  { {EMsg_names + 2535, 21}, 4262 },
-  { {EMsg_names + 2556, 33}, 4265 },
-  { {EMsg_names + 2589, 20}, 4258 },
-  { {EMsg_names + 2609, 21}, 4396 },
-  { {EMsg_names + 2630, 29}, 4397 },
-  { {EMsg_names + 2659, 24}, 4241 },
-  { {EMsg_names + 2683, 31}, 4246 },
-  { {EMsg_names + 2714, 35}, 4330 },
-  { {EMsg_names + 2749, 16}, 4084 },
-  { {EMsg_names + 2765, 16}, 4059 },
-  { {EMsg_names + 2781, 20}, 4398 },
-  { {EMsg_names + 2801, 28}, 4399 },
-  { {EMsg_names + 2829, 23}, 4423 },
-  { {EMsg_names + 2852, 31}, 4424 },
-  { {EMsg_names + 2883, 21}, 4160 },
-  { {EMsg_names + 2904, 21}, 509 },
-  { {EMsg_names + 2925, 24}, 4367 },
-  { {EMsg_names + 2949, 32}, 4368 },
-  { {EMsg_names + 2981, 20}, 580 },
-  { {EMsg_names + 3001, 28}, 581 },
-  { {EMsg_names + 3029, 20}, 4143 },
-  { {EMsg_names + 3049, 28}, 4144 },
-  { {EMsg_names + 3077, 18}, 4106 },
-  { {EMsg_names + 3095, 28}, 518 },
-  { {EMsg_names + 3123, 26}, 525 },
-  { {EMsg_names + 3149, 34}, 526 },
-  { {EMsg_names + 3183, 24}, 535 },
-  { {EMsg_names + 3207, 19}, 4107 },
-  { {EMsg_names + 3226, 23}, 4100 },
-  { {EMsg_names + 3249, 36}, 4102 },
-  { {EMsg_names + 3285, 31}, 4101 },
-  { {EMsg_names + 3316, 19}, 4098 },
-  { {EMsg_names + 3335, 27}, 4099 },
-  { {EMsg_names + 3362, 21}, 4418 },
-  { {EMsg_names + 3383, 29}, 4419 },
-  { {EMsg_names + 3412, 27}, 6406 },
-  { {EMsg_names + 3439, 27}, 6405 },
-  { {EMsg_names + 3466, 16}, 4213 },
-  { {EMsg_names + 3482, 39}, 4340 },
-  { {EMsg_names + 3521, 38}, 4341 },
-  { {EMsg_names + 3559, 42}, 4335 },
-  { {EMsg_names + 3601, 50}, 4336 },
-  { {EMsg_names + 3651, 24}, 4332 },
-  { {EMsg_names + 3675, 24}, 4331 },
-  { {EMsg_names + 3699, 25}, 4323 },
-  { {EMsg_names + 3724, 33}, 4324 },
-  { {EMsg_names + 3757, 34}, 4338 },
-  { {EMsg_names + 3791, 42}, 4339 },
-  { {EMsg_names + 3833, 25}, 4287 },
-  { {EMsg_names + 3858, 26}, 4112 },
-  { {EMsg_names + 3884, 33}, 4288 },
-  { {EMsg_names + 3917, 34}, 4113 },
-  { {EMsg_names + 3951, 30}, 4006 },
-  { {EMsg_names + 3981, 38}, 4007 },
-  { {EMsg_names + 4019, 36}, 4294 },
-  { {EMsg_names + 4055, 44}, 4295 },
-  { {EMsg_names + 4099, 25}, 4313 },
-  { {EMsg_names + 4124, 33}, 4314 },
-  { {EMsg_names + 4157, 37}, 4408 },
-  { {EMsg_names + 4194, 38}, 4409 },
-  { {EMsg_names + 4232, 24}, 4158 },
-  { {EMsg_names + 4256, 32}, 4159 },
-  { {EMsg_names + 4288, 22}, 4065 },
-  { {EMsg_names + 4310, 30}, 4066 },
-  { {EMsg_names + 4340, 22}, 588 },
-  { {EMsg_names + 4362, 38}, 4373 },
-  { {EMsg_names + 4400, 46}, 4374 },
-  { {EMsg_names + 4446, 30}, 589 },
-  { {EMsg_names + 4476, 22}, 4039 },
-  { {EMsg_names + 4498, 30}, 4040 },
-  { {EMsg_names + 4528, 22}, 4076 },
-  { {EMsg_names + 4550, 30}, 4077 },
-  { {EMsg_names + 4580, 23}, 4298 },
-  { {EMsg_names + 4603, 31}, 4299 },
-  { {EMsg_names + 4634, 19}, 4054 },
-  { {EMsg_names + 4653, 27}, 4055 },
-  { {EMsg_names + 4680, 29}, 4041 },
-  { {EMsg_names + 4709, 37}, 4042 },
-  { {EMsg_names + 4746, 33}, 4023 },
-  { {EMsg_names + 4779, 41}, 4024 },
-  { {EMsg_names + 4820, 19}, 4050 },
-  { {EMsg_names + 4839, 27}, 4051 },
-  { {EMsg_names + 4866, 32}, 4116 },
-  { {EMsg_names + 4898, 40}, 4117 },
-  { {EMsg_names + 4938, 29}, 4124 },
-  { {EMsg_names + 4967, 37}, 4125 },
-  { {EMsg_names + 5004, 25}, 4165 },
-  { {EMsg_names + 5029, 33}, 4166 },
-  { {EMsg_names + 5062, 23}, 4271 },
-  { {EMsg_names + 5085, 31}, 4272 },
-  { {EMsg_names + 5116, 18}, 4120 },
-  { {EMsg_names + 5134, 26}, 4121 },
-  { {EMsg_names + 5160, 24}, 516 },
-  { {EMsg_names + 5184, 32}, 517 },
-  { {EMsg_names + 5216, 22}, 4301 },
-  { {EMsg_names + 5238, 30}, 4302 },
-  { {EMsg_names + 5268, 27}, 4333 },
-  { {EMsg_names + 5295, 35}, 4334 },
-  { {EMsg_names + 5330, 35}, 4375 },
-  { {EMsg_names + 5365, 43}, 4376 },
-  { {EMsg_names + 5408, 27}, 4365 },
-  { {EMsg_names + 5435, 35}, 4366 },
-  { {EMsg_names + 5470, 28}, 4289 },
-  { {EMsg_names + 5498, 36}, 4290 },
-  { {EMsg_names + 5534, 28}, 4184 },
-  { {EMsg_names + 5562, 36}, 4185 },
-  { {EMsg_names + 5598, 25}, 4206 },
-  { {EMsg_names + 5623, 29}, 4278 },
-  { {EMsg_names + 5652, 37}, 4279 },
-  { {EMsg_names + 5689, 31}, 4247 },
-  { {EMsg_names + 5720, 39}, 4248 },
-  { {EMsg_names + 5759, 24}, 4175 },
-  { {EMsg_names + 5783, 32}, 4174 },
-  { {EMsg_names + 5815, 30}, 4269 },
-  { {EMsg_names + 5845, 38}, 4270 },
-  { {EMsg_names + 5883, 33}, 4172 },
-  { {EMsg_names + 5916, 20}, 4316 },
-  { {EMsg_names + 5936, 28}, 4317 },
-  { {EMsg_names + 5964, 26}, 921 },
-  { {EMsg_names + 5990, 34}, 922 },
-  { {EMsg_names + 6024, 29}, 4190 },
-  { {EMsg_names + 6053, 37}, 4191 },
-  { {EMsg_names + 6090, 26}, 4282 },
-  { {EMsg_names + 6116, 34}, 4283 },
-  { {EMsg_names + 6150, 32}, 4147 },
-  { {EMsg_names + 6182, 40}, 4148 },
-  { {EMsg_names + 6222, 31}, 4249 },
-  { {EMsg_names + 6253, 39}, 4250 },
-  { {EMsg_names + 6292, 24}, 4244 },
-  { {EMsg_names + 6316, 32}, 4245 },
-  { {EMsg_names + 6348, 19}, 4108 },
-  { {EMsg_names + 6367, 19}, 4356 },
-  { {EMsg_names + 6386, 27}, 4357 },
-  { {EMsg_names + 6413, 24}, 566 },
-  { {EMsg_names + 6437, 25}, 4361 },
-  { {EMsg_names + 6462, 33}, 4362 },
-  { {EMsg_names + 6495, 32}, 4328 },
-  { {EMsg_names + 6527, 40}, 4360 },
-  { {EMsg_names + 6567, 20}, 512 },
-  { {EMsg_names + 6587, 28}, 560 },
-  { {EMsg_names + 6615, 37}, 4308 },
-  { {EMsg_names + 6652, 45}, 4309 },
-  { {EMsg_names + 6697, 26}, 582 },
-  { {EMsg_names + 6723, 34}, 583 },
-  { {EMsg_names + 6757, 40}, 4358 },
-  { {EMsg_names + 6797, 48}, 4359 },
-  { {EMsg_names + 6845, 20}, 527 },
-  { {EMsg_names + 6865, 24}, 4092 },
-  { {EMsg_names + 6889, 24}, 4060 },
-  { {EMsg_names + 6913, 17}, 4010 },
-  { {EMsg_names + 6930, 27}, 529 },
-  { {EMsg_names + 6957, 35}, 530 },
-  { {EMsg_names + 6992, 17}, 532 },
-  { {EMsg_names + 7009, 25}, 531 },
-  { {EMsg_names + 7034, 18}, 4391 },
-  { {EMsg_names + 7052, 26}, 4392 },
-  { {EMsg_names + 7078, 18}, 4300 },
-  { {EMsg_names + 7096, 20}, 523 },
-  { {EMsg_names + 7116, 21}, 4414 },
-  { {EMsg_names + 7137, 29}, 4415 },
-  { {EMsg_names + 7166, 30}, 4079 },
-  { {EMsg_names + 7196, 20}, 4426 },
-  { {EMsg_names + 7216, 28}, 4427 },
-  { {EMsg_names + 7244, 28}, 596 },
-  { {EMsg_names + 7272, 27}, 4377 },
-  { {EMsg_names + 7299, 32}, 4400 },
-  { {EMsg_names + 7331, 40}, 4401 },
-  { {EMsg_names + 7371, 27}, 4421 },
-  { {EMsg_names + 7398, 35}, 4422 },
-  { {EMsg_names + 7433, 29}, 4372 },
-  { {EMsg_names + 7462, 33}, 4389 },
-  { {EMsg_names + 7495, 41}, 4390 },
-  { {EMsg_names + 7536, 32}, 4322 },
-  { {EMsg_names + 7568, 26}, 4266 },
-  { {EMsg_names + 7594, 34}, 4267 },
-  { {EMsg_names + 7628, 31}, 4162 },
-  { {EMsg_names + 7659, 39}, 4163 },
-  { {EMsg_names + 7698, 29}, 575 },
-  { {EMsg_names + 7727, 27}, 4025 },
-  { {EMsg_names + 7754, 24}, 513 },
-  { {EMsg_names + 7778, 28}, 4325 },
-  { {EMsg_names + 7806, 26}, 563 },
-  { {EMsg_names + 7832, 23}, 2210 },
-  { {EMsg_names + 7855, 19}, 528 },
-  { {EMsg_names + 7874, 26}, 555 },
-  { {EMsg_names + 7900, 21}, 568 },
-  { {EMsg_names + 7921, 29}, 4284 },
-  { {EMsg_names + 7950, 20}, 4083 },
-  { {EMsg_names + 7970, 27}, 4281 },
-  { {EMsg_names + 7997, 22}, 4342 },
-  { {EMsg_names + 8019, 20}, 4337 },
-  { {EMsg_names + 8039, 23}, 4008 },
-  { {EMsg_names + 8062, 26}, 4329 },
-  { {EMsg_names + 8088, 25}, 7530 },
-  { {EMsg_names + 8113, 41}, 4420 },
-  { {EMsg_names + 8154, 35}, 4197 },
-  { {EMsg_names + 8189, 36}, 4385 },
-  { {EMsg_names + 8225, 44}, 4386 },
-  { {EMsg_names + 8269, 34}, 4417 },
-  { {EMsg_names + 8303, 27}, 4416 },
-  { {EMsg_names + 8330, 24}, 4080 },
-  { {EMsg_names + 8354, 25}, 536 },
-  { {EMsg_names + 8379, 33}, 537 },
-  { {EMsg_names + 8412, 28}, 4242 },
-  { {EMsg_names + 8440, 30}, 561 },
-  { {EMsg_names + 8470, 28}, 4326 },
-  { {EMsg_names + 8498, 36}, 4327 },
-  { {EMsg_names + 8534, 22}, 4009 },
-  { {EMsg_names + 8556, 29}, 4412 },
-  { {EMsg_names + 8585, 26}, 541 },
-  { {EMsg_names + 8611, 34}, 542 },
-  { {EMsg_names + 8645, 24}, 4152 },
-  { {EMsg_names + 8669, 25}, 4413 },
-  { {EMsg_names + 8694, 26}, 508 },
-  { {EMsg_names + 8720, 27}, 4126 },
-  { {EMsg_names + 8747, 26}, 4127 },
-  { {EMsg_names + 8773, 34}, 4128 },
-  { {EMsg_names + 8807, 26}, 4045 },
-  { {EMsg_names + 8833, 27}, 4046 },
-  { {EMsg_names + 8860, 25}, 4064 },
-  { {EMsg_names + 8885, 23}, 584 },
-  { {EMsg_names + 8908, 32}, 519 },
-  { {EMsg_names + 8940, 17}, 591 },
-  { {EMsg_names + 8957, 22}, 4068 },
-  { {EMsg_names + 8979, 19}, 4354 },
-  { {EMsg_names + 8998, 27}, 4355 },
-  { {EMsg_names + 9025, 19}, 4056 },
-  { {EMsg_names + 9044, 27}, 4057 },
-  { {EMsg_names + 9071, 29}, 4043 },
-  { {EMsg_names + 9100, 37}, 4044 },
-  { {EMsg_names + 9137, 33}, 4021 },
-  { {EMsg_names + 9170, 41}, 4022 },
-  { {EMsg_names + 9211, 19}, 4052 },
-  { {EMsg_names + 9230, 27}, 4053 },
-  { {EMsg_names + 9257, 35}, 4114 },
-  { {EMsg_names + 9292, 43}, 4115 },
-  { {EMsg_names + 9335, 33}, 4123 },
-  { {EMsg_names + 9368, 18}, 4096 },
-  { {EMsg_names + 9386, 26}, 4122 },
-  { {EMsg_names + 9412, 23}, 4153 },
-  { {EMsg_names + 9435, 24}, 4280 },
-  { {EMsg_names + 9459, 22}, 590 },
-  { {EMsg_names + 9481, 22}, 4255 },
-  { {EMsg_names + 9503, 30}, 4256 },
-  { {EMsg_names + 9533, 25}, 4425 },
-  { {EMsg_names + 9558, 26}, 4350 },
-  { {EMsg_names + 9584, 34}, 4351 },
-  { {EMsg_names + 9618, 32}, 4149 },
-  { {EMsg_names + 9650, 24}, 4404 },
-  { {EMsg_names + 9674, 32}, 4405 },
-  { {EMsg_names + 9706, 26}, 4195 },
-  { {EMsg_names + 9732, 29}, 4194 },
-  { {EMsg_names + 9761, 30}, 4199 },
-  { {EMsg_names + 9791, 31}, 4209 },
-  { {EMsg_names + 9822, 39}, 4210 },
-  { {EMsg_names + 9861, 36}, 4307 },
-  { {EMsg_names + 9897, 24}, 4348 },
-  { {EMsg_names + 9921, 32}, 4349 },
-  { {EMsg_names + 9953, 35}, 4220 },
-  { {EMsg_names + 9988, 27}, 4320 },
-  { {EMsg_names + 10015, 35}, 4321 },
-  { {EMsg_names + 10050, 44}, 4402 },
-  { {EMsg_names + 10094, 45}, 4403 },
-  { {EMsg_names + 10139, 21}, 4067 },
-  { {EMsg_names + 10160, 43}, 4015 },
-  { {EMsg_names + 10203, 25}, 4198 },
-  { {EMsg_names + 10228, 28}, 504 },
-  { {EMsg_names + 10256, 20}, 4110 },
-  { {EMsg_names + 10276, 28}, 4111 },
-  { {EMsg_names + 10304, 23}, 4286 },
-  { {EMsg_names + 10327, 25}, 4231 },
-  { {EMsg_names + 10352, 33}, 4232 },
-  { {EMsg_names + 10385, 50}, 4406 },
-  { {EMsg_names + 10435, 51}, 4407 },
-  { {EMsg_names + 10486, 23}, 4047 },
-  { {EMsg_names + 10509, 31}, 4062 },
-  { {EMsg_names + 10540, 18}, 552 },
-  { {EMsg_names + 10558, 23}, 4095 },
-  { {EMsg_names + 10581, 21}, 4344 },
-  { {EMsg_names + 10602, 29}, 4345 },
-  { {EMsg_names + 10631, 27}, 1519 },
-  { {EMsg_names + 10658, 23}, 1518 },
-  { {EMsg_names + 10681, 17}, 1508 },
-  { {EMsg_names + 10698, 22}, 1509 },
-  { {EMsg_names + 10720, 17}, 1506 },
-  { {EMsg_names + 10737, 35}, 1516 },
-  { {EMsg_names + 10772, 32}, 1512 },
-  { {EMsg_names + 10804, 33}, 1513 },
-  { {EMsg_names + 10837, 31}, 1511 },
-  { {EMsg_names + 10868, 33}, 1515 },
-  { {EMsg_names + 10901, 33}, 1514 },
-  { {EMsg_names + 10934, 27}, 1507 },
-  { {EMsg_names + 10961, 26}, 1503 },
-  { {EMsg_names + 10987, 28}, 1510 },
-  { {EMsg_names + 11015, 24}, 1501 },
-  { {EMsg_names + 11039, 16}, 1517 },
-  { {EMsg_names + 11055, 23}, 1502 },
-  { {EMsg_names + 11078, 28}, 1505 },
-  { {EMsg_names + 11106, 24}, 1504 },
-  { {EMsg_names + 11130, 14}, 1000 },
-  { {EMsg_names + 11144, 22}, 1004 },
-  { {EMsg_names + 11166, 23}, 1020 },
-  { {EMsg_names + 11189, 20}, 1024 },
-  { {EMsg_names + 11209, 27}, 1025 },
-  { {EMsg_names + 11236, 35}, 1026 },
-  { {EMsg_names + 11271, 17}, 1023 },
-  { {EMsg_names + 11288, 19}, 1006 },
-  { {EMsg_names + 11307, 27}, 1005 },
-  { {EMsg_names + 11334, 18}, 1028 },
-  { {EMsg_names + 11352, 15}, 1019 },
-  { {EMsg_names + 11367, 11}, 115 },
-  { {EMsg_names + 11378, 26}, 550 },
-  { {EMsg_names + 11404, 29}, 551 },
-  { {EMsg_names + 11433, 17}, 200 },
-  { {EMsg_names + 11450, 27}, 1403 },
-  { {EMsg_names + 11477, 35}, 1404 },
-  { {EMsg_names + 11512, 39}, 1494 },
-  { {EMsg_names + 11551, 47}, 1495 },
-  { {EMsg_names + 11598, 23}, 1456 },
-  { {EMsg_names + 11621, 31}, 1457 },
-  { {EMsg_names + 11652, 22}, 1499 },
-  { {EMsg_names + 11674, 19}, 1425 },
-  { {EMsg_names + 11693, 19}, 1498 },
-  { {EMsg_names + 11712, 24}, 1474 },
-  { {EMsg_names + 11736, 32}, 1475 },
-  { {EMsg_names + 11768, 28}, 1470 },
-  { {EMsg_names + 11796, 36}, 1471 },
-  { {EMsg_names + 11832, 28}, 1496 },
-  { {EMsg_names + 11860, 36}, 1497 },
-  { {EMsg_names + 11896, 25}, 1462 },
-  { {EMsg_names + 11921, 33}, 1463 },
-  { {EMsg_names + 11954, 25}, 1464 },
-  { {EMsg_names + 11979, 33}, 1465 },
-  { {EMsg_names + 12012, 25}, 1410 },
-  { {EMsg_names + 12037, 33}, 1411 },
-  { {EMsg_names + 12070, 29}, 1454 },
-  { {EMsg_names + 12099, 37}, 1455 },
-  { {EMsg_names + 12136, 25}, 1421 },
-  { {EMsg_names + 12161, 33}, 1422 },
-  { {EMsg_names + 12194, 21}, 1408 },
-  { {EMsg_names + 12215, 29}, 1409 },
-  { {EMsg_names + 12244, 20}, 1472 },
-  { {EMsg_names + 12264, 28}, 1473 },
-  { {EMsg_names + 12292, 23}, 1417 },
-  { {EMsg_names + 12315, 31}, 1418 },
-  { {EMsg_names + 12346, 27}, 1476 },
-  { {EMsg_names + 12373, 35}, 1477 },
-  { {EMsg_names + 12408, 24}, 1402 },
-  { {EMsg_names + 12432, 30}, 1437 },
-  { {EMsg_names + 12462, 38}, 1438 },
-  { {EMsg_names + 12500, 21}, 1401 },
-  { {EMsg_names + 12521, 25}, 1448 },
-  { {EMsg_names + 12546, 33}, 1449 },
-  { {EMsg_names + 12579, 28}, 1440 },
-  { {EMsg_names + 12607, 36}, 1441 },
-  { {EMsg_names + 12643, 27}, 1484 },
-  { {EMsg_names + 12670, 35}, 1485 },
-  { {EMsg_names + 12705, 30}, 1426 },
-  { {EMsg_names + 12735, 38}, 1427 },
-  { {EMsg_names + 12773, 28}, 1433 },
-  { {EMsg_names + 12801, 36}, 1434 },
-  { {EMsg_names + 12837, 32}, 1468 },
-  { {EMsg_names + 12869, 40}, 1469 },
-  { {EMsg_names + 12909, 37}, 1458 },
-  { {EMsg_names + 12946, 45}, 1459 },
-  { {EMsg_names + 12991, 28}, 1482 },
-  { {EMsg_names + 13019, 36}, 1483 },
-  { {EMsg_names + 13055, 27}, 1452 },
-  { {EMsg_names + 13082, 35}, 1453 },
-  { {EMsg_names + 13117, 22}, 1406 },
-  { {EMsg_names + 13139, 28}, 1486 },
-  { {EMsg_names + 13167, 36}, 1487 },
-  { {EMsg_names + 13203, 28}, 1478 },
-  { {EMsg_names + 13231, 36}, 1479 },
-  { {EMsg_names + 13267, 29}, 1435 },
-  { {EMsg_names + 13296, 34}, 1450 },
-  { {EMsg_names + 13330, 42}, 1451 },
-  { {EMsg_names + 13372, 25}, 1460 },
-  { {EMsg_names + 13397, 33}, 1461 },
-  { {EMsg_names + 13430, 31}, 1445 },
-  { {EMsg_names + 13461, 39}, 1446 },
-  { {EMsg_names + 13500, 21}, 1480 },
-  { {EMsg_names + 13521, 29}, 1481 },
-  { {EMsg_names + 13550, 27}, 8401 },
-  { {EMsg_names + 13577, 35}, 8402 },
-  { {EMsg_names + 13612, 18}, 8400 },
-  { {EMsg_names + 13630, 20}, 7805 },
-  { {EMsg_names + 13650, 30}, 5625 },
-  { {EMsg_names + 13680, 13}, 400 },
-  { {EMsg_names + 13693, 12}, 500 },
-  { {EMsg_names + 13705, 18}, 4000 },
-  { {EMsg_names + 13723, 13}, 1500 },
-  { {EMsg_names + 13736, 15}, 1000 },
-  { {EMsg_names + 13751, 13}, 3600 },
-  { {EMsg_names + 13764, 12}, 1400 },
-  { {EMsg_names + 13776, 18}, 3150 },
-  { {EMsg_names + 13794, 12}, 1700 },
-  { {EMsg_names + 13806, 12}, 650 },
-  { {EMsg_names + 13818, 21}, 1300 },
-  { {EMsg_names + 13839, 20}, 12000 },
-  { {EMsg_names + 13859, 16}, 700 },
-  { {EMsg_names + 13875, 17}, 5400 },
-  { {EMsg_names + 13892, 17}, 9800 },
-  { {EMsg_names + 13909, 13}, 5600 },
-  { {EMsg_names + 13922, 12}, 1600 },
-  { {EMsg_names + 13934, 14}, 625 },
-  { {EMsg_names + 13948, 13}, 1100 },
-  { {EMsg_names + 13961, 18}, 3100 },
-  { {EMsg_names + 13979, 18}, 1200 },
-  { {EMsg_names + 13997, 12}, 2200 },
-  { {EMsg_names + 14009, 12}, 300 },
-  { {EMsg_names + 14021, 20}, 900 },
-  { {EMsg_names + 14041, 17}, 100 },
-  { {EMsg_names + 14058, 18}, 3200 },
-  { {EMsg_names + 14076, 13}, 5800 },
-  { {EMsg_names + 14089, 13}, 3400 },
-  { {EMsg_names + 14102, 13}, 2500 },
-  { {EMsg_names + 14115, 17}, 5000 },
-  { {EMsg_names + 14132, 12}, 2900 },
-  { {EMsg_names + 14144, 22}, 12100 },
-  { {EMsg_names + 14166, 15}, 200 },
-  { {EMsg_names + 14181, 14}, 3000 },
-  { {EMsg_names + 14195, 18}, 5200 },
-  { {EMsg_names + 14213, 12}, 600 },
-  { {EMsg_names + 14225, 12}, 12200 },
-  { {EMsg_names + 14237, 24}, 10000 },
-  { {EMsg_names + 14261, 20}, 8700 },
-  { {EMsg_names + 14281, 29}, 8700 },
-  { {EMsg_names + 14310, 30}, 8701 },
-  { {EMsg_names + 14340, 34}, 3161 },
-  { {EMsg_names + 14374, 42}, 3162 },
-  { {EMsg_names + 14416, 30}, 7602 },
-  { {EMsg_names + 14446, 31}, 7603 },
-  { {EMsg_names + 14477, 39}, 7600 },
-  { {EMsg_names + 14516, 40}, 7601 },
-  { {EMsg_names + 14556, 34}, 7604 },
-  { {EMsg_names + 14590, 35}, 7605 },
-  { {EMsg_names + 14625, 18}, 1705 },
-  { {EMsg_names + 14643, 25}, 1707 },
-  { {EMsg_names + 14668, 29}, 1706 },
-  { {EMsg_names + 14697, 23}, 1703 },
-  { {EMsg_names + 14720, 21}, 1701 },
-  { {EMsg_names + 14741, 18}, 1704 },
-  { {EMsg_names + 14759, 22}, 1702 },
-  { {EMsg_names + 14781, 13}, 8500 },
-  { {EMsg_names + 14794, 40}, 8509 },
-  { {EMsg_names + 14834, 48}, 8510 },
-  { {EMsg_names + 14882, 24}, 8503 },
-  { {EMsg_names + 14906, 32}, 8504 },
-  { {EMsg_names + 14938, 36}, 8507 },
-  { {EMsg_names + 14974, 44}, 8508 },
-  { {EMsg_names + 15018, 12}, 6200 },
-  { {EMsg_names + 15030, 12}, 6201 },
-  { {EMsg_names + 15042, 20}, 6202 },
-  { {EMsg_names + 15062, 26}, 1300 },
-  { {EMsg_names + 15088, 25}, 1301 },
-  { {EMsg_names + 15113, 23}, 1302 },
-  { {EMsg_names + 15136, 27}, 1303 },
-  { {EMsg_names + 15163, 28}, 1304 },
-  { {EMsg_names + 15191, 26}, 1305 },
-  { {EMsg_names + 15217, 43}, 12000 },
-  { {EMsg_names + 15260, 51}, 12001 },
-  { {EMsg_names + 15311, 30}, 4219 },
-  { {EMsg_names + 15341, 29}, 5531 },
-  { {EMsg_names + 15370, 37}, 5532 },
-  { {EMsg_names + 15407, 35}, 5570 },
-  { {EMsg_names + 15442, 43}, 5571 },
-  { {EMsg_names + 15485, 23}, 768 },
-  { {EMsg_names + 15508, 24}, 740 },
-  { {EMsg_names + 15532, 32}, 796 },
-  { {EMsg_names + 15564, 33}, 745 },
-  { {EMsg_names + 15597, 21}, 791 },
-  { {EMsg_names + 15618, 29}, 792 },
-  { {EMsg_names + 15647, 32}, 702 },
-  { {EMsg_names + 15679, 36}, 5409 },
-  { {EMsg_names + 15715, 25}, 747 },
-  { {EMsg_names + 15740, 20}, 5432 },
-  { {EMsg_names + 15760, 23}, 5575 },
-  { {EMsg_names + 15783, 31}, 5428 },
-  { {EMsg_names + 15814, 25}, 9700 },
-  { {EMsg_names + 15839, 31}, 9702 },
-  { {EMsg_names + 15870, 27}, 9701 },
-  { {EMsg_names + 15897, 25}, 9700 },
-  { {EMsg_names + 15922, 33}, 9704 },
-  { {EMsg_names + 15955, 28}, 5623 },
-  { {EMsg_names + 15983, 29}, 5624 },
-  { {EMsg_names + 16012, 24}, 716 },
-  { {EMsg_names + 16036, 22}, 597 },
-  { {EMsg_names + 16058, 28}, 814 },
-  { {EMsg_names + 16086, 24}, 5426 },
-  { {EMsg_names + 16110, 21}, 807 },
-  { {EMsg_names + 16131, 39}, 7525 },
-  { {EMsg_names + 16170, 57}, 7527 },
-  { {EMsg_names + 16227, 47}, 7526 },
-  { {EMsg_names + 16274, 22}, 800 },
-  { {EMsg_names + 16296, 26}, 802 },
-  { {EMsg_names + 16322, 19}, 799 },
-  { {EMsg_names + 16341, 42}, 7523 },
-  { {EMsg_names + 16383, 42}, 7524 },
-  { {EMsg_names + 16425, 24}, 4026 },
-  { {EMsg_names + 16449, 32}, 5450 },
-  { {EMsg_names + 16481, 40}, 5451 },
-  { {EMsg_names + 16521, 25}, 845 },
-  { {EMsg_names + 16546, 33}, 848 },
-  { {EMsg_names + 16579, 21}, 822 },
-  { {EMsg_names + 16600, 32}, 5582 },
-  { {EMsg_names + 16632, 34}, 9600 },
-  { {EMsg_names + 16666, 27}, 710 },
-  { {EMsg_names + 16693, 41}, 731 },
-  { {EMsg_names + 16734, 33}, 5403 },
-  { {EMsg_names + 16767, 22}, 809 },
-  { {EMsg_names + 16789, 30}, 810 },
-  { {EMsg_names + 16819, 25}, 5597 },
-  { {EMsg_names + 16844, 34}, 5605 },
-  { {EMsg_names + 16878, 35}, 5606 },
-  { {EMsg_names + 16913, 29}, 5617 },
-  { {EMsg_names + 16942, 25}, 5607 },
-  { {EMsg_names + 16967, 32}, 1620 },
-  { {EMsg_names + 16999, 40}, 1621 },
-  { {EMsg_names + 17039, 39}, 1622 },
-  { {EMsg_names + 17078, 44}, 1623 },
-  { {EMsg_names + 17122, 26}, 896 },
-  { {EMsg_names + 17148, 27}, 897 },
-  { {EMsg_names + 17175, 30}, 5485 },
-  { {EMsg_names + 17205, 43}, 5574 },
-  { {EMsg_names + 17248, 31}, 5486 },
-  { {EMsg_names + 17279, 26}, 5487 },
-  { {EMsg_names + 17305, 28}, 851 },
-  { {EMsg_names + 17333, 32}, 5511 },
-  { {EMsg_names + 17365, 30}, 5445 },
-  { {EMsg_names + 17395, 38}, 5446 },
-  { {EMsg_names + 17433, 25}, 5456 },
-  { {EMsg_names + 17458, 24}, 5458 },
-  { {EMsg_names + 17482, 24}, 9331 },
-  { {EMsg_names + 17506, 36}, 9806 },
-  { {EMsg_names + 17542, 44}, 9807 },
-  { {EMsg_names + 17586, 29}, 5443 },
-  { {EMsg_names + 17615, 37}, 5444 },
-  { {EMsg_names + 17652, 36}, 7519 },
-  { {EMsg_names + 17688, 44}, 7520 },
-  { {EMsg_names + 17732, 30}, 7515 },
-  { {EMsg_names + 17762, 38}, 7516 },
-  { {EMsg_names + 17800, 35}, 7528 },
-  { {EMsg_names + 17835, 43}, 7529 },
-  { {EMsg_names + 17878, 28}, 7517 },
-  { {EMsg_names + 17906, 36}, 7518 },
-  { {EMsg_names + 17942, 28}, 9808 },
-  { {EMsg_names + 17970, 26}, 5412 },
-  { {EMsg_names + 17996, 34}, 5413 },
-  { {EMsg_names + 18030, 21}, 718 },
-  { {EMsg_names + 18051, 33}, 5578 },
-  { {EMsg_names + 18084, 29}, 5427 },
-  { {EMsg_names + 18113, 29}, 5535 },
-  { {EMsg_names + 18142, 37}, 5536 },
-  { {EMsg_names + 18179, 35}, 808 },
-  { {EMsg_names + 18214, 37}, 5596 },
-  { {EMsg_names + 18251, 29}, 5553 },
-  { {EMsg_names + 18280, 23}, 767 },
-  { {EMsg_names + 18303, 18}, 5453 },
-  { {EMsg_names + 18321, 23}, 5503 },
-  { {EMsg_names + 18344, 26}, 6403 },
-  { {EMsg_names + 18370, 27}, 773 },
-  { {EMsg_names + 18397, 29}, 779 },
-  { {EMsg_names + 18426, 32}, 719 },
-  { {EMsg_names + 18458, 30}, 721 },
-  { {EMsg_names + 18488, 23}, 742 },
-  { {EMsg_names + 18511, 33}, 720 },
-  { {EMsg_names + 18544, 33}, 738 },
-  { {EMsg_names + 18577, 33}, 715 },
-  { {EMsg_names + 18610, 35}, 5410 },
-  { {EMsg_names + 18645, 32}, 705 },
-  { {EMsg_names + 18677, 33}, 857 },
-  { {EMsg_names + 18710, 41}, 858 },
-  { {EMsg_names + 18751, 33}, 5554 },
-  { {EMsg_names + 18784, 41}, 5555 },
-  { {EMsg_names + 18825, 28}, 5518 },
-  { {EMsg_names + 18853, 36}, 5519 },
-  { {EMsg_names + 18889, 28}, 5515 },
-  { {EMsg_names + 18917, 36}, 5516 },
-  { {EMsg_names + 18953, 33}, 5438 },
-  { {EMsg_names + 18986, 41}, 5439 },
-  { {EMsg_names + 19027, 27}, 9330 },
-  { {EMsg_names + 19054, 33}, 5488 },
-  { {EMsg_names + 19087, 41}, 5489 },
-  { {EMsg_names + 19128, 28}, 730 },
-  { {EMsg_names + 19156, 36}, 785 },
-  { {EMsg_names + 19192, 32}, 860 },
-  { {EMsg_names + 19224, 27}, 5508 },
-  { {EMsg_names + 19251, 35}, 5509 },
-  { {EMsg_names + 19286, 39}, 5592 },
-  { {EMsg_names + 19325, 47}, 5593 },
-  { {EMsg_names + 19372, 30}, 5495 },
-  { {EMsg_names + 19402, 38}, 5496 },
-  { {EMsg_names + 19440, 24}, 818 },
-  { {EMsg_names + 19464, 32}, 819 },
-  { {EMsg_names + 19496, 21}, 703 },
-  { {EMsg_names + 19517, 17}, 9805 },
-  { {EMsg_names + 19534, 22}, 5552 },
-  { {EMsg_names + 19556, 42}, 5407 },
-  { {EMsg_names + 19598, 50}, 5408 },
-  { {EMsg_names + 19648, 28}, 5520 },
-  { {EMsg_names + 19676, 36}, 5521 },
-  { {EMsg_names + 19712, 24}, 7005 },
-  { {EMsg_names + 19736, 28}, 744 },
-  { {EMsg_names + 19764, 28}, 5430 },
-  { {EMsg_names + 19792, 29}, 5576 },
-  { {EMsg_names + 19821, 20}, 801 },
-  { {EMsg_names + 19841, 30}, 9601 },
-  { {EMsg_names + 19871, 22}, 9900 },
-  { {EMsg_names + 19893, 21}, 9999 },
-  { {EMsg_names + 19914, 30}, 9900 },
-  { {EMsg_names + 19944, 38}, 9901 },
-  { {EMsg_names + 19982, 29}, 5416 },
-  { {EMsg_names + 20011, 37}, 5417 },
-  { {EMsg_names + 20048, 27}, 5418 },
-  { {EMsg_names + 20075, 35}, 5419 },
-  { {EMsg_names + 20110, 23}, 5414 },
-  { {EMsg_names + 20133, 31}, 5415 },
-  { {EMsg_names + 20164, 21}, 5529 },
-  { {EMsg_names + 20185, 29}, 5530 },
-  { {EMsg_names + 20214, 27}, 5544 },
-  { {EMsg_names + 20241, 35}, 5545 },
-  { {EMsg_names + 20276, 23}, 780 },
-  { {EMsg_names + 20299, 18}, 706 },
-  { {EMsg_names + 20317, 25}, 751 },
-  { {EMsg_names + 20342, 43}, 803 },
-  { {EMsg_names + 20385, 36}, 5465 },
-  { {EMsg_names + 20421, 28}, 701 },
-  { {EMsg_names + 20449, 21}, 757 },
-  { {EMsg_names + 20470, 17}, 5514 },
-  { {EMsg_names + 20487, 27}, 5559 },
-  { {EMsg_names + 20514, 26}, 6601 },
-  { {EMsg_names + 20540, 34}, 6602 },
-  { {EMsg_names + 20574, 36}, 6622 },
-  { {EMsg_names + 20610, 44}, 6623 },
-  { {EMsg_names + 20654, 27}, 6611 },
-  { {EMsg_names + 20681, 27}, 6607 },
-  { {EMsg_names + 20708, 35}, 6608 },
-  { {EMsg_names + 20743, 29}, 6626 },
-  { {EMsg_names + 20772, 37}, 6627 },
-  { {EMsg_names + 20809, 28}, 6621 },
-  { {EMsg_names + 20837, 24}, 6603 },
-  { {EMsg_names + 20861, 32}, 6604 },
-  { {EMsg_names + 20893, 25}, 6605 },
-  { {EMsg_names + 20918, 33}, 6606 },
-  { {EMsg_names + 20951, 27}, 6614 },
-  { {EMsg_names + 20978, 24}, 6612 },
-  { {EMsg_names + 21002, 33}, 6618 },
-  { {EMsg_names + 21035, 31}, 6613 },
-  { {EMsg_names + 21066, 27}, 6609 },
-  { {EMsg_names + 21093, 35}, 6610 },
-  { {EMsg_names + 21128, 33}, 6617 },
-  { {EMsg_names + 21161, 29}, 6624 },
-  { {EMsg_names + 21190, 28}, 6615 },
-  { {EMsg_names + 21218, 36}, 6616 },
-  { {EMsg_names + 21254, 41}, 6625 },
-  { {EMsg_names + 21295, 30}, 6619 },
-  { {EMsg_names + 21325, 28}, 6620 },
-  { {EMsg_names + 21353, 31}, 5504 },
-  { {EMsg_names + 21384, 29}, 5505 },
-  { {EMsg_names + 21413, 37}, 5506 },
-  { {EMsg_names + 21450, 15}, 765 },
-  { {EMsg_names + 21465, 33}, 839 },
-  { {EMsg_names + 21498, 33}, 5621 },
-  { {EMsg_names + 21531, 41}, 5622 },
-  { {EMsg_names + 21572, 39}, 5626 },
-  { {EMsg_names + 21611, 47}, 5627 },
-  { {EMsg_names + 21658, 23}, 5463 },
-  { {EMsg_names + 21681, 42}, 5464 },
-  { {EMsg_names + 21723, 22}, 771 },
-  { {EMsg_names + 21745, 29}, 707 },
-  { {EMsg_names + 21774, 33}, 756 },
-  { {EMsg_names + 21807, 27}, 5490 },
-  { {EMsg_names + 21834, 35}, 5491 },
-  { {EMsg_names + 21869, 25}, 5492 },
-  { {EMsg_names + 21894, 33}, 5493 },
-  { {EMsg_names + 21927, 24}, 5557 },
-  { {EMsg_names + 21951, 27}, 5556 },
-  { {EMsg_names + 21978, 23}, 5494 },
-  { {EMsg_names + 22001, 33}, 5435 },
-  { {EMsg_names + 22034, 29}, 5434 },
-  { {EMsg_names + 22063, 32}, 813 },
-  { {EMsg_names + 22095, 34}, 8905 },
-  { {EMsg_names + 22129, 35}, 8906 },
-  { {EMsg_names + 22164, 35}, 8901 },
-  { {EMsg_names + 22199, 36}, 8902 },
-  { {EMsg_names + 22235, 34}, 8907 },
-  { {EMsg_names + 22269, 35}, 8908 },
-  { {EMsg_names + 22304, 34}, 8903 },
-  { {EMsg_names + 22338, 35}, 8904 },
-  { {EMsg_names + 22373, 27}, 148 },
-  { {EMsg_names + 22400, 27}, 5457 },
-  { {EMsg_names + 22427, 34}, 805 },
-  { {EMsg_names + 22461, 28}, 9902 },
-  { {EMsg_names + 22489, 29}, 9903 },
-  { {EMsg_names + 22518, 29}, 12300 },
-  { {EMsg_names + 22547, 37}, 12301 },
-  { {EMsg_names + 22584, 33}, 5584 },
-  { {EMsg_names + 22617, 24}, 766 },
-  { {EMsg_names + 22641, 29}, 5459 },
-  { {EMsg_names + 22670, 16}, 764 },
-  { {EMsg_names + 22686, 24}, 712 },
-  { {EMsg_names + 22710, 30}, 5587 },
-  { {EMsg_names + 22740, 31}, 9600 },
-  { {EMsg_names + 22771, 28}, 763 },
-  { {EMsg_names + 22799, 27}, 741 },
-  { {EMsg_names + 22826, 35}, 797 },
-  { {EMsg_names + 22861, 36}, 5502 },
-  { {EMsg_names + 22897, 23}, 743 },
-  { {EMsg_names + 22920, 24}, 714 },
-  { {EMsg_names + 22944, 38}, 5517 },
-  { {EMsg_names + 22982, 30}, 5549 },
-  { {EMsg_names + 23012, 38}, 5550 },
-  { {EMsg_names + 23050, 27}, 5431 },
-  { {EMsg_names + 23077, 39}, 5583 },
-  { {EMsg_names + 23116, 37}, 5526 },
-  { {EMsg_names + 23153, 45}, 5527 },
-  { {EMsg_names + 23198, 41}, 5401 },
-  { {EMsg_names + 23239, 42}, 5461 },
-  { {EMsg_names + 23281, 49}, 5402 },
-  { {EMsg_names + 23330, 30}, 5572 },
-  { {EMsg_names + 23360, 38}, 5573 },
-  { {EMsg_names + 23398, 29}, 815 },
-  { {EMsg_names + 23427, 36}, 5577 },
-  { {EMsg_names + 23463, 65}, 5586 },
-  { {EMsg_names + 23528, 57}, 5585 },
-  { {EMsg_names + 23585, 43}, 5480 },
-  { {EMsg_names + 23628, 34}, 5404 },
-  { {EMsg_names + 23662, 35}, 5460 },
-  { {EMsg_names + 23697, 35}, 5551 },
-  { {EMsg_names + 23732, 42}, 5405 },
-  { {EMsg_names + 23774, 25}, 846 },
-  { {EMsg_names + 23799, 33}, 849 },
-  { {EMsg_names + 23832, 28}, 7503 },
-  { {EMsg_names + 23860, 31}, 7502 },
-  { {EMsg_names + 23891, 30}, 7501 },
-  { {EMsg_names + 23921, 30}, 5543 },
-  { {EMsg_names + 23951, 20}, 5558 },
-  { {EMsg_names + 23971, 22}, 880 },
-  { {EMsg_names + 23993, 34}, 9802 },
-  { {EMsg_names + 24027, 35}, 9803 },
-  { {EMsg_names + 24062, 29}, 5500 },
-  { {EMsg_names + 24091, 28}, 5501 },
-  { {EMsg_names + 24119, 23}, 831 },
-  { {EMsg_names + 24142, 31}, 832 },
-  { {EMsg_names + 24173, 31}, 5594 },
-  { {EMsg_names + 24204, 39}, 5595 },
-  { {EMsg_names + 24243, 25}, 830 },
-  { {EMsg_names + 24268, 22}, 136 },
-  { {EMsg_names + 24290, 24}, 135 },
-  { {EMsg_names + 24314, 24}, 850 },
-  { {EMsg_names + 24338, 25}, 137 },
-  { {EMsg_names + 24363, 35}, 5524 },
-  { {EMsg_names + 24398, 43}, 5525 },
-  { {EMsg_names + 24441, 28}, 755 },
-  { {EMsg_names + 24469, 27}, 855 },
-  { {EMsg_names + 24496, 35}, 856 },
-  { {EMsg_names + 24531, 36}, 9406 },
-  { {EMsg_names + 24567, 27}, 10100 },
-  { {EMsg_names + 24594, 31}, 10101 },
-  { {EMsg_names + 24625, 39}, 10102 },
-  { {EMsg_names + 24664, 40}, 10103 },
-  { {EMsg_names + 24704, 48}, 10104 },
-  { {EMsg_names + 24752, 42}, 10105 },
-  { {EMsg_names + 24794, 50}, 10106 },
-  { {EMsg_names + 24844, 43}, 10100 },
-  { {EMsg_names + 24887, 34}, 5497 },
-  { {EMsg_names + 24921, 42}, 5498 },
-  { {EMsg_names + 24963, 33}, 5481 },
-  { {EMsg_names + 24996, 28}, 5482 },
-  { {EMsg_names + 25024, 27}, 5433 },
-  { {EMsg_names + 25051, 24}, 5467 },
-  { {EMsg_names + 25075, 27}, 842 },
-  { {EMsg_names + 25102, 26}, 820 },
-  { {EMsg_names + 25128, 27}, 5466 },
-  { {EMsg_names + 25155, 34}, 821 },
-  { {EMsg_names + 25189, 34}, 5512 },
-  { {EMsg_names + 25223, 20}, 726 },
-  { {EMsg_names + 25243, 23}, 727 },
-  { {EMsg_names + 25266, 30}, 5429 },
-  { {EMsg_names + 25296, 16}, 5452 },
-  { {EMsg_names + 25312, 28}, 7301 },
-  { {EMsg_names + 25340, 36}, 7302 },
-  { {EMsg_names + 25376, 34}, 7315 },
-  { {EMsg_names + 25410, 42}, 7316 },
-  { {EMsg_names + 25452, 31}, 7309 },
-  { {EMsg_names + 25483, 39}, 7310 },
-  { {EMsg_names + 25522, 50}, 7366 },
-  { {EMsg_names + 25572, 58}, 7367 },
-  { {EMsg_names + 25630, 54}, 7378 },
-  { {EMsg_names + 25684, 62}, 7379 },
-  { {EMsg_names + 25746, 26}, 7311 },
-  { {EMsg_names + 25772, 34}, 7312 },
-  { {EMsg_names + 25806, 35}, 7381 },
-  { {EMsg_names + 25841, 41}, 7364 },
-  { {EMsg_names + 25882, 49}, 7365 },
-  { {EMsg_names + 25931, 34}, 7325 },
-  { {EMsg_names + 25965, 42}, 7326 },
-  { {EMsg_names + 26007, 30}, 7002 },
-  { {EMsg_names + 26037, 32}, 7001 },
-  { {EMsg_names + 26069, 32}, 5230 },
-  { {EMsg_names + 26101, 40}, 5231 },
-  { {EMsg_names + 26141, 28}, 5226 },
-  { {EMsg_names + 26169, 36}, 5227 },
-  { {EMsg_names + 26205, 24}, 5232 },
-  { {EMsg_names + 26229, 32}, 5233 },
-  { {EMsg_names + 26261, 29}, 7901 },
-  { {EMsg_names + 26290, 37}, 7902 },
-  { {EMsg_names + 26327, 30}, 5522 },
-  { {EMsg_names + 26357, 38}, 5523 },
-  { {EMsg_names + 26395, 22}, 9507 },
-  { {EMsg_names + 26417, 30}, 9508 },
-  { {EMsg_names + 26447, 39}, 9514 },
-  { {EMsg_names + 26486, 31}, 9513 },
-  { {EMsg_names + 26517, 33}, 798 },
-  { {EMsg_names + 26550, 30}, 5411 },
-  { {EMsg_names + 26580, 29}, 5599 },
-  { {EMsg_names + 26609, 24}, 782 },
-  { {EMsg_names + 26633, 23}, 704 },
-  { {EMsg_names + 26656, 40}, 5598 },
-  { {EMsg_names + 26696, 33}, 9800 },
-  { {EMsg_names + 26729, 41}, 9801 },
-  { {EMsg_names + 26770, 28}, 5528 },
-  { {EMsg_names + 26798, 28}, 4140 },
-  { {EMsg_names + 26826, 32}, 4173 },
-  { {EMsg_names + 26858, 35}, 246 },
-  { {EMsg_names + 26893, 30}, 227 },
-  { {EMsg_names + 26923, 25}, 5611 },
-  { {EMsg_names + 26948, 19}, 5603 },
-  { {EMsg_names + 26967, 24}, 5604 },
-  { {EMsg_names + 26991, 16}, 5601 },
-  { {EMsg_names + 27007, 26}, 5610 },
-  { {EMsg_names + 27033, 25}, 5602 },
-  { {EMsg_names + 27058, 18}, 5608 },
-  { {EMsg_names + 27076, 25}, 5613 },
-  { {EMsg_names + 27101, 24}, 5612 },
-  { {EMsg_names + 27125, 25}, 5615 },
-  { {EMsg_names + 27150, 26}, 5616 },
-  { {EMsg_names + 27176, 18}, 5609 },
-  { {EMsg_names + 27194, 26}, 5620 },
-  { {EMsg_names + 27220, 25}, 5614 },
-  { {EMsg_names + 27245, 22}, 5618 },
-  { {EMsg_names + 27267, 25}, 5619 },
-  { {EMsg_names + 27292, 18}, 1612 },
-  { {EMsg_names + 27310, 31}, 1617 },
-  { {EMsg_names + 27341, 22}, 1615 },
-  { {EMsg_names + 27363, 30}, 1616 },
-  { {EMsg_names + 27393, 24}, 1628 },
-  { {EMsg_names + 27417, 32}, 1629 },
-  { {EMsg_names + 27449, 26}, 1601 },
-  { {EMsg_names + 27475, 27}, 1624 },
-  { {EMsg_names + 27502, 25}, 1603 },
-  { {EMsg_names + 27527, 27}, 1631 },
-  { {EMsg_names + 27554, 20}, 640 },
-  { {EMsg_names + 27574, 28}, 641 },
-  { {EMsg_names + 27602, 25}, 628 },
-  { {EMsg_names + 27627, 26}, 629 },
-  { {EMsg_names + 27653, 29}, 637 },
-  { {EMsg_names + 27682, 30}, 638 },
-  { {EMsg_names + 27712, 23}, 645 },
-  { {EMsg_names + 27735, 31}, 646 },
-  { {EMsg_names + 27766, 20}, 639 },
-  { {EMsg_names + 27786, 28}, 644 },
-  { {EMsg_names + 27814, 15}, 7600 },
-  { {EMsg_names + 27829, 27}, 630 },
-  { {EMsg_names + 27856, 28}, 631 },
-  { {EMsg_names + 27884, 25}, 7606 },
-  { {EMsg_names + 27909, 33}, 7607 },
-  { {EMsg_names + 27942, 24}, 635 },
-  { {EMsg_names + 27966, 32}, 636 },
-  { {EMsg_names + 27998, 13}, 642 },
-  { {EMsg_names + 28011, 21}, 643 },
-  { {EMsg_names + 28032, 26}, 633 },
-  { {EMsg_names + 28058, 34}, 634 },
-  { {EMsg_names + 28092, 22}, 9100 },
-  { {EMsg_names + 28114, 40}, 9128 },
-  { {EMsg_names + 28154, 41}, 9129 },
-  { {EMsg_names + 28195, 45}, 9116 },
-  { {EMsg_names + 28240, 46}, 9117 },
-  { {EMsg_names + 28286, 32}, 9100 },
-  { {EMsg_names + 28318, 40}, 9101 },
-  { {EMsg_names + 28358, 43}, 9114 },
-  { {EMsg_names + 28401, 44}, 9115 },
-  { {EMsg_names + 28445, 42}, 9126 },
-  { {EMsg_names + 28487, 43}, 9127 },
-  { {EMsg_names + 28530, 40}, 9112 },
-  { {EMsg_names + 28570, 41}, 9113 },
-  { {EMsg_names + 28611, 36}, 9124 },
-  { {EMsg_names + 28647, 37}, 9125 },
-  { {EMsg_names + 28684, 39}, 9132 },
-  { {EMsg_names + 28723, 40}, 9133 },
-  { {EMsg_names + 28763, 42}, 9104 },
-  { {EMsg_names + 28805, 43}, 9105 },
-  { {EMsg_names + 28848, 50}, 9110 },
-  { {EMsg_names + 28898, 51}, 9111 },
-  { {EMsg_names + 28949, 43}, 9106 },
-  { {EMsg_names + 28992, 44}, 9107 },
-  { {EMsg_names + 29036, 30}, 9134 },
-  { {EMsg_names + 29066, 38}, 9135 },
-  { {EMsg_names + 29104, 44}, 9122 },
-  { {EMsg_names + 29148, 45}, 9123 },
-  { {EMsg_names + 29193, 43}, 9102 },
-  { {EMsg_names + 29236, 44}, 9103 },
-  { {EMsg_names + 29280, 39}, 9130 },
-  { {EMsg_names + 29319, 40}, 9131 },
-  { {EMsg_names + 29359, 43}, 9118 },
-  { {EMsg_names + 29402, 44}, 9119 },
-  { {EMsg_names + 29446, 41}, 9120 },
-  { {EMsg_names + 29487, 42}, 9121 },
-  { {EMsg_names + 29529, 19}, 113 },
-  { {EMsg_names + 29548, 16}, 202 },
-  { {EMsg_names + 29564, 17}, 203 },
-  { {EMsg_names + 29581, 14}, 7700 },
-  { {EMsg_names + 29595, 33}, 7711 },
-  { {EMsg_names + 29628, 41}, 7712 },
-  { {EMsg_names + 29669, 29}, 7707 },
-  { {EMsg_names + 29698, 37}, 7708 },
-  { {EMsg_names + 29735, 22}, 7713 },
-  { {EMsg_names + 29757, 30}, 7714 },
-  { {EMsg_names + 29787, 36}, 7706 },
-  { {EMsg_names + 29823, 39}, 7702 },
-  { {EMsg_names + 29862, 38}, 7701 },
-  { {EMsg_names + 29900, 39}, 7703 },
-  { {EMsg_names + 29939, 37}, 7704 },
-  { {EMsg_names + 29976, 30}, 7705 },
-  { {EMsg_names + 30006, 44}, 250 },
-  { {EMsg_names + 30050, 36}, 249 },
-  { {EMsg_names + 30086, 45}, 243 },
-  { {EMsg_names + 30131, 37}, 242 },
-  { {EMsg_names + 30168, 10}, 201 },
-  { {EMsg_names + 30178, 15}, 308 },
-  { {EMsg_names + 30193, 16}, 307 },
-  { {EMsg_names + 30209, 24}, 336 },
-  { {EMsg_names + 30233, 25}, 1119 },
-  { {EMsg_names + 30258, 33}, 1120 },
-  { {EMsg_names + 30291, 23}, 1108 },
-  { {EMsg_names + 30314, 36}, 1130 },
-  { {EMsg_names + 30350, 44}, 1131 },
-  { {EMsg_names + 30394, 35}, 1128 },
-  { {EMsg_names + 30429, 36}, 1129 },
-  { {EMsg_names + 30465, 44}, 1132 },
-  { {EMsg_names + 30509, 23}, 1027 },
-  { {EMsg_names + 30532, 28}, 1114 },
-  { {EMsg_names + 30560, 29}, 1115 },
-  { {EMsg_names + 30589, 22}, 1104 },
-  { {EMsg_names + 30611, 23}, 1105 },
-  { {EMsg_names + 30634, 23}, 1116 },
-  { {EMsg_names + 30657, 31}, 1117 },
-  { {EMsg_names + 30688, 20}, 1103 },
-  { {EMsg_names + 30708, 21}, 1102 },
-  { {EMsg_names + 30729, 29}, 1126 },
-  { {EMsg_names + 30758, 23}, 1112 },
-  { {EMsg_names + 30781, 25}, 1134 },
-  { {EMsg_names + 30806, 26}, 1123 },
-  { {EMsg_names + 30832, 24}, 1124 },
-  { {EMsg_names + 30856, 18}, 1110 },
-  { {EMsg_names + 30874, 26}, 1127 },
-  { {EMsg_names + 30900, 19}, 1100 },
-  { {EMsg_names + 30919, 28}, 1133 },
-  { {EMsg_names + 30947, 21}, 1109 },
-  { {EMsg_names + 30968, 26}, 1111 },
-  { {EMsg_names + 30994, 22}, 1121 },
-  { {EMsg_names + 31016, 17}, 1107 },
-  { {EMsg_names + 31033, 23}, 1122 },
-  { {EMsg_names + 31056, 25}, 1125 },
-  { {EMsg_names + 31081, 27}, 1106 },
-  { {EMsg_names + 31108, 31}, 1118 },
-  { {EMsg_names + 31139, 20}, 1101 },
-  { {EMsg_names + 31159, 27}, 7510 },
-  { {EMsg_names + 31186, 35}, 7511 },
-  { {EMsg_names + 31221, 12}, 7500 },
-  { {EMsg_names + 31233, 27}, 7513 },
-  { {EMsg_names + 31260, 33}, 7514 },
-  { {EMsg_names + 31293, 26}, 7506 },
-  { {EMsg_names + 31319, 34}, 7507 },
-  { {EMsg_names + 31353, 35}, 7521 },
-  { {EMsg_names + 31388, 43}, 7522 },
-  { {EMsg_names + 31431, 30}, 7508 },
-  { {EMsg_names + 31461, 27}, 7504 },
-  { {EMsg_names + 31488, 28}, 7505 },
-  { {EMsg_names + 31516, 27}, 7512 },
-  { {EMsg_names + 31543, 16}, 3000 },
-  { {EMsg_names + 31559, 18}, 1202 },
-  { {EMsg_names + 31577, 21}, 1204 },
-  { {EMsg_names + 31598, 17}, 1203 },
-  { {EMsg_names + 31615, 21}, 1200 },
-  { {EMsg_names + 31636, 22}, 1201 },
-  { {EMsg_names + 31658, 26}, 2212 },
-  { {EMsg_names + 31684, 17}, 2207 },
-  { {EMsg_names + 31701, 25}, 2208 },
-  { {EMsg_names + 31726, 15}, 2206 },
-  { {EMsg_names + 31741, 17}, 2203 },
-  { {EMsg_names + 31758, 17}, 2216 },
-  { {EMsg_names + 31775, 17}, 2209 },
-  { {EMsg_names + 31792, 36}, 2218 },
-  { {EMsg_names + 31828, 24}, 2220 },
-  { {EMsg_names + 31852, 32}, 2221 },
-  { {EMsg_names + 31884, 32}, 2234 },
-  { {EMsg_names + 31916, 33}, 2236 },
-  { {EMsg_names + 31949, 36}, 2233 },
-  { {EMsg_names + 31985, 31}, 2237 },
-  { {EMsg_names + 32016, 31}, 2228 },
-  { {EMsg_names + 32047, 33}, 2243 },
-  { {EMsg_names + 32080, 41}, 2244 },
-  { {EMsg_names + 32121, 26}, 2242 },
-  { {EMsg_names + 32147, 26}, 2238 },
-  { {EMsg_names + 32173, 15}, 2231 },
-  { {EMsg_names + 32188, 23}, 2232 },
-  { {EMsg_names + 32211, 37}, 2240 },
-  { {EMsg_names + 32248, 42}, 2241 },
-  { {EMsg_names + 32290, 14}, 2222 },
-  { {EMsg_names + 32304, 22}, 2223 },
-  { {EMsg_names + 32326, 22}, 2226 },
-  { {EMsg_names + 32348, 30}, 2227 },
-  { {EMsg_names + 32378, 29}, 2225 },
-  { {EMsg_names + 32407, 32}, 2245 },
-  { {EMsg_names + 32439, 32}, 2246 },
-  { {EMsg_names + 32471, 16}, 2229 },
-  { {EMsg_names + 32487, 24}, 2230 },
-  { {EMsg_names + 32511, 31}, 2239 },
-  { {EMsg_names + 32542, 22}, 2224 },
-  { {EMsg_names + 32564, 30}, 2235 },
-  { {EMsg_names + 32594, 23}, 2219 },
-  { {EMsg_names + 32617, 40}, 2217 },
-  { {EMsg_names + 32657, 15}, 320 },
-  { {EMsg_names + 32672, 28}, 248 },
-  { {EMsg_names + 32700, 26}, 339 },
-  { {EMsg_names + 32726, 34}, 340 },
-  { {EMsg_names + 32760, 31}, 331 },
-  { {EMsg_names + 32791, 39}, 332 },
-  { {EMsg_names + 32830, 27}, 325 },
-  { {EMsg_names + 32857, 35}, 341 },
-  { {EMsg_names + 32892, 19}, 326 },
-  { {EMsg_names + 32911, 13}, 6400 },
-  { {EMsg_names + 32924, 34}, 6404 },
-  { {EMsg_names + 32958, 28}, 6401 },
-  { {EMsg_names + 32986, 31}, 327 },
-  { {EMsg_names + 33017, 36}, 247 },
-  { {EMsg_names + 33053, 38}, 338 },
-  { {EMsg_names + 33091, 37}, 334 },
-  { {EMsg_names + 33128, 45}, 335 },
-  { {EMsg_names + 33173, 24}, 324 },
-  { {EMsg_names + 33197, 30}, 329 },
-  { {EMsg_names + 33227, 15}, 758 },
-  { {EMsg_names + 33242, 25}, 938 },
-  { {EMsg_names + 33267, 33}, 939 },
-  { {EMsg_names + 33300, 37}, 940 },
-  { {EMsg_names + 33337, 45}, 941 },
-  { {EMsg_names + 33382, 12}, 759 },
-  { {EMsg_names + 33394, 24}, 901 },
-  { {EMsg_names + 33418, 20}, 918 },
-  { {EMsg_names + 33438, 28}, 919 },
-  { {EMsg_names + 33466, 21}, 936 },
-  { {EMsg_names + 33487, 29}, 937 },
-  { {EMsg_names + 33516, 26}, 920 },
-  { {EMsg_names + 33542, 34}, 923 },
-  { {EMsg_names + 33576, 12}, 760 },
-  { {EMsg_names + 33588, 18}, 909 },
-  { {EMsg_names + 33606, 18}, 908 },
-  { {EMsg_names + 33624, 14}, 903 },
-  { {EMsg_names + 33638, 15}, 906 },
-  { {EMsg_names + 33653, 19}, 774 },
-  { {EMsg_names + 33672, 27}, 907 },
-  { {EMsg_names + 33699, 19}, 905 },
-  { {EMsg_names + 33718, 25}, 6407 },
-  { {EMsg_names + 33743, 28}, 6631 },
-  { {EMsg_names + 33771, 18}, 100 },
-  { {EMsg_names + 33789, 22}, 4393 },
-  { {EMsg_names + 33811, 30}, 4394 },
-  { {EMsg_names + 33841, 23}, 309 },
-  { {EMsg_names + 33864, 15}, 300 },
-  { {EMsg_names + 33879, 20}, 337 },
-  { {EMsg_names + 33899, 16}, 124 },
-  { {EMsg_names + 33915, 13}, 0 },
-  { {EMsg_names + 33928, 29}, 145 },
-  { {EMsg_names + 33957, 18}, 123 },
-  { {EMsg_names + 33975, 22}, 3001 },
-  { {EMsg_names + 33997, 30}, 3002 },
-  { {EMsg_names + 34027, 13}, 7200 },
-  { {EMsg_names + 34040, 15}, 132 },
-  { {EMsg_names + 34055, 17}, 3210 },
-  { {EMsg_names + 34072, 22}, 3211 },
-  { {EMsg_names + 34094, 25}, 3214 },
-  { {EMsg_names + 34119, 23}, 3203 },
-  { {EMsg_names + 34142, 31}, 3204 },
-  { {EMsg_names + 34173, 21}, 3205 },
-  { {EMsg_names + 34194, 29}, 3206 },
-  { {EMsg_names + 34223, 18}, 3207 },
-  { {EMsg_names + 34241, 26}, 3208 },
-  { {EMsg_names + 34267, 16}, 3212 },
-  { {EMsg_names + 34283, 24}, 3213 },
-  { {EMsg_names + 34307, 21}, 3209 },
-  { {EMsg_names + 34328, 17}, 3201 },
-  { {EMsg_names + 34345, 25}, 3202 },
-  { {EMsg_names + 34370, 31}, 316 },
-  { {EMsg_names + 34401, 22}, 143 },
-  { {EMsg_names + 34423, 30}, 144 },
-  { {EMsg_names + 34453, 28}, 5828 },
-  { {EMsg_names + 34481, 35}, 5827 },
-  { {EMsg_names + 34516, 30}, 5812 },
-  { {EMsg_names + 34546, 38}, 5813 },
-  { {EMsg_names + 34584, 25}, 5829 },
-  { {EMsg_names + 34609, 30}, 5831 },
-  { {EMsg_names + 34639, 33}, 5830 },
-  { {EMsg_names + 34672, 21}, 5847 },
-  { {EMsg_names + 34693, 29}, 5848 },
-  { {EMsg_names + 34722, 23}, 5844 },
-  { {EMsg_names + 34745, 26}, 5849 },
-  { {EMsg_names + 34771, 13}, 6600 },
-  { {EMsg_names + 34784, 21}, 6628 },
-  { {EMsg_names + 34805, 29}, 6629 },
-  { {EMsg_names + 34834, 24}, 6630 },
-  { {EMsg_names + 34858, 14}, 7100 },
-  { {EMsg_names + 34872, 21}, 7101 },
-  { {EMsg_names + 34893, 11}, 1 },
-  { {EMsg_names + 34904, 19}, 6800 },
-  { {EMsg_names + 34923, 20}, 6806 },
-  { {EMsg_names + 34943, 26}, 6807 },
-  { {EMsg_names + 34969, 25}, 6803 },
-  { {EMsg_names + 34994, 25}, 6802 },
-  { {EMsg_names + 35019, 24}, 6801 },
-  { {EMsg_names + 35043, 27}, 6805 },
-  { {EMsg_names + 35070, 25}, 6813 },
-  { {EMsg_names + 35095, 20}, 6815 },
-  { {EMsg_names + 35115, 29}, 6812 },
-  { {EMsg_names + 35144, 20}, 6808 },
-  { {EMsg_names + 35164, 26}, 6809 },
-  { {EMsg_names + 35190, 25}, 6804 },
-  { {EMsg_names + 35215, 24}, 6814 },
-  { {EMsg_names + 35239, 38}, 4395 },
-  { {EMsg_names + 35277, 20}, 10000 },
-  { {EMsg_names + 35297, 21}, 3401 },
-  { {EMsg_names + 35318, 29}, 3402 },
-  { {EMsg_names + 35347, 19}, 3403 },
-  { {EMsg_names + 35366, 27}, 3404 },
-  { {EMsg_names + 35393, 27}, 3406 },
-  { {EMsg_names + 35420, 26}, 2502 },
-  { {EMsg_names + 35446, 14}, 8900 },
-  { {EMsg_names + 35460, 37}, 5011 },
-  { {EMsg_names + 35497, 45}, 5012 },
-  { {EMsg_names + 35542, 30}, 5013 },
-  { {EMsg_names + 35572, 38}, 5014 },
-  { {EMsg_names + 35610, 31}, 5009 },
-  { {EMsg_names + 35641, 39}, 5010 },
-  { {EMsg_names + 35680, 27}, 5003 },
-  { {EMsg_names + 35707, 35}, 5004 },
-  { {EMsg_names + 35742, 26}, 321 },
-  { {EMsg_names + 35768, 10}, 139 },
-  { {EMsg_names + 35778, 18}, 140 },
-  { {EMsg_names + 35796, 19}, 226 },
-  { {EMsg_names + 35815, 28}, 436 },
-  { {EMsg_names + 35843, 36}, 435 },
-  { {EMsg_names + 35879, 21}, 2 },
-  { {EMsg_names + 35900, 35}, 234 },
-  { {EMsg_names + 35935, 21}, 9300 },
-  { {EMsg_names + 35956, 26}, 318 },
-  { {EMsg_names + 35982, 27}, 7803 },
-  { {EMsg_names + 36009, 34}, 7806 },
-  { {EMsg_names + 36043, 21}, 7808 },
-  { {EMsg_names + 36064, 30}, 7807 },
-  { {EMsg_names + 36094, 13}, 7800 },
-  { {EMsg_names + 36107, 20}, 7804 },
-  { {EMsg_names + 36127, 23}, 7800 },
-  { {EMsg_names + 36150, 31}, 7801 },
-  { {EMsg_names + 36181, 32}, 9538 },
-  { {EMsg_names + 36213, 28}, 9509 },
-  { {EMsg_names + 36241, 34}, 9529 },
-  { {EMsg_names + 36275, 39}, 9531 },
-  { {EMsg_names + 36314, 27}, 9502 },
-  { {EMsg_names + 36341, 34}, 9528 },
-  { {EMsg_names + 36375, 32}, 9530 },
-  { {EMsg_names + 36407, 39}, 9501 },
-  { {EMsg_names + 36446, 31}, 9500 },
-  { {EMsg_names + 36477, 44}, 9519 },
-  { {EMsg_names + 36521, 40}, 9520 },
-  { {EMsg_names + 36561, 38}, 9517 },
-  { {EMsg_names + 36599, 39}, 9518 },
-  { {EMsg_names + 36638, 22}, 9500 },
-  { {EMsg_names + 36660, 45}, 9527 },
-  { {EMsg_names + 36705, 41}, 9526 },
-  { {EMsg_names + 36746, 37}, 9510 },
-  { {EMsg_names + 36783, 45}, 9511 },
-  { {EMsg_names + 36828, 28}, 9524 },
-  { {EMsg_names + 36856, 36}, 9525 },
-  { {EMsg_names + 36892, 22}, 9505 },
-  { {EMsg_names + 36914, 30}, 9506 },
-  { {EMsg_names + 36944, 30}, 9521 },
-  { {EMsg_names + 36974, 31}, 9522 },
-  { {EMsg_names + 37005, 29}, 9503 },
-  { {EMsg_names + 37034, 37}, 9504 },
-  { {EMsg_names + 37071, 31}, 9515 },
-  { {EMsg_names + 37102, 32}, 9516 },
-  { {EMsg_names + 37134, 34}, 9512 },
-  { {EMsg_names + 37168, 30}, 9523 },
-  { {EMsg_names + 37198, 18}, 600 },
-  { {EMsg_names + 37216, 22}, 602 },
-  { {EMsg_names + 37238, 27}, 142 },
-  { {EMsg_names + 37265, 35}, 233 },
-  { {EMsg_names + 37300, 17}, 120 },
-  { {EMsg_names + 37317, 18}, 121 },
-  { {EMsg_names + 37335, 13}, 9400 },
-  { {EMsg_names + 37348, 23}, 2902 },
-  { {EMsg_names + 37371, 20}, 2903 },
-  { {EMsg_names + 37391, 24}, 2905 },
-  { {EMsg_names + 37415, 37}, 2907 },
-  { {EMsg_names + 37452, 45}, 2908 },
-  { {EMsg_names + 37497, 17}, 8600 },
-  { {EMsg_names + 37514, 35}, 8601 },
-  { {EMsg_names + 37549, 34}, 8600 },
-  { {EMsg_names + 37583, 25}, 12100 },
-  { {EMsg_names + 37608, 19}, 146 },
-  { {EMsg_names + 37627, 33}, 151 },
-  { {EMsg_names + 37660, 42}, 9804 },
-  { {EMsg_names + 37702, 27}, 147 },
-  { {EMsg_names + 37729, 31}, 152 },
-  { {EMsg_names + 37760, 17}, 317 },
-  { {EMsg_names + 37777, 30}, 237 },
-  { {EMsg_names + 37807, 38}, 238 },
-  { {EMsg_names + 37845, 27}, 230 },
-  { {EMsg_names + 37872, 17}, 301 },
-  { {EMsg_names + 37889, 21}, 235 },
-  { {EMsg_names + 37910, 29}, 236 },
-  { {EMsg_names + 37939, 11}, 141 },
-  { {EMsg_names + 37950, 21}, 138 },
-  { {EMsg_names + 37971, 15}, 8000 },
-  { {EMsg_names + 37986, 15}, 126 },
-  { {EMsg_names + 38001, 25}, 240 },
-  { {EMsg_names + 38026, 33}, 241 },
-  { {EMsg_names + 38059, 16}, 323 },
-  { {EMsg_names + 38075, 21}, 228 },
-  { {EMsg_names + 38096, 23}, 9200 },
-  { {EMsg_names + 38119, 46}, 9200 },
-  { {EMsg_names + 38165, 47}, 9201 },
-  { {EMsg_names + 38212, 47}, 9202 },
-  { {EMsg_names + 38259, 48}, 9203 },
-  { {EMsg_names + 38307, 22}, 149 },
-  { {EMsg_names + 38329, 23}, 150 },
-  { {EMsg_names + 38352, 13}, 7300 },
-  { {EMsg_names + 38365, 30}, 7371 },
-  { {EMsg_names + 38395, 31}, 7369 },
-  { {EMsg_names + 38426, 39}, 7370 },
-  { {EMsg_names + 38465, 20}, 7351 },
-  { {EMsg_names + 38485, 28}, 7352 },
-  { {EMsg_names + 38513, 30}, 7353 },
-  { {EMsg_names + 38543, 38}, 7354 },
-  { {EMsg_names + 38581, 33}, 7355 },
-  { {EMsg_names + 38614, 41}, 7356 },
-  { {EMsg_names + 38655, 36}, 7380 },
-  { {EMsg_names + 38691, 35}, 7359 },
-  { {EMsg_names + 38726, 32}, 7341 },
-  { {EMsg_names + 38758, 40}, 7342 },
-  { {EMsg_names + 38798, 35}, 7343 },
-  { {EMsg_names + 38833, 43}, 7344 },
-  { {EMsg_names + 38876, 30}, 7339 },
-  { {EMsg_names + 38906, 32}, 7349 },
-  { {EMsg_names + 38938, 34}, 7350 },
-  { {EMsg_names + 38972, 28}, 7337 },
-  { {EMsg_names + 39000, 33}, 7338 },
-  { {EMsg_names + 39033, 30}, 7307 },
-  { {EMsg_names + 39063, 38}, 7308 },
-  { {EMsg_names + 39101, 28}, 7327 },
-  { {EMsg_names + 39129, 36}, 7328 },
-  { {EMsg_names + 39165, 32}, 7331 },
-  { {EMsg_names + 39197, 13}, 7000 },
-  { {EMsg_names + 39210, 19}, 7006 },
-  { {EMsg_names + 39229, 27}, 7007 },
-  { {EMsg_names + 39256, 23}, 7003 },
-  { {EMsg_names + 39279, 31}, 7004 },
-  { {EMsg_names + 39310, 29}, 5246 },
-  { {EMsg_names + 39339, 30}, 5247 },
-  { {EMsg_names + 39369, 30}, 5248 },
-  { {EMsg_names + 39399, 31}, 5249 },
-  { {EMsg_names + 39430, 29}, 5244 },
-  { {EMsg_names + 39459, 30}, 5245 },
-  { {EMsg_names + 39489, 22}, 5250 },
-  { {EMsg_names + 39511, 19}, 5240 },
-  { {EMsg_names + 39530, 27}, 5241 },
-  { {EMsg_names + 39557, 36}, 5242 },
-  { {EMsg_names + 39593, 37}, 5243 },
-  { {EMsg_names + 39630, 20}, 5238 },
-  { {EMsg_names + 39650, 25}, 5253 },
-  { {EMsg_names + 39675, 33}, 5254 },
-  { {EMsg_names + 39708, 28}, 5239 },
-  { {EMsg_names + 39736, 22}, 5234 },
-  { {EMsg_names + 39758, 30}, 5235 },
-  { {EMsg_names + 39788, 28}, 5215 },
-  { {EMsg_names + 39816, 24}, 5217 },
-  { {EMsg_names + 39840, 32}, 5218 },
-  { {EMsg_names + 39872, 24}, 5228 },
-  { {EMsg_names + 39896, 32}, 5229 },
-  { {EMsg_names + 39928, 28}, 5236 },
-  { {EMsg_names + 39956, 36}, 5237 },
-  { {EMsg_names + 39992, 13}, 7900 },
-  { {EMsg_names + 40005, 25}, 4073 },
-  { {EMsg_names + 40030, 33}, 4074 },
-  { {EMsg_names + 40063, 21}, 4211 },
-  { {EMsg_names + 40084, 23}, 4236 },
-  { {EMsg_names + 40107, 31}, 4312 },
-  { {EMsg_names + 40138, 26}, 7900 },
-  { {EMsg_names + 40164, 13}, 8100 },
-  { {EMsg_names + 40177, 21}, 229 },
-  { {EMsg_names + 40198, 18}, 1010 },
-  { {EMsg_names + 40216, 30}, 2247 },
-  { {EMsg_names + 40246, 22}, 322 },
-  { {EMsg_names + 40268, 29}, 221 },
-  { {EMsg_names + 40297, 26}, 215 },
-  { {EMsg_names + 40323, 49}, 245 },
-  { {EMsg_names + 40372, 41}, 244 },
-  { {EMsg_names + 40413, 27}, 225 },
-  { {EMsg_names + 40440, 17}, 601 },
-  { {EMsg_names + 40457, 16}, 605 },
-  { {EMsg_names + 40473, 27}, 608 },
-  { {EMsg_names + 40500, 27}, 607 },
-  { {EMsg_names + 40527, 22}, 611 },
-  { {EMsg_names + 40549, 17}, 604 },
-  { {EMsg_names + 40566, 22}, 606 },
-  { {EMsg_names + 40588, 22}, 609 },
-  { {EMsg_names + 40610, 31}, 610 },
-  { {EMsg_names + 40641, 33}, 12203 },
-  { {EMsg_names + 40674, 34}, 12204 },
-  { {EMsg_names + 40708, 31}, 12200 },
-  { {EMsg_names + 40739, 35}, 12201 },
-  { {EMsg_names + 40774, 43}, 12202 },
-  { {EMsg_names + 40817, 15}, 130 },
-  { {EMsg_names + 40832, 16}, 131 },
-  { {EMsg_names + 40848, 16}, 8300 },
-  { {EMsg_names + 40864, 38}, 8304 },
-  { {EMsg_names + 40902, 37}, 8305 },
-  { {EMsg_names + 40939, 22}, 133 },
-  { {EMsg_names + 40961, 23}, 134 },
-  { {EMsg_names + 40984, 32}, 8303 },
-  { {EMsg_names + 41016, 22}, 8306 },
-  { {EMsg_names + 41038, 31}, 8300 },
-  { {EMsg_names + 41069, 39}, 8301 },
-  { {EMsg_names + 41108, 19}, 9000 },
-  { {EMsg_names + 41127, 30}, 9000 },
-  { {EMsg_names + 41157, 31}, 9001 },
-  { {EMsg_names + 41188, 27}, 9002 },
-  { {EMsg_names + 41215, 18}, 8200 },
-  { {EMsg_names + 41233, 16}, 204 },
-  { {EMsg_names + 41249, 17}, 205 },
-  { {EMsg_names + 41266, 34}, 9533 },
-  { {EMsg_names + 41300, 37}, 9532 },
-  { {EMsg_names + 41337, 42}, 9534 },
-  { {EMsg_names + 41379, 44}, 9535 },
-  { {EMsg_names + 41423, 39}, 9536 },
-  { {EMsg_names + 41462, 43}, 9537 },
-};
-
-static const int EMsg_entries_by_number[] = {
-  1162, // 0 -> k_EMsgInvalid
-  1203, // 1 -> k_EMsgMulti
-  1241, // 2 -> k_EMsgProtobufWrapped
-  501, // 100 -> k_EMsgBaseGeneral
-  998, // 113 -> k_EMsgDestJobFailed
-  399, // 115 -> k_EMsgAlert
-  1287, // 120 -> k_EMsgSCIDRequest
-  1288, // 121 -> k_EMsgSCIDResponse
-  1164, // 123 -> k_EMsgJobHeartbeat
-  1161, // 124 -> k_EMsgHubConnect
-  1314, // 126 -> k_EMsgSubscribe
-  0, // 127 -> k_EMRouteMessage
-  1412, // 130 -> k_EMsgWGRequest
-  1413, // 131 -> k_EMsgWGResponse
-  1168, // 132 -> k_EMsgKeepAlive
-  1417, // 133 -> k_EMsgWebAPIJobRequest
-  1418, // 134 -> k_EMsgWebAPIJobResponse
-  838, // 135 -> k_EMsgClientSessionStart
-  837, // 136 -> k_EMsgClientSessionEnd
-  840, // 137 -> k_EMsgClientSessionUpdate
-  1312, // 138 -> k_EMsgStatsDeprecated
-  1236, // 139 -> k_EMsgPing
-  1237, // 140 -> k_EMsgPingResponse
-  1311, // 141 -> k_EMsgStats
-  1285, // 142 -> k_EMsgRequestFullStatsBlock
-  1184, // 143 -> k_EMsgLoadDBOCacheItem
-  1185, // 144 -> k_EMsgLoadDBOCacheItemResponse
-  1163, // 145 -> k_EMsgInvalidateDBOCacheItems
-  1299, // 146 -> k_EMsgServiceMethod
-  1302, // 147 -> k_EMsgServiceMethodResponse
-  779, // 148 -> k_EMsgClientPackageVersions
-  1324, // 149 -> k_EMsgTimestampRequest
-  1325, // 150 -> k_EMsgTimestampResponse
-  1300, // 151 -> k_EMsgServiceMethodCallFromClient
-  1303, // 152 -> k_EMsgServiceMethodSendToClient
-  509, // 200 -> k_EMsgBaseShell
-  1018, // 201 -> k_EMsgExit
-  999, // 202 -> k_EMsgDirRequest
-  1000, // 203 -> k_EMsgDirResponse
-  1428, // 204 -> k_EMsgZipRequest
-  1429, // 205 -> k_EMsgZipResponse
-  1394, // 215 -> k_EMsgUpdateRecordResponse
-  1393, // 221 -> k_EMsgUpdateCreditCardRequest
-  1397, // 225 -> k_EMsgUpdateUserBanResponse
-  1238, // 226 -> k_EMsgPrepareToExit
-  915, // 227 -> k_EMsgContentDescriptionUpdate
-  1318, // 228 -> k_EMsgTestResetServer
-  1389, // 229 -> k_EMsgUniverseChanged
-  1307, // 230 -> k_EMsgShellConfigInfoUpdate
-  1286, // 233 -> k_EMsgRequestWindowsEventLogEntries
-  1242, // 234 -> k_EMsgProvideWindowsEventLogEntries
-  1309, // 235 -> k_EMsgShellSearchLogs
-  1310, // 236 -> k_EMsgShellSearchLogsResponse
-  1305, // 237 -> k_EMsgShellCheckWindowsUpdates
-  1306, // 238 -> k_EMsgShellCheckWindowsUpdatesResponse
-  1315, // 240 -> k_EMsgTestFlushDelayedSQL
-  1316, // 241 -> k_EMsgTestFlushDelayedSQLResponse
-  1017, // 242 -> k_EMsgEnsureExecuteScheduledTask_TEST
-  1016, // 243 -> k_EMsgEnsureExecuteScheduledTaskResponse_TEST
-  1396, // 244 -> k_EMsgUpdateScheduledTaskEnableState_TEST
-  1395, // 245 -> k_EMsgUpdateScheduledTaskEnableStateResponse_TEST
-  914, // 246 -> k_EMsgContentDescriptionDeltaUpdate
-  1126, // 247 -> k_EMsgGMShellAndServerAddressUpdates
-  1114, // 248 -> k_EMsgGMDynamicRoutingUpdate
-  1015, // 249 -> k_EMsgEnsureBillingConfigReload_TEST
-  1014, // 250 -> k_EMsgEnsureBillingConfigReloadResponse_TEST
-  499, // 300 -> k_EMsgBaseGM
-  1308, // 301 -> k_EMsgShellFailed
-  1020, // 307 -> k_EMsgExitShells
-  1019, // 308 -> k_EMsgExitShell
-  1158, // 309 -> k_EMsgGracefulExitShell
-  1183, // 316 -> k_EMsgLicenseProcessingComplete
-  1304, // 317 -> k_EMsgSetTestFlag
-  1244, // 318 -> k_EMsgQueuedEmailsComplete
-  1113, // 320 -> k_EMsgGMDRMSync
-  1235, // 321 -> k_EMsgPhysicalBoxInventory
-  1392, // 322 -> k_EMsgUpdateConfigFile
-  1317, // 323 -> k_EMsgTestInitDB
-  1130, // 324 -> k_EMsgGMWriteConfigToSQL
-  1119, // 325 -> k_EMsgGMLoadActivationCodes
-  1121, // 326 -> k_EMsgGMQueueForFBS
-  1125, // 327 -> k_EMsgGMSchemaConversionResults
-  1131, // 329 -> k_EMsgGMWriteShellFailureToSQL
-  1117, // 331 -> k_EMsgGMGetServiceMethodRouting
-  1118, // 332 -> k_EMsgGMGetServiceMethodRoutingResponse
-  1128, // 334 -> k_EMsgGMTestNextBuildSchemaConversion
-  1129, // 335 -> k_EMsgGMTestNextBuildSchemaConversionResponse
-  1021, // 336 -> k_EMsgExpectShellRestart
-  1160, // 337 -> k_EMsgHotFixProgress
-  1127, // 338 -> k_EMsgGMStatsForwardToAdminConnections
-  1115, // 339 -> k_EMsgGMGetModifiedConVars
-  1116, // 340 -> k_EMsgGMGetModifiedConVarsResponse
-  1120, // 341 -> k_EMsgGMNeedShellAndServerAddresses
-  477, // 400 -> k_EMsgBaseAIS
-  9, // 402 -> k_EMsgAISRequestContentDescription
-  7, // 405 -> k_EMsgAISGetPackageChangeNumber
-  8, // 406 -> k_EMsgAISGetPackageChangeNumberResponse
-  2, // 423 -> k_EMsgAIGetAppGCFlags
-  3, // 424 -> k_EMsgAIGetAppGCFlagsResponse
-  4, // 425 -> k_EMsgAIGetAppList
-  5, // 426 -> k_EMsgAIGetAppListResponse
-  10, // 431 -> k_EMsgAISUpdateSubordinateContentDescription
-  11, // 432 -> k_EMsgAISUpdateSubordinateContentDescriptionResponse
-  6, // 434 -> k_EMsgAISBroadcastSubordinateContentDescription
-  1240, // 435 -> k_EMsgProductInfoChangedNotification
-  1239, // 436 -> k_EMsgProductInfoCacheStatus
-  478, // 500 -> k_EMsgBaseAM
-  355, // 504 -> k_EMsgAMUpdateUserBanRequest
-  21, // 505 -> k_EMsgAMAddLicense
-  302, // 508 -> k_EMsgAMSendSystemIMToUser
-  104, // 509 -> k_EMsgAMExtendLicense
-  22, // 510 -> k_EMsgAMAddMinutesToLicense
-  33, // 511 -> k_EMsgAMCancelLicense
-  227, // 512 -> k_EMsgAMInitPurchase
-  268, // 513 -> k_EMsgAMPurchaseResponse
-  181, // 516 -> k_EMsgAMGetLegacyGameKey
-  182, // 517 -> k_EMsgAMGetLegacyGameKeyResponse
-  112, // 518 -> k_EMsgAMFindHungTransactions
-  310, // 519 -> k_EMsgAMSetAccountTrustedRequest
-  34, // 522 -> k_EMsgAMCancelPurchase
-  246, // 523 -> k_EMsgAMNewChallenge
-  113, // 525 -> k_EMsgAMFixPendingPurchase
-  114, // 526 -> k_EMsgAMFixPendingPurchaseResponse
-  235, // 527 -> k_EMsgAMIsUserBanned
-  272, // 528 -> k_EMsgAMRegisterKey
-  239, // 529 -> k_EMsgAMLoadActivationCodes
-  240, // 530 -> k_EMsgAMLoadActivationCodesResponse
-  242, // 531 -> k_EMsgAMLookupKeyResponse
-  241, // 532 -> k_EMsgAMLookupKey
-  39, // 533 -> k_EMsgAMChatCleanup
-  48, // 534 -> k_EMsgAMClanCleanup
-  115, // 535 -> k_EMsgAMFixPendingRefund
-  290, // 536 -> k_EMsgAMReverseChargeback
-  291, // 537 -> k_EMsgAMReverseChargebackResponse
-  49, // 538 -> k_EMsgAMClanCleanupList
-  298, // 541 -> k_EMsgAMSendCartRepurchase
-  299, // 542 -> k_EMsgAMSendCartRepurchaseResponse
-  400, // 550 -> k_EMsgAllowUserToPlayQuery
-  401, // 551 -> k_EMsgAllowUserToPlayResponse
-  365, // 552 -> k_EMsgAMVerfiyUser
-  72, // 553 -> k_EMsgAMClientNotPlaying
-  76, // 554 -> k_EMsgAMClientRequestFriendship
-  273, // 555 -> k_EMsgAMRelayPublishStatus
-  228, // 560 -> k_EMsgAMInitPurchaseResponse
-  293, // 561 -> k_EMsgAMRevokePurchaseResponse
-  270, // 563 -> k_EMsgAMRefreshGuestPasses
-  222, // 566 -> k_EMsgAMGrantGuestPasses
-  50, // 567 -> k_EMsgAMClanDataUpdated
-  274, // 568 -> k_EMsgAMReloadAccount
-  64, // 569 -> k_EMsgAMClientChatMsgRelay
-  42, // 570 -> k_EMsgAMChatMulti
-  62, // 571 -> k_EMsgAMClientChatInviteRelay
-  41, // 572 -> k_EMsgAMChatInvite
-  69, // 573 -> k_EMsgAMClientJoinChatRelay
-  63, // 574 -> k_EMsgAMClientChatMemberInfoRelay
-  266, // 575 -> k_EMsgAMPublishChatMemberInfo
-  58, // 576 -> k_EMsgAMClientAcceptFriendInvite
-  40, // 577 -> k_EMsgAMChatEnter
-  73, // 578 -> k_EMsgAMClientPublishRemovalFromSource
-  38, // 579 -> k_EMsgAMChatActionResult
-  107, // 580 -> k_EMsgAMFindAccounts
-  108, // 581 -> k_EMsgAMFindAccountsResponse
-  231, // 582 -> k_EMsgAMIsAccountNameInUse
-  232, // 583 -> k_EMsgAMIsAccountNameInUseResponse
-  309, // 584 -> k_EMsgAMSetAccountFlags
-  86, // 586 -> k_EMsgAMCreateClan
-  88, // 587 -> k_EMsgAMCreateClanResponse
-  153, // 588 -> k_EMsgAMGetClanDetails
-  156, // 589 -> k_EMsgAMGetClanDetailsResponse
-  330, // 590 -> k_EMsgAMSetPersonaName
-  311, // 591 -> k_EMsgAMSetAvatar
-  23, // 592 -> k_EMsgAMAuthenticateUser
-  24, // 593 -> k_EMsgAMAuthenticateUserResponse
-  252, // 596 -> k_EMsgAMP2PIntroducerMessage
-  576, // 597 -> k_EMsgClientChatAction
-  61, // 598 -> k_EMsgAMClientChatActionRelay
-  512, // 600 -> k_EMsgBaseVS
-  1398, // 601 -> k_EMsgVACResponse
-  1284, // 602 -> k_EMsgReqChallengeTest
-  1403, // 604 -> k_EMsgVSMarkCheat
-  1399, // 605 -> k_EMsgVSAddCheat
-  1404, // 606 -> k_EMsgVSPurgeCodeModDB
-  1401, // 607 -> k_EMsgVSGetChallengeResults
-  1400, // 608 -> k_EMsgVSChallengeResultText
-  1405, // 609 -> k_EMsgVSReportLingerer
-  1406, // 610 -> k_EMsgVSRequestManagedChallenge
-  1402, // 611 -> k_EMsgVSLoadDBFinished
-  494, // 625 -> k_EMsgBaseDRMS
-  944, // 628 -> k_EMsgDRMBuildBlobRequest
-  945, // 629 -> k_EMsgDRMBuildBlobResponse
-  953, // 630 -> k_EMsgDRMResolveGuidRequest
-  954, // 631 -> k_EMsgDRMResolveGuidResponse
-  961, // 633 -> k_EMsgDRMVariabilityReport
-  962, // 634 -> k_EMsgDRMVariabilityReportResponse
-  957, // 635 -> k_EMsgDRMStabilityReport
-  958, // 636 -> k_EMsgDRMStabilityReportResponse
-  946, // 637 -> k_EMsgDRMDetailsReportRequest
-  947, // 638 -> k_EMsgDRMDetailsReportResponse
-  950, // 639 -> k_EMsgDRMProcessFile
-  942, // 640 -> k_EMsgDRMAdminUpdate
-  943, // 641 -> k_EMsgDRMAdminUpdateResponse
-  959, // 642 -> k_EMsgDRMSync
-  960, // 643 -> k_EMsgDRMSyncResponse
-  951, // 644 -> k_EMsgDRMProcessFileResponse
-  948, // 645 -> k_EMsgDRMEmptyGuidCache
-  949, // 646 -> k_EMsgDRMEmptyGuidCacheResponse
-  486, // 650 -> k_EMsgBaseCS
-  489, // 700 -> k_EMsgBaseClient
-  716, // 701 -> k_EMsgClientLogOn_Deprecated
-  562, // 702 -> k_EMsgClientAnonLogOn_Deprecated
-  684, // 703 -> k_EMsgClientHeartBeat
-  907, // 704 -> k_EMsgClientVACResponse
-  659, // 705 -> k_EMsgClientGamesPlayed_obsolete
-  712, // 706 -> k_EMsgClientLogOff
-  759, // 707 -> k_EMsgClientNoUDPConnectivity
-  596, // 710 -> k_EMsgClientConnectionStats
-  790, // 712 -> k_EMsgClientPingResponse
-  798, // 714 -> k_EMsgClientRemoveFriend
-  657, // 715 -> k_EMsgClientGamesPlayedNoDataBlob
-  575, // 716 -> k_EMsgClientChangeStatus
-  638, // 718 -> k_EMsgClientFriendMsg
-  652, // 719 -> k_EMsgClientGameConnect_obsolete
-  655, // 720 -> k_EMsgClientGamesPlayed2_obsolete
-  653, // 721 -> k_EMsgClientGameEnded_obsolete
-  866, // 726 -> k_EMsgClientSystemIM
-  867, // 727 -> k_EMsgClientSystemIMAck
-  673, // 730 -> k_EMsgClientGetLegacyGameKey
-  597, // 731 -> k_EMsgClientContentServerLogOn_Deprecated
-  656, // 738 -> k_EMsgClientGamesPlayed3_obsolete
-  557, // 740 -> k_EMsgClientAckGuestPass
-  794, // 741 -> k_EMsgClientRedeemGuestPass
-  654, // 742 -> k_EMsgClientGamesPlayed
-  797, // 743 -> k_EMsgClientRegisterKey
-  692, // 744 -> k_EMsgClientInviteUserToClan
-  559, // 745 -> k_EMsgClientAcknowledgeClanInvite
-  564, // 747 -> k_EMsgClientAppUsageEvent
-  713, // 751 -> k_EMsgClientLogOnResponse
-  843, // 755 -> k_EMsgClientSetHeartbeatRate
-  760, // 756 -> k_EMsgClientNotLoggedOnDeprecated
-  717, // 757 -> k_EMsgClientLoggedOff
-  1132, // 758 -> k_EMsgGSApprove
-  1137, // 759 -> k_EMsgGSDeny
-  1145, // 760 -> k_EMsgGSKick
-  793, // 763 -> k_EMsgClientPurchaseResponse
-  789, // 764 -> k_EMsgClientPing
-  750, // 765 -> k_EMsgClientNOP
-  787, // 766 -> k_EMsgClientPersonaState
-  646, // 767 -> k_EMsgClientFriendsList
-  556, // 768 -> k_EMsgClientAccountInfo
-  758, // 771 -> k_EMsgClientNewsUpdate
-  650, // 773 -> k_EMsgClientGameConnectDeny
-  1150, // 774 -> k_EMsgGSStatusReply
-  651, // 779 -> k_EMsgClientGameConnectTokens
-  711, // 780 -> k_EMsgClientLicenseList
-  906, // 782 -> k_EMsgClientVACBanStatus
-  674, // 785 -> k_EMsgClientGetLegacyGameKeyResponse
-  560, // 791 -> k_EMsgClientAddFriend
-  561, // 792 -> k_EMsgClientAddFriendResponse
-  558, // 796 -> k_EMsgClientAckGuestPassResponse
-  795, // 797 -> k_EMsgClientRedeemGuestPassResponse
-  903, // 798 -> k_EMsgClientUpdateGuestPassesList
-  585, // 799 -> k_EMsgClientChatMsg
-  583, // 800 -> k_EMsgClientChatInvite
-  695, // 801 -> k_EMsgClientJoinChat
-  584, // 802 -> k_EMsgClientChatMemberInfo
-  714, // 803 -> k_EMsgClientLogOnWithCredentials_Deprecated
-  781, // 805 -> k_EMsgClientPasswordChangeResponse
-  579, // 807 -> k_EMsgClientChatEnter
-  643, // 808 -> k_EMsgClientFriendRemovedFromSource
-  599, // 809 -> k_EMsgClientCreateChat
-  600, // 810 -> k_EMsgClientCreateChatResponse
-  770, // 813 -> k_EMsgClientP2PIntroducerMessage
-  577, // 814 -> k_EMsgClientChatActionResult
-  811, // 815 -> k_EMsgClientRequestFriendData
-  682, // 818 -> k_EMsgClientGetUserStats
-  683, // 819 -> k_EMsgClientGetUserStatsResponse
-  862, // 820 -> k_EMsgClientStoreUserStats
-  864, // 821 -> k_EMsgClientStoreUserStatsResponse
-  593, // 822 -> k_EMsgClientClanState
-  836, // 830 -> k_EMsgClientServiceModule
-  832, // 831 -> k_EMsgClientServiceCall
-  833, // 832 -> k_EMsgClientServiceCallResponse
-  751, // 839 -> k_EMsgClientNatTraversalStatEvent
-  861, // 842 -> k_EMsgClientSteamUsageEvent
-  591, // 845 -> k_EMsgClientCheckPassword
-  820, // 846 -> k_EMsgClientResetPassword
-  592, // 848 -> k_EMsgClientCheckPasswordResponse
-  821, // 849 -> k_EMsgClientResetPasswordResponse
-  839, // 850 -> k_EMsgClientSessionToken
-  616, // 851 -> k_EMsgClientDRMProblemReport
-  844, // 855 -> k_EMsgClientSetIgnoreFriend
-  845, // 856 -> k_EMsgClientSetIgnoreFriendResponse
-  660, // 857 -> k_EMsgClientGetAppOwnershipTicket
-  661, // 858 -> k_EMsgClientGetAppOwnershipTicketResponse
-  675, // 860 -> k_EMsgClientGetLobbyListResponse
-  827, // 880 -> k_EMsgClientServerList
-  610, // 896 -> k_EMsgClientDRMBlobRequest
-  611, // 897 -> k_EMsgClientDRMBlobResponse
-  500, // 900 -> k_EMsgBaseGameServer
-  1138, // 901 -> k_EMsgGSDisconnectNotice
-  1148, // 903 -> k_EMsgGSStatus
-  1152, // 905 -> k_EMsgGSUserPlaying
-  1149, // 906 -> k_EMsgGSStatus2
-  1151, // 907 -> k_EMsgGSStatusUpdate_Unused
-  1147, // 908 -> k_EMsgGSServerType
-  1146, // 909 -> k_EMsgGSPlayerList
-  1139, // 918 -> k_EMsgGSGetPlayStats
-  1140, // 919 -> k_EMsgGSGetPlayStatsResponse
-  1143, // 920 -> k_EMsgGSGetUserGroupStatus
-  207, // 921 -> k_EMsgAMGetUserGroupStatus
-  208, // 922 -> k_EMsgAMGetUserGroupStatusResponse
-  1144, // 923 -> k_EMsgGSGetUserGroupStatusResponse
-  1141, // 936 -> k_EMsgGSGetReputation
-  1142, // 937 -> k_EMsgGSGetReputationResponse
-  1133, // 938 -> k_EMsgGSAssociateWithClan
-  1134, // 939 -> k_EMsgGSAssociateWithClanResponse
-  1135, // 940 -> k_EMsgGSComputeNewPlayerCompatibility
-  1136, // 941 -> k_EMsgGSComputeNewPlayerCompatibilityResponse
-  481, // 1000 -> k_EMsgBaseAdmin
-  389, // 1004 -> k_EMsgAdminCmdResponse
-  396, // 1005 -> k_EMsgAdminLogListenRequest
-  395, // 1006 -> k_EMsgAdminLogEvent
-  1390, // 1010 -> k_EMsgUniverseData
-  398, // 1019 -> k_EMsgAdminSpew
-  390, // 1020 -> k_EMsgAdminConsoleTitle
-  394, // 1023 -> k_EMsgAdminGCSpew
-  391, // 1024 -> k_EMsgAdminGCCommand
-  392, // 1025 -> k_EMsgAdminGCGetCommandList
-  393, // 1026 -> k_EMsgAdminGCGetCommandListResponse
-  1030, // 1027 -> k_EMsgFBSConnectionData
-  397, // 1028 -> k_EMsgAdminMsgSpew
-  495, // 1100 -> k_EMsgBaseFBS
-  1056, // 1101 -> k_EMsgFBSVersionInfo
-  1038, // 1102 -> k_EMsgFBSForceRefresh
-  1037, // 1103 -> k_EMsgFBSForceBounce
-  1033, // 1104 -> k_EMsgFBSDeployPackage
-  1034, // 1105 -> k_EMsgFBSDeployResponse
-  1054, // 1106 -> k_EMsgFBSUpdateBootstrapper
-  1051, // 1107 -> k_EMsgFBSSetState
-  1024, // 1108 -> k_EMsgFBSApplyOSUpdates
-  1048, // 1109 -> k_EMsgFBSRunCMDScript
-  1044, // 1110 -> k_EMsgFBSRebootBox
-  1049, // 1111 -> k_EMsgFBSSetBigBrotherMode
-  1040, // 1112 -> k_EMsgFBSMinidumpServer
-  1031, // 1114 -> k_EMsgFBSDeployHotFixPackage
-  1032, // 1115 -> k_EMsgFBSDeployHotFixResponse
-  1035, // 1116 -> k_EMsgFBSDownloadHotFix
-  1036, // 1117 -> k_EMsgFBSDownloadHotFixResponse
-  1055, // 1118 -> k_EMsgFBSUpdateTargetConfigFile
-  1022, // 1119 -> k_EMsgFBSApplyAccountCred
-  1023, // 1120 -> k_EMsgFBSApplyAccountCredResponse
-  1050, // 1121 -> k_EMsgFBSSetShellCount
-  1052, // 1122 -> k_EMsgFBSTerminateShell
-  1042, // 1123 -> k_EMsgFBSQueryGMForRequest
-  1043, // 1124 -> k_EMsgFBSQueryGMResponse
-  1053, // 1125 -> k_EMsgFBSTerminateZombies
-  1039, // 1126 -> k_EMsgFBSInfoFromBootstrapper
-  1045, // 1127 -> k_EMsgFBSRebootBoxResponse
-  1027, // 1128 -> k_EMsgFBSBootstrapperPackageRequest
-  1028, // 1129 -> k_EMsgFBSBootstrapperPackageResponse
-  1025, // 1130 -> k_EMsgFBSBootstrapperGetPackageChunk
-  1026, // 1131 -> k_EMsgFBSBootstrapperGetPackageChunkResponse
-  1029, // 1132 -> k_EMsgFBSBootstrapperPackageTransferProgress
-  1047, // 1133 -> k_EMsgFBSRestartBootstrapper
-  1041, // 1134 -> k_EMsgFBSPauseFrozenDumps
-  497, // 1200 -> k_EMsgBaseFileXfer
-  1075, // 1201 -> k_EMsgFileXferResponse
-  1071, // 1202 -> k_EMsgFileXferData
-  1073, // 1203 -> k_EMsgFileXferEnd
-  1072, // 1204 -> k_EMsgFileXferDataAck
-  487, // 1300 -> k_EMsgBaseChannelAuth
-  544, // 1301 -> k_EMsgChannelAuthResponse
-  545, // 1302 -> k_EMsgChannelAuthResult
-  546, // 1303 -> k_EMsgChannelEncryptRequest
-  547, // 1304 -> k_EMsgChannelEncryptResponse
-  548, // 1305 -> k_EMsgChannelEncryptResult
-  483, // 1400 -> k_EMsgBaseBS
-  439, // 1401 -> k_EMsgBSPurchaseStart
-  436, // 1402 -> k_EMsgBSPurchaseResponse
-  403, // 1403 -> k_EMsgBSAuthenticateCCTrans
-  404, // 1404 -> k_EMsgBSAuthenticateCCTransResponse
-  458, // 1406 -> k_EMsgBSSettleComplete
-  428, // 1408 -> k_EMsgBSInitPayPalTxn
-  429, // 1409 -> k_EMsgBSInitPayPalTxnResponse
-  422, // 1410 -> k_EMsgBSGetPayPalUserInfo
-  423, // 1411 -> k_EMsgBSGetPayPalUserInfoResponse
-  432, // 1417 -> k_EMsgBSPaymentInstrBan
-  433, // 1418 -> k_EMsgBSPaymentInstrBanResponse
-  426, // 1421 -> k_EMsgBSInitGCBankXferTxn
-  427, // 1422 -> k_EMsgBSInitGCBankXferTxnResponse
-  410, // 1425 -> k_EMsgBSCommitGCTxn
-  446, // 1426 -> k_EMsgBSQueryTransactionStatus
-  447, // 1427 -> k_EMsgBSQueryTransactionStatusResponse
-  448, // 1433 -> k_EMsgBSQueryTxnExtendedInfo
-  449, // 1434 -> k_EMsgBSQueryTxnExtendedInfoResponse
-  463, // 1435 -> k_EMsgBSUpdateConversionRates
-  437, // 1437 -> k_EMsgBSPurchaseRunFraudChecks
-  438, // 1438 -> k_EMsgBSPurchaseRunFraudChecksResponse
-  442, // 1440 -> k_EMsgBSQueryBankInformation
-  443, // 1441 -> k_EMsgBSQueryBankInformationResponse
-  468, // 1445 -> k_EMsgBSValidateXsollaSignature
-  469, // 1446 -> k_EMsgBSValidateXsollaSignatureResponse
-  440, // 1448 -> k_EMsgBSQiwiWalletInvoice
-  441, // 1449 -> k_EMsgBSQiwiWalletInvoiceResponse
-  464, // 1450 -> k_EMsgBSUpdateInventoryFromProPack
-  465, // 1451 -> k_EMsgBSUpdateInventoryFromProPackResponse
-  456, // 1452 -> k_EMsgBSSendShippingRequest
-  457, // 1453 -> k_EMsgBSSendShippingRequestResponse
-  424, // 1454 -> k_EMsgBSGetProPackOrderStatus
-  425, // 1455 -> k_EMsgBSGetProPackOrderStatusResponse
-  407, // 1456 -> k_EMsgBSCheckJobRunning
-  408, // 1457 -> k_EMsgBSCheckJobRunningResponse
-  452, // 1458 -> k_EMsgBSResetPackagePurchaseRateLimit
-  453, // 1459 -> k_EMsgBSResetPackagePurchaseRateLimitResponse
-  466, // 1460 -> k_EMsgBSUpdatePaymentData
-  467, // 1461 -> k_EMsgBSUpdatePaymentDataResponse
-  418, // 1462 -> k_EMsgBSGetBillingAddress
-  419, // 1463 -> k_EMsgBSGetBillingAddressResponse
-  420, // 1464 -> k_EMsgBSGetCreditCardInfo
-  421, // 1465 -> k_EMsgBSGetCreditCardInfoResponse
-  450, // 1468 -> k_EMsgBSRemoveExpiredPaymentData
-  451, // 1469 -> k_EMsgBSRemoveExpiredPaymentDataResponse
-  414, // 1470 -> k_EMsgBSConvertToCurrentKeys
-  415, // 1471 -> k_EMsgBSConvertToCurrentKeysResponse
-  430, // 1472 -> k_EMsgBSInitPurchase
-  431, // 1473 -> k_EMsgBSInitPurchaseResponse
-  412, // 1474 -> k_EMsgBSCompletePurchase
-  413, // 1475 -> k_EMsgBSCompletePurchaseResponse
-  434, // 1476 -> k_EMsgBSPruneCardUsageStats
-  435, // 1477 -> k_EMsgBSPruneCardUsageStatsResponse
-  461, // 1478 -> k_EMsgBSStoreBankInformation
-  462, // 1479 -> k_EMsgBSStoreBankInformationResponse
-  470, // 1480 -> k_EMsgBSVerifyPOSAKey
-  471, // 1481 -> k_EMsgBSVerifyPOSAKeyResponse
-  454, // 1482 -> k_EMsgBSReverseRedeemPOSAKey
-  455, // 1483 -> k_EMsgBSReverseRedeemPOSAKeyResponse
-  444, // 1484 -> k_EMsgBSQueryFindCreditCard
-  445, // 1485 -> k_EMsgBSQueryFindCreditCardResponse
-  459, // 1486 -> k_EMsgBSStatusInquiryPOSAKey
-  460, // 1487 -> k_EMsgBSStatusInquiryPOSAKeyResponse
-  405, // 1494 -> k_EMsgBSBoaCompraConfirmProductDelivery
-  406, // 1495 -> k_EMsgBSBoaCompraConfirmProductDeliveryResponse
-  416, // 1496 -> k_EMsgBSGenerateBoaCompraMD5
-  417, // 1497 -> k_EMsgBSGenerateBoaCompraMD5Response
-  411, // 1498 -> k_EMsgBSCommitWPTxn
-  409, // 1499 -> k_EMsgBSCommitAdyenTxn
-  480, // 1500 -> k_EMsgBaseATS
-  383, // 1501 -> k_EMsgATSStartStressTest
-  385, // 1502 -> k_EMsgATSStopStressTest
-  381, // 1503 -> k_EMsgATSRunFailServerTest
-  387, // 1504 -> k_EMsgATSUFSPerfTestTask
-  386, // 1505 -> k_EMsgATSUFSPerfTestResponse
-  373, // 1506 -> k_EMsgATSCycleTCM
-  380, // 1507 -> k_EMsgATSInitDRMSStressTest
-  371, // 1508 -> k_EMsgATSCallTest
-  372, // 1509 -> k_EMsgATSCallTestReply
-  382, // 1510 -> k_EMsgATSStartExternalStress
-  377, // 1511 -> k_EMsgATSExternalStressJobStart
-  375, // 1512 -> k_EMsgATSExternalStressJobQueued
-  376, // 1513 -> k_EMsgATSExternalStressJobRunning
-  379, // 1514 -> k_EMsgATSExternalStressJobStopped
-  378, // 1515 -> k_EMsgATSExternalStressJobStopAll
-  374, // 1516 -> k_EMsgATSExternalStressActionResult
-  384, // 1517 -> k_EMsgATSStarted
-  370, // 1518 -> k_EMsgATSCSPerfTestTask
-  369, // 1519 -> k_EMsgATSCSPerfTestResponse
-  493, // 1600 -> k_EMsgBaseDP
-  938, // 1601 -> k_EMsgDPSetPublishingState
-  940, // 1603 -> k_EMsgDPUniquePlayersStat
-  932, // 1612 -> k_EMsgDPCloudStats
-  934, // 1615 -> k_EMsgDPGetPlayerCount
-  935, // 1616 -> k_EMsgDPGetPlayerCountResponse
-  933, // 1617 -> k_EMsgDPGameServersPlayersStats
-  606, // 1620 -> k_EMsgClientDPCheckSpecialSurvey
-  607, // 1621 -> k_EMsgClientDPCheckSpecialSurveyResponse
-  608, // 1622 -> k_EMsgClientDPSendSpecialSurveyResponse
-  609, // 1623 -> k_EMsgClientDPSendSpecialSurveyResponseReply
-  939, // 1624 -> k_EMsgDPStoreSaleStatistics
-  936, // 1628 -> k_EMsgDPPartnerMicroTxns
-  937, // 1629 -> k_EMsgDPPartnerMicroTxnsResponse
-  941, // 1631 -> k_EMsgDPVRUniquePlayersStat
-  485, // 1700 -> k_EMsgBaseCM
-  530, // 1701 -> k_EMsgCMSetAllowState
-  532, // 1702 -> k_EMsgCMSpewAllowState
-  529, // 1703 -> k_EMsgCMSessionRejected
-  531, // 1704 -> k_EMsgCMSetSecrets
-  526, // 1705 -> k_EMsgCMGetSecrets
-  528, // 1706 -> k_EMsgCMRemotePlayReplyPacket
-  527, // 1707 -> k_EMsgCMRemotePlayOffline
-  498, // 2200 -> k_EMsgBaseGC
-  1080, // 2203 -> k_EMsgGCCmdRevive
-  1079, // 2206 -> k_EMsgGCCmdDown
-  1077, // 2207 -> k_EMsgGCCmdDeploy
-  1078, // 2208 -> k_EMsgGCCmdDeployResponse
-  1082, // 2209 -> k_EMsgGCCmdSwitch
-  271, // 2210 -> k_EMsgAMRefreshSessions
-  1076, // 2212 -> k_EMsgGCAchievementAwarded
-  1081, // 2216 -> k_EMsgGCCmdStatus
-  1112, // 2217 -> k_EMsgGCRegisterWebInterfaces_Deprecated
-  1083, // 2218 -> k_EMsgGCGetAccountDetails_DEPRECATED
-  1111, // 2219 -> k_EMsgGCInterAppMessage
-  1084, // 2220 -> k_EMsgGCGetEmailTemplate
-  1085, // 2221 -> k_EMsgGCGetEmailTemplateResponse
-  1099, // 2222 -> k_EMsgGCHRelay
-  1100, // 2223 -> k_EMsgGCHRelayToClient
-  1109, // 2224 -> k_EMsgGCHUpdateSession
-  1103, // 2225 -> k_EMsgGCHRequestUpdateSession
-  1101, // 2226 -> k_EMsgGCHRequestStatus
-  1102, // 2227 -> k_EMsgGCHRequestStatusResponse
-  1090, // 2228 -> k_EMsgGCHAccountVacStatusChange
-  1106, // 2229 -> k_EMsgGCHSpawnGC
-  1107, // 2230 -> k_EMsgGCHSpawnGCResponse
-  1095, // 2231 -> k_EMsgGCHKillGC
-  1096, // 2232 -> k_EMsgGCHKillGCResponse
-  1088, // 2233 -> k_EMsgGCHAccountTradeBanStatusChange
-  1086, // 2234 -> k_EMsgGCHAccountLockStatusChange
-  1110, // 2235 -> k_EMsgGCHVacVerificationChange
-  1087, // 2236 -> k_EMsgGCHAccountPhoneNumberChange
-  1089, // 2237 -> k_EMsgGCHAccountTwoFactorChange
-  1094, // 2238 -> k_EMsgGCHInviteUserToLobby
-  1108, // 2239 -> k_EMsgGCHUpdateMultipleSessions
-  1097, // 2240 -> k_EMsgGCHMarkAppSessionsAuthoritative
-  1098, // 2241 -> k_EMsgGCHRecurringSubscriptionStatusChange
-  1093, // 2242 -> k_EMsgGCHAppCheersReceived
-  1091, // 2243 -> k_EMsgGCHAppCheersGetAllowedTypes
-  1092, // 2244 -> k_EMsgGCHAppCheersGetAllowedTypesResponse
-  1104, // 2245 -> k_EMsgGCHRoutingRulesFromGCHtoGM
-  1105, // 2246 -> k_EMsgGCHRoutingRulesToGCHfromGM
-  1391, // 2247 -> k_EMsgUpdateCMMessageRateRules
-  505, // 2500 -> k_EMsgBaseP2P
-  1225, // 2502 -> k_EMsgP2PIntroducerMessage
-  507, // 2900 -> k_EMsgBaseSM
-  1290, // 2902 -> k_EMsgSMExpensiveReport
-  1291, // 2903 -> k_EMsgSMHourlyReport
-  1292, // 2905 -> k_EMsgSMPartitionRenames
-  1293, // 2907 -> k_EMsgSMTestNextBuildSchemaConversion
-  1294, // 2908 -> k_EMsgSMTestNextBuildSchemaConversionResponse
-  510, // 3000 -> k_EMsgBaseTest
-  1165, // 3001 -> k_EMsgJobHeartbeatTest
-  1166, // 3002 -> k_EMsgJobHeartbeatTestResponse
-  496, // 3100 -> k_EMsgBaseFTSRange
-  484, // 3150 -> k_EMsgBaseCCSRange
-  518, // 3161 -> k_EMsgCCSDeleteAllCommentsByAuthor
-  519, // 3162 -> k_EMsgCCSDeleteAllCommentsByAuthorResponse
-  502, // 3200 -> k_EMsgBaseLBSRange
-  1181, // 3201 -> k_EMsgLBSSetScore
-  1182, // 3202 -> k_EMsgLBSSetScoreResponse
-  1172, // 3203 -> k_EMsgLBSFindOrCreateLB
-  1173, // 3204 -> k_EMsgLBSFindOrCreateLBResponse
-  1174, // 3205 -> k_EMsgLBSGetLBEntries
-  1175, // 3206 -> k_EMsgLBSGetLBEntriesResponse
-  1176, // 3207 -> k_EMsgLBSGetLBList
-  1177, // 3208 -> k_EMsgLBSGetLBListResponse
-  1180, // 3209 -> k_EMsgLBSSetLBDetails
-  1169, // 3210 -> k_EMsgLBSDeleteLB
-  1170, // 3211 -> k_EMsgLBSDeleteLBEntry
-  1178, // 3212 -> k_EMsgLBSResetLB
-  1179, // 3213 -> k_EMsgLBSResetLBResponse
-  1171, // 3214 -> k_EMsgLBSDeleteLBResponse
-  504, // 3400 -> k_EMsgBaseOGS
-  1220, // 3401 -> k_EMsgOGSBeginSession
-  1221, // 3402 -> k_EMsgOGSBeginSessionResponse
-  1222, // 3403 -> k_EMsgOGSEndSession
-  1223, // 3404 -> k_EMsgOGSEndSessionResponse
-  1224, // 3406 -> k_EMsgOGSWriteAppSessionRow
-  482, // 3600 -> k_EMsgBaseBRP
-  479, // 4000 -> k_EMsgBaseAMRange2
-  84, // 4001 -> k_EMsgAMCreateChat
-  85, // 4002 -> k_EMsgAMCreateChatResponse
-  141, // 4006 -> k_EMsgAMGetAccountEmailAddress
-  142, // 4007 -> k_EMsgAMGetAccountEmailAddressResponse
-  280, // 4008 -> k_EMsgAMRequestClanData
-  296, // 4009 -> k_EMsgAMRouteToClients
-  238, // 4010 -> k_EMsgAMLeaveClan
-  51, // 4011 -> k_EMsgAMClanPermissions
-  52, // 4012 -> k_EMsgAMClanPermissionsResponse
-  87, // 4013 -> k_EMsgAMCreateClanEventDummyForRateLimiting
-  353, // 4015 -> k_EMsgAMUpdateClanEventDummyForRateLimiting
-  319, // 4021 -> k_EMsgAMSetClanPermissionSettings
-  320, // 4022 -> k_EMsgAMSetClanPermissionSettingsResponse
-  167, // 4023 -> k_EMsgAMGetClanPermissionSettings
-  168, // 4024 -> k_EMsgAMGetClanPermissionSettingsResponse
-  267, // 4025 -> k_EMsgAMPublishChatRoomInfo
-  588, // 4026 -> k_EMsgClientChatRoomInfo
-  157, // 4039 -> k_EMsgAMGetClanHistory
-  158, // 4040 -> k_EMsgAMGetClanHistoryResponse
-  165, // 4041 -> k_EMsgAMGetClanPermissionBits
-  166, // 4042 -> k_EMsgAMGetClanPermissionBitsResponse
-  317, // 4043 -> k_EMsgAMSetClanPermissionBits
-  318, // 4044 -> k_EMsgAMSetClanPermissionBitsResponse
-  306, // 4045 -> k_EMsgAMSessionInfoRequest
-  307, // 4046 -> k_EMsgAMSessionInfoResponse
-  363, // 4047 -> k_EMsgAMValidateWGToken
-  169, // 4050 -> k_EMsgAMGetClanRank
-  170, // 4051 -> k_EMsgAMGetClanRankResponse
-  321, // 4052 -> k_EMsgAMSetClanRank
-  322, // 4053 -> k_EMsgAMSetClanRankResponse
-  163, // 4054 -> k_EMsgAMGetClanPOTW
-  164, // 4055 -> k_EMsgAMGetClanPOTWResponse
-  315, // 4056 -> k_EMsgAMSetClanPOTW
-  316, // 4057 -> k_EMsgAMSetClanPOTWResponse
-  98, // 4059 -> k_EMsgAMDumpUser
-  237, // 4060 -> k_EMsgAMKickUserFromClan
-  16, // 4061 -> k_EMsgAMAddFounderToClan
-  364, // 4062 -> k_EMsgAMValidateWGTokenResponse
-  308, // 4064 -> k_EMsgAMSetAccountDetails
-  151, // 4065 -> k_EMsgAMGetChatBanList
-  152, // 4066 -> k_EMsgAMGetChatBanListResponse
-  352, // 4067 -> k_EMsgAMUnBanFromChat
-  312, // 4068 -> k_EMsgAMSetClanDetails
-  1382, // 4073 -> k_EMsgUGSGetUserGameStats
-  1383, // 4074 -> k_EMsgUGSGetUserGameStatsResponse
-  44, // 4075 -> k_EMsgAMCheckClanMembership
-  159, // 4076 -> k_EMsgAMGetClanMembers
-  160, // 4077 -> k_EMsgAMGetClanMembersResponse
-  249, // 4079 -> k_EMsgAMNotifyChatOfClanChange
-  289, // 4080 -> k_EMsgAMResubmitPurchase
-  19, // 4081 -> k_EMsgAMAddFriend
-  20, // 4082 -> k_EMsgAMAddFriendResponse
-  276, // 4083 -> k_EMsgAMRemoveFriend
-  97, // 4084 -> k_EMsgAMDumpClan
-  37, // 4085 -> k_EMsgAMChangeClanOwner
-  31, // 4086 -> k_EMsgAMCancelEasyCollect
-  32, // 4087 -> k_EMsgAMCancelEasyCollectResponse
-  53, // 4090 -> k_EMsgAMClansInCommon
-  56, // 4091 -> k_EMsgAMClansInCommonResponse
-  236, // 4092 -> k_EMsgAMIsValidAccountID
-  366, // 4095 -> k_EMsgAMWipeFriendsList
-  326, // 4096 -> k_EMsgAMSetIgnored
-  55, // 4097 -> k_EMsgAMClansInCommonCountResponse
-  120, // 4098 -> k_EMsgAMFriendsList
-  121, // 4099 -> k_EMsgAMFriendsListResponse
-  117, // 4100 -> k_EMsgAMFriendsInCommon
-  119, // 4101 -> k_EMsgAMFriendsInCommonResponse
-  118, // 4102 -> k_EMsgAMFriendsInCommonCountResponse
-  54, // 4103 -> k_EMsgAMClansInCommonCount
-  36, // 4104 -> k_EMsgAMChallengeVerdict
-  35, // 4105 -> k_EMsgAMChallengeNotification
-  111, // 4106 -> k_EMsgAMFindGSByIP
-  116, // 4107 -> k_EMsgAMFoundGSByIP
-  219, // 4108 -> k_EMsgAMGiftRevoked
-  356, // 4110 -> k_EMsgAMUserClanList
-  357, // 4111 -> k_EMsgAMUserClanListResponse
-  138, // 4112 -> k_EMsgAMGetAccountDetails2
-  140, // 4113 -> k_EMsgAMGetAccountDetailsResponse2
-  323, // 4114 -> k_EMsgAMSetCommunityProfileSettings
-  324, // 4115 -> k_EMsgAMSetCommunityProfileSettingsResponse
-  171, // 4116 -> k_EMsgAMGetCommunityPrivacyState
-  172, // 4117 -> k_EMsgAMGetCommunityPrivacyStateResponse
-  43, // 4118 -> k_EMsgAMCheckClanInviteRateLimiting
-  179, // 4120 -> k_EMsgAMGetIgnored
-  180, // 4121 -> k_EMsgAMGetIgnoredResponse
-  327, // 4122 -> k_EMsgAMSetIgnoredResponse
-  325, // 4123 -> k_EMsgAMSetFriendRelationshipNone
-  173, // 4124 -> k_EMsgAMGetFriendRelationship
-  174, // 4125 -> k_EMsgAMGetFriendRelationshipResponse
-  303, // 4126 -> k_EMsgAMServiceModulesCache
-  304, // 4127 -> k_EMsgAMServiceModulesCall
-  305, // 4128 -> k_EMsgAMServiceModulesCallResponse
-  912, // 4140 -> k_EMsgCommunityAddFriendNews
-  109, // 4143 -> k_EMsgAMFindClanUser
-  110, // 4144 -> k_EMsgAMFindClanUserResponse
-  26, // 4145 -> k_EMsgAMBanFromChat
-  213, // 4147 -> k_EMsgAMGetUserNewsSubscriptions
-  214, // 4148 -> k_EMsgAMGetUserNewsSubscriptionsResponse
-  336, // 4149 -> k_EMsgAMSetUserNewsSubscriptions
-  300, // 4152 -> k_EMsgAMSendQueuedEmails
-  328, // 4153 -> k_EMsgAMSetLicenseFlags
-  149, // 4158 -> k_EMsgAMGetAccountStatus
-  150, // 4159 -> k_EMsgAMGetAccountStatusResponse
-  103, // 4160 -> k_EMsgAMEditBanReason
-  45, // 4161 -> k_EMsgAMCheckClanMembershipResponse
-  264, // 4162 -> k_EMsgAMProbeClanMembershipList
-  265, // 4163 -> k_EMsgAMProbeClanMembershipListResponse
-  175, // 4165 -> k_EMsgAMGetFriendsLobbies
-  176, // 4166 -> k_EMsgAMGetFriendsLobbiesResponse
-  204, // 4172 -> k_EMsgAMGetUserFriendNewsResponse
-  913, // 4173 -> k_EMsgCommunityGetUserFriendNews
-  201, // 4174 -> k_EMsgAMGetUserClansNewsResponse
-  200, // 4175 -> k_EMsgAMGetUserClansNews
-  193, // 4184 -> k_EMsgAMGetPreviousCBAccount
-  194, // 4185 -> k_EMsgAMGetPreviousCBAccountResponse
-  209, // 4190 -> k_EMsgAMGetUserLicenseHistory
-  210, // 4191 -> k_EMsgAMGetUserLicenseHistoryResponse
-  340, // 4194 -> k_EMsgAMSupportChangePassword
-  339, // 4195 -> k_EMsgAMSupportChangeEmail
-  284, // 4197 -> k_EMsgAMResetUserVerificationGSByIP
-  354, // 4198 -> k_EMsgAMUpdateGSPlayStats
-  341, // 4199 -> k_EMsgAMSupportEnableOrDisable
-  195, // 4206 -> k_EMsgAMGetPurchaseStatus
-  342, // 4209 -> k_EMsgAMSupportIsAccountEnabled
-  343, // 4210 -> k_EMsgAMSupportIsAccountEnabledResponse
-  1384, // 4211 -> k_EMsgUGSGetUserStats
-  126, // 4213 -> k_EMsgAMGSSearch
-  551, // 4219 -> k_EMsgChatServerRouteFriendMsg
-  347, // 4220 -> k_EMsgAMTicketAuthRequestOrResponse
-  17, // 4224 -> k_EMsgAMAddFreeLicense
-  359, // 4231 -> k_EMsgAMValidateEmailLink
-  360, // 4232 -> k_EMsgAMValidateEmailLinkResponse
-  1385, // 4236 -> k_EMsgUGSStoreUserStats
-  94, // 4241 -> k_EMsgAMDeleteStoredCard
-  292, // 4242 -> k_EMsgAMRevokeLegacyGameKeys
-  217, // 4244 -> k_EMsgAMGetWalletDetails
-  218, // 4245 -> k_EMsgAMGetWalletDetailsResponse
-  95, // 4246 -> k_EMsgAMDeleteStoredPaymentInfo
-  198, // 4247 -> k_EMsgAMGetStoredPaymentSummary
-  199, // 4248 -> k_EMsgAMGetStoredPaymentSummaryResponse
-  215, // 4249 -> k_EMsgAMGetWalletConversionRate
-  216, // 4250 -> k_EMsgAMGetWalletConversionRateResponse
-  81, // 4251 -> k_EMsgAMConvertWallet
-  82, // 4252 -> k_EMsgAMConvertWalletResponse
-  331, // 4255 -> k_EMsgAMSetPreApproval
-  332, // 4256 -> k_EMsgAMSetPreApprovalResponse
-  91, // 4258 -> k_EMsgAMCreateRefund
-  83, // 4260 -> k_EMsgAMCreateChargeback
-  89, // 4262 -> k_EMsgAMCreateDispute
-  57, // 4264 -> k_EMsgAMClearDispute
-  90, // 4265 -> k_EMsgAMCreateFinancialAdjustment
-  262, // 4266 -> k_EMsgAMPlayerNicknameList
-  263, // 4267 -> k_EMsgAMPlayerNicknameListResponse
-  202, // 4269 -> k_EMsgAMGetUserCurrentGameInfo
-  203, // 4270 -> k_EMsgAMGetUserCurrentGameInfoResponse
-  177, // 4271 -> k_EMsgAMGetGSPlayerList
-  178, // 4272 -> k_EMsgAMGetGSPlayerListResponse
-  196, // 4278 -> k_EMsgAMGetSteamIDForMicroTxn
-  197, // 4279 -> k_EMsgAMGetSteamIDForMicroTxnResponse
-  329, // 4280 -> k_EMsgAMSetPartnerMember
-  277, // 4281 -> k_EMsgAMRemovePublisherUser
-  211, // 4282 -> k_EMsgAMGetUserLicenseList
-  212, // 4283 -> k_EMsgAMGetUserLicenseListResponse
-  275, // 4284 -> k_EMsgAMReloadGameGroupPolicy
-  18, // 4285 -> k_EMsgAMAddFreeLicenseResponse
-  358, // 4286 -> k_EMsgAMVACStatusUpdate
-  137, // 4287 -> k_EMsgAMGetAccountDetails
-  139, // 4288 -> k_EMsgAMGetAccountDetailsResponse
-  191, // 4289 -> k_EMsgAMGetPlayerLinkDetails
-  192, // 4290 -> k_EMsgAMGetPlayerLinkDetailsResponse
-  143, // 4294 -> k_EMsgAMGetAccountFlagsForWGSpoofing
-  144, // 4295 -> k_EMsgAMGetAccountFlagsForWGSpoofingResponse
-  161, // 4298 -> k_EMsgAMGetClanOfficers
-  162, // 4299 -> k_EMsgAMGetClanOfficersResponse
-  245, // 4300 -> k_EMsgAMNameChange
-  183, // 4301 -> k_EMsgAMGetNameHistory
-  184, // 4302 -> k_EMsgAMGetNameHistoryResponse
-  344, // 4307 -> k_EMsgAMSupportRemoveAccountSecurity
-  229, // 4308 -> k_EMsgAMIsAccountInCaptchaGracePeriod
-  230, // 4309 -> k_EMsgAMIsAccountInCaptchaGracePeriodResponse
-  12, // 4310 -> k_EMsgAMAccountPS3Unlink
-  13, // 4311 -> k_EMsgAMAccountPS3UnlinkResponse
-  1386, // 4312 -> k_EMsgUGSStoreUserStatsResponse
-  145, // 4313 -> k_EMsgAMGetAccountPSNInfo
-  146, // 4314 -> k_EMsgAMGetAccountPSNInfoResponse
-  25, // 4315 -> k_EMsgAMAuthenticatedPlayerList
-  205, // 4316 -> k_EMsgAMGetUserGifts
-  206, // 4317 -> k_EMsgAMGetUserGiftsResponse
-  348, // 4320 -> k_EMsgAMTransferLockedGifts
-  349, // 4321 -> k_EMsgAMTransferLockedGiftsResponse
-  261, // 4322 -> k_EMsgAMPlayerHostedOnGameServer
-  133, // 4323 -> k_EMsgAMGetAccountBanInfo
-  134, // 4324 -> k_EMsgAMGetAccountBanInfoResponse
-  269, // 4325 -> k_EMsgAMRecordBanEnforcement
-  294, // 4326 -> k_EMsgAMRollbackGiftTransfer
-  295, // 4327 -> k_EMsgAMRollbackGiftTransferResponse
-  225, // 4328 -> k_EMsgAMHandlePendingTransaction
-  281, // 4329 -> k_EMsgAMRequestClanDetails
-  96, // 4330 -> k_EMsgAMDeleteStoredPaypalAgreement
-  132, // 4331 -> k_EMsgAMGameServerUpdate
-  131, // 4332 -> k_EMsgAMGameServerRemove
-  185, // 4333 -> k_EMsgAMGetPaypalAgreements
-  186, // 4334 -> k_EMsgAMGetPaypalAgreementsResponse
-  129, // 4335 -> k_EMsgAMGameServerPlayerCompatibilityCheck
-  130, // 4336 -> k_EMsgAMGameServerPlayerCompatibilityCheckResponse
-  279, // 4337 -> k_EMsgAMRenewLicense
-  135, // 4338 -> k_EMsgAMGetAccountCommunityBanInfo
-  136, // 4339 -> k_EMsgAMGetAccountCommunityBanInfoResponse
-  127, // 4340 -> k_EMsgAMGameServerAccountChangePassword
-  128, // 4341 -> k_EMsgAMGameServerAccountDeleteAccount
-  278, // 4342 -> k_EMsgAMRenewAgreement
-  367, // 4344 -> k_EMsgAMXsollaPayment
-  368, // 4345 -> k_EMsgAMXsollaPaymentResponse
-  14, // 4346 -> k_EMsgAMAcctAllowedToPurchase
-  15, // 4347 -> k_EMsgAMAcctAllowedToPurchaseResponse
-  345, // 4348 -> k_EMsgAMSwapKioskDeposit
-  346, // 4349 -> k_EMsgAMSwapKioskDepositResponse
-  334, // 4350 -> k_EMsgAMSetUserGiftUnowned
-  335, // 4351 -> k_EMsgAMSetUserGiftUnownedResponse
-  46, // 4352 -> k_EMsgAMClaimUnownedUserGift
-  47, // 4353 -> k_EMsgAMClaimUnownedUserGiftResponse
-  313, // 4354 -> k_EMsgAMSetClanName
-  314, // 4355 -> k_EMsgAMSetClanNameResponse
-  220, // 4356 -> k_EMsgAMGrantCoupon
-  221, // 4357 -> k_EMsgAMGrantCouponResponse
-  233, // 4358 -> k_EMsgAMIsPackageRestrictedInUserCountry
-  234, // 4359 -> k_EMsgAMIsPackageRestrictedInUserCountryResponse
-  226, // 4360 -> k_EMsgAMHandlePendingTransactionResponse
-  223, // 4361 -> k_EMsgAMGrantGuestPasses2
-  224, // 4362 -> k_EMsgAMGrantGuestPasses2Response
-  189, // 4365 -> k_EMsgAMGetPlayerBanDetails
-  190, // 4366 -> k_EMsgAMGetPlayerBanDetailsResponse
-  105, // 4367 -> k_EMsgAMFinalizePurchase
-  106, // 4368 -> k_EMsgAMFinalizePurchaseResponse
-  258, // 4372 -> k_EMsgAMPersonaChangeResponse
-  154, // 4373 -> k_EMsgAMGetClanDetailsForForumCreation
-  155, // 4374 -> k_EMsgAMGetClanDetailsForForumCreationResponse
-  187, // 4375 -> k_EMsgAMGetPendingNotificationCount
-  188, // 4376 -> k_EMsgAMGetPendingNotificationCountResponse
-  253, // 4377 -> k_EMsgAMPasswordHashUpgrade
-  29, // 4380 -> k_EMsgAMBoaCompraPayment
-  30, // 4381 -> k_EMsgAMBoaCompraPaymentResponse
-  79, // 4383 -> k_EMsgAMCompleteExternalPurchase
-  80, // 4384 -> k_EMsgAMCompleteExternalPurchaseResponse
-  285, // 4385 -> k_EMsgAMResolveNegativeWalletCredits
-  286, // 4386 -> k_EMsgAMResolveNegativeWalletCreditsResponse
-  259, // 4389 -> k_EMsgAMPlayerGetClanBasicDetails
-  260, // 4390 -> k_EMsgAMPlayerGetClanBasicDetailsResponse
-  243, // 4391 -> k_EMsgAMMOLPayment
-  244, // 4392 -> k_EMsgAMMOLPaymentResponse
-  1156, // 4393 -> k_EMsgGetUserIPCountry
-  1157, // 4394 -> k_EMsgGetUserIPCountryResponse
-  1218, // 4395 -> k_EMsgNotificationOfSuspiciousActivity
-  92, // 4396 -> k_EMsgAMDegicaPayment
-  93, // 4397 -> k_EMsgAMDegicaPaymentResponse
-  99, // 4398 -> k_EMsgAMEClubPayment
-  100, // 4399 -> k_EMsgAMEClubPaymentResponse
-  254, // 4400 -> k_EMsgAMPayPalPaymentsHubPayment
-  255, // 4401 -> k_EMsgAMPayPalPaymentsHubPaymentResponse
-  350, // 4402 -> k_EMsgAMTwoFactorRecoverAuthenticatorRequest
-  351, // 4403 -> k_EMsgAMTwoFactorRecoverAuthenticatorResponse
-  337, // 4404 -> k_EMsgAMSmart2PayPayment
-  338, // 4405 -> k_EMsgAMSmart2PayPaymentResponse
-  361, // 4406 -> k_EMsgAMValidatePasswordResetCodeAndSendSmsRequest
-  362, // 4407 -> k_EMsgAMValidatePasswordResetCodeAndSendSmsResponse
-  147, // 4408 -> k_EMsgAMGetAccountResetDetailsRequest
-  148, // 4409 -> k_EMsgAMGetAccountResetDetailsResponse
-  27, // 4410 -> k_EMsgAMBitPayPayment
-  28, // 4411 -> k_EMsgAMBitPayPaymentResponse
-  297, // 4412 -> k_EMsgAMSendAccountInfoUpdate
-  301, // 4413 -> k_EMsgAMSendScheduledGift
-  247, // 4414 -> k_EMsgAMNodwinPayment
-  248, // 4415 -> k_EMsgAMNodwinPaymentResponse
-  288, // 4416 -> k_EMsgAMResolveWalletRevoke
-  287, // 4417 -> k_EMsgAMResolveWalletReverseRevoke
-  122, // 4418 -> k_EMsgAMFundedPayment
-  123, // 4419 -> k_EMsgAMFundedPaymentResponse
-  283, // 4420 -> k_EMsgAMRequestPersonaUpdateForChatServer
-  256, // 4421 -> k_EMsgAMPerfectWorldPayment
-  257, // 4422 -> k_EMsgAMPerfectWorldPaymentResponse
-  101, // 4423 -> k_EMsgAMECommPayPayment
-  102, // 4424 -> k_EMsgAMECommPayPaymentResponse
-  333, // 4425 -> k_EMsgAMSetRemoteClientID
-  250, // 4426 -> k_EMsgAMNuveiPayment
-  251, // 4427 -> k_EMsgAMNuveiPaymentResponse
-  506, // 5000 -> k_EMsgBasePSRange
-  1233, // 5003 -> k_EMsgPSIsValidShoppingCart
-  1234, // 5004 -> k_EMsgPSIsValidShoppingCartResponse
-  1231, // 5009 -> k_EMsgPSGetShoppingCartContents
-  1232, // 5010 -> k_EMsgPSGetShoppingCartContentsResponse
-  1227, // 5011 -> k_EMsgPSAddWalletCreditToShoppingCart
-  1228, // 5012 -> k_EMsgPSAddWalletCreditToShoppingCartResponse
-  1229, // 5013 -> k_EMsgPSGetAccountCartContents
-  1230, // 5014 -> k_EMsgPSGetAccountCartContentsResponse
-  511, // 5200 -> k_EMsgBaseUFSRange
-  1374, // 5215 -> k_EMsgUFSReloadPartitionInfo
-  1375, // 5217 -> k_EMsgUFSSynchronizeFile
-  1376, // 5218 -> k_EMsgUFSSynchronizeFileResponse
-  891, // 5226 -> k_EMsgClientUFSGetUGCDetails
-  892, // 5227 -> k_EMsgClientUFSGetUGCDetailsResponse
-  1377, // 5228 -> k_EMsgUFSUpdateFileFlags
-  1378, // 5229 -> k_EMsgUFSUpdateFileFlagsResponse
-  889, // 5230 -> k_EMsgClientUFSGetSingleFileInfo
-  890, // 5231 -> k_EMsgClientUFSGetSingleFileInfoResponse
-  893, // 5232 -> k_EMsgClientUFSShareFile
-  894, // 5233 -> k_EMsgClientUFSShareFileResponse
-  1372, // 5234 -> k_EMsgUFSReloadAccount
-  1373, // 5235 -> k_EMsgUFSReloadAccountResponse
-  1379, // 5236 -> k_EMsgUFSUpdateRecordBatched
-  1380, // 5237 -> k_EMsgUFSUpdateRecordBatchedResponse
-  1368, // 5238 -> k_EMsgUFSMigrateFile
-  1371, // 5239 -> k_EMsgUFSMigrateFileResponse
-  1364, // 5240 -> k_EMsgUFSGetUGCURLs
-  1365, // 5241 -> k_EMsgUFSGetUGCURLsResponse
-  1366, // 5242 -> k_EMsgUFSHttpUploadFileFinishRequest
-  1367, // 5243 -> k_EMsgUFSHttpUploadFileFinishResponse
-  1361, // 5244 -> k_EMsgUFSDownloadStartRequest
-  1362, // 5245 -> k_EMsgUFSDownloadStartResponse
-  1357, // 5246 -> k_EMsgUFSDownloadChunkRequest
-  1358, // 5247 -> k_EMsgUFSDownloadChunkResponse
-  1359, // 5248 -> k_EMsgUFSDownloadFinishRequest
-  1360, // 5249 -> k_EMsgUFSDownloadFinishResponse
-  1363, // 5250 -> k_EMsgUFSFlushURLCache
-  1369, // 5253 -> k_EMsgUFSMigrateFileAppID
-  1370, // 5254 -> k_EMsgUFSMigrateFileAppIDResponse
-  490, // 5400 -> k_EMsgBaseClient2
-  806, // 5401 -> k_EMsgClientRequestForgottenPasswordEmail
-  808, // 5402 -> k_EMsgClientRequestForgottenPasswordEmailResponse
-  598, // 5403 -> k_EMsgClientCreateAccountResponse
-  816, // 5404 -> k_EMsgClientResetForgottenPassword
-  819, // 5405 -> k_EMsgClientResetForgottenPasswordResponse
-  687, // 5407 -> k_EMsgClientInformOfResetForgottenPassword
-  688, // 5408 -> k_EMsgClientInformOfResetForgottenPasswordResponse
-  563, // 5409 -> k_EMsgClientAnonUserLogOn_Deprecated
-  658, // 5410 -> k_EMsgClientGamesPlayedWithDataBlob
-  904, // 5411 -> k_EMsgClientUpdateUserGameInfo
-  636, // 5412 -> k_EMsgClientFileToDownload
-  637, // 5413 -> k_EMsgClientFileToDownloadResponse
-  705, // 5414 -> k_EMsgClientLBSSetScore
-  706, // 5415 -> k_EMsgClientLBSSetScoreResponse
-  701, // 5416 -> k_EMsgClientLBSFindOrCreateLB
-  702, // 5417 -> k_EMsgClientLBSFindOrCreateLBResponse
-  703, // 5418 -> k_EMsgClientLBSGetLBEntries
-  704, // 5419 -> k_EMsgClientLBSGetLBEntriesResponse
-  578, // 5426 -> k_EMsgClientChatDeclined
-  640, // 5427 -> k_EMsgClientFriendMsgIncoming
-  567, // 5428 -> k_EMsgClientAuthList_Deprecated
-  868, // 5429 -> k_EMsgClientTicketAuthComplete
-  693, // 5430 -> k_EMsgClientIsLimitedAccount
-  802, // 5431 -> k_EMsgClientRequestAuthList
-  565, // 5432 -> k_EMsgClientAuthList
-  859, // 5433 -> k_EMsgClientStat_Deprecated
-  769, // 5434 -> k_EMsgClientP2PConnectionInfo
-  768, // 5435 -> k_EMsgClientP2PConnectionFailInfo
-  668, // 5438 -> k_EMsgClientGetDepotDecryptionKey
-  669, // 5439 -> k_EMsgClientGetDepotDecryptionKeyResponse
-  625, // 5443 -> k_EMsgClientEnableTestLicense
-  626, // 5444 -> k_EMsgClientEnableTestLicenseResponse
-  618, // 5445 -> k_EMsgClientDisableTestLicense
-  619, // 5446 -> k_EMsgClientDisableTestLicenseResponse
-  589, // 5450 -> k_EMsgClientCheckAppBetaPassword
-  590, // 5451 -> k_EMsgClientCheckAppBetaPasswordResponse
-  869, // 5452 -> k_EMsgClientToGC
-  647, // 5453 -> k_EMsgClientFromGC
-  620, // 5456 -> k_EMsgClientEmailAddrInfo
-  780, // 5457 -> k_EMsgClientPasswordChange3
-  621, // 5458 -> k_EMsgClientEmailChange3
-  788, // 5459 -> k_EMsgClientPersonalQAChange3
-  817, // 5460 -> k_EMsgClientResetForgottenPassword3
-  807, // 5461 -> k_EMsgClientRequestForgottenPasswordEmail3
-  756, // 5463 -> k_EMsgClientNewLoginKey
-  757, // 5464 -> k_EMsgClientNewLoginKeyAccepted_Deprecated
-  715, // 5465 -> k_EMsgClientLogOnWithHash_Deprecated
-  863, // 5466 -> k_EMsgClientStoreUserStats2
-  860, // 5467 -> k_EMsgClientStatsUpdated
-  815, // 5480 -> k_EMsgClientRequestedClientStats_Deprecated
-  857, // 5481 -> k_EMsgClientStat2Int32_Deprecated
-  858, // 5482 -> k_EMsgClientStat2_Deprecated
-  612, // 5485 -> k_EMsgClientDRMDownloadRequest
-  614, // 5486 -> k_EMsgClientDRMDownloadResponse
-  615, // 5487 -> k_EMsgClientDRMFinalResult
-  671, // 5488 -> k_EMsgClientGetFriendsWhoPlayGame
-  672, // 5489 -> k_EMsgClientGetFriendsWhoPlayGameResponse
-  761, // 5490 -> k_EMsgClientOGSBeginSession
-  762, // 5491 -> k_EMsgClientOGSBeginSessionResponse
-  763, // 5492 -> k_EMsgClientOGSEndSession
-  764, // 5493 -> k_EMsgClientOGSEndSessionResponse
-  767, // 5494 -> k_EMsgClientOGSWriteRow
-  680, // 5495 -> k_EMsgClientGetPeerContentInfo
-  681, // 5496 -> k_EMsgClientGetPeerContentInfoResponse
-  855, // 5497 -> k_EMsgClientStartPeerContentServer
-  856, // 5498 -> k_EMsgClientStartPeerContentServerResponse
-  830, // 5500 -> k_EMsgClientServerUnavailable
-  831, // 5501 -> k_EMsgClientServersAvailable
-  796, // 5502 -> k_EMsgClientRegisterAuthTicketWithCM
-  648, // 5503 -> k_EMsgClientGCMsgFailed
-  747, // 5504 -> k_EMsgClientMicroTxnAuthRequest
-  748, // 5505 -> k_EMsgClientMicroTxnAuthorize
-  749, // 5506 -> k_EMsgClientMicroTxnAuthorizeResponse
-  676, // 5508 -> k_EMsgClientGetMicroTxnInfo
-  677, // 5509 -> k_EMsgClientGetMicroTxnInfoResponse
-  617, // 5511 -> k_EMsgClientDeregisterWithServer
-  865, // 5512 -> k_EMsgClientSubscribeToPersonaFeed
-  718, // 5514 -> k_EMsgClientLogon
-  666, // 5515 -> k_EMsgClientGetClientDetails
-  667, // 5516 -> k_EMsgClientGetClientDetailsResponse
-  799, // 5517 -> k_EMsgClientReportOverlayDetourFailure
-  664, // 5518 -> k_EMsgClientGetClientAppList
-  665, // 5519 -> k_EMsgClientGetClientAppListResponse
-  689, // 5520 -> k_EMsgClientInstallClientApp
-  690, // 5521 -> k_EMsgClientInstallClientAppResponse
-  897, // 5522 -> k_EMsgClientUninstallClientApp
-  898, // 5523 -> k_EMsgClientUninstallClientAppResponse
-  841, // 5524 -> k_EMsgClientSetClientAppUpdateState
-  842, // 5525 -> k_EMsgClientSetClientAppUpdateStateResponse
-  804, // 5526 -> k_EMsgClientRequestEncryptedAppTicket
-  805, // 5527 -> k_EMsgClientRequestEncryptedAppTicketResponse
-  911, // 5528 -> k_EMsgClientWalletInfoUpdate
-  707, // 5529 -> k_EMsgClientLBSSetUGC
-  708, // 5530 -> k_EMsgClientLBSSetUGCResponse
-  552, // 5531 -> k_EMsgClientAMGetClanOfficers
-  553, // 5532 -> k_EMsgClientAMGetClanOfficersResponse
-  641, // 5535 -> k_EMsgClientFriendProfileInfo
-  642, // 5536 -> k_EMsgClientFriendProfileInfoResponse
-  825, // 5543 -> k_EMsgClientScreenshotsChanged
-  709, // 5544 -> k_EMsgClientLaunchClientApp
-  710, // 5545 -> k_EMsgClientLaunchClientAppResponse
-  800, // 5549 -> k_EMsgClientRequestAccountData
-  801, // 5550 -> k_EMsgClientRequestAccountDataResponse
-  818, // 5551 -> k_EMsgClientResetForgottenPassword4
-  686, // 5552 -> k_EMsgClientHideFriend
-  645, // 5553 -> k_EMsgClientFriendsGroupsList
-  662, // 5554 -> k_EMsgClientGetClanActivityCounts
-  663, // 5555 -> k_EMsgClientGetClanActivityCountsResponse
-  766, // 5556 -> k_EMsgClientOGSReportString
-  765, // 5557 -> k_EMsgClientOGSReportBug
-  826, // 5558 -> k_EMsgClientSentLogs
-  719, // 5559 -> k_EMsgClientLogonGameServer
-  65, // 5560 -> k_EMsgAMClientCreateFriendsGroup
-  66, // 5561 -> k_EMsgAMClientCreateFriendsGroupResponse
-  67, // 5562 -> k_EMsgAMClientDeleteFriendsGroup
-  68, // 5563 -> k_EMsgAMClientDeleteFriendsGroupResponse
-  70, // 5564 -> k_EMsgAMClientManageFriendsGroup
-  71, // 5565 -> k_EMsgAMClientManageFriendsGroupResponse
-  59, // 5566 -> k_EMsgAMClientAddFriendToGroup
-  60, // 5567 -> k_EMsgAMClientAddFriendToGroupResponse
-  74, // 5568 -> k_EMsgAMClientRemoveFriendFromGroup
-  75, // 5569 -> k_EMsgAMClientRemoveFriendFromGroupResponse
-  554, // 5570 -> k_EMsgClientAMGetPersonaNameHistory
-  555, // 5571 -> k_EMsgClientAMGetPersonaNameHistoryResponse
-  809, // 5572 -> k_EMsgClientRequestFreeLicense
-  810, // 5573 -> k_EMsgClientRequestFreeLicenseResponse
-  613, // 5574 -> k_EMsgClientDRMDownloadRequestWithCrashData
-  566, // 5575 -> k_EMsgClientAuthListAck
-  694, // 5576 -> k_EMsgClientItemAnnouncements
-  812, // 5577 -> k_EMsgClientRequestItemAnnouncements
-  639, // 5578 -> k_EMsgClientFriendMsgEchoToSender
-  594, // 5582 -> k_EMsgClientCommentNotifications
-  803, // 5583 -> k_EMsgClientRequestCommentNotifications
-  786, // 5584 -> k_EMsgClientPersonaChangeResponse
-  814, // 5585 -> k_EMsgClientRequestWebAPIAuthenticateUserNonce_Deprecated
-  813, // 5586 -> k_EMsgClientRequestWebAPIAuthenticateUserNonceResponse_Deprecated
-  791, // 5587 -> k_EMsgClientPlayerNicknameList
-  77, // 5588 -> k_EMsgAMClientSetPlayerNickname
-  78, // 5589 -> k_EMsgAMClientSetPlayerNicknameResponse
-  678, // 5592 -> k_EMsgClientGetNumberOfCurrentPlayersDP
-  679, // 5593 -> k_EMsgClientGetNumberOfCurrentPlayersDPResponse
-  834, // 5594 -> k_EMsgClientServiceMethodLegacy
-  835, // 5595 -> k_EMsgClientServiceMethodLegacyResponse
-  644, // 5596 -> k_EMsgClientFriendUserStatusPublished
-  601, // 5597 -> k_EMsgClientCurrentUIMode
-  908, // 5598 -> k_EMsgClientVanityURLChangedNotification
-  905, // 5599 -> k_EMsgClientUserNotifications
-  492, // 5600 -> k_EMsgBaseDFS
-  919, // 5601 -> k_EMsgDFSGetFile
-  921, // 5602 -> k_EMsgDFSInstallLocalFile
-  917, // 5603 -> k_EMsgDFSConnection
-  918, // 5604 -> k_EMsgDFSConnectionReply
-  602, // 5605 -> k_EMsgClientDFSAuthenticateRequest
-  603, // 5606 -> k_EMsgClientDFSAuthenticateResponse
-  605, // 5607 -> k_EMsgClientDFSEndSession
-  922, // 5608 -> k_EMsgDFSPurgeFile
-  927, // 5609 -> k_EMsgDFSRouteFile
-  920, // 5610 -> k_EMsgDFSGetFileFromServer
-  916, // 5611 -> k_EMsgDFSAcceptedResponse
-  924, // 5612 -> k_EMsgDFSRequestPingback
-  923, // 5613 -> k_EMsgDFSRecvTransmitFile
-  929, // 5614 -> k_EMsgDFSSendTransmitFile
-  925, // 5615 -> k_EMsgDFSRequestPingback2
-  926, // 5616 -> k_EMsgDFSResponsePingback2
-  604, // 5617 -> k_EMsgClientDFSDownloadStatus
-  930, // 5618 -> k_EMsgDFSStartTransfer
-  931, // 5619 -> k_EMsgDFSTransferComplete
-  928, // 5620 -> k_EMsgDFSRouteFileResponse
-  752, // 5621 -> k_EMsgClientNetworkingCertRequest
-  753, // 5622 -> k_EMsgClientNetworkingCertRequestResponse
-  573, // 5623 -> k_EMsgClientChallengeRequest
-  574, // 5624 -> k_EMsgClientChallengeResponse
-  476, // 5625 -> k_EMsgBadgeCraftedNotification
-  754, // 5626 -> k_EMsgClientNetworkingMobileCertRequest
-  755, // 5627 -> k_EMsgClientNetworkingMobileCertRequestResponse
-  503, // 5800 -> k_EMsgBaseMDS
-  1188, // 5812 -> k_EMsgMDSGetDepotDecryptionKey
-  1189, // 5813 -> k_EMsgMDSGetDepotDecryptionKeyResponse
-  1187, // 5827 -> k_EMsgMDSContentServerConfigRequest
-  1186, // 5828 -> k_EMsgMDSContentServerConfig
-  1190, // 5829 -> k_EMsgMDSGetDepotManifest
-  1192, // 5830 -> k_EMsgMDSGetDepotManifestResponse
-  1191, // 5831 -> k_EMsgMDSGetDepotManifestChunk
-  1195, // 5844 -> k_EMsgMDSToCSFlushChunk
-  1193, // 5847 -> k_EMsgMDSMigrateChunk
-  1194, // 5848 -> k_EMsgMDSMigrateChunkResponse
-  1196, // 5849 -> k_EMsgMDSToCSFlushManifest
-  540, // 6200 -> k_EMsgCSBase
-  541, // 6201 -> k_EMsgCSPing
-  542, // 6202 -> k_EMsgCSPingResponse
-  1122, // 6400 -> k_EMsgGMSBase
-  1124, // 6401 -> k_EMsgGMSGameServerReplicate
-  649, // 6403 -> k_EMsgClientGMSServerQuery
-  1123, // 6404 -> k_EMsgGMSClientServerQueryResponse
-  125, // 6405 -> k_EMsgAMGMSGameServerUpdate
-  124, // 6406 -> k_EMsgAMGMSGameServerRemove
-  1153, // 6407 -> k_EMsgGameServerOutOfDate
-  1197, // 6600 -> k_EMsgMMSBase
-  720, // 6601 -> k_EMsgClientMMSCreateLobby
-  721, // 6602 -> k_EMsgClientMMSCreateLobbyResponse
-  730, // 6603 -> k_EMsgClientMMSJoinLobby
-  731, // 6604 -> k_EMsgClientMMSJoinLobbyResponse
-  732, // 6605 -> k_EMsgClientMMSLeaveLobby
-  733, // 6606 -> k_EMsgClientMMSLeaveLobbyResponse
-  725, // 6607 -> k_EMsgClientMMSGetLobbyList
-  726, // 6608 -> k_EMsgClientMMSGetLobbyListResponse
-  738, // 6609 -> k_EMsgClientMMSSetLobbyData
-  739, // 6610 -> k_EMsgClientMMSSetLobbyDataResponse
-  724, // 6611 -> k_EMsgClientMMSGetLobbyData
-  735, // 6612 -> k_EMsgClientMMSLobbyData
-  737, // 6613 -> k_EMsgClientMMSSendLobbyChatMsg
-  734, // 6614 -> k_EMsgClientMMSLobbyChatMsg
-  742, // 6615 -> k_EMsgClientMMSSetLobbyOwner
-  743, // 6616 -> k_EMsgClientMMSSetLobbyOwnerResponse
-  740, // 6617 -> k_EMsgClientMMSSetLobbyGameServer
-  736, // 6618 -> k_EMsgClientMMSLobbyGameServerSet
-  745, // 6619 -> k_EMsgClientMMSUserJoinedLobby
-  746, // 6620 -> k_EMsgClientMMSUserLeftLobby
-  729, // 6621 -> k_EMsgClientMMSInviteToLobby
-  722, // 6622 -> k_EMsgClientMMSFlushFrenemyListCache
-  723, // 6623 -> k_EMsgClientMMSFlushFrenemyListCacheResponse
-  741, // 6624 -> k_EMsgClientMMSSetLobbyLinked
-  744, // 6625 -> k_EMsgClientMMSSetRatelimitPolicyOnClient
-  727, // 6626 -> k_EMsgClientMMSGetLobbyStatus
-  728, // 6627 -> k_EMsgClientMMSGetLobbyStatusResponse
-  1198, // 6628 -> k_EMsgMMSGetLobbyList
-  1199, // 6629 -> k_EMsgMMSGetLobbyListResponse
-  1200, // 6630 -> k_EMsgMMSRoutingOverride
-  1154, // 6631 -> k_EMsgGameServerPolicyUpdate
-  1204, // 6800 -> k_EMsgNonStdMsgBase
-  1209, // 6801 -> k_EMsgNonStdMsgMemcached
-  1208, // 6802 -> k_EMsgNonStdMsgHTTPServer
-  1207, // 6803 -> k_EMsgNonStdMsgHTTPClient
-  1216, // 6804 -> k_EMsgNonStdMsgWGResponse
-  1210, // 6805 -> k_EMsgNonStdMsgPHPSimulator
-  1205, // 6806 -> k_EMsgNonStdMsgChase
-  1206, // 6807 -> k_EMsgNonStdMsgDFSTransfer
-  1214, // 6808 -> k_EMsgNonStdMsgTests
-  1215, // 6809 -> k_EMsgNonStdMsgUMQpipeAAPL
-  1, // 6810 -> k_EMSgNonStdMsgSyslog
-  1213, // 6812 -> k_EMsgNonStdMsgSteam2Emulator
-  1211, // 6813 -> k_EMsgNonStdMsgRTMPServer
-  1217, // 6814 -> k_EMsgNonStdMsgWebSocket
-  1212, // 6815 -> k_EMsgNonStdMsgRedis
-  1352, // 7000 -> k_EMsgUDSBase
-  888, // 7001 -> k_EMsgClientUDSP2PSessionStarted
-  887, // 7002 -> k_EMsgClientUDSP2PSessionEnded
-  1355, // 7003 -> k_EMsgUDSRenderUserAuth
-  1356, // 7004 -> k_EMsgUDSRenderUserAuthResponse
-  691, // 7005 -> k_EMsgClientInviteToGame
-  1353, // 7006 -> k_EMsgUDSHasSession
-  1354, // 7007 -> k_EMsgUDSHasSessionResponse
-  1201, // 7100 -> k_EMsgMPASBase
-  1202, // 7101 -> k_EMsgMPASVacBanReset
-  1167, // 7200 -> k_EMsgKGSBase
-  1326, // 7300 -> k_EMsgUCMBase
-  870, // 7301 -> k_EMsgClientUCMAddScreenshot
-  871, // 7302 -> k_EMsgClientUCMAddScreenshotResponse
-  1347, // 7307 -> k_EMsgUCMResetCommunityContent
-  1348, // 7308 -> k_EMsgUCMResetCommunityContentResponse
-  874, // 7309 -> k_EMsgClientUCMDeleteScreenshot
-  875, // 7310 -> k_EMsgClientUCMDeleteScreenshotResponse
-  880, // 7311 -> k_EMsgClientUCMPublishFile
-  881, // 7312 -> k_EMsgClientUCMPublishFileResponse
-  872, // 7315 -> k_EMsgClientUCMDeletePublishedFile
-  873, // 7316 -> k_EMsgClientUCMDeletePublishedFileResponse
-  885, // 7325 -> k_EMsgClientUCMUpdatePublishedFile
-  886, // 7326 -> k_EMsgClientUCMUpdatePublishedFileResponse
-  1349, // 7327 -> k_EMsgUCMUpdatePublishedFile
-  1350, // 7328 -> k_EMsgUCMUpdatePublishedFileResponse
-  1351, // 7331 -> k_EMsgUCMUpdatePublishedFileStat
-  1345, // 7337 -> k_EMsgUCMReloadPublishedFile
-  1346, // 7338 -> k_EMsgUCMReloadUserFileListCaches
-  1342, // 7339 -> k_EMsgUCMPublishedFileReported
-  1338, // 7341 -> k_EMsgUCMPublishedFilePreviewAdd
-  1339, // 7342 -> k_EMsgUCMPublishedFilePreviewAddResponse
-  1340, // 7343 -> k_EMsgUCMPublishedFilePreviewRemove
-  1341, // 7344 -> k_EMsgUCMPublishedFilePreviewRemoveResponse
-  1343, // 7349 -> k_EMsgUCMPublishedFileSubscribed
-  1344, // 7350 -> k_EMsgUCMPublishedFileUnsubscribed
-  1330, // 7351 -> k_EMsgUCMPublishFile
-  1331, // 7352 -> k_EMsgUCMPublishFileResponse
-  1332, // 7353 -> k_EMsgUCMPublishedFileChildAdd
-  1333, // 7354 -> k_EMsgUCMPublishedFileChildAddResponse
-  1334, // 7355 -> k_EMsgUCMPublishedFileChildRemove
-  1335, // 7356 -> k_EMsgUCMPublishedFileChildRemoveResponse
-  1337, // 7359 -> k_EMsgUCMPublishedFileParentChanged
-  883, // 7364 -> k_EMsgClientUCMSetUserPublishedFileAction
-  884, // 7365 -> k_EMsgClientUCMSetUserPublishedFileActionResponse
-  876, // 7366 -> k_EMsgClientUCMEnumeratePublishedFilesByUserAction
-  877, // 7367 -> k_EMsgClientUCMEnumeratePublishedFilesByUserActionResponse
-  1328, // 7369 -> k_EMsgUCMGetUserSubscribedFiles
-  1329, // 7370 -> k_EMsgUCMGetUserSubscribedFilesResponse
-  1327, // 7371 -> k_EMsgUCMFixStatsPublishedFile
-  878, // 7378 -> k_EMsgClientUCMEnumerateUserSubscribedFilesWithUpdates
-  879, // 7379 -> k_EMsgClientUCMEnumerateUserSubscribedFilesWithUpdatesResponse
-  1336, // 7380 -> k_EMsgUCMPublishedFileContentUpdated
-  882, // 7381 -> k_EMsgClientUCMPublishedFileUpdated
-  1059, // 7500 -> k_EMsgFSBase
-  824, // 7501 -> k_EMsgClientRichPresenceUpload
-  823, // 7502 -> k_EMsgClientRichPresenceRequest
-  822, // 7503 -> k_EMsgClientRichPresenceInfo
-  1067, // 7504 -> k_EMsgFSRichPresenceRequest
-  1068, // 7505 -> k_EMsgFSRichPresenceResponse
-  1062, // 7506 -> k_EMsgFSComputeFrenematrix
-  1063, // 7507 -> k_EMsgFSComputeFrenematrixResponse
-  1066, // 7508 -> k_EMsgFSPlayStatusNotification
-  1057, // 7510 -> k_EMsgFSAddOrRemoveFollower
-  1058, // 7511 -> k_EMsgFSAddOrRemoveFollowerResponse
-  1069, // 7512 -> k_EMsgFSUpdateFollowingList
-  1060, // 7513 -> k_EMsgFSCommentNotification
-  1061, // 7514 -> k_EMsgFSCommentNotificationViewed
-  629, // 7515 -> k_EMsgClientFSGetFollowerCount
-  630, // 7516 -> k_EMsgClientFSGetFollowerCountResponse
-  633, // 7517 -> k_EMsgClientFSGetIsFollowing
-  634, // 7518 -> k_EMsgClientFSGetIsFollowingResponse
-  627, // 7519 -> k_EMsgClientFSEnumerateFollowingList
-  628, // 7520 -> k_EMsgClientFSEnumerateFollowingListResponse
-  1064, // 7521 -> k_EMsgFSGetPendingNotificationCount
-  1065, // 7522 -> k_EMsgFSGetPendingNotificationCountResponse
-  586, // 7523 -> k_EMsgClientChatOfflineMessageNotification
-  587, // 7524 -> k_EMsgClientChatRequestOfflineMessageCount
-  580, // 7525 -> k_EMsgClientChatGetFriendMessageHistory
-  582, // 7526 -> k_EMsgClientChatGetFriendMessageHistoryResponse
-  581, // 7527 -> k_EMsgClientChatGetFriendMessageHistoryForOfflineMessages
-  631, // 7528 -> k_EMsgClientFSGetFriendsSteamLevels
-  632, // 7529 -> k_EMsgClientFSGetFriendsSteamLevelsResponse
-  282, // 7530 -> k_EMsgAMRequestFriendData
-  952, // 7600 -> k_EMsgDRMRange2
-  523, // 7601 -> k_EMsgCEGVersionSetEnableDisableResponse
-  520, // 7602 -> k_EMsgCEGPropStatusDRMSRequest
-  521, // 7603 -> k_EMsgCEGPropStatusDRMSResponse
-  524, // 7604 -> k_EMsgCEGWhackFailureReportRequest
-  525, // 7605 -> k_EMsgCEGWhackFailureReportResponse
-  955, // 7606 -> k_EMsgDRMSFetchVersionSet
-  956, // 7607 -> k_EMsgDRMSFetchVersionSetResponse
-  1001, // 7700 -> k_EMsgEconBase
-  1010, // 7701 -> k_EMsgEconTrading_InitiateTradeRequest
-  1009, // 7702 -> k_EMsgEconTrading_InitiateTradeProposed
-  1011, // 7703 -> k_EMsgEconTrading_InitiateTradeResponse
-  1012, // 7704 -> k_EMsgEconTrading_InitiateTradeResult
-  1013, // 7705 -> k_EMsgEconTrading_StartSession
-  1008, // 7706 -> k_EMsgEconTrading_CancelTradeRequest
-  1004, // 7707 -> k_EMsgEconFlushInventoryCache
-  1005, // 7708 -> k_EMsgEconFlushInventoryCacheResponse
-  1002, // 7711 -> k_EMsgEconCDKeyProcessTransaction
-  1003, // 7712 -> k_EMsgEconCDKeyProcessTransactionResponse
-  1006, // 7713 -> k_EMsgEconGetErrorLogs
-  1007, // 7714 -> k_EMsgEconGetErrorLogsResponse
-  1249, // 7800 -> k_EMsgRMRange
-  1252, // 7801 -> k_EMsgRMTestVerisignOTPResponse
-  1245, // 7803 -> k_EMsgRMDeleteMemcachedKeys
-  1250, // 7804 -> k_EMsgRMRemoteInvoke
-  475, // 7805 -> k_EMsgBadLoginIPList
-  1246, // 7806 -> k_EMsgRMMsgTraceAddOrUpdateTrigger
-  1248, // 7807 -> k_EMsgRMMsgTraceRemoveTriggers
-  1247, // 7808 -> k_EMsgRMMsgTraceEvent
-  1381, // 7900 -> k_EMsgUGSBase
-  895, // 7901 -> k_EMsgClientUGSGetGlobalStats
-  896, // 7902 -> k_EMsgClientUGSGetGlobalStatsResponse
-  1313, // 8000 -> k_EMsgStoreBase
-  1388, // 8100 -> k_EMsgUMQBase
-  1427, // 8200 -> k_EMsgWorkshopBase
-  1414, // 8300 -> k_EMsgWebAPIBase
-  1422, // 8301 -> k_EMsgWebAPIValidateOAuth2TokenResponse
-  1419, // 8303 -> k_EMsgWebAPIRegisterGCInterfaces
-  1415, // 8304 -> k_EMsgWebAPIInvalidateOAuthClientCache
-  1416, // 8305 -> k_EMsgWebAPIInvalidateOAuthTokenCache
-  1420, // 8306 -> k_EMsgWebAPISetSecrets
-  474, // 8400 -> k_EMsgBackpackBase
-  472, // 8401 -> k_EMsgBackpackAddToCurrency
-  473, // 8402 -> k_EMsgBackpackAddToCurrencyResponse
-  533, // 8500 -> k_EMsgCREBase
-  536, // 8503 -> k_EMsgCREItemVoteSummary
-  537, // 8504 -> k_EMsgCREItemVoteSummaryResponse
-  538, // 8507 -> k_EMsgCREUpdateUserPublishedItemVote
-  539, // 8508 -> k_EMsgCREUpdateUserPublishedItemVoteResponse
-  534, // 8509 -> k_EMsgCREGetUserPublishedItemVoteDetails
-  535, // 8510 -> k_EMsgCREGetUserPublishedItemVoteDetailsResponse
-  1295, // 8600 -> k_EMsgSecretsBase
-  1296, // 8601 -> k_EMsgSecretsCredentialPairResponse
-  515, // 8700 -> k_EMsgBoxMonitorBase
-  517, // 8701 -> k_EMsgBoxMonitorReportResponse
-  1226, // 8900 -> k_EMsgPICSBase
-  773, // 8901 -> k_EMsgClientPICSChangesSinceRequest
-  774, // 8902 -> k_EMsgClientPICSChangesSinceResponse
-  777, // 8903 -> k_EMsgClientPICSProductInfoRequest
-  778, // 8904 -> k_EMsgClientPICSProductInfoResponse
-  771, // 8905 -> k_EMsgClientPICSAccessTokenRequest
-  772, // 8906 -> k_EMsgClientPICSAccessTokenResponse
-  775, // 8907 -> k_EMsgClientPICSPrivateBetaRequest
-  776, // 8908 -> k_EMsgClientPICSPrivateBetaResponse
-  1423, // 9000 -> k_EMsgWorkerProcess
-  1425, // 9001 -> k_EMsgWorkerProcessPingResponse
-  1426, // 9002 -> k_EMsgWorkerProcessShutdown
-  963, // 9100 -> k_EMsgDRMWorkerProcess
-  969, // 9101 -> k_EMsgDRMWorkerProcessDRMAndSignResponse
-  990, // 9102 -> k_EMsgDRMWorkerProcessSteamworksInfoRequest
-  991, // 9103 -> k_EMsgDRMWorkerProcessSteamworksInfoResponse
-  980, // 9104 -> k_EMsgDRMWorkerProcessInstallDRMDLLRequest
-  981, // 9105 -> k_EMsgDRMWorkerProcessInstallDRMDLLResponse
-  984, // 9106 -> k_EMsgDRMWorkerProcessSecretIdStringRequest
-  985, // 9107 -> k_EMsgDRMWorkerProcessSecretIdStringResponse
-  982, // 9110 -> k_EMsgDRMWorkerProcessInstallProcessedFilesRequest
-  983, // 9111 -> k_EMsgDRMWorkerProcessInstallProcessedFilesResponse
-  974, // 9112 -> k_EMsgDRMWorkerProcessExamineBlobRequest
-  975, // 9113 -> k_EMsgDRMWorkerProcessExamineBlobResponse
-  970, // 9114 -> k_EMsgDRMWorkerProcessDescribeSecretRequest
-  971, // 9115 -> k_EMsgDRMWorkerProcessDescribeSecretResponse
-  966, // 9116 -> k_EMsgDRMWorkerProcessBackfillOriginalRequest
-  967, // 9117 -> k_EMsgDRMWorkerProcessBackfillOriginalResponse
-  994, // 9118 -> k_EMsgDRMWorkerProcessValidateDRMDLLRequest
-  995, // 9119 -> k_EMsgDRMWorkerProcessValidateDRMDLLResponse
-  996, // 9120 -> k_EMsgDRMWorkerProcessValidateFileRequest
-  997, // 9121 -> k_EMsgDRMWorkerProcessValidateFileResponse
-  988, // 9122 -> k_EMsgDRMWorkerProcessSplitAndInstallRequest
-  989, // 9123 -> k_EMsgDRMWorkerProcessSplitAndInstallResponse
-  976, // 9124 -> k_EMsgDRMWorkerProcessGetBlobRequest
-  977, // 9125 -> k_EMsgDRMWorkerProcessGetBlobResponse
-  972, // 9126 -> k_EMsgDRMWorkerProcessEvaluateCrashRequest
-  973, // 9127 -> k_EMsgDRMWorkerProcessEvaluateCrashResponse
-  964, // 9128 -> k_EMsgDRMWorkerProcessAnalyzeFileRequest
-  965, // 9129 -> k_EMsgDRMWorkerProcessAnalyzeFileResponse
-  992, // 9130 -> k_EMsgDRMWorkerProcessUnpackBlobRequest
-  993, // 9131 -> k_EMsgDRMWorkerProcessUnpackBlobResponse
-  978, // 9132 -> k_EMsgDRMWorkerProcessInstallAllRequest
-  979, // 9133 -> k_EMsgDRMWorkerProcessInstallAllResponse
-  986, // 9134 -> k_EMsgDRMWorkerProcessSignFile
-  987, // 9135 -> k_EMsgDRMWorkerProcessSignFileResponse
-  1319, // 9200 -> k_EMsgTestWorkerProcess
-  1321, // 9201 -> k_EMsgTestWorkerProcessLoadUnloadModuleResponse
-  1322, // 9202 -> k_EMsgTestWorkerProcessServiceModuleCallRequest
-  1323, // 9203 -> k_EMsgTestWorkerProcessServiceModuleCallResponse
-  1243, // 9300 -> k_EMsgQuestServerBase
-  670, // 9330 -> k_EMsgClientGetEmoticonList
-  622, // 9331 -> k_EMsgClientEmoticonList
-  1289, // 9400 -> k_EMsgSLCBase
-  846, // 9406 -> k_EMsgClientSharedLibraryStopPlaying
-  1266, // 9500 -> k_EMsgRemoteClientBase
-  1260, // 9501 -> k_EMsgRemoteClientAuthResponse_OBSOLETE
-  1257, // 9502 -> k_EMsgRemoteClientAppStatus
-  1277, // 9503 -> k_EMsgRemoteClientStartStream
-  1278, // 9504 -> k_EMsgRemoteClientStartStreamResponse
-  1273, // 9505 -> k_EMsgRemoteClientPing
-  1274, // 9506 -> k_EMsgRemoteClientPingResponse
-  899, // 9507 -> k_EMsgClientUnlockH264
-  900, // 9508 -> k_EMsgClientUnlockH264Response
-  1254, // 9509 -> k_EMsgRemoteClientAcceptEULA
-  1269, // 9510 -> k_EMsgRemoteClientGetControllerConfig
-  1270, // 9511 -> k_EMsgRemoteClientGetControllerConfigResponse
-  1281, // 9512 -> k_EMsgRemoteClientStreamingEnabled
-  902, // 9513 -> k_EMsgClientUnlockHEVC_OBSOLETE
-  901, // 9514 -> k_EMsgClientUnlockHEVCResponse_OBSOLETE
-  1279, // 9515 -> k_EMsgRemoteClientStatusRequest
-  1280, // 9516 -> k_EMsgRemoteClientStatusResponse
-  1264, // 9517 -> k_EMsgRemoteClientAuthorizationRequest
-  1265, // 9518 -> k_EMsgRemoteClientAuthorizationResponse
-  1262, // 9519 -> k_EMsgRemoteClientAuthorizationCancelRequest
-  1263, // 9520 -> k_EMsgRemoteClientAuthorizationConfirmed
-  1275, // 9521 -> k_EMsgRemoteClientProofRequest
-  1276, // 9522 -> k_EMsgRemoteClientProofResponse
-  1282, // 9523 -> k_EMsgRemoteClientWifiAPStatus
-  1271, // 9524 -> k_EMsgRemoteClientPairWifiAP
-  1272, // 9525 -> k_EMsgRemoteClientPairWifiAPResponse
-  1268, // 9526 -> k_EMsgRemoteClientDownloadScheduleChanged
-  1267, // 9527 -> k_EMsgRemoteClientDownloadItemScheduleChanged
-  1258, // 9528 -> k_EMsgRemoteClientAppUpdateStopped
-  1255, // 9529 -> k_EMsgRemoteClientAppDownloadStats
-  1259, // 9530 -> k_EMsgRemoteClientAppUploadStats
-  1256, // 9531 -> k_EMsgRemoteClientAppInfoUpdateComplete
-  1431, // 9532 -> k_eMsgRemoteClientDownloadsManagement
-  1430, // 9533 -> k_eMsgRemoteClientDownloadingAppID
-  1432, // 9534 -> k_eMsgRemoteClientPeerContentServerChanged
-  1433, // 9535 -> k_eMsgRemoteClientRestrictAutoUpdatesChanged
-  1434, // 9536 -> k_eMsgRemoteClientSuspendLanPeerContent
-  1435, // 9537 -> k_eMsgRemoteClientUpdateDownloadsController
-  1253, // 9538 -> k_EMsgRemoteClientAcceptAllEULAs
-  595, // 9600 -> k_EMsgClientConcurrentSessionsBase
-  696, // 9601 -> k_EMsgClientKickPlayingSession
-  568, // 9700 -> k_EMsgClientBroadcastBase
-  570, // 9701 -> k_EMsgClientBroadcastFrames
-  569, // 9702 -> k_EMsgClientBroadcastDisconnect
-  572, // 9704 -> k_EMsgClientBroadcastUploadConfig
-  491, // 9800 -> k_EMsgBaseClient3
-  910, // 9801 -> k_EMsgClientVoiceCallPreAuthorizeResponse
-  828, // 9802 -> k_EMsgClientServerTimestampRequest
-  829, // 9803 -> k_EMsgClientServerTimestampResponse
-  1301, // 9804 -> k_EMsgServiceMethodCallFromClientNonAuthed
-  685, // 9805 -> k_EMsgClientHello
-  623, // 9806 -> k_EMsgClientEnableOrDisableDownloads
-  624, // 9807 -> k_EMsgClientEnableOrDisableDownloadsResponse
-  635, // 9808 -> k_EMsgClientFeatureGroupInfo
-  697, // 9900 -> k_EMsgClientLANP2PBase
-  700, // 9901 -> k_EMsgClientLANP2PRequestChunkResponse
-  782, // 9902 -> k_EMsgClientPeerChunkRequest
-  783, // 9903 -> k_EMsgClientPeerChunkResponse
-  698, // 9999 -> k_EMsgClientLANP2PMax
-  514, // 10000 -> k_EMsgBaseWatchdogServer
-  847, // 10100 -> k_EMsgClientSiteLicenseBase
-  848, // 10101 -> k_EMsgClientSiteLicenseCheckout
-  849, // 10102 -> k_EMsgClientSiteLicenseCheckoutResponse
-  850, // 10103 -> k_EMsgClientSiteLicenseGetAvailableSeats
-  851, // 10104 -> k_EMsgClientSiteLicenseGetAvailableSeatsResponse
-  852, // 10105 -> k_EMsgClientSiteLicenseGetContentCacheInfo
-  853, // 10106 -> k_EMsgClientSiteLicenseGetContentCacheInfoResponse
-  488, // 12000 -> k_EMsgBaseChatServer
-  550, // 12001 -> k_EMsgChatServerGetPendingNotificationCountResponse
-  508, // 12100 -> k_EMsgBaseSecretServer
-  513, // 12200 -> k_EMsgBaseWG
-  1410, // 12201 -> k_EMsgWGConnectionValidateUserToken
-  1411, // 12202 -> k_EMsgWGConnectionValidateUserTokenResponse
-  1407, // 12203 -> k_EMsgWGConnectionLegacyWGRequest
-  1408, // 12204 -> k_EMsgWGConnectionLegacyWGResponse
-  784, // 12300 -> k_EMsgClientPendingGameLaunch
-  785, // 12301 -> k_EMsgClientPendingGameLaunchResponse
-};
-
-const std::string& EMsg_Name(
-    EMsg value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EMsg_entries,
-          EMsg_entries_by_number,
-          1408, EMsg_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EMsg_entries,
-      EMsg_entries_by_number,
-      1408, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EMsg_strings[idx].get();
-}
-bool EMsg_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EMsg* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EMsg_entries, 1436, name, &int_value);
-  if (success) {
-    *value = static_cast<EMsg>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EClientPersonaStateFlag_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_5fclientserver_2eproto);
+  return file_level_enum_descriptors_enums_5fclientserver_2eproto[1];
 }
 bool EClientPersonaStateFlag_IsValid(int value) {
   switch (value) {
@@ -5764,79 +2814,9 @@ bool EClientPersonaStateFlag_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EClientPersonaStateFlag_strings[13] = {};
-
-static const char EClientPersonaStateFlag_names[] =
-  "k_EClientPersonaStateFlagBroadcast"
-  "k_EClientPersonaStateFlagClanData"
-  "k_EClientPersonaStateFlagLastSeen"
-  "k_EClientPersonaStateFlagPlayerName"
-  "k_EClientPersonaStateFlagPresence"
-  "k_EClientPersonaStateFlagQueryPort"
-  "k_EClientPersonaStateFlagRichPresence"
-  "k_EClientPersonaStateFlagSourceID"
-  "k_EClientPersonaStateFlagStatus"
-  "k_EClientPersonaStateFlagUserClanRank"
-  "k_EClientPersonaStateFlagWatching"
-  "k_EClientPersonaStateGameDataBlob"
-  "k_EClientPersonaStateGameExtraInfo";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EClientPersonaStateFlag_entries[] = {
-  { {EClientPersonaStateFlag_names + 0, 34}, 8192 },
-  { {EClientPersonaStateFlag_names + 34, 33}, 1024 },
-  { {EClientPersonaStateFlag_names + 67, 33}, 64 },
-  { {EClientPersonaStateFlag_names + 100, 35}, 2 },
-  { {EClientPersonaStateFlag_names + 135, 33}, 16 },
-  { {EClientPersonaStateFlag_names + 168, 34}, 4 },
-  { {EClientPersonaStateFlag_names + 202, 37}, 4096 },
-  { {EClientPersonaStateFlag_names + 239, 33}, 8 },
-  { {EClientPersonaStateFlag_names + 272, 31}, 1 },
-  { {EClientPersonaStateFlag_names + 303, 37}, 128 },
-  { {EClientPersonaStateFlag_names + 340, 33}, 16384 },
-  { {EClientPersonaStateFlag_names + 373, 33}, 512 },
-  { {EClientPersonaStateFlag_names + 406, 34}, 256 },
-};
-
-static const int EClientPersonaStateFlag_entries_by_number[] = {
-  8, // 1 -> k_EClientPersonaStateFlagStatus
-  3, // 2 -> k_EClientPersonaStateFlagPlayerName
-  5, // 4 -> k_EClientPersonaStateFlagQueryPort
-  7, // 8 -> k_EClientPersonaStateFlagSourceID
-  4, // 16 -> k_EClientPersonaStateFlagPresence
-  2, // 64 -> k_EClientPersonaStateFlagLastSeen
-  9, // 128 -> k_EClientPersonaStateFlagUserClanRank
-  12, // 256 -> k_EClientPersonaStateGameExtraInfo
-  11, // 512 -> k_EClientPersonaStateGameDataBlob
-  1, // 1024 -> k_EClientPersonaStateFlagClanData
-  6, // 4096 -> k_EClientPersonaStateFlagRichPresence
-  0, // 8192 -> k_EClientPersonaStateFlagBroadcast
-  10, // 16384 -> k_EClientPersonaStateFlagWatching
-};
-
-const std::string& EClientPersonaStateFlag_Name(
-    EClientPersonaStateFlag value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EClientPersonaStateFlag_entries,
-          EClientPersonaStateFlag_entries_by_number,
-          13, EClientPersonaStateFlag_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EClientPersonaStateFlag_entries,
-      EClientPersonaStateFlag_entries_by_number,
-      13, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EClientPersonaStateFlag_strings[idx].get();
-}
-bool EClientPersonaStateFlag_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EClientPersonaStateFlag* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EClientPersonaStateFlag_entries, 13, name, &int_value);
-  if (success) {
-    *value = static_cast<EClientPersonaStateFlag>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EMsgClanAccountFlags_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_5fclientserver_2eproto);
+  return file_level_enum_descriptors_enums_5fclientserver_2eproto[2];
 }
 bool EMsgClanAccountFlags_IsValid(int value) {
   switch (value) {
@@ -5851,55 +2831,9 @@ bool EMsgClanAccountFlags_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EMsgClanAccountFlags_strings[5] = {};
-
-static const char EMsgClanAccountFlags_names[] =
-  "k_EMsgClanAccountFlagDisabled"
-  "k_EMsgClanAccountFlagLarge"
-  "k_EMsgClanAccountFlagLocked"
-  "k_EMsgClanAccountFlagOGG"
-  "k_EMsgClanAccountFlagPublic";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EMsgClanAccountFlags_entries[] = {
-  { {EMsgClanAccountFlags_names + 0, 29}, 8 },
-  { {EMsgClanAccountFlags_names + 29, 26}, 2 },
-  { {EMsgClanAccountFlags_names + 55, 27}, 4 },
-  { {EMsgClanAccountFlags_names + 82, 24}, 16 },
-  { {EMsgClanAccountFlags_names + 106, 27}, 1 },
-};
-
-static const int EMsgClanAccountFlags_entries_by_number[] = {
-  4, // 1 -> k_EMsgClanAccountFlagPublic
-  1, // 2 -> k_EMsgClanAccountFlagLarge
-  2, // 4 -> k_EMsgClanAccountFlagLocked
-  0, // 8 -> k_EMsgClanAccountFlagDisabled
-  3, // 16 -> k_EMsgClanAccountFlagOGG
-};
-
-const std::string& EMsgClanAccountFlags_Name(
-    EMsgClanAccountFlags value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EMsgClanAccountFlags_entries,
-          EMsgClanAccountFlags_entries_by_number,
-          5, EMsgClanAccountFlags_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EMsgClanAccountFlags_entries,
-      EMsgClanAccountFlags_entries_by_number,
-      5, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EMsgClanAccountFlags_strings[idx].get();
-}
-bool EMsgClanAccountFlags_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EMsgClanAccountFlags* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EMsgClanAccountFlags_entries, 5, name, &int_value);
-  if (success) {
-    *value = static_cast<EMsgClanAccountFlags>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESteamReviewScore_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_5fclientserver_2eproto);
+  return file_level_enum_descriptors_enums_5fclientserver_2eproto[3];
 }
 bool ESteamReviewScore_IsValid(int value) {
   switch (value) {
@@ -5919,70 +2853,9 @@ bool ESteamReviewScore_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ESteamReviewScore_strings[10] = {};
-
-static const char ESteamReviewScore_names[] =
-  "k_ESteamReviewScore_Mixed"
-  "k_ESteamReviewScore_MostlyNegative"
-  "k_ESteamReviewScore_MostlyPositive"
-  "k_ESteamReviewScore_Negative"
-  "k_ESteamReviewScore_None"
-  "k_ESteamReviewScore_OverwhelminglyNegative"
-  "k_ESteamReviewScore_OverwhelminglyPositive"
-  "k_ESteamReviewScore_Positive"
-  "k_ESteamReviewScore_VeryNegative"
-  "k_ESteamReviewScore_VeryPositive";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ESteamReviewScore_entries[] = {
-  { {ESteamReviewScore_names + 0, 25}, 5 },
-  { {ESteamReviewScore_names + 25, 34}, 4 },
-  { {ESteamReviewScore_names + 59, 34}, 6 },
-  { {ESteamReviewScore_names + 93, 28}, 3 },
-  { {ESteamReviewScore_names + 121, 24}, 0 },
-  { {ESteamReviewScore_names + 145, 42}, 1 },
-  { {ESteamReviewScore_names + 187, 42}, 9 },
-  { {ESteamReviewScore_names + 229, 28}, 7 },
-  { {ESteamReviewScore_names + 257, 32}, 2 },
-  { {ESteamReviewScore_names + 289, 32}, 8 },
-};
-
-static const int ESteamReviewScore_entries_by_number[] = {
-  4, // 0 -> k_ESteamReviewScore_None
-  5, // 1 -> k_ESteamReviewScore_OverwhelminglyNegative
-  8, // 2 -> k_ESteamReviewScore_VeryNegative
-  3, // 3 -> k_ESteamReviewScore_Negative
-  1, // 4 -> k_ESteamReviewScore_MostlyNegative
-  0, // 5 -> k_ESteamReviewScore_Mixed
-  2, // 6 -> k_ESteamReviewScore_MostlyPositive
-  7, // 7 -> k_ESteamReviewScore_Positive
-  9, // 8 -> k_ESteamReviewScore_VeryPositive
-  6, // 9 -> k_ESteamReviewScore_OverwhelminglyPositive
-};
-
-const std::string& ESteamReviewScore_Name(
-    ESteamReviewScore value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          ESteamReviewScore_entries,
-          ESteamReviewScore_entries_by_number,
-          10, ESteamReviewScore_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      ESteamReviewScore_entries,
-      ESteamReviewScore_entries_by_number,
-      10, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     ESteamReviewScore_strings[idx].get();
-}
-bool ESteamReviewScore_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESteamReviewScore* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ESteamReviewScore_entries, 10, name, &int_value);
-  if (success) {
-    *value = static_cast<ESteamReviewScore>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ECodecUsagePlatform_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_5fclientserver_2eproto);
+  return file_level_enum_descriptors_enums_5fclientserver_2eproto[4];
 }
 bool ECodecUsagePlatform_IsValid(int value) {
   switch (value) {
@@ -5997,55 +2870,9 @@ bool ECodecUsagePlatform_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ECodecUsagePlatform_strings[5] = {};
-
-static const char ECodecUsagePlatform_names[] =
-  "k_ECodecUsagePlatformLinux"
-  "k_ECodecUsagePlatformMacOS"
-  "k_ECodecUsagePlatformSteamHardware"
-  "k_ECodecUsagePlatformUnknown"
-  "k_ECodecUsagePlatformWindows";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ECodecUsagePlatform_entries[] = {
-  { {ECodecUsagePlatform_names + 0, 26}, 3 },
-  { {ECodecUsagePlatform_names + 26, 26}, 2 },
-  { {ECodecUsagePlatform_names + 52, 34}, 4 },
-  { {ECodecUsagePlatform_names + 86, 28}, 0 },
-  { {ECodecUsagePlatform_names + 114, 28}, 1 },
-};
-
-static const int ECodecUsagePlatform_entries_by_number[] = {
-  3, // 0 -> k_ECodecUsagePlatformUnknown
-  4, // 1 -> k_ECodecUsagePlatformWindows
-  1, // 2 -> k_ECodecUsagePlatformMacOS
-  0, // 3 -> k_ECodecUsagePlatformLinux
-  2, // 4 -> k_ECodecUsagePlatformSteamHardware
-};
-
-const std::string& ECodecUsagePlatform_Name(
-    ECodecUsagePlatform value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          ECodecUsagePlatform_entries,
-          ECodecUsagePlatform_entries_by_number,
-          5, ECodecUsagePlatform_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      ECodecUsagePlatform_entries,
-      ECodecUsagePlatform_entries_by_number,
-      5, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     ECodecUsagePlatform_strings[idx].get();
-}
-bool ECodecUsagePlatform_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ECodecUsagePlatform* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ECodecUsagePlatform_entries, 5, name, &int_value);
-  if (success) {
-    *value = static_cast<ECodecUsagePlatform>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ECodecUsageReason_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_5fclientserver_2eproto);
+  return file_level_enum_descriptors_enums_5fclientserver_2eproto[5];
 }
 bool ECodecUsageReason_IsValid(int value) {
   switch (value) {
@@ -6060,56 +2887,6 @@ bool ECodecUsageReason_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ECodecUsageReason_strings[5] = {};
-
-static const char ECodecUsageReason_names[] =
-  "k_ECodecUsageReasonBroadcasting"
-  "k_ECodecUsageReasonGameRecording"
-  "k_ECodecUsageReasonGameVideo"
-  "k_ECodecUsageReasonRemotePlay"
-  "k_ECodecUsageReasonUnknown";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ECodecUsageReason_entries[] = {
-  { {ECodecUsageReason_names + 0, 31}, 2 },
-  { {ECodecUsageReason_names + 31, 32}, 4 },
-  { {ECodecUsageReason_names + 63, 28}, 3 },
-  { {ECodecUsageReason_names + 91, 29}, 1 },
-  { {ECodecUsageReason_names + 120, 26}, 0 },
-};
-
-static const int ECodecUsageReason_entries_by_number[] = {
-  4, // 0 -> k_ECodecUsageReasonUnknown
-  3, // 1 -> k_ECodecUsageReasonRemotePlay
-  0, // 2 -> k_ECodecUsageReasonBroadcasting
-  2, // 3 -> k_ECodecUsageReasonGameVideo
-  1, // 4 -> k_ECodecUsageReasonGameRecording
-};
-
-const std::string& ECodecUsageReason_Name(
-    ECodecUsageReason value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          ECodecUsageReason_entries,
-          ECodecUsageReason_entries_by_number,
-          5, ECodecUsageReason_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      ECodecUsageReason_entries,
-      ECodecUsageReason_entries_by_number,
-      5, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     ECodecUsageReason_strings[idx].get();
-}
-bool ECodecUsageReason_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ECodecUsageReason* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ECodecUsageReason_entries, 5, name, &int_value);
-  if (success) {
-    *value = static_cast<ECodecUsageReason>(int_value);
-  }
-  return success;
-}
 
 // @@protoc_insertion_point(namespace_scope)
 PROTOBUF_NAMESPACE_OPEN

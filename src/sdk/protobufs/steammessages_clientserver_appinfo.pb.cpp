@@ -8,7 +8,10 @@
 #include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/extension_set.h>
 #include <google/protobuf/wire_format_lite.h>
-#include <google/protobuf/io/zero_copy_stream_impl_lite.h>
+#include <google/protobuf/descriptor.h>
+#include <google/protobuf/generated_message_reflection.h>
+#include <google/protobuf/reflection_ops.h>
+#include <google/protobuf/wire_format.h>
 // @@protoc_insertion_point(includes)
 #include <google/protobuf/port_def.inc>
 
@@ -310,6 +313,395 @@ struct CMsgClientPICSPrivateBetaResponseDefaultTypeInternal {
   };
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT CMsgClientPICSPrivateBetaResponseDefaultTypeInternal _CMsgClientPICSPrivateBetaResponse_default_instance_;
+static ::PROTOBUF_NAMESPACE_ID::Metadata file_level_metadata_steammessages_5fclientserver_5fappinfo_2eproto[20];
+static constexpr ::PROTOBUF_NAMESPACE_ID::EnumDescriptor const** file_level_enum_descriptors_steammessages_5fclientserver_5fappinfo_2eproto = nullptr;
+static constexpr ::PROTOBUF_NAMESPACE_ID::ServiceDescriptor const** file_level_service_descriptors_steammessages_5fclientserver_5fappinfo_2eproto = nullptr;
+
+const ::PROTOBUF_NAMESPACE_ID::uint32 TableStruct_steammessages_5fclientserver_5fappinfo_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
+  PROTOBUF_FIELD_OFFSET(::CMsgClientAppInfoUpdate, _has_bits_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientAppInfoUpdate, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  PROTOBUF_FIELD_OFFSET(::CMsgClientAppInfoUpdate, last_changenumber_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientAppInfoUpdate, send_changelist_),
+  0,
+  1,
+  PROTOBUF_FIELD_OFFSET(::CMsgClientAppInfoChanges, _has_bits_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientAppInfoChanges, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  PROTOBUF_FIELD_OFFSET(::CMsgClientAppInfoChanges, current_change_number_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientAppInfoChanges, force_full_update_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientAppInfoChanges, appids_),
+  0,
+  1,
+  ~0u,
+  PROTOBUF_FIELD_OFFSET(::CMsgClientAppInfoRequest_App, _has_bits_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientAppInfoRequest_App, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  PROTOBUF_FIELD_OFFSET(::CMsgClientAppInfoRequest_App, app_id_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientAppInfoRequest_App, section_flags_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientAppInfoRequest_App, section_crc_),
+  0,
+  1,
+  ~0u,
+  PROTOBUF_FIELD_OFFSET(::CMsgClientAppInfoRequest, _has_bits_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientAppInfoRequest, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  PROTOBUF_FIELD_OFFSET(::CMsgClientAppInfoRequest, apps_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientAppInfoRequest, supports_batches_),
+  ~0u,
+  0,
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSChangesSinceRequest, _has_bits_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSChangesSinceRequest, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSChangesSinceRequest, since_change_number_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSChangesSinceRequest, send_app_info_changes_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSChangesSinceRequest, send_package_info_changes_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSChangesSinceRequest, num_app_info_cached_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSChangesSinceRequest, num_package_info_cached_),
+  0,
+  1,
+  2,
+  3,
+  4,
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSChangesSinceResponse_PackageChange, _has_bits_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSChangesSinceResponse_PackageChange, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSChangesSinceResponse_PackageChange, packageid_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSChangesSinceResponse_PackageChange, change_number_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSChangesSinceResponse_PackageChange, needs_token_),
+  0,
+  1,
+  2,
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSChangesSinceResponse_AppChange, _has_bits_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSChangesSinceResponse_AppChange, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSChangesSinceResponse_AppChange, appid_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSChangesSinceResponse_AppChange, change_number_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSChangesSinceResponse_AppChange, needs_token_),
+  0,
+  1,
+  2,
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSChangesSinceResponse, _has_bits_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSChangesSinceResponse, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSChangesSinceResponse, current_change_number_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSChangesSinceResponse, since_change_number_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSChangesSinceResponse, force_full_update_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSChangesSinceResponse, package_changes_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSChangesSinceResponse, app_changes_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSChangesSinceResponse, force_full_app_update_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSChangesSinceResponse, force_full_package_update_),
+  0,
+  1,
+  2,
+  ~0u,
+  ~0u,
+  3,
+  4,
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoRequest_AppInfo, _has_bits_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoRequest_AppInfo, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoRequest_AppInfo, appid_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoRequest_AppInfo, access_token_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoRequest_AppInfo, only_public_obsolete_),
+  1,
+  0,
+  2,
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoRequest_PackageInfo, _has_bits_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoRequest_PackageInfo, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoRequest_PackageInfo, packageid_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoRequest_PackageInfo, access_token_),
+  1,
+  0,
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoRequest, _has_bits_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoRequest, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoRequest, packages_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoRequest, apps_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoRequest, meta_data_only_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoRequest, num_prev_failed_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoRequest, obsolete_supports_package_tokens_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoRequest, sequence_number_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoRequest, single_response_),
+  ~0u,
+  ~0u,
+  2,
+  0,
+  1,
+  4,
+  3,
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoResponse_AppInfo, _has_bits_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoResponse_AppInfo, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoResponse_AppInfo, appid_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoResponse_AppInfo, change_number_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoResponse_AppInfo, missing_token_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoResponse_AppInfo, sha_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoResponse_AppInfo, buffer_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoResponse_AppInfo, only_public_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoResponse_AppInfo, size_),
+  2,
+  3,
+  4,
+  0,
+  1,
+  5,
+  6,
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoResponse_PackageInfo, _has_bits_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoResponse_PackageInfo, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoResponse_PackageInfo, packageid_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoResponse_PackageInfo, change_number_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoResponse_PackageInfo, missing_token_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoResponse_PackageInfo, sha_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoResponse_PackageInfo, buffer_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoResponse_PackageInfo, size_),
+  2,
+  3,
+  4,
+  0,
+  1,
+  5,
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoResponse, _has_bits_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoResponse, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoResponse, apps_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoResponse, unknown_appids_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoResponse, packages_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoResponse, unknown_packageids_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoResponse, meta_data_only_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoResponse, response_pending_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoResponse, http_min_size_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSProductInfoResponse, http_host_),
+  ~0u,
+  ~0u,
+  ~0u,
+  ~0u,
+  1,
+  2,
+  3,
+  0,
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSAccessTokenRequest, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSAccessTokenRequest, packageids_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSAccessTokenRequest, appids_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSAccessTokenResponse_PackageToken, _has_bits_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSAccessTokenResponse_PackageToken, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSAccessTokenResponse_PackageToken, packageid_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSAccessTokenResponse_PackageToken, access_token_),
+  1,
+  0,
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSAccessTokenResponse_AppToken, _has_bits_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSAccessTokenResponse_AppToken, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSAccessTokenResponse_AppToken, appid_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSAccessTokenResponse_AppToken, access_token_),
+  1,
+  0,
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSAccessTokenResponse, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSAccessTokenResponse, package_access_tokens_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSAccessTokenResponse, package_denied_tokens_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSAccessTokenResponse, app_access_tokens_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSAccessTokenResponse, app_denied_tokens_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSPrivateBetaRequest, _has_bits_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSPrivateBetaRequest, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSPrivateBetaRequest, appid_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSPrivateBetaRequest, access_token_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSPrivateBetaRequest, beta_name_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSPrivateBetaRequest, password_hash_),
+  3,
+  2,
+  0,
+  1,
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSPrivateBetaResponse, _has_bits_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSPrivateBetaResponse, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSPrivateBetaResponse, eresult_),
+  PROTOBUF_FIELD_OFFSET(::CMsgClientPICSPrivateBetaResponse, depot_section_),
+  1,
+  0,
+};
+static const ::PROTOBUF_NAMESPACE_ID::internal::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
+  { 0, 7, sizeof(::CMsgClientAppInfoUpdate)},
+  { 9, 17, sizeof(::CMsgClientAppInfoChanges)},
+  { 20, 28, sizeof(::CMsgClientAppInfoRequest_App)},
+  { 31, 38, sizeof(::CMsgClientAppInfoRequest)},
+  { 40, 50, sizeof(::CMsgClientPICSChangesSinceRequest)},
+  { 55, 63, sizeof(::CMsgClientPICSChangesSinceResponse_PackageChange)},
+  { 66, 74, sizeof(::CMsgClientPICSChangesSinceResponse_AppChange)},
+  { 77, 89, sizeof(::CMsgClientPICSChangesSinceResponse)},
+  { 96, 104, sizeof(::CMsgClientPICSProductInfoRequest_AppInfo)},
+  { 107, 114, sizeof(::CMsgClientPICSProductInfoRequest_PackageInfo)},
+  { 116, 128, sizeof(::CMsgClientPICSProductInfoRequest)},
+  { 135, 147, sizeof(::CMsgClientPICSProductInfoResponse_AppInfo)},
+  { 154, 165, sizeof(::CMsgClientPICSProductInfoResponse_PackageInfo)},
+  { 171, 184, sizeof(::CMsgClientPICSProductInfoResponse)},
+  { 192, -1, sizeof(::CMsgClientPICSAccessTokenRequest)},
+  { 199, 206, sizeof(::CMsgClientPICSAccessTokenResponse_PackageToken)},
+  { 208, 215, sizeof(::CMsgClientPICSAccessTokenResponse_AppToken)},
+  { 217, -1, sizeof(::CMsgClientPICSAccessTokenResponse)},
+  { 226, 235, sizeof(::CMsgClientPICSPrivateBetaRequest)},
+  { 239, 246, sizeof(::CMsgClientPICSPrivateBetaResponse)},
+};
+
+static ::PROTOBUF_NAMESPACE_ID::Message const * const file_default_instances[] = {
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::_CMsgClientAppInfoUpdate_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::_CMsgClientAppInfoChanges_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::_CMsgClientAppInfoRequest_App_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::_CMsgClientAppInfoRequest_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::_CMsgClientPICSChangesSinceRequest_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::_CMsgClientPICSChangesSinceResponse_PackageChange_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::_CMsgClientPICSChangesSinceResponse_AppChange_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::_CMsgClientPICSChangesSinceResponse_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::_CMsgClientPICSProductInfoRequest_AppInfo_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::_CMsgClientPICSProductInfoRequest_PackageInfo_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::_CMsgClientPICSProductInfoRequest_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::_CMsgClientPICSProductInfoResponse_AppInfo_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::_CMsgClientPICSProductInfoResponse_PackageInfo_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::_CMsgClientPICSProductInfoResponse_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::_CMsgClientPICSAccessTokenRequest_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::_CMsgClientPICSAccessTokenResponse_PackageToken_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::_CMsgClientPICSAccessTokenResponse_AppToken_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::_CMsgClientPICSAccessTokenResponse_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::_CMsgClientPICSPrivateBetaRequest_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::_CMsgClientPICSPrivateBetaResponse_default_instance_),
+};
+
+const char descriptor_table_protodef_steammessages_5fclientserver_5fappinfo_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
+  "\n(steammessages_clientserver_appinfo.pro"
+  "to\032\030steammessages_base.proto\"M\n\027CMsgClie"
+  "ntAppInfoUpdate\022\031\n\021last_changenumber\030\001 \001"
+  "(\r\022\027\n\017send_changelist\030\002 \001(\010\"d\n\030CMsgClien"
+  "tAppInfoChanges\022\035\n\025current_change_number"
+  "\030\001 \001(\r\022\031\n\021force_full_update\030\002 \001(\010\022\016\n\006app"
+  "IDs\030\003 \003(\r\"\253\001\n\030CMsgClientAppInfoRequest\022+"
+  "\n\004apps\030\001 \003(\0132\035.CMsgClientAppInfoRequest."
+  "App\022\037\n\020supports_batches\030\002 \001(\010:\005false\032A\n\003"
+  "App\022\016\n\006app_id\030\001 \001(\r\022\025\n\rsection_flags\030\002 \001"
+  "(\r\022\023\n\013section_CRC\030\003 \003(\r\"\300\001\n!CMsgClientPI"
+  "CSChangesSinceRequest\022\033\n\023since_change_nu"
+  "mber\030\001 \001(\r\022\035\n\025send_app_info_changes\030\002 \001("
+  "\010\022!\n\031send_package_info_changes\030\003 \001(\010\022\033\n\023"
+  "num_app_info_cached\030\004 \001(\r\022\037\n\027num_package"
+  "_info_cached\030\005 \001(\r\"\345\003\n\"CMsgClientPICSCha"
+  "ngesSinceResponse\022\035\n\025current_change_numb"
+  "er\030\001 \001(\r\022\033\n\023since_change_number\030\002 \001(\r\022\031\n"
+  "\021force_full_update\030\003 \001(\010\022J\n\017package_chan"
+  "ges\030\004 \003(\01321.CMsgClientPICSChangesSinceRe"
+  "sponse.PackageChange\022B\n\013app_changes\030\005 \003("
+  "\0132-.CMsgClientPICSChangesSinceResponse.A"
+  "ppChange\022\035\n\025force_full_app_update\030\006 \001(\010\022"
+  "!\n\031force_full_package_update\030\007 \001(\010\032N\n\rPa"
+  "ckageChange\022\021\n\tpackageid\030\001 \001(\r\022\025\n\rchange"
+  "_number\030\002 \001(\r\022\023\n\013needs_token\030\003 \001(\010\032F\n\tAp"
+  "pChange\022\r\n\005appid\030\001 \001(\r\022\025\n\rchange_number\030"
+  "\002 \001(\r\022\023\n\013needs_token\030\003 \001(\010\"\257\003\n CMsgClien"
+  "tPICSProductInfoRequest\022\?\n\010packages\030\001 \003("
+  "\0132-.CMsgClientPICSProductInfoRequest.Pac"
+  "kageInfo\0227\n\004apps\030\002 \003(\0132).CMsgClientPICSP"
+  "roductInfoRequest.AppInfo\022\026\n\016meta_data_o"
+  "nly\030\003 \001(\010\022\027\n\017num_prev_failed\030\004 \001(\r\022(\n OB"
+  "SOLETE_supports_package_tokens\030\005 \001(\r\022\027\n\017"
+  "sequence_number\030\006 \001(\r\022\027\n\017single_response"
+  "\030\007 \001(\010\032L\n\007AppInfo\022\r\n\005appid\030\001 \001(\r\022\024\n\014acce"
+  "ss_token\030\002 \001(\004\022\034\n\024only_public_obsolete\030\003"
+  " \001(\010\0326\n\013PackageInfo\022\021\n\tpackageid\030\001 \001(\r\022\024"
+  "\n\014access_token\030\002 \001(\004\"\263\004\n!CMsgClientPICSP"
+  "roductInfoResponse\0228\n\004apps\030\001 \003(\0132*.CMsgC"
+  "lientPICSProductInfoResponse.AppInfo\022\026\n\016"
+  "unknown_appids\030\002 \003(\r\022@\n\010packages\030\003 \003(\0132."
+  ".CMsgClientPICSProductInfoResponse.Packa"
+  "geInfo\022\032\n\022unknown_packageids\030\004 \003(\r\022\026\n\016me"
+  "ta_data_only\030\005 \001(\010\022\030\n\020response_pending\030\006"
+  " \001(\010\022\025\n\rhttp_min_size\030\007 \001(\r\022\021\n\thttp_host"
+  "\030\010 \001(\t\032\206\001\n\007AppInfo\022\r\n\005appid\030\001 \001(\r\022\025\n\rcha"
+  "nge_number\030\002 \001(\r\022\025\n\rmissing_token\030\003 \001(\010\022"
+  "\013\n\003sha\030\004 \001(\014\022\016\n\006buffer\030\005 \001(\014\022\023\n\013only_pub"
+  "lic\030\006 \001(\010\022\014\n\004size\030\007 \001(\r\032y\n\013PackageInfo\022\021"
+  "\n\tpackageid\030\001 \001(\r\022\025\n\rchange_number\030\002 \001(\r"
+  "\022\025\n\rmissing_token\030\003 \001(\010\022\013\n\003sha\030\004 \001(\014\022\016\n\006"
+  "buffer\030\005 \001(\014\022\014\n\004size\030\006 \001(\r\"F\n CMsgClient"
+  "PICSAccessTokenRequest\022\022\n\npackageids\030\001 \003"
+  "(\r\022\016\n\006appids\030\002 \003(\r\"\337\002\n!CMsgClientPICSAcc"
+  "essTokenResponse\022N\n\025package_access_token"
+  "s\030\001 \003(\0132/.CMsgClientPICSAccessTokenRespo"
+  "nse.PackageToken\022\035\n\025package_denied_token"
+  "s\030\002 \003(\r\022F\n\021app_access_tokens\030\003 \003(\0132+.CMs"
+  "gClientPICSAccessTokenResponse.AppToken\022"
+  "\031\n\021app_denied_tokens\030\004 \003(\r\0327\n\014PackageTok"
+  "en\022\021\n\tpackageid\030\001 \001(\r\022\024\n\014access_token\030\002 "
+  "\001(\004\032/\n\010AppToken\022\r\n\005appid\030\001 \001(\r\022\024\n\014access"
+  "_token\030\002 \001(\004\"q\n CMsgClientPICSPrivateBet"
+  "aRequest\022\r\n\005appid\030\001 \001(\r\022\024\n\014access_token\030"
+  "\002 \001(\004\022\021\n\tbeta_name\030\003 \001(\t\022\025\n\rpassword_has"
+  "h\030\004 \001(\014\"N\n!CMsgClientPICSPrivateBetaResp"
+  "onse\022\022\n\007eresult\030\001 \001(\005:\0012\022\025\n\rdepot_sectio"
+  "n\030\002 \001(\014"
+  ;
+static const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable*const descriptor_table_steammessages_5fclientserver_5fappinfo_2eproto_deps[1] = {
+  &::descriptor_table_steammessages_5fbase_2eproto,
+};
+static ::PROTOBUF_NAMESPACE_ID::internal::once_flag descriptor_table_steammessages_5fclientserver_5fappinfo_2eproto_once;
+const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable descriptor_table_steammessages_5fclientserver_5fappinfo_2eproto = {
+  false, false, 2727, descriptor_table_protodef_steammessages_5fclientserver_5fappinfo_2eproto, "steammessages_clientserver_appinfo.proto", 
+  &descriptor_table_steammessages_5fclientserver_5fappinfo_2eproto_once, descriptor_table_steammessages_5fclientserver_5fappinfo_2eproto_deps, 1, 20,
+  schemas, file_default_instances, TableStruct_steammessages_5fclientserver_5fappinfo_2eproto::offsets,
+  file_level_metadata_steammessages_5fclientserver_5fappinfo_2eproto, file_level_enum_descriptors_steammessages_5fclientserver_5fappinfo_2eproto, file_level_service_descriptors_steammessages_5fclientserver_5fappinfo_2eproto,
+};
+PROTOBUF_ATTRIBUTE_WEAK ::PROTOBUF_NAMESPACE_ID::Metadata
+descriptor_table_steammessages_5fclientserver_5fappinfo_2eproto_metadata_getter(int index) {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_steammessages_5fclientserver_5fappinfo_2eproto);
+  return descriptor_table_steammessages_5fclientserver_5fappinfo_2eproto.file_level_metadata[index];
+}
+
+// Force running AddDescriptors() at dynamic initialization time.
+PROTOBUF_ATTRIBUTE_INIT_PRIORITY static ::PROTOBUF_NAMESPACE_ID::internal::AddDescriptorsRunner dynamic_init_dummy_steammessages_5fclientserver_5fappinfo_2eproto(&descriptor_table_steammessages_5fclientserver_5fappinfo_2eproto);
 
 // ===================================================================
 
@@ -325,15 +717,15 @@ class CMsgClientAppInfoUpdate::_Internal {
 };
 
 CMsgClientAppInfoUpdate::CMsgClientAppInfoUpdate(::PROTOBUF_NAMESPACE_ID::Arena* arena)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(arena) {
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
   SharedCtor();
   RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:CMsgClientAppInfoUpdate)
 }
 CMsgClientAppInfoUpdate::CMsgClientAppInfoUpdate(const CMsgClientAppInfoUpdate& from)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(),
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
       _has_bits_(from._has_bits_) {
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::memcpy(&last_changenumber_, &from.last_changenumber_,
     static_cast<size_t>(reinterpret_cast<char*>(&send_changelist_) -
     reinterpret_cast<char*>(&last_changenumber_)) + sizeof(send_changelist_));
@@ -350,7 +742,7 @@ void CMsgClientAppInfoUpdate::SharedCtor() {
 CMsgClientAppInfoUpdate::~CMsgClientAppInfoUpdate() {
   // @@protoc_insertion_point(destructor:CMsgClientAppInfoUpdate)
   SharedDtor();
-  _internal_metadata_.Delete<std::string>();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 void CMsgClientAppInfoUpdate::SharedDtor() {
@@ -380,7 +772,7 @@ void CMsgClientAppInfoUpdate::Clear() {
         reinterpret_cast<char*>(&last_changenumber_)) + sizeof(send_changelist_));
   }
   _has_bits_.Clear();
-  _internal_metadata_.Clear<std::string>();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 const char* CMsgClientAppInfoUpdate::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
@@ -414,7 +806,7 @@ const char* CMsgClientAppInfoUpdate::_InternalParse(const char* ptr, ::PROTOBUF_
           goto success;
         }
         ptr = UnknownFieldParse(tag,
-            _internal_metadata_.mutable_unknown_fields<std::string>(),
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
             ptr, ctx);
         CHK_(ptr != nullptr);
         continue;
@@ -450,8 +842,8 @@ failure:
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = stream->WriteRaw(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).data(),
-        static_cast<int>(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size()), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:CMsgClientAppInfoUpdate)
   return target;
@@ -481,23 +873,33 @@ size_t CMsgClientAppInfoUpdate::ByteSizeLong() const {
 
   }
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    total_size += _internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size();
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
   }
   int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
   SetCachedSize(cached_size);
   return total_size;
 }
 
-void CMsgClientAppInfoUpdate::CheckTypeAndMergeFrom(
-    const ::PROTOBUF_NAMESPACE_ID::MessageLite& from) {
-  MergeFrom(*::PROTOBUF_NAMESPACE_ID::internal::DownCast<const CMsgClientAppInfoUpdate*>(
-      &from));
+void CMsgClientAppInfoUpdate::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:CMsgClientAppInfoUpdate)
+  GOOGLE_DCHECK_NE(&from, this);
+  const CMsgClientAppInfoUpdate* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<CMsgClientAppInfoUpdate>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:CMsgClientAppInfoUpdate)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:CMsgClientAppInfoUpdate)
+    MergeFrom(*source);
+  }
 }
 
 void CMsgClientAppInfoUpdate::MergeFrom(const CMsgClientAppInfoUpdate& from) {
 // @@protoc_insertion_point(class_specific_merge_from_start:CMsgClientAppInfoUpdate)
   GOOGLE_DCHECK_NE(&from, this);
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -513,6 +915,13 @@ void CMsgClientAppInfoUpdate::MergeFrom(const CMsgClientAppInfoUpdate& from) {
   }
 }
 
+void CMsgClientAppInfoUpdate::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:CMsgClientAppInfoUpdate)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
 void CMsgClientAppInfoUpdate::CopyFrom(const CMsgClientAppInfoUpdate& from) {
 // @@protoc_insertion_point(class_specific_copy_from_start:CMsgClientAppInfoUpdate)
   if (&from == this) return;
@@ -526,7 +935,7 @@ bool CMsgClientAppInfoUpdate::IsInitialized() const {
 
 void CMsgClientAppInfoUpdate::InternalSwap(CMsgClientAppInfoUpdate* other) {
   using std::swap;
-  _internal_metadata_.Swap<std::string>(&other->_internal_metadata_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
   swap(_has_bits_[0], other->_has_bits_[0]);
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
       PROTOBUF_FIELD_OFFSET(CMsgClientAppInfoUpdate, send_changelist_)
@@ -536,8 +945,8 @@ void CMsgClientAppInfoUpdate::InternalSwap(CMsgClientAppInfoUpdate* other) {
           reinterpret_cast<char*>(&other->last_changenumber_));
 }
 
-std::string CMsgClientAppInfoUpdate::GetTypeName() const {
-  return "CMsgClientAppInfoUpdate";
+::PROTOBUF_NAMESPACE_ID::Metadata CMsgClientAppInfoUpdate::GetMetadata() const {
+  return GetMetadataStatic();
 }
 
 
@@ -555,17 +964,17 @@ class CMsgClientAppInfoChanges::_Internal {
 };
 
 CMsgClientAppInfoChanges::CMsgClientAppInfoChanges(::PROTOBUF_NAMESPACE_ID::Arena* arena)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(arena),
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena),
   appids_(arena) {
   SharedCtor();
   RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:CMsgClientAppInfoChanges)
 }
 CMsgClientAppInfoChanges::CMsgClientAppInfoChanges(const CMsgClientAppInfoChanges& from)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(),
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
       _has_bits_(from._has_bits_),
       appids_(from.appids_) {
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::memcpy(&current_change_number_, &from.current_change_number_,
     static_cast<size_t>(reinterpret_cast<char*>(&force_full_update_) -
     reinterpret_cast<char*>(&current_change_number_)) + sizeof(force_full_update_));
@@ -582,7 +991,7 @@ void CMsgClientAppInfoChanges::SharedCtor() {
 CMsgClientAppInfoChanges::~CMsgClientAppInfoChanges() {
   // @@protoc_insertion_point(destructor:CMsgClientAppInfoChanges)
   SharedDtor();
-  _internal_metadata_.Delete<std::string>();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 void CMsgClientAppInfoChanges::SharedDtor() {
@@ -613,7 +1022,7 @@ void CMsgClientAppInfoChanges::Clear() {
         reinterpret_cast<char*>(&current_change_number_)) + sizeof(force_full_update_));
   }
   _has_bits_.Clear();
-  _internal_metadata_.Clear<std::string>();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 const char* CMsgClientAppInfoChanges::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
@@ -662,7 +1071,7 @@ const char* CMsgClientAppInfoChanges::_InternalParse(const char* ptr, ::PROTOBUF
           goto success;
         }
         ptr = UnknownFieldParse(tag,
-            _internal_metadata_.mutable_unknown_fields<std::string>(),
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
             ptr, ctx);
         CHK_(ptr != nullptr);
         continue;
@@ -704,8 +1113,8 @@ failure:
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = stream->WriteRaw(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).data(),
-        static_cast<int>(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size()), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:CMsgClientAppInfoChanges)
   return target;
@@ -744,23 +1153,33 @@ size_t CMsgClientAppInfoChanges::ByteSizeLong() const {
 
   }
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    total_size += _internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size();
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
   }
   int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
   SetCachedSize(cached_size);
   return total_size;
 }
 
-void CMsgClientAppInfoChanges::CheckTypeAndMergeFrom(
-    const ::PROTOBUF_NAMESPACE_ID::MessageLite& from) {
-  MergeFrom(*::PROTOBUF_NAMESPACE_ID::internal::DownCast<const CMsgClientAppInfoChanges*>(
-      &from));
+void CMsgClientAppInfoChanges::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:CMsgClientAppInfoChanges)
+  GOOGLE_DCHECK_NE(&from, this);
+  const CMsgClientAppInfoChanges* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<CMsgClientAppInfoChanges>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:CMsgClientAppInfoChanges)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:CMsgClientAppInfoChanges)
+    MergeFrom(*source);
+  }
 }
 
 void CMsgClientAppInfoChanges::MergeFrom(const CMsgClientAppInfoChanges& from) {
 // @@protoc_insertion_point(class_specific_merge_from_start:CMsgClientAppInfoChanges)
   GOOGLE_DCHECK_NE(&from, this);
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -777,6 +1196,13 @@ void CMsgClientAppInfoChanges::MergeFrom(const CMsgClientAppInfoChanges& from) {
   }
 }
 
+void CMsgClientAppInfoChanges::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:CMsgClientAppInfoChanges)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
 void CMsgClientAppInfoChanges::CopyFrom(const CMsgClientAppInfoChanges& from) {
 // @@protoc_insertion_point(class_specific_copy_from_start:CMsgClientAppInfoChanges)
   if (&from == this) return;
@@ -790,7 +1216,7 @@ bool CMsgClientAppInfoChanges::IsInitialized() const {
 
 void CMsgClientAppInfoChanges::InternalSwap(CMsgClientAppInfoChanges* other) {
   using std::swap;
-  _internal_metadata_.Swap<std::string>(&other->_internal_metadata_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
   swap(_has_bits_[0], other->_has_bits_[0]);
   appids_.InternalSwap(&other->appids_);
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
@@ -801,8 +1227,8 @@ void CMsgClientAppInfoChanges::InternalSwap(CMsgClientAppInfoChanges* other) {
           reinterpret_cast<char*>(&other->current_change_number_));
 }
 
-std::string CMsgClientAppInfoChanges::GetTypeName() const {
-  return "CMsgClientAppInfoChanges";
+::PROTOBUF_NAMESPACE_ID::Metadata CMsgClientAppInfoChanges::GetMetadata() const {
+  return GetMetadataStatic();
 }
 
 
@@ -820,17 +1246,17 @@ class CMsgClientAppInfoRequest_App::_Internal {
 };
 
 CMsgClientAppInfoRequest_App::CMsgClientAppInfoRequest_App(::PROTOBUF_NAMESPACE_ID::Arena* arena)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(arena),
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena),
   section_crc_(arena) {
   SharedCtor();
   RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:CMsgClientAppInfoRequest.App)
 }
 CMsgClientAppInfoRequest_App::CMsgClientAppInfoRequest_App(const CMsgClientAppInfoRequest_App& from)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(),
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
       _has_bits_(from._has_bits_),
       section_crc_(from.section_crc_) {
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::memcpy(&app_id_, &from.app_id_,
     static_cast<size_t>(reinterpret_cast<char*>(&section_flags_) -
     reinterpret_cast<char*>(&app_id_)) + sizeof(section_flags_));
@@ -847,7 +1273,7 @@ void CMsgClientAppInfoRequest_App::SharedCtor() {
 CMsgClientAppInfoRequest_App::~CMsgClientAppInfoRequest_App() {
   // @@protoc_insertion_point(destructor:CMsgClientAppInfoRequest.App)
   SharedDtor();
-  _internal_metadata_.Delete<std::string>();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 void CMsgClientAppInfoRequest_App::SharedDtor() {
@@ -878,7 +1304,7 @@ void CMsgClientAppInfoRequest_App::Clear() {
         reinterpret_cast<char*>(&app_id_)) + sizeof(section_flags_));
   }
   _has_bits_.Clear();
-  _internal_metadata_.Clear<std::string>();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 const char* CMsgClientAppInfoRequest_App::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
@@ -927,7 +1353,7 @@ const char* CMsgClientAppInfoRequest_App::_InternalParse(const char* ptr, ::PROT
           goto success;
         }
         ptr = UnknownFieldParse(tag,
-            _internal_metadata_.mutable_unknown_fields<std::string>(),
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
             ptr, ctx);
         CHK_(ptr != nullptr);
         continue;
@@ -969,8 +1395,8 @@ failure:
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = stream->WriteRaw(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).data(),
-        static_cast<int>(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size()), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:CMsgClientAppInfoRequest.App)
   return target;
@@ -1011,23 +1437,33 @@ size_t CMsgClientAppInfoRequest_App::ByteSizeLong() const {
 
   }
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    total_size += _internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size();
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
   }
   int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
   SetCachedSize(cached_size);
   return total_size;
 }
 
-void CMsgClientAppInfoRequest_App::CheckTypeAndMergeFrom(
-    const ::PROTOBUF_NAMESPACE_ID::MessageLite& from) {
-  MergeFrom(*::PROTOBUF_NAMESPACE_ID::internal::DownCast<const CMsgClientAppInfoRequest_App*>(
-      &from));
+void CMsgClientAppInfoRequest_App::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:CMsgClientAppInfoRequest.App)
+  GOOGLE_DCHECK_NE(&from, this);
+  const CMsgClientAppInfoRequest_App* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<CMsgClientAppInfoRequest_App>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:CMsgClientAppInfoRequest.App)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:CMsgClientAppInfoRequest.App)
+    MergeFrom(*source);
+  }
 }
 
 void CMsgClientAppInfoRequest_App::MergeFrom(const CMsgClientAppInfoRequest_App& from) {
 // @@protoc_insertion_point(class_specific_merge_from_start:CMsgClientAppInfoRequest.App)
   GOOGLE_DCHECK_NE(&from, this);
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -1044,6 +1480,13 @@ void CMsgClientAppInfoRequest_App::MergeFrom(const CMsgClientAppInfoRequest_App&
   }
 }
 
+void CMsgClientAppInfoRequest_App::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:CMsgClientAppInfoRequest.App)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
 void CMsgClientAppInfoRequest_App::CopyFrom(const CMsgClientAppInfoRequest_App& from) {
 // @@protoc_insertion_point(class_specific_copy_from_start:CMsgClientAppInfoRequest.App)
   if (&from == this) return;
@@ -1057,7 +1500,7 @@ bool CMsgClientAppInfoRequest_App::IsInitialized() const {
 
 void CMsgClientAppInfoRequest_App::InternalSwap(CMsgClientAppInfoRequest_App* other) {
   using std::swap;
-  _internal_metadata_.Swap<std::string>(&other->_internal_metadata_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
   swap(_has_bits_[0], other->_has_bits_[0]);
   section_crc_.InternalSwap(&other->section_crc_);
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
@@ -1068,8 +1511,8 @@ void CMsgClientAppInfoRequest_App::InternalSwap(CMsgClientAppInfoRequest_App* ot
           reinterpret_cast<char*>(&other->app_id_));
 }
 
-std::string CMsgClientAppInfoRequest_App::GetTypeName() const {
-  return "CMsgClientAppInfoRequest.App";
+::PROTOBUF_NAMESPACE_ID::Metadata CMsgClientAppInfoRequest_App::GetMetadata() const {
+  return GetMetadataStatic();
 }
 
 
@@ -1084,17 +1527,17 @@ class CMsgClientAppInfoRequest::_Internal {
 };
 
 CMsgClientAppInfoRequest::CMsgClientAppInfoRequest(::PROTOBUF_NAMESPACE_ID::Arena* arena)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(arena),
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena),
   apps_(arena) {
   SharedCtor();
   RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:CMsgClientAppInfoRequest)
 }
 CMsgClientAppInfoRequest::CMsgClientAppInfoRequest(const CMsgClientAppInfoRequest& from)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(),
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
       _has_bits_(from._has_bits_),
       apps_(from.apps_) {
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   supports_batches_ = from.supports_batches_;
   // @@protoc_insertion_point(copy_constructor:CMsgClientAppInfoRequest)
 }
@@ -1106,7 +1549,7 @@ supports_batches_ = false;
 CMsgClientAppInfoRequest::~CMsgClientAppInfoRequest() {
   // @@protoc_insertion_point(destructor:CMsgClientAppInfoRequest)
   SharedDtor();
-  _internal_metadata_.Delete<std::string>();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 void CMsgClientAppInfoRequest::SharedDtor() {
@@ -1132,7 +1575,7 @@ void CMsgClientAppInfoRequest::Clear() {
   apps_.Clear();
   supports_batches_ = false;
   _has_bits_.Clear();
-  _internal_metadata_.Clear<std::string>();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 const char* CMsgClientAppInfoRequest::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
@@ -1170,7 +1613,7 @@ const char* CMsgClientAppInfoRequest::_InternalParse(const char* ptr, ::PROTOBUF
           goto success;
         }
         ptr = UnknownFieldParse(tag,
-            _internal_metadata_.mutable_unknown_fields<std::string>(),
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
             ptr, ctx);
         CHK_(ptr != nullptr);
         continue;
@@ -1208,8 +1651,8 @@ failure:
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = stream->WriteRaw(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).data(),
-        static_cast<int>(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size()), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:CMsgClientAppInfoRequest)
   return target;
@@ -1237,23 +1680,33 @@ size_t CMsgClientAppInfoRequest::ByteSizeLong() const {
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    total_size += _internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size();
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
   }
   int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
   SetCachedSize(cached_size);
   return total_size;
 }
 
-void CMsgClientAppInfoRequest::CheckTypeAndMergeFrom(
-    const ::PROTOBUF_NAMESPACE_ID::MessageLite& from) {
-  MergeFrom(*::PROTOBUF_NAMESPACE_ID::internal::DownCast<const CMsgClientAppInfoRequest*>(
-      &from));
+void CMsgClientAppInfoRequest::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:CMsgClientAppInfoRequest)
+  GOOGLE_DCHECK_NE(&from, this);
+  const CMsgClientAppInfoRequest* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<CMsgClientAppInfoRequest>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:CMsgClientAppInfoRequest)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:CMsgClientAppInfoRequest)
+    MergeFrom(*source);
+  }
 }
 
 void CMsgClientAppInfoRequest::MergeFrom(const CMsgClientAppInfoRequest& from) {
 // @@protoc_insertion_point(class_specific_merge_from_start:CMsgClientAppInfoRequest)
   GOOGLE_DCHECK_NE(&from, this);
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -1261,6 +1714,13 @@ void CMsgClientAppInfoRequest::MergeFrom(const CMsgClientAppInfoRequest& from) {
   if (from._internal_has_supports_batches()) {
     _internal_set_supports_batches(from._internal_supports_batches());
   }
+}
+
+void CMsgClientAppInfoRequest::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:CMsgClientAppInfoRequest)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
 }
 
 void CMsgClientAppInfoRequest::CopyFrom(const CMsgClientAppInfoRequest& from) {
@@ -1276,14 +1736,14 @@ bool CMsgClientAppInfoRequest::IsInitialized() const {
 
 void CMsgClientAppInfoRequest::InternalSwap(CMsgClientAppInfoRequest* other) {
   using std::swap;
-  _internal_metadata_.Swap<std::string>(&other->_internal_metadata_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
   swap(_has_bits_[0], other->_has_bits_[0]);
   apps_.InternalSwap(&other->apps_);
   swap(supports_batches_, other->supports_batches_);
 }
 
-std::string CMsgClientAppInfoRequest::GetTypeName() const {
-  return "CMsgClientAppInfoRequest";
+::PROTOBUF_NAMESPACE_ID::Metadata CMsgClientAppInfoRequest::GetMetadata() const {
+  return GetMetadataStatic();
 }
 
 
@@ -1310,15 +1770,15 @@ class CMsgClientPICSChangesSinceRequest::_Internal {
 };
 
 CMsgClientPICSChangesSinceRequest::CMsgClientPICSChangesSinceRequest(::PROTOBUF_NAMESPACE_ID::Arena* arena)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(arena) {
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
   SharedCtor();
   RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:CMsgClientPICSChangesSinceRequest)
 }
 CMsgClientPICSChangesSinceRequest::CMsgClientPICSChangesSinceRequest(const CMsgClientPICSChangesSinceRequest& from)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(),
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
       _has_bits_(from._has_bits_) {
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::memcpy(&since_change_number_, &from.since_change_number_,
     static_cast<size_t>(reinterpret_cast<char*>(&num_package_info_cached_) -
     reinterpret_cast<char*>(&since_change_number_)) + sizeof(num_package_info_cached_));
@@ -1335,7 +1795,7 @@ void CMsgClientPICSChangesSinceRequest::SharedCtor() {
 CMsgClientPICSChangesSinceRequest::~CMsgClientPICSChangesSinceRequest() {
   // @@protoc_insertion_point(destructor:CMsgClientPICSChangesSinceRequest)
   SharedDtor();
-  _internal_metadata_.Delete<std::string>();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 void CMsgClientPICSChangesSinceRequest::SharedDtor() {
@@ -1365,7 +1825,7 @@ void CMsgClientPICSChangesSinceRequest::Clear() {
         reinterpret_cast<char*>(&since_change_number_)) + sizeof(num_package_info_cached_));
   }
   _has_bits_.Clear();
-  _internal_metadata_.Clear<std::string>();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 const char* CMsgClientPICSChangesSinceRequest::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
@@ -1423,7 +1883,7 @@ const char* CMsgClientPICSChangesSinceRequest::_InternalParse(const char* ptr, :
           goto success;
         }
         ptr = UnknownFieldParse(tag,
-            _internal_metadata_.mutable_unknown_fields<std::string>(),
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
             ptr, ctx);
         CHK_(ptr != nullptr);
         continue;
@@ -1477,8 +1937,8 @@ failure:
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = stream->WriteRaw(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).data(),
-        static_cast<int>(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size()), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:CMsgClientPICSChangesSinceRequest)
   return target;
@@ -1527,23 +1987,33 @@ size_t CMsgClientPICSChangesSinceRequest::ByteSizeLong() const {
 
   }
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    total_size += _internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size();
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
   }
   int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
   SetCachedSize(cached_size);
   return total_size;
 }
 
-void CMsgClientPICSChangesSinceRequest::CheckTypeAndMergeFrom(
-    const ::PROTOBUF_NAMESPACE_ID::MessageLite& from) {
-  MergeFrom(*::PROTOBUF_NAMESPACE_ID::internal::DownCast<const CMsgClientPICSChangesSinceRequest*>(
-      &from));
+void CMsgClientPICSChangesSinceRequest::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:CMsgClientPICSChangesSinceRequest)
+  GOOGLE_DCHECK_NE(&from, this);
+  const CMsgClientPICSChangesSinceRequest* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<CMsgClientPICSChangesSinceRequest>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:CMsgClientPICSChangesSinceRequest)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:CMsgClientPICSChangesSinceRequest)
+    MergeFrom(*source);
+  }
 }
 
 void CMsgClientPICSChangesSinceRequest::MergeFrom(const CMsgClientPICSChangesSinceRequest& from) {
 // @@protoc_insertion_point(class_specific_merge_from_start:CMsgClientPICSChangesSinceRequest)
   GOOGLE_DCHECK_NE(&from, this);
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -1568,6 +2038,13 @@ void CMsgClientPICSChangesSinceRequest::MergeFrom(const CMsgClientPICSChangesSin
   }
 }
 
+void CMsgClientPICSChangesSinceRequest::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:CMsgClientPICSChangesSinceRequest)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
 void CMsgClientPICSChangesSinceRequest::CopyFrom(const CMsgClientPICSChangesSinceRequest& from) {
 // @@protoc_insertion_point(class_specific_copy_from_start:CMsgClientPICSChangesSinceRequest)
   if (&from == this) return;
@@ -1581,7 +2058,7 @@ bool CMsgClientPICSChangesSinceRequest::IsInitialized() const {
 
 void CMsgClientPICSChangesSinceRequest::InternalSwap(CMsgClientPICSChangesSinceRequest* other) {
   using std::swap;
-  _internal_metadata_.Swap<std::string>(&other->_internal_metadata_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
   swap(_has_bits_[0], other->_has_bits_[0]);
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
       PROTOBUF_FIELD_OFFSET(CMsgClientPICSChangesSinceRequest, num_package_info_cached_)
@@ -1591,8 +2068,8 @@ void CMsgClientPICSChangesSinceRequest::InternalSwap(CMsgClientPICSChangesSinceR
           reinterpret_cast<char*>(&other->since_change_number_));
 }
 
-std::string CMsgClientPICSChangesSinceRequest::GetTypeName() const {
-  return "CMsgClientPICSChangesSinceRequest";
+::PROTOBUF_NAMESPACE_ID::Metadata CMsgClientPICSChangesSinceRequest::GetMetadata() const {
+  return GetMetadataStatic();
 }
 
 
@@ -1613,15 +2090,15 @@ class CMsgClientPICSChangesSinceResponse_PackageChange::_Internal {
 };
 
 CMsgClientPICSChangesSinceResponse_PackageChange::CMsgClientPICSChangesSinceResponse_PackageChange(::PROTOBUF_NAMESPACE_ID::Arena* arena)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(arena) {
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
   SharedCtor();
   RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:CMsgClientPICSChangesSinceResponse.PackageChange)
 }
 CMsgClientPICSChangesSinceResponse_PackageChange::CMsgClientPICSChangesSinceResponse_PackageChange(const CMsgClientPICSChangesSinceResponse_PackageChange& from)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(),
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
       _has_bits_(from._has_bits_) {
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::memcpy(&packageid_, &from.packageid_,
     static_cast<size_t>(reinterpret_cast<char*>(&needs_token_) -
     reinterpret_cast<char*>(&packageid_)) + sizeof(needs_token_));
@@ -1638,7 +2115,7 @@ void CMsgClientPICSChangesSinceResponse_PackageChange::SharedCtor() {
 CMsgClientPICSChangesSinceResponse_PackageChange::~CMsgClientPICSChangesSinceResponse_PackageChange() {
   // @@protoc_insertion_point(destructor:CMsgClientPICSChangesSinceResponse.PackageChange)
   SharedDtor();
-  _internal_metadata_.Delete<std::string>();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 void CMsgClientPICSChangesSinceResponse_PackageChange::SharedDtor() {
@@ -1668,7 +2145,7 @@ void CMsgClientPICSChangesSinceResponse_PackageChange::Clear() {
         reinterpret_cast<char*>(&packageid_)) + sizeof(needs_token_));
   }
   _has_bits_.Clear();
-  _internal_metadata_.Clear<std::string>();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 const char* CMsgClientPICSChangesSinceResponse_PackageChange::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
@@ -1710,7 +2187,7 @@ const char* CMsgClientPICSChangesSinceResponse_PackageChange::_InternalParse(con
           goto success;
         }
         ptr = UnknownFieldParse(tag,
-            _internal_metadata_.mutable_unknown_fields<std::string>(),
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
             ptr, ctx);
         CHK_(ptr != nullptr);
         continue;
@@ -1752,8 +2229,8 @@ failure:
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = stream->WriteRaw(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).data(),
-        static_cast<int>(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size()), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:CMsgClientPICSChangesSinceResponse.PackageChange)
   return target;
@@ -1790,23 +2267,33 @@ size_t CMsgClientPICSChangesSinceResponse_PackageChange::ByteSizeLong() const {
 
   }
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    total_size += _internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size();
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
   }
   int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
   SetCachedSize(cached_size);
   return total_size;
 }
 
-void CMsgClientPICSChangesSinceResponse_PackageChange::CheckTypeAndMergeFrom(
-    const ::PROTOBUF_NAMESPACE_ID::MessageLite& from) {
-  MergeFrom(*::PROTOBUF_NAMESPACE_ID::internal::DownCast<const CMsgClientPICSChangesSinceResponse_PackageChange*>(
-      &from));
+void CMsgClientPICSChangesSinceResponse_PackageChange::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:CMsgClientPICSChangesSinceResponse.PackageChange)
+  GOOGLE_DCHECK_NE(&from, this);
+  const CMsgClientPICSChangesSinceResponse_PackageChange* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<CMsgClientPICSChangesSinceResponse_PackageChange>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:CMsgClientPICSChangesSinceResponse.PackageChange)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:CMsgClientPICSChangesSinceResponse.PackageChange)
+    MergeFrom(*source);
+  }
 }
 
 void CMsgClientPICSChangesSinceResponse_PackageChange::MergeFrom(const CMsgClientPICSChangesSinceResponse_PackageChange& from) {
 // @@protoc_insertion_point(class_specific_merge_from_start:CMsgClientPICSChangesSinceResponse.PackageChange)
   GOOGLE_DCHECK_NE(&from, this);
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -1825,6 +2312,13 @@ void CMsgClientPICSChangesSinceResponse_PackageChange::MergeFrom(const CMsgClien
   }
 }
 
+void CMsgClientPICSChangesSinceResponse_PackageChange::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:CMsgClientPICSChangesSinceResponse.PackageChange)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
 void CMsgClientPICSChangesSinceResponse_PackageChange::CopyFrom(const CMsgClientPICSChangesSinceResponse_PackageChange& from) {
 // @@protoc_insertion_point(class_specific_copy_from_start:CMsgClientPICSChangesSinceResponse.PackageChange)
   if (&from == this) return;
@@ -1838,7 +2332,7 @@ bool CMsgClientPICSChangesSinceResponse_PackageChange::IsInitialized() const {
 
 void CMsgClientPICSChangesSinceResponse_PackageChange::InternalSwap(CMsgClientPICSChangesSinceResponse_PackageChange* other) {
   using std::swap;
-  _internal_metadata_.Swap<std::string>(&other->_internal_metadata_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
   swap(_has_bits_[0], other->_has_bits_[0]);
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
       PROTOBUF_FIELD_OFFSET(CMsgClientPICSChangesSinceResponse_PackageChange, needs_token_)
@@ -1848,8 +2342,8 @@ void CMsgClientPICSChangesSinceResponse_PackageChange::InternalSwap(CMsgClientPI
           reinterpret_cast<char*>(&other->packageid_));
 }
 
-std::string CMsgClientPICSChangesSinceResponse_PackageChange::GetTypeName() const {
-  return "CMsgClientPICSChangesSinceResponse.PackageChange";
+::PROTOBUF_NAMESPACE_ID::Metadata CMsgClientPICSChangesSinceResponse_PackageChange::GetMetadata() const {
+  return GetMetadataStatic();
 }
 
 
@@ -1870,15 +2364,15 @@ class CMsgClientPICSChangesSinceResponse_AppChange::_Internal {
 };
 
 CMsgClientPICSChangesSinceResponse_AppChange::CMsgClientPICSChangesSinceResponse_AppChange(::PROTOBUF_NAMESPACE_ID::Arena* arena)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(arena) {
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
   SharedCtor();
   RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:CMsgClientPICSChangesSinceResponse.AppChange)
 }
 CMsgClientPICSChangesSinceResponse_AppChange::CMsgClientPICSChangesSinceResponse_AppChange(const CMsgClientPICSChangesSinceResponse_AppChange& from)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(),
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
       _has_bits_(from._has_bits_) {
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::memcpy(&appid_, &from.appid_,
     static_cast<size_t>(reinterpret_cast<char*>(&needs_token_) -
     reinterpret_cast<char*>(&appid_)) + sizeof(needs_token_));
@@ -1895,7 +2389,7 @@ void CMsgClientPICSChangesSinceResponse_AppChange::SharedCtor() {
 CMsgClientPICSChangesSinceResponse_AppChange::~CMsgClientPICSChangesSinceResponse_AppChange() {
   // @@protoc_insertion_point(destructor:CMsgClientPICSChangesSinceResponse.AppChange)
   SharedDtor();
-  _internal_metadata_.Delete<std::string>();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 void CMsgClientPICSChangesSinceResponse_AppChange::SharedDtor() {
@@ -1925,7 +2419,7 @@ void CMsgClientPICSChangesSinceResponse_AppChange::Clear() {
         reinterpret_cast<char*>(&appid_)) + sizeof(needs_token_));
   }
   _has_bits_.Clear();
-  _internal_metadata_.Clear<std::string>();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 const char* CMsgClientPICSChangesSinceResponse_AppChange::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
@@ -1967,7 +2461,7 @@ const char* CMsgClientPICSChangesSinceResponse_AppChange::_InternalParse(const c
           goto success;
         }
         ptr = UnknownFieldParse(tag,
-            _internal_metadata_.mutable_unknown_fields<std::string>(),
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
             ptr, ctx);
         CHK_(ptr != nullptr);
         continue;
@@ -2009,8 +2503,8 @@ failure:
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = stream->WriteRaw(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).data(),
-        static_cast<int>(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size()), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:CMsgClientPICSChangesSinceResponse.AppChange)
   return target;
@@ -2047,23 +2541,33 @@ size_t CMsgClientPICSChangesSinceResponse_AppChange::ByteSizeLong() const {
 
   }
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    total_size += _internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size();
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
   }
   int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
   SetCachedSize(cached_size);
   return total_size;
 }
 
-void CMsgClientPICSChangesSinceResponse_AppChange::CheckTypeAndMergeFrom(
-    const ::PROTOBUF_NAMESPACE_ID::MessageLite& from) {
-  MergeFrom(*::PROTOBUF_NAMESPACE_ID::internal::DownCast<const CMsgClientPICSChangesSinceResponse_AppChange*>(
-      &from));
+void CMsgClientPICSChangesSinceResponse_AppChange::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:CMsgClientPICSChangesSinceResponse.AppChange)
+  GOOGLE_DCHECK_NE(&from, this);
+  const CMsgClientPICSChangesSinceResponse_AppChange* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<CMsgClientPICSChangesSinceResponse_AppChange>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:CMsgClientPICSChangesSinceResponse.AppChange)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:CMsgClientPICSChangesSinceResponse.AppChange)
+    MergeFrom(*source);
+  }
 }
 
 void CMsgClientPICSChangesSinceResponse_AppChange::MergeFrom(const CMsgClientPICSChangesSinceResponse_AppChange& from) {
 // @@protoc_insertion_point(class_specific_merge_from_start:CMsgClientPICSChangesSinceResponse.AppChange)
   GOOGLE_DCHECK_NE(&from, this);
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -2082,6 +2586,13 @@ void CMsgClientPICSChangesSinceResponse_AppChange::MergeFrom(const CMsgClientPIC
   }
 }
 
+void CMsgClientPICSChangesSinceResponse_AppChange::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:CMsgClientPICSChangesSinceResponse.AppChange)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
 void CMsgClientPICSChangesSinceResponse_AppChange::CopyFrom(const CMsgClientPICSChangesSinceResponse_AppChange& from) {
 // @@protoc_insertion_point(class_specific_copy_from_start:CMsgClientPICSChangesSinceResponse.AppChange)
   if (&from == this) return;
@@ -2095,7 +2606,7 @@ bool CMsgClientPICSChangesSinceResponse_AppChange::IsInitialized() const {
 
 void CMsgClientPICSChangesSinceResponse_AppChange::InternalSwap(CMsgClientPICSChangesSinceResponse_AppChange* other) {
   using std::swap;
-  _internal_metadata_.Swap<std::string>(&other->_internal_metadata_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
   swap(_has_bits_[0], other->_has_bits_[0]);
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
       PROTOBUF_FIELD_OFFSET(CMsgClientPICSChangesSinceResponse_AppChange, needs_token_)
@@ -2105,8 +2616,8 @@ void CMsgClientPICSChangesSinceResponse_AppChange::InternalSwap(CMsgClientPICSCh
           reinterpret_cast<char*>(&other->appid_));
 }
 
-std::string CMsgClientPICSChangesSinceResponse_AppChange::GetTypeName() const {
-  return "CMsgClientPICSChangesSinceResponse.AppChange";
+::PROTOBUF_NAMESPACE_ID::Metadata CMsgClientPICSChangesSinceResponse_AppChange::GetMetadata() const {
+  return GetMetadataStatic();
 }
 
 
@@ -2133,7 +2644,7 @@ class CMsgClientPICSChangesSinceResponse::_Internal {
 };
 
 CMsgClientPICSChangesSinceResponse::CMsgClientPICSChangesSinceResponse(::PROTOBUF_NAMESPACE_ID::Arena* arena)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(arena),
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena),
   package_changes_(arena),
   app_changes_(arena) {
   SharedCtor();
@@ -2141,11 +2652,11 @@ CMsgClientPICSChangesSinceResponse::CMsgClientPICSChangesSinceResponse(::PROTOBU
   // @@protoc_insertion_point(arena_constructor:CMsgClientPICSChangesSinceResponse)
 }
 CMsgClientPICSChangesSinceResponse::CMsgClientPICSChangesSinceResponse(const CMsgClientPICSChangesSinceResponse& from)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(),
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
       _has_bits_(from._has_bits_),
       package_changes_(from.package_changes_),
       app_changes_(from.app_changes_) {
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::memcpy(&current_change_number_, &from.current_change_number_,
     static_cast<size_t>(reinterpret_cast<char*>(&force_full_package_update_) -
     reinterpret_cast<char*>(&current_change_number_)) + sizeof(force_full_package_update_));
@@ -2162,7 +2673,7 @@ void CMsgClientPICSChangesSinceResponse::SharedCtor() {
 CMsgClientPICSChangesSinceResponse::~CMsgClientPICSChangesSinceResponse() {
   // @@protoc_insertion_point(destructor:CMsgClientPICSChangesSinceResponse)
   SharedDtor();
-  _internal_metadata_.Delete<std::string>();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 void CMsgClientPICSChangesSinceResponse::SharedDtor() {
@@ -2194,7 +2705,7 @@ void CMsgClientPICSChangesSinceResponse::Clear() {
         reinterpret_cast<char*>(&current_change_number_)) + sizeof(force_full_package_update_));
   }
   _has_bits_.Clear();
-  _internal_metadata_.Clear<std::string>();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 const char* CMsgClientPICSChangesSinceResponse::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
@@ -2276,7 +2787,7 @@ const char* CMsgClientPICSChangesSinceResponse::_InternalParse(const char* ptr, 
           goto success;
         }
         ptr = UnknownFieldParse(tag,
-            _internal_metadata_.mutable_unknown_fields<std::string>(),
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
             ptr, ctx);
         CHK_(ptr != nullptr);
         continue;
@@ -2346,8 +2857,8 @@ failure:
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = stream->WriteRaw(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).data(),
-        static_cast<int>(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size()), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:CMsgClientPICSChangesSinceResponse)
   return target;
@@ -2408,23 +2919,33 @@ size_t CMsgClientPICSChangesSinceResponse::ByteSizeLong() const {
 
   }
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    total_size += _internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size();
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
   }
   int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
   SetCachedSize(cached_size);
   return total_size;
 }
 
-void CMsgClientPICSChangesSinceResponse::CheckTypeAndMergeFrom(
-    const ::PROTOBUF_NAMESPACE_ID::MessageLite& from) {
-  MergeFrom(*::PROTOBUF_NAMESPACE_ID::internal::DownCast<const CMsgClientPICSChangesSinceResponse*>(
-      &from));
+void CMsgClientPICSChangesSinceResponse::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:CMsgClientPICSChangesSinceResponse)
+  GOOGLE_DCHECK_NE(&from, this);
+  const CMsgClientPICSChangesSinceResponse* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<CMsgClientPICSChangesSinceResponse>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:CMsgClientPICSChangesSinceResponse)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:CMsgClientPICSChangesSinceResponse)
+    MergeFrom(*source);
+  }
 }
 
 void CMsgClientPICSChangesSinceResponse::MergeFrom(const CMsgClientPICSChangesSinceResponse& from) {
 // @@protoc_insertion_point(class_specific_merge_from_start:CMsgClientPICSChangesSinceResponse)
   GOOGLE_DCHECK_NE(&from, this);
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -2451,6 +2972,13 @@ void CMsgClientPICSChangesSinceResponse::MergeFrom(const CMsgClientPICSChangesSi
   }
 }
 
+void CMsgClientPICSChangesSinceResponse::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:CMsgClientPICSChangesSinceResponse)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
 void CMsgClientPICSChangesSinceResponse::CopyFrom(const CMsgClientPICSChangesSinceResponse& from) {
 // @@protoc_insertion_point(class_specific_copy_from_start:CMsgClientPICSChangesSinceResponse)
   if (&from == this) return;
@@ -2464,7 +2992,7 @@ bool CMsgClientPICSChangesSinceResponse::IsInitialized() const {
 
 void CMsgClientPICSChangesSinceResponse::InternalSwap(CMsgClientPICSChangesSinceResponse* other) {
   using std::swap;
-  _internal_metadata_.Swap<std::string>(&other->_internal_metadata_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
   swap(_has_bits_[0], other->_has_bits_[0]);
   package_changes_.InternalSwap(&other->package_changes_);
   app_changes_.InternalSwap(&other->app_changes_);
@@ -2476,8 +3004,8 @@ void CMsgClientPICSChangesSinceResponse::InternalSwap(CMsgClientPICSChangesSince
           reinterpret_cast<char*>(&other->current_change_number_));
 }
 
-std::string CMsgClientPICSChangesSinceResponse::GetTypeName() const {
-  return "CMsgClientPICSChangesSinceResponse";
+::PROTOBUF_NAMESPACE_ID::Metadata CMsgClientPICSChangesSinceResponse::GetMetadata() const {
+  return GetMetadataStatic();
 }
 
 
@@ -2498,15 +3026,15 @@ class CMsgClientPICSProductInfoRequest_AppInfo::_Internal {
 };
 
 CMsgClientPICSProductInfoRequest_AppInfo::CMsgClientPICSProductInfoRequest_AppInfo(::PROTOBUF_NAMESPACE_ID::Arena* arena)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(arena) {
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
   SharedCtor();
   RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:CMsgClientPICSProductInfoRequest.AppInfo)
 }
 CMsgClientPICSProductInfoRequest_AppInfo::CMsgClientPICSProductInfoRequest_AppInfo(const CMsgClientPICSProductInfoRequest_AppInfo& from)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(),
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
       _has_bits_(from._has_bits_) {
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::memcpy(&access_token_, &from.access_token_,
     static_cast<size_t>(reinterpret_cast<char*>(&only_public_obsolete_) -
     reinterpret_cast<char*>(&access_token_)) + sizeof(only_public_obsolete_));
@@ -2523,7 +3051,7 @@ void CMsgClientPICSProductInfoRequest_AppInfo::SharedCtor() {
 CMsgClientPICSProductInfoRequest_AppInfo::~CMsgClientPICSProductInfoRequest_AppInfo() {
   // @@protoc_insertion_point(destructor:CMsgClientPICSProductInfoRequest.AppInfo)
   SharedDtor();
-  _internal_metadata_.Delete<std::string>();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 void CMsgClientPICSProductInfoRequest_AppInfo::SharedDtor() {
@@ -2553,7 +3081,7 @@ void CMsgClientPICSProductInfoRequest_AppInfo::Clear() {
         reinterpret_cast<char*>(&access_token_)) + sizeof(only_public_obsolete_));
   }
   _has_bits_.Clear();
-  _internal_metadata_.Clear<std::string>();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 const char* CMsgClientPICSProductInfoRequest_AppInfo::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
@@ -2595,7 +3123,7 @@ const char* CMsgClientPICSProductInfoRequest_AppInfo::_InternalParse(const char*
           goto success;
         }
         ptr = UnknownFieldParse(tag,
-            _internal_metadata_.mutable_unknown_fields<std::string>(),
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
             ptr, ctx);
         CHK_(ptr != nullptr);
         continue;
@@ -2637,8 +3165,8 @@ failure:
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = stream->WriteRaw(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).data(),
-        static_cast<int>(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size()), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:CMsgClientPICSProductInfoRequest.AppInfo)
   return target;
@@ -2675,23 +3203,33 @@ size_t CMsgClientPICSProductInfoRequest_AppInfo::ByteSizeLong() const {
 
   }
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    total_size += _internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size();
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
   }
   int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
   SetCachedSize(cached_size);
   return total_size;
 }
 
-void CMsgClientPICSProductInfoRequest_AppInfo::CheckTypeAndMergeFrom(
-    const ::PROTOBUF_NAMESPACE_ID::MessageLite& from) {
-  MergeFrom(*::PROTOBUF_NAMESPACE_ID::internal::DownCast<const CMsgClientPICSProductInfoRequest_AppInfo*>(
-      &from));
+void CMsgClientPICSProductInfoRequest_AppInfo::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:CMsgClientPICSProductInfoRequest.AppInfo)
+  GOOGLE_DCHECK_NE(&from, this);
+  const CMsgClientPICSProductInfoRequest_AppInfo* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<CMsgClientPICSProductInfoRequest_AppInfo>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:CMsgClientPICSProductInfoRequest.AppInfo)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:CMsgClientPICSProductInfoRequest.AppInfo)
+    MergeFrom(*source);
+  }
 }
 
 void CMsgClientPICSProductInfoRequest_AppInfo::MergeFrom(const CMsgClientPICSProductInfoRequest_AppInfo& from) {
 // @@protoc_insertion_point(class_specific_merge_from_start:CMsgClientPICSProductInfoRequest.AppInfo)
   GOOGLE_DCHECK_NE(&from, this);
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -2710,6 +3248,13 @@ void CMsgClientPICSProductInfoRequest_AppInfo::MergeFrom(const CMsgClientPICSPro
   }
 }
 
+void CMsgClientPICSProductInfoRequest_AppInfo::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:CMsgClientPICSProductInfoRequest.AppInfo)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
 void CMsgClientPICSProductInfoRequest_AppInfo::CopyFrom(const CMsgClientPICSProductInfoRequest_AppInfo& from) {
 // @@protoc_insertion_point(class_specific_copy_from_start:CMsgClientPICSProductInfoRequest.AppInfo)
   if (&from == this) return;
@@ -2723,7 +3268,7 @@ bool CMsgClientPICSProductInfoRequest_AppInfo::IsInitialized() const {
 
 void CMsgClientPICSProductInfoRequest_AppInfo::InternalSwap(CMsgClientPICSProductInfoRequest_AppInfo* other) {
   using std::swap;
-  _internal_metadata_.Swap<std::string>(&other->_internal_metadata_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
   swap(_has_bits_[0], other->_has_bits_[0]);
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
       PROTOBUF_FIELD_OFFSET(CMsgClientPICSProductInfoRequest_AppInfo, only_public_obsolete_)
@@ -2733,8 +3278,8 @@ void CMsgClientPICSProductInfoRequest_AppInfo::InternalSwap(CMsgClientPICSProduc
           reinterpret_cast<char*>(&other->access_token_));
 }
 
-std::string CMsgClientPICSProductInfoRequest_AppInfo::GetTypeName() const {
-  return "CMsgClientPICSProductInfoRequest.AppInfo";
+::PROTOBUF_NAMESPACE_ID::Metadata CMsgClientPICSProductInfoRequest_AppInfo::GetMetadata() const {
+  return GetMetadataStatic();
 }
 
 
@@ -2752,15 +3297,15 @@ class CMsgClientPICSProductInfoRequest_PackageInfo::_Internal {
 };
 
 CMsgClientPICSProductInfoRequest_PackageInfo::CMsgClientPICSProductInfoRequest_PackageInfo(::PROTOBUF_NAMESPACE_ID::Arena* arena)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(arena) {
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
   SharedCtor();
   RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:CMsgClientPICSProductInfoRequest.PackageInfo)
 }
 CMsgClientPICSProductInfoRequest_PackageInfo::CMsgClientPICSProductInfoRequest_PackageInfo(const CMsgClientPICSProductInfoRequest_PackageInfo& from)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(),
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
       _has_bits_(from._has_bits_) {
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::memcpy(&access_token_, &from.access_token_,
     static_cast<size_t>(reinterpret_cast<char*>(&packageid_) -
     reinterpret_cast<char*>(&access_token_)) + sizeof(packageid_));
@@ -2777,7 +3322,7 @@ void CMsgClientPICSProductInfoRequest_PackageInfo::SharedCtor() {
 CMsgClientPICSProductInfoRequest_PackageInfo::~CMsgClientPICSProductInfoRequest_PackageInfo() {
   // @@protoc_insertion_point(destructor:CMsgClientPICSProductInfoRequest.PackageInfo)
   SharedDtor();
-  _internal_metadata_.Delete<std::string>();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 void CMsgClientPICSProductInfoRequest_PackageInfo::SharedDtor() {
@@ -2807,7 +3352,7 @@ void CMsgClientPICSProductInfoRequest_PackageInfo::Clear() {
         reinterpret_cast<char*>(&access_token_)) + sizeof(packageid_));
   }
   _has_bits_.Clear();
-  _internal_metadata_.Clear<std::string>();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 const char* CMsgClientPICSProductInfoRequest_PackageInfo::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
@@ -2841,7 +3386,7 @@ const char* CMsgClientPICSProductInfoRequest_PackageInfo::_InternalParse(const c
           goto success;
         }
         ptr = UnknownFieldParse(tag,
-            _internal_metadata_.mutable_unknown_fields<std::string>(),
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
             ptr, ctx);
         CHK_(ptr != nullptr);
         continue;
@@ -2877,8 +3422,8 @@ failure:
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = stream->WriteRaw(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).data(),
-        static_cast<int>(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size()), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:CMsgClientPICSProductInfoRequest.PackageInfo)
   return target;
@@ -2910,23 +3455,33 @@ size_t CMsgClientPICSProductInfoRequest_PackageInfo::ByteSizeLong() const {
 
   }
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    total_size += _internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size();
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
   }
   int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
   SetCachedSize(cached_size);
   return total_size;
 }
 
-void CMsgClientPICSProductInfoRequest_PackageInfo::CheckTypeAndMergeFrom(
-    const ::PROTOBUF_NAMESPACE_ID::MessageLite& from) {
-  MergeFrom(*::PROTOBUF_NAMESPACE_ID::internal::DownCast<const CMsgClientPICSProductInfoRequest_PackageInfo*>(
-      &from));
+void CMsgClientPICSProductInfoRequest_PackageInfo::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:CMsgClientPICSProductInfoRequest.PackageInfo)
+  GOOGLE_DCHECK_NE(&from, this);
+  const CMsgClientPICSProductInfoRequest_PackageInfo* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<CMsgClientPICSProductInfoRequest_PackageInfo>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:CMsgClientPICSProductInfoRequest.PackageInfo)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:CMsgClientPICSProductInfoRequest.PackageInfo)
+    MergeFrom(*source);
+  }
 }
 
 void CMsgClientPICSProductInfoRequest_PackageInfo::MergeFrom(const CMsgClientPICSProductInfoRequest_PackageInfo& from) {
 // @@protoc_insertion_point(class_specific_merge_from_start:CMsgClientPICSProductInfoRequest.PackageInfo)
   GOOGLE_DCHECK_NE(&from, this);
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -2942,6 +3497,13 @@ void CMsgClientPICSProductInfoRequest_PackageInfo::MergeFrom(const CMsgClientPIC
   }
 }
 
+void CMsgClientPICSProductInfoRequest_PackageInfo::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:CMsgClientPICSProductInfoRequest.PackageInfo)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
 void CMsgClientPICSProductInfoRequest_PackageInfo::CopyFrom(const CMsgClientPICSProductInfoRequest_PackageInfo& from) {
 // @@protoc_insertion_point(class_specific_copy_from_start:CMsgClientPICSProductInfoRequest.PackageInfo)
   if (&from == this) return;
@@ -2955,7 +3517,7 @@ bool CMsgClientPICSProductInfoRequest_PackageInfo::IsInitialized() const {
 
 void CMsgClientPICSProductInfoRequest_PackageInfo::InternalSwap(CMsgClientPICSProductInfoRequest_PackageInfo* other) {
   using std::swap;
-  _internal_metadata_.Swap<std::string>(&other->_internal_metadata_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
   swap(_has_bits_[0], other->_has_bits_[0]);
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
       PROTOBUF_FIELD_OFFSET(CMsgClientPICSProductInfoRequest_PackageInfo, packageid_)
@@ -2965,8 +3527,8 @@ void CMsgClientPICSProductInfoRequest_PackageInfo::InternalSwap(CMsgClientPICSPr
           reinterpret_cast<char*>(&other->access_token_));
 }
 
-std::string CMsgClientPICSProductInfoRequest_PackageInfo::GetTypeName() const {
-  return "CMsgClientPICSProductInfoRequest.PackageInfo";
+::PROTOBUF_NAMESPACE_ID::Metadata CMsgClientPICSProductInfoRequest_PackageInfo::GetMetadata() const {
+  return GetMetadataStatic();
 }
 
 
@@ -2993,7 +3555,7 @@ class CMsgClientPICSProductInfoRequest::_Internal {
 };
 
 CMsgClientPICSProductInfoRequest::CMsgClientPICSProductInfoRequest(::PROTOBUF_NAMESPACE_ID::Arena* arena)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(arena),
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena),
   packages_(arena),
   apps_(arena) {
   SharedCtor();
@@ -3001,11 +3563,11 @@ CMsgClientPICSProductInfoRequest::CMsgClientPICSProductInfoRequest(::PROTOBUF_NA
   // @@protoc_insertion_point(arena_constructor:CMsgClientPICSProductInfoRequest)
 }
 CMsgClientPICSProductInfoRequest::CMsgClientPICSProductInfoRequest(const CMsgClientPICSProductInfoRequest& from)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(),
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
       _has_bits_(from._has_bits_),
       packages_(from.packages_),
       apps_(from.apps_) {
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::memcpy(&num_prev_failed_, &from.num_prev_failed_,
     static_cast<size_t>(reinterpret_cast<char*>(&sequence_number_) -
     reinterpret_cast<char*>(&num_prev_failed_)) + sizeof(sequence_number_));
@@ -3022,7 +3584,7 @@ void CMsgClientPICSProductInfoRequest::SharedCtor() {
 CMsgClientPICSProductInfoRequest::~CMsgClientPICSProductInfoRequest() {
   // @@protoc_insertion_point(destructor:CMsgClientPICSProductInfoRequest)
   SharedDtor();
-  _internal_metadata_.Delete<std::string>();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 void CMsgClientPICSProductInfoRequest::SharedDtor() {
@@ -3054,7 +3616,7 @@ void CMsgClientPICSProductInfoRequest::Clear() {
         reinterpret_cast<char*>(&num_prev_failed_)) + sizeof(sequence_number_));
   }
   _has_bits_.Clear();
-  _internal_metadata_.Clear<std::string>();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 const char* CMsgClientPICSProductInfoRequest::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
@@ -3136,7 +3698,7 @@ const char* CMsgClientPICSProductInfoRequest::_InternalParse(const char* ptr, ::
           goto success;
         }
         ptr = UnknownFieldParse(tag,
-            _internal_metadata_.mutable_unknown_fields<std::string>(),
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
             ptr, ctx);
         CHK_(ptr != nullptr);
         continue;
@@ -3206,8 +3768,8 @@ failure:
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = stream->WriteRaw(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).data(),
-        static_cast<int>(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size()), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:CMsgClientPICSProductInfoRequest)
   return target;
@@ -3270,23 +3832,33 @@ size_t CMsgClientPICSProductInfoRequest::ByteSizeLong() const {
 
   }
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    total_size += _internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size();
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
   }
   int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
   SetCachedSize(cached_size);
   return total_size;
 }
 
-void CMsgClientPICSProductInfoRequest::CheckTypeAndMergeFrom(
-    const ::PROTOBUF_NAMESPACE_ID::MessageLite& from) {
-  MergeFrom(*::PROTOBUF_NAMESPACE_ID::internal::DownCast<const CMsgClientPICSProductInfoRequest*>(
-      &from));
+void CMsgClientPICSProductInfoRequest::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:CMsgClientPICSProductInfoRequest)
+  GOOGLE_DCHECK_NE(&from, this);
+  const CMsgClientPICSProductInfoRequest* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<CMsgClientPICSProductInfoRequest>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:CMsgClientPICSProductInfoRequest)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:CMsgClientPICSProductInfoRequest)
+    MergeFrom(*source);
+  }
 }
 
 void CMsgClientPICSProductInfoRequest::MergeFrom(const CMsgClientPICSProductInfoRequest& from) {
 // @@protoc_insertion_point(class_specific_merge_from_start:CMsgClientPICSProductInfoRequest)
   GOOGLE_DCHECK_NE(&from, this);
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -3313,6 +3885,13 @@ void CMsgClientPICSProductInfoRequest::MergeFrom(const CMsgClientPICSProductInfo
   }
 }
 
+void CMsgClientPICSProductInfoRequest::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:CMsgClientPICSProductInfoRequest)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
 void CMsgClientPICSProductInfoRequest::CopyFrom(const CMsgClientPICSProductInfoRequest& from) {
 // @@protoc_insertion_point(class_specific_copy_from_start:CMsgClientPICSProductInfoRequest)
   if (&from == this) return;
@@ -3326,7 +3905,7 @@ bool CMsgClientPICSProductInfoRequest::IsInitialized() const {
 
 void CMsgClientPICSProductInfoRequest::InternalSwap(CMsgClientPICSProductInfoRequest* other) {
   using std::swap;
-  _internal_metadata_.Swap<std::string>(&other->_internal_metadata_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
   swap(_has_bits_[0], other->_has_bits_[0]);
   packages_.InternalSwap(&other->packages_);
   apps_.InternalSwap(&other->apps_);
@@ -3338,8 +3917,8 @@ void CMsgClientPICSProductInfoRequest::InternalSwap(CMsgClientPICSProductInfoReq
           reinterpret_cast<char*>(&other->num_prev_failed_));
 }
 
-std::string CMsgClientPICSProductInfoRequest::GetTypeName() const {
-  return "CMsgClientPICSProductInfoRequest";
+::PROTOBUF_NAMESPACE_ID::Metadata CMsgClientPICSProductInfoRequest::GetMetadata() const {
+  return GetMetadataStatic();
 }
 
 
@@ -3372,15 +3951,15 @@ class CMsgClientPICSProductInfoResponse_AppInfo::_Internal {
 };
 
 CMsgClientPICSProductInfoResponse_AppInfo::CMsgClientPICSProductInfoResponse_AppInfo(::PROTOBUF_NAMESPACE_ID::Arena* arena)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(arena) {
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
   SharedCtor();
   RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:CMsgClientPICSProductInfoResponse.AppInfo)
 }
 CMsgClientPICSProductInfoResponse_AppInfo::CMsgClientPICSProductInfoResponse_AppInfo(const CMsgClientPICSProductInfoResponse_AppInfo& from)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(),
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
       _has_bits_(from._has_bits_) {
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   sha_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   if (from._internal_has_sha()) {
     sha_.Set(::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::EmptyDefault{}, from._internal_sha(), 
@@ -3409,7 +3988,7 @@ buffer_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlrea
 CMsgClientPICSProductInfoResponse_AppInfo::~CMsgClientPICSProductInfoResponse_AppInfo() {
   // @@protoc_insertion_point(destructor:CMsgClientPICSProductInfoResponse.AppInfo)
   SharedDtor();
-  _internal_metadata_.Delete<std::string>();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 void CMsgClientPICSProductInfoResponse_AppInfo::SharedDtor() {
@@ -3449,7 +4028,7 @@ void CMsgClientPICSProductInfoResponse_AppInfo::Clear() {
         reinterpret_cast<char*>(&appid_)) + sizeof(size_));
   }
   _has_bits_.Clear();
-  _internal_metadata_.Clear<std::string>();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 const char* CMsgClientPICSProductInfoResponse_AppInfo::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
@@ -3523,7 +4102,7 @@ const char* CMsgClientPICSProductInfoResponse_AppInfo::_InternalParse(const char
           goto success;
         }
         ptr = UnknownFieldParse(tag,
-            _internal_metadata_.mutable_unknown_fields<std::string>(),
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
             ptr, ctx);
         CHK_(ptr != nullptr);
         continue;
@@ -3589,8 +4168,8 @@ failure:
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = stream->WriteRaw(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).data(),
-        static_cast<int>(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size()), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:CMsgClientPICSProductInfoResponse.AppInfo)
   return target;
@@ -3653,23 +4232,33 @@ size_t CMsgClientPICSProductInfoResponse_AppInfo::ByteSizeLong() const {
 
   }
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    total_size += _internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size();
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
   }
   int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
   SetCachedSize(cached_size);
   return total_size;
 }
 
-void CMsgClientPICSProductInfoResponse_AppInfo::CheckTypeAndMergeFrom(
-    const ::PROTOBUF_NAMESPACE_ID::MessageLite& from) {
-  MergeFrom(*::PROTOBUF_NAMESPACE_ID::internal::DownCast<const CMsgClientPICSProductInfoResponse_AppInfo*>(
-      &from));
+void CMsgClientPICSProductInfoResponse_AppInfo::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:CMsgClientPICSProductInfoResponse.AppInfo)
+  GOOGLE_DCHECK_NE(&from, this);
+  const CMsgClientPICSProductInfoResponse_AppInfo* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<CMsgClientPICSProductInfoResponse_AppInfo>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:CMsgClientPICSProductInfoResponse.AppInfo)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:CMsgClientPICSProductInfoResponse.AppInfo)
+    MergeFrom(*source);
+  }
 }
 
 void CMsgClientPICSProductInfoResponse_AppInfo::MergeFrom(const CMsgClientPICSProductInfoResponse_AppInfo& from) {
 // @@protoc_insertion_point(class_specific_merge_from_start:CMsgClientPICSProductInfoResponse.AppInfo)
   GOOGLE_DCHECK_NE(&from, this);
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -3700,6 +4289,13 @@ void CMsgClientPICSProductInfoResponse_AppInfo::MergeFrom(const CMsgClientPICSPr
   }
 }
 
+void CMsgClientPICSProductInfoResponse_AppInfo::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:CMsgClientPICSProductInfoResponse.AppInfo)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
 void CMsgClientPICSProductInfoResponse_AppInfo::CopyFrom(const CMsgClientPICSProductInfoResponse_AppInfo& from) {
 // @@protoc_insertion_point(class_specific_copy_from_start:CMsgClientPICSProductInfoResponse.AppInfo)
   if (&from == this) return;
@@ -3713,7 +4309,7 @@ bool CMsgClientPICSProductInfoResponse_AppInfo::IsInitialized() const {
 
 void CMsgClientPICSProductInfoResponse_AppInfo::InternalSwap(CMsgClientPICSProductInfoResponse_AppInfo* other) {
   using std::swap;
-  _internal_metadata_.Swap<std::string>(&other->_internal_metadata_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
   swap(_has_bits_[0], other->_has_bits_[0]);
   sha_.Swap(&other->sha_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
   buffer_.Swap(&other->buffer_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
@@ -3725,8 +4321,8 @@ void CMsgClientPICSProductInfoResponse_AppInfo::InternalSwap(CMsgClientPICSProdu
           reinterpret_cast<char*>(&other->appid_));
 }
 
-std::string CMsgClientPICSProductInfoResponse_AppInfo::GetTypeName() const {
-  return "CMsgClientPICSProductInfoResponse.AppInfo";
+::PROTOBUF_NAMESPACE_ID::Metadata CMsgClientPICSProductInfoResponse_AppInfo::GetMetadata() const {
+  return GetMetadataStatic();
 }
 
 
@@ -3756,15 +4352,15 @@ class CMsgClientPICSProductInfoResponse_PackageInfo::_Internal {
 };
 
 CMsgClientPICSProductInfoResponse_PackageInfo::CMsgClientPICSProductInfoResponse_PackageInfo(::PROTOBUF_NAMESPACE_ID::Arena* arena)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(arena) {
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
   SharedCtor();
   RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:CMsgClientPICSProductInfoResponse.PackageInfo)
 }
 CMsgClientPICSProductInfoResponse_PackageInfo::CMsgClientPICSProductInfoResponse_PackageInfo(const CMsgClientPICSProductInfoResponse_PackageInfo& from)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(),
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
       _has_bits_(from._has_bits_) {
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   sha_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   if (from._internal_has_sha()) {
     sha_.Set(::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::EmptyDefault{}, from._internal_sha(), 
@@ -3793,7 +4389,7 @@ buffer_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlrea
 CMsgClientPICSProductInfoResponse_PackageInfo::~CMsgClientPICSProductInfoResponse_PackageInfo() {
   // @@protoc_insertion_point(destructor:CMsgClientPICSProductInfoResponse.PackageInfo)
   SharedDtor();
-  _internal_metadata_.Delete<std::string>();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 void CMsgClientPICSProductInfoResponse_PackageInfo::SharedDtor() {
@@ -3833,7 +4429,7 @@ void CMsgClientPICSProductInfoResponse_PackageInfo::Clear() {
         reinterpret_cast<char*>(&packageid_)) + sizeof(size_));
   }
   _has_bits_.Clear();
-  _internal_metadata_.Clear<std::string>();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 const char* CMsgClientPICSProductInfoResponse_PackageInfo::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
@@ -3899,7 +4495,7 @@ const char* CMsgClientPICSProductInfoResponse_PackageInfo::_InternalParse(const 
           goto success;
         }
         ptr = UnknownFieldParse(tag,
-            _internal_metadata_.mutable_unknown_fields<std::string>(),
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
             ptr, ctx);
         CHK_(ptr != nullptr);
         continue;
@@ -3959,8 +4555,8 @@ failure:
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = stream->WriteRaw(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).data(),
-        static_cast<int>(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size()), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:CMsgClientPICSProductInfoResponse.PackageInfo)
   return target;
@@ -4018,23 +4614,33 @@ size_t CMsgClientPICSProductInfoResponse_PackageInfo::ByteSizeLong() const {
 
   }
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    total_size += _internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size();
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
   }
   int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
   SetCachedSize(cached_size);
   return total_size;
 }
 
-void CMsgClientPICSProductInfoResponse_PackageInfo::CheckTypeAndMergeFrom(
-    const ::PROTOBUF_NAMESPACE_ID::MessageLite& from) {
-  MergeFrom(*::PROTOBUF_NAMESPACE_ID::internal::DownCast<const CMsgClientPICSProductInfoResponse_PackageInfo*>(
-      &from));
+void CMsgClientPICSProductInfoResponse_PackageInfo::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:CMsgClientPICSProductInfoResponse.PackageInfo)
+  GOOGLE_DCHECK_NE(&from, this);
+  const CMsgClientPICSProductInfoResponse_PackageInfo* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<CMsgClientPICSProductInfoResponse_PackageInfo>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:CMsgClientPICSProductInfoResponse.PackageInfo)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:CMsgClientPICSProductInfoResponse.PackageInfo)
+    MergeFrom(*source);
+  }
 }
 
 void CMsgClientPICSProductInfoResponse_PackageInfo::MergeFrom(const CMsgClientPICSProductInfoResponse_PackageInfo& from) {
 // @@protoc_insertion_point(class_specific_merge_from_start:CMsgClientPICSProductInfoResponse.PackageInfo)
   GOOGLE_DCHECK_NE(&from, this);
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -4062,6 +4668,13 @@ void CMsgClientPICSProductInfoResponse_PackageInfo::MergeFrom(const CMsgClientPI
   }
 }
 
+void CMsgClientPICSProductInfoResponse_PackageInfo::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:CMsgClientPICSProductInfoResponse.PackageInfo)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
 void CMsgClientPICSProductInfoResponse_PackageInfo::CopyFrom(const CMsgClientPICSProductInfoResponse_PackageInfo& from) {
 // @@protoc_insertion_point(class_specific_copy_from_start:CMsgClientPICSProductInfoResponse.PackageInfo)
   if (&from == this) return;
@@ -4075,7 +4688,7 @@ bool CMsgClientPICSProductInfoResponse_PackageInfo::IsInitialized() const {
 
 void CMsgClientPICSProductInfoResponse_PackageInfo::InternalSwap(CMsgClientPICSProductInfoResponse_PackageInfo* other) {
   using std::swap;
-  _internal_metadata_.Swap<std::string>(&other->_internal_metadata_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
   swap(_has_bits_[0], other->_has_bits_[0]);
   sha_.Swap(&other->sha_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
   buffer_.Swap(&other->buffer_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
@@ -4087,8 +4700,8 @@ void CMsgClientPICSProductInfoResponse_PackageInfo::InternalSwap(CMsgClientPICSP
           reinterpret_cast<char*>(&other->packageid_));
 }
 
-std::string CMsgClientPICSProductInfoResponse_PackageInfo::GetTypeName() const {
-  return "CMsgClientPICSProductInfoResponse.PackageInfo";
+::PROTOBUF_NAMESPACE_ID::Metadata CMsgClientPICSProductInfoResponse_PackageInfo::GetMetadata() const {
+  return GetMetadataStatic();
 }
 
 
@@ -4112,7 +4725,7 @@ class CMsgClientPICSProductInfoResponse::_Internal {
 };
 
 CMsgClientPICSProductInfoResponse::CMsgClientPICSProductInfoResponse(::PROTOBUF_NAMESPACE_ID::Arena* arena)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(arena),
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena),
   apps_(arena),
   unknown_appids_(arena),
   packages_(arena),
@@ -4122,13 +4735,13 @@ CMsgClientPICSProductInfoResponse::CMsgClientPICSProductInfoResponse(::PROTOBUF_
   // @@protoc_insertion_point(arena_constructor:CMsgClientPICSProductInfoResponse)
 }
 CMsgClientPICSProductInfoResponse::CMsgClientPICSProductInfoResponse(const CMsgClientPICSProductInfoResponse& from)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(),
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
       _has_bits_(from._has_bits_),
       apps_(from.apps_),
       unknown_appids_(from.unknown_appids_),
       packages_(from.packages_),
       unknown_packageids_(from.unknown_packageids_) {
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   http_host_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   if (from._internal_has_http_host()) {
     http_host_.Set(::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::EmptyDefault{}, from._internal_http_host(), 
@@ -4151,7 +4764,7 @@ http_host_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAl
 CMsgClientPICSProductInfoResponse::~CMsgClientPICSProductInfoResponse() {
   // @@protoc_insertion_point(destructor:CMsgClientPICSProductInfoResponse)
   SharedDtor();
-  _internal_metadata_.Delete<std::string>();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 void CMsgClientPICSProductInfoResponse::SharedDtor() {
@@ -4189,7 +4802,7 @@ void CMsgClientPICSProductInfoResponse::Clear() {
         reinterpret_cast<char*>(&meta_data_only_)) + sizeof(http_min_size_));
   }
   _has_bits_.Clear();
-  _internal_metadata_.Clear<std::string>();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 const char* CMsgClientPICSProductInfoResponse::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
@@ -4283,6 +4896,9 @@ const char* CMsgClientPICSProductInfoResponse::_InternalParse(const char* ptr, :
         if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 66)) {
           auto str = _internal_mutable_http_host();
           ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
+          #ifndef NDEBUG
+          ::PROTOBUF_NAMESPACE_ID::internal::VerifyUTF8(str, "CMsgClientPICSProductInfoResponse.http_host");
+          #endif  // !NDEBUG
           CHK_(ptr);
         } else goto handle_unusual;
         continue;
@@ -4293,7 +4909,7 @@ const char* CMsgClientPICSProductInfoResponse::_InternalParse(const char* ptr, :
           goto success;
         }
         ptr = UnknownFieldParse(tag,
-            _internal_metadata_.mutable_unknown_fields<std::string>(),
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
             ptr, ctx);
         CHK_(ptr != nullptr);
         continue;
@@ -4364,13 +4980,17 @@ failure:
 
   // optional string http_host = 8;
   if (cached_has_bits & 0x00000001u) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::VerifyUTF8StringNamedField(
+      this->_internal_http_host().data(), static_cast<int>(this->_internal_http_host().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::SERIALIZE,
+      "CMsgClientPICSProductInfoResponse.http_host");
     target = stream->WriteStringMaybeAliased(
         8, this->_internal_http_host(), target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = stream->WriteRaw(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).data(),
-        static_cast<int>(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size()), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:CMsgClientPICSProductInfoResponse)
   return target;
@@ -4444,23 +5064,33 @@ size_t CMsgClientPICSProductInfoResponse::ByteSizeLong() const {
 
   }
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    total_size += _internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size();
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
   }
   int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
   SetCachedSize(cached_size);
   return total_size;
 }
 
-void CMsgClientPICSProductInfoResponse::CheckTypeAndMergeFrom(
-    const ::PROTOBUF_NAMESPACE_ID::MessageLite& from) {
-  MergeFrom(*::PROTOBUF_NAMESPACE_ID::internal::DownCast<const CMsgClientPICSProductInfoResponse*>(
-      &from));
+void CMsgClientPICSProductInfoResponse::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:CMsgClientPICSProductInfoResponse)
+  GOOGLE_DCHECK_NE(&from, this);
+  const CMsgClientPICSProductInfoResponse* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<CMsgClientPICSProductInfoResponse>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:CMsgClientPICSProductInfoResponse)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:CMsgClientPICSProductInfoResponse)
+    MergeFrom(*source);
+  }
 }
 
 void CMsgClientPICSProductInfoResponse::MergeFrom(const CMsgClientPICSProductInfoResponse& from) {
 // @@protoc_insertion_point(class_specific_merge_from_start:CMsgClientPICSProductInfoResponse)
   GOOGLE_DCHECK_NE(&from, this);
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -4486,6 +5116,13 @@ void CMsgClientPICSProductInfoResponse::MergeFrom(const CMsgClientPICSProductInf
   }
 }
 
+void CMsgClientPICSProductInfoResponse::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:CMsgClientPICSProductInfoResponse)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
 void CMsgClientPICSProductInfoResponse::CopyFrom(const CMsgClientPICSProductInfoResponse& from) {
 // @@protoc_insertion_point(class_specific_copy_from_start:CMsgClientPICSProductInfoResponse)
   if (&from == this) return;
@@ -4499,7 +5136,7 @@ bool CMsgClientPICSProductInfoResponse::IsInitialized() const {
 
 void CMsgClientPICSProductInfoResponse::InternalSwap(CMsgClientPICSProductInfoResponse* other) {
   using std::swap;
-  _internal_metadata_.Swap<std::string>(&other->_internal_metadata_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
   swap(_has_bits_[0], other->_has_bits_[0]);
   apps_.InternalSwap(&other->apps_);
   unknown_appids_.InternalSwap(&other->unknown_appids_);
@@ -4514,8 +5151,8 @@ void CMsgClientPICSProductInfoResponse::InternalSwap(CMsgClientPICSProductInfoRe
           reinterpret_cast<char*>(&other->meta_data_only_));
 }
 
-std::string CMsgClientPICSProductInfoResponse::GetTypeName() const {
-  return "CMsgClientPICSProductInfoResponse";
+::PROTOBUF_NAMESPACE_ID::Metadata CMsgClientPICSProductInfoResponse::GetMetadata() const {
+  return GetMetadataStatic();
 }
 
 
@@ -4526,7 +5163,7 @@ class CMsgClientPICSAccessTokenRequest::_Internal {
 };
 
 CMsgClientPICSAccessTokenRequest::CMsgClientPICSAccessTokenRequest(::PROTOBUF_NAMESPACE_ID::Arena* arena)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(arena),
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena),
   packageids_(arena),
   appids_(arena) {
   SharedCtor();
@@ -4534,10 +5171,10 @@ CMsgClientPICSAccessTokenRequest::CMsgClientPICSAccessTokenRequest(::PROTOBUF_NA
   // @@protoc_insertion_point(arena_constructor:CMsgClientPICSAccessTokenRequest)
 }
 CMsgClientPICSAccessTokenRequest::CMsgClientPICSAccessTokenRequest(const CMsgClientPICSAccessTokenRequest& from)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(),
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
       packageids_(from.packageids_),
       appids_(from.appids_) {
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   // @@protoc_insertion_point(copy_constructor:CMsgClientPICSAccessTokenRequest)
 }
 
@@ -4547,7 +5184,7 @@ void CMsgClientPICSAccessTokenRequest::SharedCtor() {
 CMsgClientPICSAccessTokenRequest::~CMsgClientPICSAccessTokenRequest() {
   // @@protoc_insertion_point(destructor:CMsgClientPICSAccessTokenRequest)
   SharedDtor();
-  _internal_metadata_.Delete<std::string>();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 void CMsgClientPICSAccessTokenRequest::SharedDtor() {
@@ -4572,7 +5209,7 @@ void CMsgClientPICSAccessTokenRequest::Clear() {
 
   packageids_.Clear();
   appids_.Clear();
-  _internal_metadata_.Clear<std::string>();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 const char* CMsgClientPICSAccessTokenRequest::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
@@ -4619,7 +5256,7 @@ const char* CMsgClientPICSAccessTokenRequest::_InternalParse(const char* ptr, ::
           goto success;
         }
         ptr = UnknownFieldParse(tag,
-            _internal_metadata_.mutable_unknown_fields<std::string>(),
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
             ptr, ctx);
         CHK_(ptr != nullptr);
         continue;
@@ -4653,8 +5290,8 @@ failure:
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = stream->WriteRaw(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).data(),
-        static_cast<int>(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size()), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:CMsgClientPICSAccessTokenRequest)
   return target;
@@ -4687,28 +5324,45 @@ size_t CMsgClientPICSAccessTokenRequest::ByteSizeLong() const {
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    total_size += _internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size();
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
   }
   int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
   SetCachedSize(cached_size);
   return total_size;
 }
 
-void CMsgClientPICSAccessTokenRequest::CheckTypeAndMergeFrom(
-    const ::PROTOBUF_NAMESPACE_ID::MessageLite& from) {
-  MergeFrom(*::PROTOBUF_NAMESPACE_ID::internal::DownCast<const CMsgClientPICSAccessTokenRequest*>(
-      &from));
+void CMsgClientPICSAccessTokenRequest::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:CMsgClientPICSAccessTokenRequest)
+  GOOGLE_DCHECK_NE(&from, this);
+  const CMsgClientPICSAccessTokenRequest* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<CMsgClientPICSAccessTokenRequest>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:CMsgClientPICSAccessTokenRequest)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:CMsgClientPICSAccessTokenRequest)
+    MergeFrom(*source);
+  }
 }
 
 void CMsgClientPICSAccessTokenRequest::MergeFrom(const CMsgClientPICSAccessTokenRequest& from) {
 // @@protoc_insertion_point(class_specific_merge_from_start:CMsgClientPICSAccessTokenRequest)
   GOOGLE_DCHECK_NE(&from, this);
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
   packageids_.MergeFrom(from.packageids_);
   appids_.MergeFrom(from.appids_);
+}
+
+void CMsgClientPICSAccessTokenRequest::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:CMsgClientPICSAccessTokenRequest)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
 }
 
 void CMsgClientPICSAccessTokenRequest::CopyFrom(const CMsgClientPICSAccessTokenRequest& from) {
@@ -4724,13 +5378,13 @@ bool CMsgClientPICSAccessTokenRequest::IsInitialized() const {
 
 void CMsgClientPICSAccessTokenRequest::InternalSwap(CMsgClientPICSAccessTokenRequest* other) {
   using std::swap;
-  _internal_metadata_.Swap<std::string>(&other->_internal_metadata_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
   packageids_.InternalSwap(&other->packageids_);
   appids_.InternalSwap(&other->appids_);
 }
 
-std::string CMsgClientPICSAccessTokenRequest::GetTypeName() const {
-  return "CMsgClientPICSAccessTokenRequest";
+::PROTOBUF_NAMESPACE_ID::Metadata CMsgClientPICSAccessTokenRequest::GetMetadata() const {
+  return GetMetadataStatic();
 }
 
 
@@ -4748,15 +5402,15 @@ class CMsgClientPICSAccessTokenResponse_PackageToken::_Internal {
 };
 
 CMsgClientPICSAccessTokenResponse_PackageToken::CMsgClientPICSAccessTokenResponse_PackageToken(::PROTOBUF_NAMESPACE_ID::Arena* arena)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(arena) {
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
   SharedCtor();
   RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:CMsgClientPICSAccessTokenResponse.PackageToken)
 }
 CMsgClientPICSAccessTokenResponse_PackageToken::CMsgClientPICSAccessTokenResponse_PackageToken(const CMsgClientPICSAccessTokenResponse_PackageToken& from)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(),
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
       _has_bits_(from._has_bits_) {
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::memcpy(&access_token_, &from.access_token_,
     static_cast<size_t>(reinterpret_cast<char*>(&packageid_) -
     reinterpret_cast<char*>(&access_token_)) + sizeof(packageid_));
@@ -4773,7 +5427,7 @@ void CMsgClientPICSAccessTokenResponse_PackageToken::SharedCtor() {
 CMsgClientPICSAccessTokenResponse_PackageToken::~CMsgClientPICSAccessTokenResponse_PackageToken() {
   // @@protoc_insertion_point(destructor:CMsgClientPICSAccessTokenResponse.PackageToken)
   SharedDtor();
-  _internal_metadata_.Delete<std::string>();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 void CMsgClientPICSAccessTokenResponse_PackageToken::SharedDtor() {
@@ -4803,7 +5457,7 @@ void CMsgClientPICSAccessTokenResponse_PackageToken::Clear() {
         reinterpret_cast<char*>(&access_token_)) + sizeof(packageid_));
   }
   _has_bits_.Clear();
-  _internal_metadata_.Clear<std::string>();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 const char* CMsgClientPICSAccessTokenResponse_PackageToken::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
@@ -4837,7 +5491,7 @@ const char* CMsgClientPICSAccessTokenResponse_PackageToken::_InternalParse(const
           goto success;
         }
         ptr = UnknownFieldParse(tag,
-            _internal_metadata_.mutable_unknown_fields<std::string>(),
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
             ptr, ctx);
         CHK_(ptr != nullptr);
         continue;
@@ -4873,8 +5527,8 @@ failure:
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = stream->WriteRaw(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).data(),
-        static_cast<int>(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size()), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:CMsgClientPICSAccessTokenResponse.PackageToken)
   return target;
@@ -4906,23 +5560,33 @@ size_t CMsgClientPICSAccessTokenResponse_PackageToken::ByteSizeLong() const {
 
   }
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    total_size += _internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size();
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
   }
   int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
   SetCachedSize(cached_size);
   return total_size;
 }
 
-void CMsgClientPICSAccessTokenResponse_PackageToken::CheckTypeAndMergeFrom(
-    const ::PROTOBUF_NAMESPACE_ID::MessageLite& from) {
-  MergeFrom(*::PROTOBUF_NAMESPACE_ID::internal::DownCast<const CMsgClientPICSAccessTokenResponse_PackageToken*>(
-      &from));
+void CMsgClientPICSAccessTokenResponse_PackageToken::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:CMsgClientPICSAccessTokenResponse.PackageToken)
+  GOOGLE_DCHECK_NE(&from, this);
+  const CMsgClientPICSAccessTokenResponse_PackageToken* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<CMsgClientPICSAccessTokenResponse_PackageToken>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:CMsgClientPICSAccessTokenResponse.PackageToken)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:CMsgClientPICSAccessTokenResponse.PackageToken)
+    MergeFrom(*source);
+  }
 }
 
 void CMsgClientPICSAccessTokenResponse_PackageToken::MergeFrom(const CMsgClientPICSAccessTokenResponse_PackageToken& from) {
 // @@protoc_insertion_point(class_specific_merge_from_start:CMsgClientPICSAccessTokenResponse.PackageToken)
   GOOGLE_DCHECK_NE(&from, this);
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -4938,6 +5602,13 @@ void CMsgClientPICSAccessTokenResponse_PackageToken::MergeFrom(const CMsgClientP
   }
 }
 
+void CMsgClientPICSAccessTokenResponse_PackageToken::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:CMsgClientPICSAccessTokenResponse.PackageToken)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
 void CMsgClientPICSAccessTokenResponse_PackageToken::CopyFrom(const CMsgClientPICSAccessTokenResponse_PackageToken& from) {
 // @@protoc_insertion_point(class_specific_copy_from_start:CMsgClientPICSAccessTokenResponse.PackageToken)
   if (&from == this) return;
@@ -4951,7 +5622,7 @@ bool CMsgClientPICSAccessTokenResponse_PackageToken::IsInitialized() const {
 
 void CMsgClientPICSAccessTokenResponse_PackageToken::InternalSwap(CMsgClientPICSAccessTokenResponse_PackageToken* other) {
   using std::swap;
-  _internal_metadata_.Swap<std::string>(&other->_internal_metadata_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
   swap(_has_bits_[0], other->_has_bits_[0]);
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
       PROTOBUF_FIELD_OFFSET(CMsgClientPICSAccessTokenResponse_PackageToken, packageid_)
@@ -4961,8 +5632,8 @@ void CMsgClientPICSAccessTokenResponse_PackageToken::InternalSwap(CMsgClientPICS
           reinterpret_cast<char*>(&other->access_token_));
 }
 
-std::string CMsgClientPICSAccessTokenResponse_PackageToken::GetTypeName() const {
-  return "CMsgClientPICSAccessTokenResponse.PackageToken";
+::PROTOBUF_NAMESPACE_ID::Metadata CMsgClientPICSAccessTokenResponse_PackageToken::GetMetadata() const {
+  return GetMetadataStatic();
 }
 
 
@@ -4980,15 +5651,15 @@ class CMsgClientPICSAccessTokenResponse_AppToken::_Internal {
 };
 
 CMsgClientPICSAccessTokenResponse_AppToken::CMsgClientPICSAccessTokenResponse_AppToken(::PROTOBUF_NAMESPACE_ID::Arena* arena)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(arena) {
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
   SharedCtor();
   RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:CMsgClientPICSAccessTokenResponse.AppToken)
 }
 CMsgClientPICSAccessTokenResponse_AppToken::CMsgClientPICSAccessTokenResponse_AppToken(const CMsgClientPICSAccessTokenResponse_AppToken& from)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(),
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
       _has_bits_(from._has_bits_) {
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::memcpy(&access_token_, &from.access_token_,
     static_cast<size_t>(reinterpret_cast<char*>(&appid_) -
     reinterpret_cast<char*>(&access_token_)) + sizeof(appid_));
@@ -5005,7 +5676,7 @@ void CMsgClientPICSAccessTokenResponse_AppToken::SharedCtor() {
 CMsgClientPICSAccessTokenResponse_AppToken::~CMsgClientPICSAccessTokenResponse_AppToken() {
   // @@protoc_insertion_point(destructor:CMsgClientPICSAccessTokenResponse.AppToken)
   SharedDtor();
-  _internal_metadata_.Delete<std::string>();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 void CMsgClientPICSAccessTokenResponse_AppToken::SharedDtor() {
@@ -5035,7 +5706,7 @@ void CMsgClientPICSAccessTokenResponse_AppToken::Clear() {
         reinterpret_cast<char*>(&access_token_)) + sizeof(appid_));
   }
   _has_bits_.Clear();
-  _internal_metadata_.Clear<std::string>();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 const char* CMsgClientPICSAccessTokenResponse_AppToken::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
@@ -5069,7 +5740,7 @@ const char* CMsgClientPICSAccessTokenResponse_AppToken::_InternalParse(const cha
           goto success;
         }
         ptr = UnknownFieldParse(tag,
-            _internal_metadata_.mutable_unknown_fields<std::string>(),
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
             ptr, ctx);
         CHK_(ptr != nullptr);
         continue;
@@ -5105,8 +5776,8 @@ failure:
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = stream->WriteRaw(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).data(),
-        static_cast<int>(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size()), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:CMsgClientPICSAccessTokenResponse.AppToken)
   return target;
@@ -5138,23 +5809,33 @@ size_t CMsgClientPICSAccessTokenResponse_AppToken::ByteSizeLong() const {
 
   }
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    total_size += _internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size();
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
   }
   int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
   SetCachedSize(cached_size);
   return total_size;
 }
 
-void CMsgClientPICSAccessTokenResponse_AppToken::CheckTypeAndMergeFrom(
-    const ::PROTOBUF_NAMESPACE_ID::MessageLite& from) {
-  MergeFrom(*::PROTOBUF_NAMESPACE_ID::internal::DownCast<const CMsgClientPICSAccessTokenResponse_AppToken*>(
-      &from));
+void CMsgClientPICSAccessTokenResponse_AppToken::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:CMsgClientPICSAccessTokenResponse.AppToken)
+  GOOGLE_DCHECK_NE(&from, this);
+  const CMsgClientPICSAccessTokenResponse_AppToken* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<CMsgClientPICSAccessTokenResponse_AppToken>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:CMsgClientPICSAccessTokenResponse.AppToken)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:CMsgClientPICSAccessTokenResponse.AppToken)
+    MergeFrom(*source);
+  }
 }
 
 void CMsgClientPICSAccessTokenResponse_AppToken::MergeFrom(const CMsgClientPICSAccessTokenResponse_AppToken& from) {
 // @@protoc_insertion_point(class_specific_merge_from_start:CMsgClientPICSAccessTokenResponse.AppToken)
   GOOGLE_DCHECK_NE(&from, this);
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -5170,6 +5851,13 @@ void CMsgClientPICSAccessTokenResponse_AppToken::MergeFrom(const CMsgClientPICSA
   }
 }
 
+void CMsgClientPICSAccessTokenResponse_AppToken::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:CMsgClientPICSAccessTokenResponse.AppToken)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
 void CMsgClientPICSAccessTokenResponse_AppToken::CopyFrom(const CMsgClientPICSAccessTokenResponse_AppToken& from) {
 // @@protoc_insertion_point(class_specific_copy_from_start:CMsgClientPICSAccessTokenResponse.AppToken)
   if (&from == this) return;
@@ -5183,7 +5871,7 @@ bool CMsgClientPICSAccessTokenResponse_AppToken::IsInitialized() const {
 
 void CMsgClientPICSAccessTokenResponse_AppToken::InternalSwap(CMsgClientPICSAccessTokenResponse_AppToken* other) {
   using std::swap;
-  _internal_metadata_.Swap<std::string>(&other->_internal_metadata_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
   swap(_has_bits_[0], other->_has_bits_[0]);
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
       PROTOBUF_FIELD_OFFSET(CMsgClientPICSAccessTokenResponse_AppToken, appid_)
@@ -5193,8 +5881,8 @@ void CMsgClientPICSAccessTokenResponse_AppToken::InternalSwap(CMsgClientPICSAcce
           reinterpret_cast<char*>(&other->access_token_));
 }
 
-std::string CMsgClientPICSAccessTokenResponse_AppToken::GetTypeName() const {
-  return "CMsgClientPICSAccessTokenResponse.AppToken";
+::PROTOBUF_NAMESPACE_ID::Metadata CMsgClientPICSAccessTokenResponse_AppToken::GetMetadata() const {
+  return GetMetadataStatic();
 }
 
 
@@ -5205,7 +5893,7 @@ class CMsgClientPICSAccessTokenResponse::_Internal {
 };
 
 CMsgClientPICSAccessTokenResponse::CMsgClientPICSAccessTokenResponse(::PROTOBUF_NAMESPACE_ID::Arena* arena)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(arena),
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena),
   package_access_tokens_(arena),
   package_denied_tokens_(arena),
   app_access_tokens_(arena),
@@ -5215,12 +5903,12 @@ CMsgClientPICSAccessTokenResponse::CMsgClientPICSAccessTokenResponse(::PROTOBUF_
   // @@protoc_insertion_point(arena_constructor:CMsgClientPICSAccessTokenResponse)
 }
 CMsgClientPICSAccessTokenResponse::CMsgClientPICSAccessTokenResponse(const CMsgClientPICSAccessTokenResponse& from)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(),
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
       package_access_tokens_(from.package_access_tokens_),
       package_denied_tokens_(from.package_denied_tokens_),
       app_access_tokens_(from.app_access_tokens_),
       app_denied_tokens_(from.app_denied_tokens_) {
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   // @@protoc_insertion_point(copy_constructor:CMsgClientPICSAccessTokenResponse)
 }
 
@@ -5230,7 +5918,7 @@ void CMsgClientPICSAccessTokenResponse::SharedCtor() {
 CMsgClientPICSAccessTokenResponse::~CMsgClientPICSAccessTokenResponse() {
   // @@protoc_insertion_point(destructor:CMsgClientPICSAccessTokenResponse)
   SharedDtor();
-  _internal_metadata_.Delete<std::string>();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 void CMsgClientPICSAccessTokenResponse::SharedDtor() {
@@ -5257,7 +5945,7 @@ void CMsgClientPICSAccessTokenResponse::Clear() {
   package_denied_tokens_.Clear();
   app_access_tokens_.Clear();
   app_denied_tokens_.Clear();
-  _internal_metadata_.Clear<std::string>();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 const char* CMsgClientPICSAccessTokenResponse::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
@@ -5328,7 +6016,7 @@ const char* CMsgClientPICSAccessTokenResponse::_InternalParse(const char* ptr, :
           goto success;
         }
         ptr = UnknownFieldParse(tag,
-            _internal_metadata_.mutable_unknown_fields<std::string>(),
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
             ptr, ctx);
         CHK_(ptr != nullptr);
         continue;
@@ -5378,8 +6066,8 @@ failure:
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = stream->WriteRaw(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).data(),
-        static_cast<int>(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size()), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:CMsgClientPICSAccessTokenResponse)
   return target;
@@ -5426,23 +6114,33 @@ size_t CMsgClientPICSAccessTokenResponse::ByteSizeLong() const {
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    total_size += _internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size();
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
   }
   int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
   SetCachedSize(cached_size);
   return total_size;
 }
 
-void CMsgClientPICSAccessTokenResponse::CheckTypeAndMergeFrom(
-    const ::PROTOBUF_NAMESPACE_ID::MessageLite& from) {
-  MergeFrom(*::PROTOBUF_NAMESPACE_ID::internal::DownCast<const CMsgClientPICSAccessTokenResponse*>(
-      &from));
+void CMsgClientPICSAccessTokenResponse::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:CMsgClientPICSAccessTokenResponse)
+  GOOGLE_DCHECK_NE(&from, this);
+  const CMsgClientPICSAccessTokenResponse* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<CMsgClientPICSAccessTokenResponse>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:CMsgClientPICSAccessTokenResponse)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:CMsgClientPICSAccessTokenResponse)
+    MergeFrom(*source);
+  }
 }
 
 void CMsgClientPICSAccessTokenResponse::MergeFrom(const CMsgClientPICSAccessTokenResponse& from) {
 // @@protoc_insertion_point(class_specific_merge_from_start:CMsgClientPICSAccessTokenResponse)
   GOOGLE_DCHECK_NE(&from, this);
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -5450,6 +6148,13 @@ void CMsgClientPICSAccessTokenResponse::MergeFrom(const CMsgClientPICSAccessToke
   package_denied_tokens_.MergeFrom(from.package_denied_tokens_);
   app_access_tokens_.MergeFrom(from.app_access_tokens_);
   app_denied_tokens_.MergeFrom(from.app_denied_tokens_);
+}
+
+void CMsgClientPICSAccessTokenResponse::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:CMsgClientPICSAccessTokenResponse)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
 }
 
 void CMsgClientPICSAccessTokenResponse::CopyFrom(const CMsgClientPICSAccessTokenResponse& from) {
@@ -5465,15 +6170,15 @@ bool CMsgClientPICSAccessTokenResponse::IsInitialized() const {
 
 void CMsgClientPICSAccessTokenResponse::InternalSwap(CMsgClientPICSAccessTokenResponse* other) {
   using std::swap;
-  _internal_metadata_.Swap<std::string>(&other->_internal_metadata_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
   package_access_tokens_.InternalSwap(&other->package_access_tokens_);
   package_denied_tokens_.InternalSwap(&other->package_denied_tokens_);
   app_access_tokens_.InternalSwap(&other->app_access_tokens_);
   app_denied_tokens_.InternalSwap(&other->app_denied_tokens_);
 }
 
-std::string CMsgClientPICSAccessTokenResponse::GetTypeName() const {
-  return "CMsgClientPICSAccessTokenResponse";
+::PROTOBUF_NAMESPACE_ID::Metadata CMsgClientPICSAccessTokenResponse::GetMetadata() const {
+  return GetMetadataStatic();
 }
 
 
@@ -5497,15 +6202,15 @@ class CMsgClientPICSPrivateBetaRequest::_Internal {
 };
 
 CMsgClientPICSPrivateBetaRequest::CMsgClientPICSPrivateBetaRequest(::PROTOBUF_NAMESPACE_ID::Arena* arena)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(arena) {
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
   SharedCtor();
   RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:CMsgClientPICSPrivateBetaRequest)
 }
 CMsgClientPICSPrivateBetaRequest::CMsgClientPICSPrivateBetaRequest(const CMsgClientPICSPrivateBetaRequest& from)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(),
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
       _has_bits_(from._has_bits_) {
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   beta_name_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   if (from._internal_has_beta_name()) {
     beta_name_.Set(::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::EmptyDefault{}, from._internal_beta_name(), 
@@ -5534,7 +6239,7 @@ password_hash_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStri
 CMsgClientPICSPrivateBetaRequest::~CMsgClientPICSPrivateBetaRequest() {
   // @@protoc_insertion_point(destructor:CMsgClientPICSPrivateBetaRequest)
   SharedDtor();
-  _internal_metadata_.Delete<std::string>();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 void CMsgClientPICSPrivateBetaRequest::SharedDtor() {
@@ -5574,7 +6279,7 @@ void CMsgClientPICSPrivateBetaRequest::Clear() {
         reinterpret_cast<char*>(&access_token_)) + sizeof(appid_));
   }
   _has_bits_.Clear();
-  _internal_metadata_.Clear<std::string>();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 const char* CMsgClientPICSPrivateBetaRequest::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
@@ -5606,6 +6311,9 @@ const char* CMsgClientPICSPrivateBetaRequest::_InternalParse(const char* ptr, ::
         if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 26)) {
           auto str = _internal_mutable_beta_name();
           ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
+          #ifndef NDEBUG
+          ::PROTOBUF_NAMESPACE_ID::internal::VerifyUTF8(str, "CMsgClientPICSPrivateBetaRequest.beta_name");
+          #endif  // !NDEBUG
           CHK_(ptr);
         } else goto handle_unusual;
         continue;
@@ -5624,7 +6332,7 @@ const char* CMsgClientPICSPrivateBetaRequest::_InternalParse(const char* ptr, ::
           goto success;
         }
         ptr = UnknownFieldParse(tag,
-            _internal_metadata_.mutable_unknown_fields<std::string>(),
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
             ptr, ctx);
         CHK_(ptr != nullptr);
         continue;
@@ -5661,6 +6369,10 @@ failure:
 
   // optional string beta_name = 3;
   if (cached_has_bits & 0x00000001u) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::VerifyUTF8StringNamedField(
+      this->_internal_beta_name().data(), static_cast<int>(this->_internal_beta_name().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::SERIALIZE,
+      "CMsgClientPICSPrivateBetaRequest.beta_name");
     target = stream->WriteStringMaybeAliased(
         3, this->_internal_beta_name(), target);
   }
@@ -5672,8 +6384,8 @@ failure:
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = stream->WriteRaw(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).data(),
-        static_cast<int>(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size()), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:CMsgClientPICSPrivateBetaRequest)
   return target;
@@ -5719,23 +6431,33 @@ size_t CMsgClientPICSPrivateBetaRequest::ByteSizeLong() const {
 
   }
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    total_size += _internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size();
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
   }
   int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
   SetCachedSize(cached_size);
   return total_size;
 }
 
-void CMsgClientPICSPrivateBetaRequest::CheckTypeAndMergeFrom(
-    const ::PROTOBUF_NAMESPACE_ID::MessageLite& from) {
-  MergeFrom(*::PROTOBUF_NAMESPACE_ID::internal::DownCast<const CMsgClientPICSPrivateBetaRequest*>(
-      &from));
+void CMsgClientPICSPrivateBetaRequest::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:CMsgClientPICSPrivateBetaRequest)
+  GOOGLE_DCHECK_NE(&from, this);
+  const CMsgClientPICSPrivateBetaRequest* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<CMsgClientPICSPrivateBetaRequest>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:CMsgClientPICSPrivateBetaRequest)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:CMsgClientPICSPrivateBetaRequest)
+    MergeFrom(*source);
+  }
 }
 
 void CMsgClientPICSPrivateBetaRequest::MergeFrom(const CMsgClientPICSPrivateBetaRequest& from) {
 // @@protoc_insertion_point(class_specific_merge_from_start:CMsgClientPICSPrivateBetaRequest)
   GOOGLE_DCHECK_NE(&from, this);
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -5757,6 +6479,13 @@ void CMsgClientPICSPrivateBetaRequest::MergeFrom(const CMsgClientPICSPrivateBeta
   }
 }
 
+void CMsgClientPICSPrivateBetaRequest::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:CMsgClientPICSPrivateBetaRequest)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
 void CMsgClientPICSPrivateBetaRequest::CopyFrom(const CMsgClientPICSPrivateBetaRequest& from) {
 // @@protoc_insertion_point(class_specific_copy_from_start:CMsgClientPICSPrivateBetaRequest)
   if (&from == this) return;
@@ -5770,7 +6499,7 @@ bool CMsgClientPICSPrivateBetaRequest::IsInitialized() const {
 
 void CMsgClientPICSPrivateBetaRequest::InternalSwap(CMsgClientPICSPrivateBetaRequest* other) {
   using std::swap;
-  _internal_metadata_.Swap<std::string>(&other->_internal_metadata_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
   swap(_has_bits_[0], other->_has_bits_[0]);
   beta_name_.Swap(&other->beta_name_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
   password_hash_.Swap(&other->password_hash_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
@@ -5782,8 +6511,8 @@ void CMsgClientPICSPrivateBetaRequest::InternalSwap(CMsgClientPICSPrivateBetaReq
           reinterpret_cast<char*>(&other->access_token_));
 }
 
-std::string CMsgClientPICSPrivateBetaRequest::GetTypeName() const {
-  return "CMsgClientPICSPrivateBetaRequest";
+::PROTOBUF_NAMESPACE_ID::Metadata CMsgClientPICSPrivateBetaRequest::GetMetadata() const {
+  return GetMetadataStatic();
 }
 
 
@@ -5801,15 +6530,15 @@ class CMsgClientPICSPrivateBetaResponse::_Internal {
 };
 
 CMsgClientPICSPrivateBetaResponse::CMsgClientPICSPrivateBetaResponse(::PROTOBUF_NAMESPACE_ID::Arena* arena)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(arena) {
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
   SharedCtor();
   RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:CMsgClientPICSPrivateBetaResponse)
 }
 CMsgClientPICSPrivateBetaResponse::CMsgClientPICSPrivateBetaResponse(const CMsgClientPICSPrivateBetaResponse& from)
-  : ::PROTOBUF_NAMESPACE_ID::MessageLite(),
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
       _has_bits_(from._has_bits_) {
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   depot_section_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   if (from._internal_has_depot_section()) {
     depot_section_.Set(::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::EmptyDefault{}, from._internal_depot_section(), 
@@ -5827,7 +6556,7 @@ eresult_ = 2;
 CMsgClientPICSPrivateBetaResponse::~CMsgClientPICSPrivateBetaResponse() {
   // @@protoc_insertion_point(destructor:CMsgClientPICSPrivateBetaResponse)
   SharedDtor();
-  _internal_metadata_.Delete<std::string>();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 void CMsgClientPICSPrivateBetaResponse::SharedDtor() {
@@ -5859,7 +6588,7 @@ void CMsgClientPICSPrivateBetaResponse::Clear() {
     eresult_ = 2;
   }
   _has_bits_.Clear();
-  _internal_metadata_.Clear<std::string>();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 const char* CMsgClientPICSPrivateBetaResponse::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
@@ -5893,7 +6622,7 @@ const char* CMsgClientPICSPrivateBetaResponse::_InternalParse(const char* ptr, :
           goto success;
         }
         ptr = UnknownFieldParse(tag,
-            _internal_metadata_.mutable_unknown_fields<std::string>(),
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
             ptr, ctx);
         CHK_(ptr != nullptr);
         continue;
@@ -5929,8 +6658,8 @@ failure:
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = stream->WriteRaw(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).data(),
-        static_cast<int>(_internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size()), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:CMsgClientPICSPrivateBetaResponse)
   return target;
@@ -5962,23 +6691,33 @@ size_t CMsgClientPICSPrivateBetaResponse::ByteSizeLong() const {
 
   }
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    total_size += _internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString).size();
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
   }
   int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
   SetCachedSize(cached_size);
   return total_size;
 }
 
-void CMsgClientPICSPrivateBetaResponse::CheckTypeAndMergeFrom(
-    const ::PROTOBUF_NAMESPACE_ID::MessageLite& from) {
-  MergeFrom(*::PROTOBUF_NAMESPACE_ID::internal::DownCast<const CMsgClientPICSPrivateBetaResponse*>(
-      &from));
+void CMsgClientPICSPrivateBetaResponse::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:CMsgClientPICSPrivateBetaResponse)
+  GOOGLE_DCHECK_NE(&from, this);
+  const CMsgClientPICSPrivateBetaResponse* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<CMsgClientPICSPrivateBetaResponse>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:CMsgClientPICSPrivateBetaResponse)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:CMsgClientPICSPrivateBetaResponse)
+    MergeFrom(*source);
+  }
 }
 
 void CMsgClientPICSPrivateBetaResponse::MergeFrom(const CMsgClientPICSPrivateBetaResponse& from) {
 // @@protoc_insertion_point(class_specific_merge_from_start:CMsgClientPICSPrivateBetaResponse)
   GOOGLE_DCHECK_NE(&from, this);
-  _internal_metadata_.MergeFrom<std::string>(from._internal_metadata_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -5994,6 +6733,13 @@ void CMsgClientPICSPrivateBetaResponse::MergeFrom(const CMsgClientPICSPrivateBet
   }
 }
 
+void CMsgClientPICSPrivateBetaResponse::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:CMsgClientPICSPrivateBetaResponse)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
 void CMsgClientPICSPrivateBetaResponse::CopyFrom(const CMsgClientPICSPrivateBetaResponse& from) {
 // @@protoc_insertion_point(class_specific_copy_from_start:CMsgClientPICSPrivateBetaResponse)
   if (&from == this) return;
@@ -6007,14 +6753,14 @@ bool CMsgClientPICSPrivateBetaResponse::IsInitialized() const {
 
 void CMsgClientPICSPrivateBetaResponse::InternalSwap(CMsgClientPICSPrivateBetaResponse* other) {
   using std::swap;
-  _internal_metadata_.Swap<std::string>(&other->_internal_metadata_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
   swap(_has_bits_[0], other->_has_bits_[0]);
   depot_section_.Swap(&other->depot_section_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
   swap(eresult_, other->eresult_);
 }
 
-std::string CMsgClientPICSPrivateBetaResponse::GetTypeName() const {
-  return "CMsgClientPICSPrivateBetaResponse";
+::PROTOBUF_NAMESPACE_ID::Metadata CMsgClientPICSPrivateBetaResponse::GetMetadata() const {
+  return GetMetadataStatic();
 }
 
 

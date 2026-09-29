@@ -80,7 +80,7 @@ test-stats-provenance:
 test-familyshare: obj/sdk/protobufs/steammessages_base.pb.o
 	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem include -I src \
 		-ffunction-sections -fdata-sections tools/test_familyshare.cpp \
-		src/sdk/CNetPacket.cpp $^ lib/libprotobuf-lite.a \
+		src/sdk/CNetPacket.cpp $^ lib/libprotobuf.a \
 		-Wl,--gc-sections -pthread -o /tmp/test_familyshare
 	/tmp/test_familyshare
 
@@ -103,7 +103,7 @@ test-achievement-scope: obj/sdk/protobufs/steammessages_clientserver_userstats.p
 	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem include -I src \
 		-ffunction-sections -fdata-sections \
 		tools/test_achievement_scope.cpp src/feats/achievements.cpp src/feats/stats_policy.cpp \
-		$^ lib/libprotobuf-lite.a -Wl,--gc-sections -pthread -o /tmp/test_achievement_scope
+		$^ lib/libprotobuf.a -Wl,--gc-sections -pthread -o /tmp/test_achievement_scope
 	/tmp/test_achievement_scope
 
 test-fakeappid-presence: obj/sdk/protobufs/encrypted_app_ticket.pb.o \
@@ -112,7 +112,7 @@ test-fakeappid-presence: obj/sdk/protobufs/encrypted_app_ticket.pb.o \
                           obj/sdk/protobufs/steammessages_clientserver_2.pb.o
 	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem include -I src \
 		-ffunction-sections -fdata-sections tools/test_fakeappid_presence.cpp \
-		src/feats/fakeappid.cpp src/sdk/CNetPacket.cpp $^ lib/libprotobuf-lite.a \
+		src/feats/fakeappid.cpp src/sdk/CNetPacket.cpp $^ lib/libprotobuf.a \
 		-Wl,--gc-sections -pthread -o /tmp/test_fakeappid_presence
 	/tmp/test_fakeappid_presence
 
@@ -221,7 +221,7 @@ uninstall:
 	sh setup.sh uninstall
 
 # Unit test for cmwire.hpp's protobuf-backed helpers (Task 3).  Links the
-# already-compiled protobuf objects + libprotobuf-lite.a, matching the
+# already-compiled protobuf objects + libprotobuf.a, matching the
 # main build's 32-bit + pre-C++11 ABI so the static lib is compatible.
 # The pure framing tests (Tasks 1-2) also build standalone without this:
 #   g++ -std=c++20 -I include tools/test_cmwire.cpp -o /tmp/test_cmwire
@@ -234,7 +234,7 @@ test-cmwire: obj/sdk/protobufs/steammessages_base.pb.o \
              obj/sdk/protobufs/steammessages_clientserver_userstats.pb.o \
              obj/sdk/protobufs/encrypted_app_ticket.pb.o
 	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -DCMWIRE_PROTOBUF \
-		-I include tools/test_cmwire.cpp $^ lib/libprotobuf-lite.a \
+		-I include tools/test_cmwire.cpp $^ lib/libprotobuf.a \
 		-lpthread -o /tmp/test_cmwire
 	/tmp/test_cmwire
 
@@ -606,7 +606,7 @@ test-appinfo-transaction: obj/feats/appinfo_vdf_test.o obj/log.o obj/config.o \
 		-I include -isysteminclude tools/test_appinfo_transaction.cpp \
 		obj/feats/appinfo_vdf_test.o \
 		$(filter-out obj/feats/appinfo_vdf_test.o,$(filter obj/%.o,$^)) \
-		lib/libyaml-cpp.a lib/libprotobuf-lite.a -lcrypto -lpthread -ldl \
+		lib/libyaml-cpp.a lib/libprotobuf.a -lcrypto -lpthread -ldl \
 		-o /tmp/test_appinfo_transaction
 	/tmp/test_appinfo_transaction
 
@@ -625,7 +625,7 @@ test-cmclient-live: build
 		obj/sdk/protobufs/steammessages_clientserver_friends.pb.o \
 		obj/sdk/protobufs/steammessages_clientserver_userstats.pb.o \
 		obj/sdk/protobufs/encrypted_app_ticket.pb.o \
-		lib/libprotobuf-lite.a lib/libyaml-cpp.a \
+		lib/libprotobuf.a lib/libyaml-cpp.a \
 		-lpthread -ldl -lcurl -o /tmp/test_cmclient_live
 
 test-manifestpin-patterns:

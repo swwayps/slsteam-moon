@@ -8,10 +8,762 @@
 #include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/extension_set.h>
 #include <google/protobuf/wire_format_lite.h>
+#include <google/protobuf/descriptor.h>
+#include <google/protobuf/generated_message_reflection.h>
+#include <google/protobuf/reflection_ops.h>
+#include <google/protobuf/wire_format.h>
 // @@protoc_insertion_point(includes)
 #include <google/protobuf/port_def.inc>
 
 PROTOBUF_PRAGMA_INIT_SEG
+static constexpr ::PROTOBUF_NAMESPACE_ID::Metadata* file_level_metadata_enums_2eproto = nullptr;
+static const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* file_level_enum_descriptors_enums_2eproto[84];
+static constexpr ::PROTOBUF_NAMESPACE_ID::ServiceDescriptor const** file_level_service_descriptors_enums_2eproto = nullptr;
+const ::PROTOBUF_NAMESPACE_ID::uint32 TableStruct_enums_2eproto::offsets[1] = {};
+static constexpr ::PROTOBUF_NAMESPACE_ID::internal::MigrationSchema* schemas = nullptr;
+static constexpr ::PROTOBUF_NAMESPACE_ID::Message* const* file_default_instances = nullptr;
+
+const char descriptor_table_protodef_enums_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
+  "\n\013enums.proto*\360\n\n\027EPublishedFileQueryTyp"
+  "e\022)\n%k_PublishedFileQueryType_RankedByVo"
+  "te\020\000\0224\n0k_PublishedFileQueryType_RankedB"
+  "yPublicationDate\020\001\022B\n>k_PublishedFileQue"
+  "ryType_AcceptedForGameRankedByAcceptance"
+  "Date\020\002\022*\n&k_PublishedFileQueryType_Ranke"
+  "dByTrend\020\003\022F\nBk_PublishedFileQueryType_F"
+  "avoritedByFriendsRankedByPublicationDate"
+  "\020\004\022D\n@k_PublishedFileQueryType_CreatedBy"
+  "FriendsRankedByPublicationDate\020\005\0225\n1k_Pu"
+  "blishedFileQueryType_RankedByNumTimesRep"
+  "orted\020\006\022J\nFk_PublishedFileQueryType_Crea"
+  "tedByFollowedUsersRankedByPublicationDat"
+  "e\020\007\022(\n$k_PublishedFileQueryType_NotYetRa"
+  "ted\020\010\022=\n9k_PublishedFileQueryType_Ranked"
+  "ByTotalUniqueSubscriptions\020\t\0222\n.k_Publis"
+  "hedFileQueryType_RankedByTotalVotesAsc\020\n"
+  "\022,\n(k_PublishedFileQueryType_RankedByVot"
+  "esUp\020\013\022/\n+k_PublishedFileQueryType_Ranke"
+  "dByTextSearch\020\014\0222\n.k_PublishedFileQueryT"
+  "ype_RankedByPlaytimeTrend\020\r\0222\n.k_Publish"
+  "edFileQueryType_RankedByTotalPlaytime\020\016\022"
+  "9\n5k_PublishedFileQueryType_RankedByAver"
+  "agePlaytimeTrend\020\017\022<\n8k_PublishedFileQue"
+  "ryType_RankedByLifetimeAveragePlaytime\020\020"
+  "\022:\n6k_PublishedFileQueryType_RankedByPla"
+  "ytimeSessionsTrend\020\021\022=\n9k_PublishedFileQ"
+  "ueryType_RankedByLifetimePlaytimeSession"
+  "s\020\022\022\?\n;k_PublishedFileQueryType_RankedBy"
+  "InappropriateContentRating\020\023\0224\n0k_Publis"
+  "hedFileQueryType_RankedByBanContentCheck"
+  "\020\024\0224\n0k_PublishedFileQueryType_RankedByL"
+  "astUpdatedDate\020\025\0223\n/k_PublishedFileQuery"
+  "Type_RankedByNumParentItems\020\026\0229\n5k_Publi"
+  "shedFileQueryType_RankedByNumParentColle"
+  "ctions\020\027*\274\001\n#EPublishedFileInappropriate"
+  "Provider\0221\n-k_EPublishedFileInappropriat"
+  "eProvider_Invalid\020\000\0220\n,k_EPublishedFileI"
+  "nappropriateProvider_Google\020\001\0220\n,k_EPubl"
+  "ishedFileInappropriateProvider_Amazon\020\002*"
+  "\325\002\n!EPublishedFileInappropriateResult\0222\n"
+  ".k_EPublishedFileInappropriateResult_Not"
+  "Scanned\020\000\0224\n0k_EPublishedFileInappropria"
+  "teResult_VeryUnlikely\020\001\0220\n,k_EPublishedF"
+  "ileInappropriateResult_Unlikely\020\036\0220\n,k_E"
+  "PublishedFileInappropriateResult_Possibl"
+  "e\0202\022.\n*k_EPublishedFileInappropriateResu"
+  "lt_Likely\020K\0222\n.k_EPublishedFileInappropr"
+  "iateResult_VeryLikely\020d*\261\003\n\021EPersonaStat"
+  "eFlag\022\'\n#k_EPersonaStateFlag_HasRichPres"
+  "ence\020\001\022&\n\"k_EPersonaStateFlag_InJoinable"
+  "Game\020\002\022\036\n\032k_EPersonaStateFlag_Golden\020\004\022*"
+  "\n&k_EPersonaStateFlag_RemotePlayTogether"
+  "\020\010\022&\n!k_EPersonaStateFlag_ClientTypeWeb\020"
+  "\200\002\022)\n$k_EPersonaStateFlag_ClientTypeMobi"
+  "le\020\200\004\022*\n%k_EPersonaStateFlag_ClientTypeT"
+  "enfoot\020\200\010\022%\n k_EPersonaStateFlag_ClientT"
+  "ypeVR\020\200\020\022*\n%k_EPersonaStateFlag_LaunchTy"
+  "peGamepad\020\200 \022-\n(k_EPersonaStateFlag_Laun"
+  "chTypeCompatTool\020\200@*\260\002\n\025EContentCheckPro"
+  "vider\022#\n\037k_EContentCheckProvider_Invalid"
+  "\020\000\022-\n)k_EContentCheckProvider_Google_DEP"
+  "RECATED\020\001\022\"\n\036k_EContentCheckProvider_Ama"
+  "zon\020\002\022!\n\035k_EContentCheckProvider_Local\020\003"
+  "\022*\n&k_EContentCheckProvider_GoogleVertex"
+  "AI\020\004\022(\n$k_EContentCheckProvider_GoogleGe"
+  "mini\020\005\022&\n\"k_EContentCheckProvider_SteamL"
+  "earn\020\006*\223\t\n\031EProfileCustomizationType\022&\n\""
+  "k_EProfileCustomizationTypeInvalid\020\000\0226\n2"
+  "k_EProfileCustomizationTypeRareAchieveme"
+  "ntShowcase\020\001\022,\n(k_EProfileCustomizationT"
+  "ypeGameCollector\020\002\022+\n\'k_EProfileCustomiz"
+  "ationTypeItemShowcase\020\003\022,\n(k_EProfileCus"
+  "tomizationTypeTradeShowcase\020\004\022%\n!k_EProf"
+  "ileCustomizationTypeBadges\020\005\022+\n\'k_EProfi"
+  "leCustomizationTypeFavoriteGame\020\006\0221\n-k_E"
+  "ProfileCustomizationTypeScreenshotShowca"
+  "se\020\007\022)\n%k_EProfileCustomizationTypeCusto"
+  "mText\020\010\022,\n(k_EProfileCustomizationTypeFa"
+  "voriteGroup\020\t\022-\n)k_EProfileCustomization"
+  "TypeRecommendation\020\n\022+\n\'k_EProfileCustom"
+  "izationTypeWorkshopItem\020\013\022)\n%k_EProfileC"
+  "ustomizationTypeMyWorkshop\020\014\022.\n*k_EProfi"
+  "leCustomizationTypeArtworkShowcase\020\r\022,\n("
+  "k_EProfileCustomizationTypeVideoShowcase"
+  "\020\016\022%\n!k_EProfileCustomizationTypeGuides\020"
+  "\017\022\'\n#k_EProfileCustomizationTypeMyGuides"
+  "\020\020\022+\n\'k_EProfileCustomizationTypeAchieve"
+  "ments\020\021\022)\n%k_EProfileCustomizationTypeGr"
+  "eenlight\020\022\022+\n\'k_EProfileCustomizationTyp"
+  "eMyGreenlight\020\023\022%\n!k_EProfileCustomizati"
+  "onTypeSalien\020\024\0225\n1k_EProfileCustomizatio"
+  "nTypeLoyaltyRewardReactions\020\025\0224\n0k_EProf"
+  "ileCustomizationTypeSingleArtworkShowcas"
+  "e\020\026\0228\n4k_EProfileCustomizationTypeAchiev"
+  "ementsCompletionist\020\027\022%\n!k_EProfileCusto"
+  "mizationTypeReplay\020\030*\310\001\n\033EPublishedFileS"
+  "torageSystem\022(\n$k_EPublishedFileStorageS"
+  "ystemInvalid\020\000\022,\n(k_EPublishedFileStorag"
+  "eSystemLegacyCloud\020\001\022&\n\"k_EPublishedFile"
+  "StorageSystemDepot\020\002\022)\n%k_EPublishedFile"
+  "StorageSystemUGCCloud\020\003*\227\001\n\031ECloudStorag"
+  "ePersistState\022(\n$k_ECloudStoragePersistS"
+  "tatePersisted\020\000\022(\n$k_ECloudStoragePersis"
+  "tStateForgotten\020\001\022&\n\"k_ECloudStoragePers"
+  "istStateDeleted\020\002*\350\001\n\022ESDCardFormatStage"
+  "\022 \n\034k_ESDCardFormatStage_Invalid\020\000\022!\n\035k_"
+  "ESDCardFormatStage_Starting\020\001\022 \n\034k_ESDCa"
+  "rdFormatStage_Testing\020\002\022!\n\035k_ESDCardForm"
+  "atStage_Rescuing\020\003\022#\n\037k_ESDCardFormatSta"
+  "ge_Formatting\020\004\022#\n\037k_ESDCardFormatStage_"
+  "Finalizing\020\005*\225\002\n\023EStorageFormatStage\022!\n\035"
+  "k_EStorageFormatStage_Invalid\020\000\022$\n k_ESt"
+  "orageFormatStage_NotRunning\020\001\022\"\n\036k_EStor"
+  "ageFormatStage_Starting\020\002\022!\n\035k_EStorageF"
+  "ormatStage_Testing\020\003\022\"\n\036k_EStorageFormat"
+  "Stage_Rescuing\020\004\022$\n k_EStorageFormatStag"
+  "e_Formatting\020\005\022$\n k_EStorageFormatStage_"
+  "Finalizing\020\006*\204\001\n\025ESystemFanControlMode\022\""
+  "\n\036k_SystemFanControlMode_Invalid\020\000\022#\n\037k_"
+  "SystemFanControlMode_Disabled\020\001\022\"\n\036k_Sys"
+  "temFanControlMode_Default\020\002*\213\001\n\023EColorGa"
+  "mutLabelSet\022 \n\034k_ColorGamutLabelSet_Defa"
+  "ult\020\000\022$\n k_ColorGamutLabelSet_sRGB_Nativ"
+  "e\020\001\022,\n(k_ColorGamutLabelSet_Native_sRGB_"
+  "Boosted\020\002*}\n\024EWindowStackingOrder\022\"\n\036k_E"
+  "WindowStackingOrder_Invalid\020\000\022\036\n\032k_EWind"
+  "owStackingOrder_Top\020\001\022!\n\035k_EWindowStacki"
+  "ngOrder_Bottom\020\002*\300\003\n\024EBluetoothDeviceTyp"
+  "e\022!\n\035k_BluetoothDeviceType_Invalid\020\000\022!\n\035"
+  "k_BluetoothDeviceType_Unknown\020\001\022\037\n\033k_Blu"
+  "etoothDeviceType_Phone\020\002\022\"\n\036k_BluetoothD"
+  "eviceType_Computer\020\003\022!\n\035k_BluetoothDevic"
+  "eType_Headset\020\004\022$\n k_BluetoothDeviceType"
+  "_Headphones\020\005\022\"\n\036k_BluetoothDeviceType_S"
+  "peakers\020\006\022$\n k_BluetoothDeviceType_Other"
+  "Audio\020\007\022\037\n\033k_BluetoothDeviceType_Mouse\020\010"
+  "\022\"\n\036k_BluetoothDeviceType_Joystick\020\t\022!\n\035"
+  "k_BluetoothDeviceType_Gamepad\020\n\022\"\n\036k_Blu"
+  "etoothDeviceType_Keyboard\020\013*\302\001\n\025ESpeaker"
+  "Configuration\022!\n\035k_ESpeakerConfiguration"
+  "_Other\020\000\022\"\n\036k_ESpeakerConfiguration_Ster"
+  "eo\020\001\022\036\n\032k_ESpeakerConfiguration_51\020\002\022\036\n\032"
+  "k_ESpeakerConfiguration_71\020\003\022\"\n\036k_ESpeak"
+  "erConfiguration_51_Ac3\020\004*\200\001\n\025ESystemAudi"
+  "oDirection\022\"\n\036k_SystemAudioDirection_Inv"
+  "alid\020\000\022 \n\034k_SystemAudioDirection_Input\020\001"
+  "\022!\n\035k_SystemAudioDirection_Output\020\002*\361\002\n\023"
+  "ESystemAudioChannel\022 \n\034k_SystemAudioChan"
+  "nel_Invalid\020\000\022#\n\037k_SystemAudioChannel_Ag"
+  "gregated\020\001\022\"\n\036k_SystemAudioChannel_Front"
+  "Left\020\002\022#\n\037k_SystemAudioChannel_FrontRigh"
+  "t\020\003\022\034\n\030k_SystemAudioChannel_LFE\020\004\022!\n\035k_S"
+  "ystemAudioChannel_BackLeft\020\005\022\"\n\036k_System"
+  "AudioChannel_BackRight\020\006\022$\n k_SystemAudi"
+  "oChannel_FrontCenter\020\007\022 \n\034k_SystemAudioC"
+  "hannel_Unknown\020\010\022\035\n\031k_SystemAudioChannel"
+  "_Mono\020\t*\311\001\n\024ESystemAudioPortType\022!\n\035k_Sy"
+  "stemAudioPortType_Invalid\020\000\022!\n\035k_SystemA"
+  "udioPortType_Unknown\020\001\022\"\n\036k_SystemAudioP"
+  "ortType_Audio32f\020\002\022 \n\034k_SystemAudioPortT"
+  "ype_Midi8b\020\003\022%\n!k_SystemAudioPortType_Vi"
+  "deo32RGBA\020\004*\220\001\n\031ESystemAudioPortDirectio"
+  "n\022&\n\"k_SystemAudioPortDirection_Invalid\020"
+  "\000\022$\n k_SystemAudioPortDirection_Input\020\001\022"
+  "%\n!k_SystemAudioPortDirection_Output\020\002*\203"
+  "\001\n\023ESystemServiceState\022%\n!k_ESystemServi"
+  "ceState_Unavailable\020\000\022\"\n\036k_ESystemServic"
+  "eState_Disabled\020\001\022!\n\035k_ESystemServiceSta"
+  "te_Enabled\020\002*\341\001\n\031EGraphicsPerfOverlayLev"
+  "el\022&\n\"k_EGraphicsPerfOverlayLevel_Hidden"
+  "\020\000\022%\n!k_EGraphicsPerfOverlayLevel_Basic\020"
+  "\001\022&\n\"k_EGraphicsPerfOverlayLevel_Medium\020"
+  "\002\022$\n k_EGraphicsPerfOverlayLevel_Full\020\003\022"
+  "\'\n#k_EGraphicsPerfOverlayLevel_Minimal\020\004"
+  "*\345\001\n\024EGPUPerformanceLevel\022\"\n\036k_EGPUPerfo"
+  "rmanceLevel_Invalid\020\000\022\037\n\033k_EGPUPerforman"
+  "ceLevel_Auto\020\001\022!\n\035k_EGPUPerformanceLevel"
+  "_Manual\020\002\022\036\n\032k_EGPUPerformanceLevel_Low\020"
+  "\003\022\037\n\033k_EGPUPerformanceLevel_High\020\004\022$\n k_"
+  "EGPUPerformanceLevel_Profiling\020\005*\310\001\n\023ESp"
+  "litScalingFilter\022!\n\035k_ESplitScalingFilte"
+  "r_Invalid\020\000\022 \n\034k_ESplitScalingFilter_Lin"
+  "ear\020\001\022!\n\035k_ESplitScalingFilter_Nearest\020\002"
+  "\022\037\n\033k_ESplitScalingFilter_Sharp\020\003\022(\n$k_E"
+  "SplitScalingFilter_NIS_Deprecated\020\004*\335\001\n\023"
+  "ESplitScalingScaler\022!\n\035k_ESplitScalingSc"
+  "aler_Invalid\020\000\022\036\n\032k_ESplitScalingScaler_"
+  "Auto\020\001\022!\n\035k_ESplitScalingScaler_Integer\020"
+  "\002\022\035\n\031k_ESplitScalingScaler_Fit\020\003\022\036\n\032k_ES"
+  "plitScalingScaler_Fill\020\004\022!\n\035k_ESplitScal"
+  "ingScaler_Stretch\020\005*}\n\022EGamescopeBlurMod"
+  "e\022!\n\035k_EGamescopeBlurMode_Disabled\020\000\022#\n\037"
+  "k_EGamescopeBlurMode_IfOccluded\020\001\022\037\n\033k_E"
+  "GamescopeBlurMode_Always\020\002*\304\001\n\nESLSHelpe"
+  "r\022\030\n\024k_ESLSHelper_Invalid\020\000\022\031\n\025k_ESLSHel"
+  "per_Minidump\020\001\022\026\n\022k_ESLSHelper_Kdump\020\002\022\030"
+  "\n\024k_ESLSHelper_Journal\020\003\022\024\n\020k_ESLSHelper"
+  "_Gpu\020\004\022\033\n\027k_ESLSHelper_SystemInfo\020\005\022\034\n\030k"
+  "_ESLSHelper_Devcoredump\020\006*\305\001\n\021EHDRVisual"
+  "ization\022\034\n\030k_EHDRVisualization_None\020\000\022\037\n"
+  "\033k_EHDRVisualization_Heatmap\020\001\022 \n\034k_EHDR"
+  "Visualization_Analysis\020\002\022\'\n#k_EHDRVisual"
+  "ization_HeatmapExtended\020\003\022&\n\"k_EHDRVisua"
+  "lization_HeatmapClassic\020\004*\201\001\n\023EHDRToneMa"
+  "pOperator\022!\n\035k_EHDRToneMapOperator_Inval"
+  "id\020\000\022#\n\037k_EHDRToneMapOperator_Uncharted\020"
+  "\001\022\"\n\036k_EHDRToneMapOperator_Reinhard\020\002*|\n"
+  "\014ECPUGovernor\022\032\n\026k_ECPUGovernor_Invalid\020"
+  "\000\022\027\n\023k_ECPUGovernor_Perf\020\001\022\034\n\030k_ECPUGove"
+  "rnor_Powersave\020\002\022\031\n\025k_ECPUGovernor_Manua"
+  "l\020\003*\342\001\n\014EUpdaterType\022\032\n\026k_EUpdaterType_I"
+  "nvalid\020\000\022\031\n\025k_EUpdaterType_Client\020\001\022\025\n\021k"
+  "_EUpdaterType_OS\020\002\022\027\n\023k_EUpdaterType_BIO"
+  "S\020\003\022\035\n\031k_EUpdaterType_Aggregated\020\004\022\030\n\024k_"
+  "EUpdaterType_Test1\020\005\022\030\n\024k_EUpdaterType_T"
+  "est2\020\006\022\030\n\024k_EUpdaterType_Dummy\020\007*\227\002\n\rEUp"
+  "daterState\022\033\n\027k_EUpdaterState_Invalid\020\000\022"
+  "\034\n\030k_EUpdaterState_UpToDate\020\002\022\034\n\030k_EUpda"
+  "terState_Checking\020\003\022\035\n\031k_EUpdaterState_A"
+  "vailable\020\004\022\034\n\030k_EUpdaterState_Applying\020\005"
+  "\022(\n$k_EUpdaterState_ClientRestartPending"
+  "\020\006\022(\n$k_EUpdaterState_SystemRestartPendi"
+  "ng\020\007\022\034\n\030k_EUpdaterState_RollBack\020\010*\341\001\n\030E"
+  "StorageBlockContentType\022&\n\"k_EStorageBlo"
+  "ckContentType_Invalid\020\000\022&\n\"k_EStorageBlo"
+  "ckContentType_Unknown\020\001\022)\n%k_EStorageBlo"
+  "ckContentType_FileSystem\020\002\022%\n!k_EStorage"
+  "BlockContentType_Crypto\020\003\022#\n\037k_EStorageB"
+  "lockContentType_Raid\020\004*\303\001\n\033EStorageBlock"
+  "FileSystemType\022)\n%k_EStorageBlockFileSys"
+  "temType_Invalid\020\000\022)\n%k_EStorageBlockFile"
+  "SystemType_Unknown\020\001\022&\n\"k_EStorageBlockF"
+  "ileSystemType_VFat\020\002\022&\n\"k_EStorageBlockF"
+  "ileSystemType_Ext4\020\003*\320\001\n\026EStorageDriveMe"
+  "diaType\022$\n k_EStorageDriveMediaType_Inva"
+  "lid\020\000\022$\n k_EStorageDriveMediaType_Unknow"
+  "n\020\001\022 \n\034k_EStorageDriveMediaType_HDD\020\002\022 \n"
+  "\034k_EStorageDriveMediaType_SSD\020\003\022&\n\"k_ESt"
+  "orageDriveMediaType_Removable\020\004*\263\001\n\037ESys"
+  "temDisplayCompatibilityMode\022-\n)k_ESystem"
+  "DisplayCompatibilityMode_Invalid\020\000\022*\n&k_"
+  "ESystemDisplayCompatibilityMode_None\020\001\0225"
+  "\n1k_ESystemDisplayCompatibilityMode_Mini"
+  "malBandwith\020\002*\255\001\n\035ESteamOSCompatibilityC"
+  "ategory\022+\n\'k_ESteamOSCompatibilityCatego"
+  "ry_Unknown\020\000\022/\n+k_ESteamOSCompatibilityC"
+  "ategory_Unsupported\020\001\022.\n*k_ESteamOSCompa"
+  "tibilityCategory_Compatible\020\002*\217\002\n&ESteam"
+  "OSCompatibilityResultDisplayType\0226\n2k_ES"
+  "teamOSCompatibilityResultDisplayType_Inv"
+  "isible\020\000\022:\n6k_ESteamOSCompatibilityResul"
+  "tDisplayType_Informational\020\001\0228\n4k_ESteam"
+  "OSCompatibilityResultDisplayType_Unsuppo"
+  "rted\020\002\0227\n3k_ESteamOSCompatibilityResultD"
+  "isplayType_Compatible\020\003*\343\001\n\037ESteamDeckCo"
+  "mpatibilityCategory\022-\n)k_ESteamDeckCompa"
+  "tibilityCategory_Unknown\020\000\0221\n-k_ESteamDe"
+  "ckCompatibilityCategory_Unsupported\020\001\022.\n"
+  "*k_ESteamDeckCompatibilityCategory_Playa"
+  "ble\020\002\022.\n*k_ESteamDeckCompatibilityCatego"
+  "ry_Verified\020\003*\320\002\n(ESteamDeckCompatibilit"
+  "yResultDisplayType\0228\n4k_ESteamDeckCompat"
+  "ibilityResultDisplayType_Invisible\020\000\022<\n8"
+  "k_ESteamDeckCompatibilityResultDisplayTy"
+  "pe_Informational\020\001\022:\n6k_ESteamDeckCompat"
+  "ibilityResultDisplayType_Unsupported\020\002\0227"
+  "\n3k_ESteamDeckCompatibilityResultDisplay"
+  "Type_Playable\020\003\0227\n3k_ESteamDeckCompatibi"
+  "lityResultDisplayType_Verified\020\004*\232\002\n!ESt"
+  "eamDeckCompatibilityTestResult\022/\n+k_ESte"
+  "amDeckCompatibilityTestResult_Invalid\020\000\022"
+  "5\n1k_ESteamDeckCompatibilityTestResult_N"
+  "otApplicable\020\001\022,\n(k_ESteamDeckCompatibil"
+  "ityTestResult_Pass\020\002\022,\n(k_ESteamDeckComp"
+  "atibilityTestResult_Fail\020\003\0221\n-k_ESteamDe"
+  "ckCompatibilityTestResult_FailMinor\020\004*w\n"
+  "\010EACState\022\026\n\022k_EACState_Unknown\020\000\022\033\n\027k_E"
+  "ACState_Disconnected\020\001\022\030\n\024k_EACState_Con"
+  "nected\020\002\022\034\n\030k_EACState_ConnectedSlow\020\003*\205"
+  "\001\n\rEBatteryState\022\033\n\027k_EBatteryState_Unkn"
+  "own\020\000\022\037\n\033k_EBatteryState_Discharging\020\001\022\034"
+  "\n\030k_EBatteryState_Charging\020\002\022\030\n\024k_EBatte"
+  "ryState_Full\020\003*\376\001\n\tEOSBranch\022\027\n\023k_EOSBra"
+  "nch_Unknown\020\000\022\027\n\023k_EOSBranch_Release\020\001\022 "
+  "\n\034k_EOSBranch_ReleaseCandidate\020\002\022\024\n\020k_EO"
+  "SBranch_Beta\020\003\022\035\n\031k_EOSBranch_BetaCandid"
+  "ate\020\004\022\027\n\023k_EOSBranch_Preview\020\005\022 \n\034k_EOSB"
+  "ranch_PreviewCandidate\020\006\022\024\n\020k_EOSBranch_"
+  "Main\020\007\022\027\n\023k_EOSBranch_Staging\020\010*\306\003\n\021EBro"
+  "wserGPUStatus\022\037\n\033k_EBrowserGPUStatus_Inv"
+  "alid\020\000\022\037\n\033k_EBrowserGPUStatus_Enabled\020\001\022"
+  "\'\n#k_EBrowserGPUStatus_DisabledUnknown\020\002"
+  "\022*\n&k_EBrowserGPUStatus_DisabledCrashCou"
+  "nt\020\004\022)\n%k_EBrowserGPUStatus_DisabledBloc"
+  "klist\020\005\022)\n%k_EBrowserGPUStatus_DisabledJ"
+  "SRequest\020\006\022+\n\'k_EBrowserGPUStatus_Disabl"
+  "edCommandLine\020\007\022-\n)k_EBrowserGPUStatus_D"
+  "isabledRuntimeDetect\020\010\0220\n,k_EBrowserGPUS"
+  "tatus_DisabledChildCommandLine\020\t\0226\n2k_EB"
+  "rowserGPUStatus_DisabledCompositingComma"
+  "ndLine\020\n*\343\004\n\025EBrowserFeatureStatus\022#\n\037k_"
+  "EBrowserFeatureStatus_Invalid\020\000\022$\n k_EBr"
+  "owserFeatureStatus_NotFound\020\001\022#\n\037k_EBrow"
+  "serFeatureStatus_Unknown\020\002\022,\n(k_EBrowser"
+  "FeatureStatus_DisabledSoftware\020\003\022\'\n#k_EB"
+  "rowserFeatureStatus_DisabledOff\020\004\022)\n%k_E"
+  "BrowserFeatureStatus_DisabledOffOk\020\005\022/\n+"
+  "k_EBrowserFeatureStatus_UnavailableSoftw"
+  "are\020\006\022*\n&k_EBrowserFeatureStatus_Unavail"
+  "ableOff\020\007\022,\n(k_EBrowserFeatureStatus_Una"
+  "vailableOffOk\020\010\022+\n\'k_EBrowserFeatureStat"
+  "us_EnabledReadback\020\t\022(\n$k_EBrowserFeatur"
+  "eStatus_EnabledForce\020\n\022#\n\037k_EBrowserFeat"
+  "ureStatus_Enabled\020\013\022%\n!k_EBrowserFeature"
+  "Status_EnabledOn\020\014\022*\n&k_EBrowserFeatureS"
+  "tatus_EnabledForceOn\020\r*\237\005\n\014EGpuDriverId\022"
+  "\032\n\026k_EGpuDriverId_Invalid\020\000\022\032\n\026k_EGpuDri"
+  "verId_Unknown\020\001\022!\n\035k_EGpuDriverId_AmdPro"
+  "prietary\020\002\022 \n\034k_EGpuDriverId_AmdOpenSour"
+  "ce\020\003\022\033\n\027k_EGpuDriverId_MesaRadv\020\004\022$\n k_E"
+  "GpuDriverId_NvidiaProprietary\020\005\022\"\n\036k_EGp"
+  "uDriverId_IntelPropietary\020\006\022\034\n\030k_EGpuDri"
+  "verId_MesaIntel\020\007\022&\n\"k_EGpuDriverId_Qual"
+  "commProprietary\020\010\022!\n\035k_EGpuDriverId_ArmP"
+  "roprietary\020\t\022$\n k_EGpuDriverId_GoogleSwi"
+  "ftshader\020\n\022&\n\"k_EGpuDriverId_BroadcomPro"
+  "prietary\020\013\022\037\n\033k_EGpuDriverId_MesaLLVMPip"
+  "e\020\014\022\033\n\027k_EGpuDriverId_MoltenVK\020\r\022\035\n\031k_EG"
+  "puDriverId_MesaTurnip\020\016\022\034\n\030k_EGpuDriverI"
+  "d_MesaPanVK\020\017\022\034\n\030k_EGpuDriverId_MesaVenu"
+  "s\020\020\022\034\n\030k_EGpuDriverId_MesaDozen\020\021\022\032\n\026k_E"
+  "GpuDriverId_MesaNVK\020\022\022!\n\035k_EGpuDriverId_"
+  "MesaHoneyKrisp\020\023*\335\005\n\023ECommunityItemClass"
+  "\022!\n\035k_ECommunityItemClass_Invalid\020\000\022\037\n\033k"
+  "_ECommunityItemClass_Badge\020\001\022\"\n\036k_ECommu"
+  "nityItemClass_GameCard\020\002\022+\n\'k_ECommunity"
+  "ItemClass_ProfileBackground\020\003\022\"\n\036k_EComm"
+  "unityItemClass_Emoticon\020\004\022%\n!k_ECommunit"
+  "yItemClass_BoosterPack\020\005\022$\n k_ECommunity"
+  "ItemClass_Consumable\020\006\022!\n\035k_ECommunityIt"
+  "emClass_GameGoo\020\007\022)\n%k_ECommunityItemCla"
+  "ss_ProfileModifier\020\010\022\037\n\033k_ECommunityItem"
+  "Class_Scene\020\t\022$\n k_ECommunityItemClass_S"
+  "alienItem\020\n\022!\n\035k_ECommunityItemClass_Sti"
+  "cker\020\013\022$\n k_ECommunityItemClass_ChatEffe"
+  "ct\020\014\022/\n+k_ECommunityItemClass_MiniProfil"
+  "eBackground\020\r\022%\n!k_ECommunityItemClass_A"
+  "vatarFrame\020\016\022(\n$k_ECommunityItemClass_An"
+  "imatedAvatar\020\017\022/\n+k_ECommunityItemClass_"
+  "SteamDeckKeyboardSkin\020\020\022/\n+k_ECommunityI"
+  "temClass_SteamDeckStartupMovie\020\021*\331\001\n\037ESt"
+  "eamDeckCompatibilityFeedback\022+\n\'k_ESteam"
+  "DeckCompatibilityFeedback_Unset\020\000\022+\n\'k_E"
+  "SteamDeckCompatibilityFeedback_Agree\020\001\022."
+  "\n*k_ESteamDeckCompatibilityFeedback_Disa"
+  "gree\020\002\022,\n(k_ESteamDeckCompatibilityFeedb"
+  "ack_Ignore\020\003*\237\001\n\036EProvideDeckFeedbackPre"
+  "ference\022*\n&k_EProvideDeckFeedbackPrefere"
+  "nce_Unset\020\000\022(\n$k_EProvideDeckFeedbackPre"
+  "ference_Yes\020\001\022\'\n#k_EProvideDeckFeedbackP"
+  "reference_No\020\002*\350\002\n%EHardwareCompatibilit"
+  "yFeedbackDetails\0221\n-k_EHardwareCompatibi"
+  "lityFeedbackDetails_Unset\020\000\0227\n3k_EHardwa"
+  "reCompatibilityFeedbackDetails_Performan"
+  "ce\020\001\0225\n1k_EHardwareCompatibilityFeedback"
+  "Details_Stability\020\002\0226\n2k_EHardwareCompat"
+  "ibilityFeedbackDetails_Legibility\020\004\0221\n-k"
+  "_EHardwareCompatibilityFeedbackDetails_I"
+  "nput\020\010\0221\n-k_EHardwareCompatibilityFeedba"
+  "ckDetails_Other\020\020*\357\001\n!EGameFrameRateRepo"
+  "rtingPreference\022-\n)k_EGameFrameRateRepor"
+  "tingPreference_Unset\020\000\022*\n&k_EGameFrameRa"
+  "teReportingPreference_No\020\001\0225\n1k_EGameFra"
+  "meRateReportingPreference_Yes_Anonymous\020"
+  "\002\0228\n4k_EGameFrameRateReportingPreference"
+  "_Yes_NonAnonymous\020\003*\261\003\n\rETouchGesture\022\027\n"
+  "\023k_ETouchGestureNone\020\000\022\030\n\024k_ETouchGestur"
+  "eTouch\020\001\022\026\n\022k_ETouchGestureTap\020\002\022\034\n\030k_ET"
+  "ouchGestureDoubleTap\020\003\022\035\n\031k_ETouchGestur"
+  "eShortPress\020\004\022\034\n\030k_ETouchGestureLongPres"
+  "s\020\005\022\032\n\026k_ETouchGestureLongTap\020\006\022\037\n\033k_ETo"
+  "uchGestureTwoFingerTap\020\007\022\037\n\033k_ETouchGest"
+  "ureTapCancelled\020\010\022\035\n\031k_ETouchGesturePinc"
+  "hBegin\020\t\022\036\n\032k_ETouchGesturePinchUpdate\020\n"
+  "\022\033\n\027k_ETouchGesturePinchEnd\020\013\022\035\n\031k_ETouc"
+  "hGestureFlingStart\020\014\022!\n\035k_ETouchGestureF"
+  "lingCancelled\020\r*\214\001\n\023ESessionPersistence\022"
+  "*\n\035k_ESessionPersistence_Invalid\020\377\377\377\377\377\377\377"
+  "\377\377\001\022#\n\037k_ESessionPersistence_Ephemeral\020\000"
+  "\022$\n k_ESessionPersistence_Persistent\020\001*\331"
+  "\001\n\032ENewSteamAnnouncementState\022(\n$k_ENewS"
+  "teamAnnouncementState_Invalid\020\000\022(\n$k_ENe"
+  "wSteamAnnouncementState_AllRead\020\001\0220\n,k_E"
+  "NewSteamAnnouncementState_NewAnnouncemen"
+  "t\020\002\0225\n1k_ENewSteamAnnouncementState_Feat"
+  "uredAnnouncement\020\003*\376\001\n\nEForumType\022\030\n\024k_E"
+  "ForumType_Invalid\020\000\022\030\n\024k_EForumType_Gene"
+  "ral\020\001\022\036\n\032k_EForumType_ReportedPosts\020\002\022\031\n"
+  "\025k_EForumType_Workshop\020\003\022\036\n\032k_EForumType"
+  "_PublishedFile\020\004\022\030\n\024k_EForumType_Trading"
+  "\020\005\022\031\n\025k_EForumType_PlayTest\020\006\022\026\n\022k_EForu"
+  "mType_Event\020\007\022\024\n\020k_EForumType_Max\020\010*\213\007\n\022"
+  "ECommentThreadType\022\037\n\033k_ECommentThreadTy"
+  "peInvalid\020\000\022-\n)k_ECommentThreadTypeScree"
+  "nshot_Deprecated\020\001\0221\n-k_ECommentThreadTy"
+  "peWorkshopAccount_Developer\020\002\022.\n*k_EComm"
+  "entThreadTypeWorkshopAccount_Public\020\003\022/\n"
+  "+k_ECommentThreadTypePublishedFile_Devel"
+  "oper\020\004\022,\n(k_ECommentThreadTypePublishedF"
+  "ile_Public\020\005\022\034\n\030k_ECommentThreadTypeTest"
+  "\020\006\022\"\n\036k_ECommentThreadTypeForumTopic\020\007\022&"
+  "\n\"k_ECommentThreadTypeRecommendation\020\010\022("
+  "\n$k_ECommentThreadTypeVideo_Deprecated\020\t"
+  "\022\037\n\033k_ECommentThreadTypeProfile\020\n\022 \n\034k_E"
+  "CommentThreadTypeNewsPost\020\013\022\034\n\030k_ECommen"
+  "tThreadTypeClan\020\014\022(\n$k_ECommentThreadTyp"
+  "eClanAnnouncement\020\r\022!\n\035k_ECommentThreadT"
+  "ypeClanEvent\020\016\022+\n\'k_ECommentThreadTypeUs"
+  "erStatusPublished\020\017\022+\n\'k_ECommentThreadT"
+  "ypeUserReceivedNewGame\020\020\0222\n.k_ECommentTh"
+  "readTypePublishedFile_Announcement\020\021\022(\n$"
+  "k_ECommentThreadTypeModeratorMessage\020\022\022&"
+  "\n\"k_ECommentThreadTypeClanCuratedApp\020\023\022$"
+  "\n k_ECommentThreadTypeQAndASession\020\024\022\033\n\027"
+  "k_ECommentThreadTypeMax\020\025*\327\001\n\024EBroadcast"
+  "Permission\022\"\n\036k_EBroadcastPermissionDisa"
+  "bled\020\000\022(\n$k_EBroadcastPermissionFriendsA"
+  "pprove\020\001\022(\n$k_EBroadcastPermissionFriend"
+  "sAllowed\020\002\022 \n\034k_EBroadcastPermissionPubl"
+  "ic\020\003\022%\n!k_EBroadcastPermissionSubscriber"
+  "s\020\004*f\n\030EBroadcastEncoderSetting\022\"\n\036k_EBr"
+  "oadcastEncoderBestQuality\020\000\022&\n\"k_EBroadc"
+  "astEncoderBestPerformance\020\001*y\n\024ECloudGam"
+  "ingPlatform\022\036\n\032k_ECloudGamingPlatformNon"
+  "e\020\000\022\037\n\033k_ECloudGamingPlatformValve\020\001\022 \n\034"
+  "k_ECloudGamingPlatformNVIDIA\020\002*\355\002\n\030EComp"
+  "romiseDetectionType\022#\n\037k_ECompromiseDete"
+  "ctionType_None\020\000\022)\n%k_ECompromiseDetecti"
+  "onType_TradeEvent\020\001\022*\n&k_ECompromiseDete"
+  "ctionType_ApiCallRate\020\002\022%\n!k_ECompromise"
+  "DetectionType_Manual\020\003\022+\n\'k_ECompromiseD"
+  "etectionType_TicketAction\020\004\022.\n*k_ECompro"
+  "miseDetectionType_MaliciousRefund\020\005\022&\n\"k"
+  "_ECompromiseDetectionType_Move2FA\020\006\022)\n%k"
+  "_ECompromiseDetectionType_DeviceType\020\007*\326"
+  "\001\n\032EAsyncGameSessionUserState\0220\n#k_EAsyn"
+  "cGameSessionUserStateUnknown\020\377\377\377\377\377\377\377\377\377\001\022"
+  "0\n,k_EAsyncGameSessionUserStateWaitingFo"
+  "rOthers\020\000\022.\n*k_EAsyncGameSessionUserStat"
+  "eReadyForAction\020\001\022$\n k_EAsyncGameSession"
+  "UserStateDone\020\002*\304\001\n\037EAsyncGameSessionUse"
+  "rVisibility\022;\n7k_EAsyncGameSessionUserVi"
+  "sibilityEnvelopeAndSessionList\020\000\0224\n0k_EA"
+  "syncGameSessionUserVisibilitySessionList"
+  "Only\020\001\022.\n*k_EAsyncGameSessionUserVisibil"
+  "ityDismissed\020\002*\324\001\n\022EGameRecordingType\022 \n"
+  "\034k_EGameRecordingType_Unknown\020\000\022%\n!k_EGa"
+  "meRecordingType_NotRecording\020\001\022(\n$k_EGam"
+  "eRecordingType_ManualRecording\020\002\022,\n(k_EG"
+  "ameRecordingType_BackgroundRecording\020\003\022\035"
+  "\n\031k_EGameRecordingType_Clip\020\004*J\n\007EGRMode"
+  "\022\023\n\017k_EGRMode_Never\020\000\022\024\n\020k_EGRMode_Alway"
+  "s\020\001\022\024\n\020k_EGRMode_Manual\020\002*\\\n\014EExportCode"
+  "c\022\032\n\026k_EExportCodec_Default\020\000\022\027\n\023k_EExpo"
+  "rtCodec_H264\020\001\022\027\n\023k_EExportCodec_H265\020\002*"
+  "\352\003\n\rEProtoAppType\022\025\n\021k_EAppTypeInvalid\020\000"
+  "\022\022\n\016k_EAppTypeGame\020\001\022\031\n\025k_EAppTypeApplic"
+  "ation\020\002\022\022\n\016k_EAppTypeTool\020\004\022\022\n\016k_EAppTyp"
+  "eDemo\020\010\022\027\n\023k_EAppTypeDeprected\020\020\022\021\n\rk_EA"
+  "ppTypeDLC\020 \022\023\n\017k_EAppTypeGuide\020@\022\025\n\020k_EA"
+  "ppTypeDriver\020\200\001\022\025\n\020k_EAppTypeConfig\020\200\002\022\027"
+  "\n\022k_EAppTypeHardware\020\200\004\022\030\n\023k_EAppTypeFra"
+  "nchise\020\200\010\022\024\n\017k_EAppTypeVideo\020\200\020\022\025\n\020k_EAp"
+  "pTypePlugin\020\200 \022\031\n\024k_EAppTypeMusicAlbum\020\200"
+  "@\022\026\n\020k_EAppTypeSeries\020\200\200\001\022\025\n\017k_EAppTypeC"
+  "omic\020\200\200\002\022\024\n\016k_EAppTypeBeta\020\200\200\004\022\032\n\022k_EApp"
+  "TypeShortcut\020\200\200\200\200\004\022 \n\023k_EAppTypeDepotOnl"
+  "y\020\200\200\200\200\370\377\377\377\377\001*\211\003\n\014EAppTestType\022\036\n\032k_EAppT"
+  "estType_BuildReview\020\000\022\"\n\036k_EAppTestType_"
+  "StorePageReview\020\001\022)\n%k_EAppTestType_Stea"
+  "mChina_BuildReview\020\002\022-\n)k_EAppTestType_S"
+  "teamChina_StorePageReview\020\003\022=\n9k_EAppTes"
+  "tType_SteamChinaPlatformOperator_StorePa"
+  "geReview\020\004\0229\n5k_EAppTestType_SteamChinaP"
+  "latformOperator_BuildReview\020\005\022/\n+k_EAppT"
+  "estType_SteamDeckCompatibilityReview\020\006\0220"
+  "\n,k_EAppTestType_SteamFrameCompatibility"
+  "Review\020\007*\226\001\n\031EChildProcessQueryCommand\022\'"
+  "\n#k_EChildProcessQueryCommand_Invalid\020\000\022"
+  "+\n\'k_EChildProcessQueryCommand_GpuTopolo"
+  "gy\020\001\022#\n\037k_EChildProcessQueryCommand_Max\020"
+  "\002*\366\002\n\032EChildProcessQueryExitCode\022(\n$k_EC"
+  "hildProcessQueryExitCode_Success\020\000\022:\n-k_"
+  "EChildProcessQueryExitCode_ErrorCommandl"
+  "ine\020\377\377\377\377\377\377\377\377\377\001\0224\n\'k_EChildProcessQueryEx"
+  "itCode_ErrorOther\020\376\377\377\377\377\377\377\377\377\001\022<\n/k_EChild"
+  "ProcessQueryExitCode_ErrorUnimplemented\020"
+  "\375\377\377\377\377\377\377\377\377\001\0227\n*k_EChildProcessQueryExitCo"
+  "de_ErrorFileSave\020\374\377\377\377\377\377\377\377\377\001\022E\n8k_EChildP"
+  "rocessQueryExitCode_ErrorNotSupportedByP"
+  "latform\020\373\377\377\377\377\377\377\377\377\001*\362\001\n EWindowsUpdateIns"
+  "tallationImpact\0227\n*k_EWindowsUpdateInsta"
+  "llationImpact_Unknown\020\377\377\377\377\377\377\377\377\377\001\022-\n)k_EW"
+  "indowsUpdateInstallationImpact_Normal\020\000\022"
+  ",\n(k_EWindowsUpdateInstallationImpact_Mi"
+  "nor\020\001\0228\n4k_EWindowsUpdateInstallationImp"
+  "act_ExclusiveHandling\020\002*\362\001\n\034EWindowsUpda"
+  "teRebootBehavior\0223\n&k_EWindowsUpdateRebo"
+  "otBehavior_Unknown\020\377\377\377\377\377\377\377\377\377\001\0223\n/k_EWind"
+  "owsUpdateRebootBehavior_NeverNeedsReboot"
+  "\020\000\0224\n0k_EWindowsUpdateRebootBehavior_Alw"
+  "aysNeedsReboot\020\001\0222\n.k_EWindowsUpdateRebo"
+  "otBehavior_MightNeedReboot\020\002*\376\001\n\026EExtern"
+  "alSaleEventType\022$\n k_EExternalSaleEventT"
+  "ype_Unknown\020\000\022&\n\"k_EExternalSaleEventTyp"
+  "e_Publisher\020\001\022%\n!k_EExternalSaleEventTyp"
+  "e_Showcase\020\002\022#\n\037k_EExternalSaleEventType"
+  "_Region\020\003\022\"\n\036k_EExternalSaleEventType_Th"
+  "eme\020\004\022&\n\"k_EExternalSaleEventType_Franch"
+  "ise\020\005*\333\001\n\037EEnhancedMarketAppearanceStatu"
+  "s\022)\n%k_EnhancedMarketAppearanceStatus_No"
+  "ne\020\000\022,\n(k_EnhancedMarketAppearanceStatus"
+  "_Pending\020\001\022/\n+k_EnhancedMarketAppearance"
+  "Status_InProgress\020\002\022.\n*k_EnhancedMarketA"
+  "ppearanceStatus_Completed\020\003*\363\002\n\031EContent"
+  "ReportSubjectType\022\'\n#k_EContentReportSub"
+  "jectType_Invalid\020\000\022)\n%k_EContentReportSu"
+  "bjectType_ForumPost\020\001\022-\n)k_EContentRepor"
+  "tSubjectType_CommentThread\020\002\022\'\n#k_EConte"
+  "ntReportSubjectType_UGCFile\020\003\022-\n)k_ECont"
+  "entReportSubjectType_FriendChatMsg\020\004\022+\n\'"
+  "k_EContentReportSubjectType_ChatRoomMsg\020"
+  "\005\022)\n%k_EContentReportSubjectType_ChatGro"
+  "up\020\006\022#\n\037k_EContentReportSubjectType_MAX\020"
+  "\007*\331\001\n\036EControlledLegalCategoryStatus\022)\n%"
+  "k_EControlledLegalCategoryStatus_None\020\000\022"
+  ",\n(k_EControlledLegalCategoryStatus_Accu"
+  "sed\020\001\022.\n*k_EControlledLegalCategoryStatu"
+  "s_Convicted\020\002\022.\n*k_EControlledLegalCateg"
+  "oryStatus_Acquitted\020\003*\251\001\n\026EContentModera"
+  "torLevel\022 \n\034k_EContentModeratorLevel_Any"
+  "\020\000\022\'\n#k_EContentModeratorLevel_Superviso"
+  "r\020\001\022\"\n\036k_EContentModeratorLevel_Valve\020\n\022"
+  " \n\034k_EContentModeratorLevel_MAX\020\013*\313\006\n\030EC"
+  "ontentReportResolution\022)\n%k_EContentRepo"
+  "rtResolution_Unresolved\020\000\022(\n$k_EContentR"
+  "eportResolution_Acquitted\020\001\022&\n\"k_EConten"
+  "tReportResolution_Removed\020\002\022)\n%k_EConten"
+  "tReportResolution_Relabelled\020\003\022)\n%k_ECon"
+  "tentReportResolution_Suspicious\020\004\022/\n+k_E"
+  "ContentReportResolution_HarassmentStrike"
+  "\020\005\022%\n!k_EContentReportResolution_Purged\020"
+  "\006\0222\n.k_EContentReportResolution_Disconne"
+  "ctedFromApp\020\007\022:\n6k_EContentReportResolut"
+  "ion_SuspiciousIncludingUpvoters\020\010\0220\n,k_E"
+  "ContentReportResolution_VisibilityChange"
+  "d\020\t\0229\n5k_EContentReportResolution_Countr"
+  "yRestrictionsChanged\020\n\022,\n(k_EContentRepo"
+  "rtResolution_RemoveAndWarn\020\013\022+\n\'k_EConte"
+  "ntReportResolution_RemoveAndBan\020\014\022,\n(k_E"
+  "ContentReportResolution_RemoveAndKick\020\r\022"
+  ")\n%k_EContentReportResolution_Sanctioned"
+  "\020\016\022(\n$k_EContentReportResolution_Sustain"
+  "ed\020\017\022%\n!k_EContentReportResolution_Broke"
+  "n\020\020\022\"\n\036k_EContentReportResolution_MAX\020\021*"
+  "\310\004\n\032EContentModerationSanction\022(\n$k_ECon"
+  "tentModerationSanction_Invalid\020\000\022(\n$k_EC"
+  "ontentModerationSanction_Deleted\020\001\0220\n,k_"
+  "EContentModerationSanction_CommunityBann"
+  "ed\020\002\022*\n&k_EContentModerationSanction_Hub"
+  "Banned\020\003\022,\n(k_EContentModerationSanction"
+  "_TradeBanned\020\004\0226\n2k_EContentModerationSa"
+  "nction_CommentHistoryDeleted\020\005\022+\n\'k_ECon"
+  "tentModerationSanction_Relabelled\020\006\0221\n-k"
+  "_EContentModerationSanction_MarkAsSuspic"
+  "ious\020\007\022\'\n#k_EContentModerationSanction_W"
+  "arned\020\010\0220\n,k_EContentModerationSanction_"
+  "KickedFromGroup\020\t\0221\n-k_EContentModeratio"
+  "nSanction_HarassmentBanned\020\n\022$\n k_EConte"
+  "ntModerationSanction_MAX\020\013*\377\010\n\033EContentR"
+  "eportSubjectAction\022)\n%k_EContentReportSu"
+  "bjectAction_Invalid\020\000\022,\n(k_EContentRepor"
+  "tSubjectAction_Unresolved\020\001\022,\n(k_EConten"
+  "tReportSubjectAction_Sanctioned\020\002\022+\n\'k_E"
+  "ContentReportSubjectAction_Acquitted\020\003\022+"
+  "\n\'k_EContentReportSubjectAction_Cancelle"
+  "d\020\004\022)\n%k_EContentReportSubjectAction_Upd"
+  "ated\020\005\022+\n\'k_EContentReportSubjectAction_"
+  "Escalated\020\006\022*\n&k_EContentReportSubjectAc"
+  "tion_Disputed\020\007\022+\n\'k_EContentReportSubje"
+  "ctAction_Sustained\020\010\022(\n$k_EContentReport"
+  "SubjectAction_Locked\020\t\022*\n&k_EContentRepo"
+  "rtSubjectAction_Unlocked\020\n\022)\n%k_EContent"
+  "ReportSubjectAction_Deleted\020\013\022(\n$k_ECont"
+  "entReportSubjectAction_Warned\020\014\022/\n+k_ECo"
+  "ntentReportSubjectAction_BannedFromHub\020\r"
+  "\0225\n1k_EContentReportSubjectAction_Banned"
+  "FromCommunity\020\016\022-\n)k_EContentReportSubje"
+  "ctAction_TradeBanned\020\017\0224\n0k_EContentRepo"
+  "rtSubjectAction_MarkedAsSuspicious\020\020\022.\n*"
+  "k_EContentReportSubjectAction_ResetConte"
+  "nt\020\021\0222\n.k_EContentReportSubjectAction_Es"
+  "calatedForCSAM\020\022\0227\n3k_EContentReportSubj"
+  "ectAction_EscalatedForTerrorism\020\023\022)\n%k_E"
+  "ContentReportSubjectAction_Claimed\020\024\022*\n&"
+  "k_EContentReportSubjectAction_Released\020\025"
+  "\0221\n-k_EContentReportSubjectAction_Privat"
+  "eMessaged\020\026\022/\n+k_EContentReportSubjectAc"
+  "tion_OwnerDisputed\020\027*\335\030\n\024EContentReportR"
+  "eason\022\"\n\036k_EContentReportReason_Invalid\020"
+  "\000\022\037\n\033k_EContentReportReason_None\020\001\022\"\n\036k_"
+  "EContentReportReason_Unknown\020\002\022%\n!k_ECon"
+  "tentReportReason_Harassment\020\003\0222\n.k_ECont"
+  "entReportReason_BullyingAndIntimidation\020"
+  "\004\022#\n\037k_EContentReportReason_Stalking\020\005\022\""
+  "\n\036k_EContentReportReason_Doxxing\020\006\022*\n&k_"
+  "EContentReportReason_OtherHarassment\020\007\022."
+  "\n*k_EContentReportReason_EncouragingViol"
+  "ence\020\010\022.\n*k_EContentReportReason_Encoura"
+  "gingSelfHarm\020\t\022-\n)k_EContentReportReason"
+  "_EncouragingSuicide\020\n\0222\n.k_EContentRepor"
+  "tReason_OtherViolenceOrSelfHarm\020\013\0221\n-k_E"
+  "ContentReportReason_PhishingOrAccountThe"
+  "ft\020\014\022,\n(k_EContentReportReason_Attempted"
+  "Scamming\020\r\0224\n0k_EContentReportReason_Lin"
+  "kingToMaliciousContent\020\016\022(\n$k_EContentRe"
+  "portReason_Impersonation\020\017\022-\n)k_EContent"
+  "ReportReason_OtherScamsAndTheft\020\020\022/\n+k_E"
+  "ContentReportReason_EncouragingTerrorism"
+  "\020\021\022.\n*k_EContentReportReason_OrganizingT"
+  "errorism\020\022\022)\n%k_EContentReportReason_Oth"
+  "erTerrorism\020\023\022(\n$k_EContentReportReason_"
+  "TargetedAbuse\020\024\022+\n\'k_EContentReportReaso"
+  "n_NamingAndShaming\020\025\022)\n%k_EContentReport"
+  "Reason_Discrimination\020\026\022%\n!k_EContentRep"
+  "ortReason_OtherAbuse\020\027\022#\n\037k_EContentRepo"
+  "rtReason_Trolling\020\030\022\"\n\036k_EContentReportR"
+  "eason_Baiting\020\031\022$\n k_EContentReportReaso"
+  "n_Derailing\020\032\022*\n&k_EContentReportReason_"
+  "OtherDisruptive\020\033\022\037\n\033k_EContentReportRea"
+  "son_Spam\020\034\022\"\n\036k_EContentReportReason_Beg"
+  "ging\020\035\022$\n k_EContentReportReason_Reposti"
+  "ng\020\036\022(\n$k_EContentReportReason_OtherOffT"
+  "opic\020\037\022,\n(k_EContentReportReason_CSAMSex"
+  "ualContent\020 \0223\n/k_EContentReportReason_C"
+  "SAMGroomingOrEnticement\020!\022$\n k_EContentR"
+  "eportReason_CSAMOther\020\"\0220\n,k_EContentRep"
+  "ortReason_NudityOrSexualContent\020#\0220\n,k_E"
+  "ContentReportReason_NonConsensualMateria"
+  "l\020$\022&\n\"k_EContentReportReason_Advertisin"
+  "g\020%\022(\n$k_EContentReportReason_ReferralLi"
+  "nks\020&\022#\n\037k_EContentReportReason_Gambling"
+  "\020\'\022\"\n\036k_EContentReportReason_Raffles\020(\0222"
+  "\n.k_EContentReportReason_OtherCommercial"
+  "Activity\020)\022,\n(k_EContentReportReason_Ina"
+  "uthenticReview\020*\022G\nCk_EContentReportReas"
+  "on_HiddenAdvertisementOrCommercialCommun"
+  "ication\020+\022D\n@k_EContentReportReason_Misl"
+  "eadingInformationAboutGoodsOrServices\020,\022"
+  "C\n\?k_EContentReportReason_MisleadingInfo"
+  "rmationAboutConsumerRights\020-\022>\n:k_EConte"
+  "ntReportReason_NoncomplianceWithPricingR"
+  "egulations\020.\0226\n2k_EContentReportReason_R"
+  "ightToBeForgottenViolation\020/\0229\n5k_EConte"
+  "ntReportReason_MissingProcessingGroundFo"
+  "rData\0200\022A\n=k_EContentReportReason_OtherD"
+  "ataProtectionAndPrivacyViolation\0201\022-\n)k_"
+  "EContentReportReason_GenderedHarassment\020"
+  "2\022:\n6k_EContentReportReason_GenderedBull"
+  "yingAndIntimidation\0203\022+\n\'k_EContentRepor"
+  "tReason_GenderedStalking\0204\022*\n&k_EContent"
+  "ReportReason_GenderedDoxxing\0205\0222\n.k_ECon"
+  "tentReportReason_GenderedOtherHarassment"
+  "\0206\0226\n2k_EContentReportReason_GenderedEnc"
+  "ouragingViolence\0207\0220\n,k_EContentReportRe"
+  "ason_GenderedTargetedAbuse\0208\0221\n-k_EConte"
+  "ntReportReason_CSAMFakedSexualContent\0209\022"
+  "8\n4k_EContentReportReason_GenderedNonCon"
+  "sensualMaterial\020:\022=\n9k_EContentReportRea"
+  "son_FakedGenderedNonConsensualMaterial\020;"
+  "\0225\n1k_EContentReportReason_FakedNonConse"
+  "nsualMaterial\020<\022\?\n;k_EContentReportReaso"
+  "n_NegativeEffectonDiscourseOrElections\020="
+  "\0221\n-k_EContentReportReason_QuotesModerat"
+  "edContent\020>\0223\n/k_EContentReportReason_Cr"
+  "edibleThreatOfViolence\020\?\0222\n.k_EContentRe"
+  "portReason_AutoCreatedOnModeration\020@\022\036\n\032"
+  "k_EContentReportReason_MAX\020A*\270\001\n\025EResolu"
+  "tionAutomation\022\"\n\036k_EResolutionAutomatio"
+  "n_Manual\020\000\022.\n*k_EResolutionAutomation_Pa"
+  "rtiallyAutomated\020\001\022*\n&k_EResolutionAutom"
+  "ation_FullyAutomated\020\002\022\037\n\033k_EResolutionA"
+  "utomation_MAX\020\003*\223\004\n\022EPressOutletAction\022 "
+  "\n\034k_EPressOutletAction_Invalid\020\000\022 \n\034k_EP"
+  "ressOutletAction_Granted\020\001\022 \n\034k_EPressOu"
+  "tletAction_Removed\020\002\022 \n\034k_EPressOutletAc"
+  "tion_Created\020\003\022 \n\034k_EPressOutletAction_U"
+  "pdated\020\004\022 \n\034k_EPressOutletAction_Deleted"
+  "\020\005\022\"\n\036k_EPressOutletAction_Undeleted\020\006\022\""
+  "\n\036k_EPressOutletAction_StagedAdd\020\007\022%\n!k_"
+  "EPressOutletAction_StagedDelete\020\010\022%\n!k_E"
+  "PressOutletAction_EnterStaging\020\t\022$\n k_EP"
+  "ressOutletAction_ExitStaging\020\n\022)\n%k_EPre"
+  "ssOutletAction_ReverseStagedAdd\020\013\022,\n(k_E"
+  "PressOutletAction_ReverseStagedDelete\020\014\022"
+  "\034\n\030k_EPressOutletAction_MAX\020\r*\332\001\n\036EPress"
+  "OutletMemberPendingState\022+\n\'k_EPressOutl"
+  "etMemberPendingState_Member\020\000\0221\n-k_EPres"
+  "sOutletMemberPendingState_StagedDelete\020\001"
+  "\022.\n*k_EPressOutletMemberPendingState_Sta"
+  "gedAdd\020\002\022(\n$k_EPressOutletMemberPendingS"
+  "tate_MAX\020\003*\232\002\n\024ECommentDeleteReason\022\"\n\036k"
+  "_ECommentDeleteReason_Invalid\020\000\022\037\n\033k_ECo"
+  "mmentDeleteReason_User\020\001\022&\n\"k_ECommentDe"
+  "leteReason_ThreadOwner\020\002\022$\n k_ECommentDe"
+  "leteReason_Moderator\020\003\022\"\n\036k_ECommentDele"
+  "teReason_Support\020\004\022\037\n\033k_ECommentDeleteRe"
+  "ason_Spam\020\005\022*\n&k_ECommentDeleteReason_Ac"
+  "countDeletion\020\006"
+  ;
+static ::PROTOBUF_NAMESPACE_ID::internal::once_flag descriptor_table_enums_2eproto_once;
+const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable descriptor_table_enums_2eproto = {
+  false, false, 28775, descriptor_table_protodef_enums_2eproto, "enums.proto", 
+  &descriptor_table_enums_2eproto_once, nullptr, 0, 0,
+  schemas, file_default_instances, TableStruct_enums_2eproto::offsets,
+  file_level_metadata_enums_2eproto, file_level_enum_descriptors_enums_2eproto, file_level_service_descriptors_enums_2eproto,
+};
+PROTOBUF_ATTRIBUTE_WEAK ::PROTOBUF_NAMESPACE_ID::Metadata
+descriptor_table_enums_2eproto_metadata_getter(int index) {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return descriptor_table_enums_2eproto.file_level_metadata[index];
+}
+
+// Force running AddDescriptors() at dynamic initialization time.
+PROTOBUF_ATTRIBUTE_INIT_PRIORITY static ::PROTOBUF_NAMESPACE_ID::internal::AddDescriptorsRunner dynamic_init_dummy_enums_2eproto(&descriptor_table_enums_2eproto);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EPublishedFileQueryType_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[0];
+}
 bool EPublishedFileQueryType_IsValid(int value) {
   switch (value) {
     case 0:
@@ -44,112 +796,9 @@ bool EPublishedFileQueryType_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EPublishedFileQueryType_strings[24] = {};
-
-static const char EPublishedFileQueryType_names[] =
-  "k_PublishedFileQueryType_AcceptedForGameRankedByAcceptanceDate"
-  "k_PublishedFileQueryType_CreatedByFollowedUsersRankedByPublicationDate"
-  "k_PublishedFileQueryType_CreatedByFriendsRankedByPublicationDate"
-  "k_PublishedFileQueryType_FavoritedByFriendsRankedByPublicationDate"
-  "k_PublishedFileQueryType_NotYetRated"
-  "k_PublishedFileQueryType_RankedByAveragePlaytimeTrend"
-  "k_PublishedFileQueryType_RankedByBanContentCheck"
-  "k_PublishedFileQueryType_RankedByInappropriateContentRating"
-  "k_PublishedFileQueryType_RankedByLastUpdatedDate"
-  "k_PublishedFileQueryType_RankedByLifetimeAveragePlaytime"
-  "k_PublishedFileQueryType_RankedByLifetimePlaytimeSessions"
-  "k_PublishedFileQueryType_RankedByNumParentCollections"
-  "k_PublishedFileQueryType_RankedByNumParentItems"
-  "k_PublishedFileQueryType_RankedByNumTimesReported"
-  "k_PublishedFileQueryType_RankedByPlaytimeSessionsTrend"
-  "k_PublishedFileQueryType_RankedByPlaytimeTrend"
-  "k_PublishedFileQueryType_RankedByPublicationDate"
-  "k_PublishedFileQueryType_RankedByTextSearch"
-  "k_PublishedFileQueryType_RankedByTotalPlaytime"
-  "k_PublishedFileQueryType_RankedByTotalUniqueSubscriptions"
-  "k_PublishedFileQueryType_RankedByTotalVotesAsc"
-  "k_PublishedFileQueryType_RankedByTrend"
-  "k_PublishedFileQueryType_RankedByVote"
-  "k_PublishedFileQueryType_RankedByVotesUp";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EPublishedFileQueryType_entries[] = {
-  { {EPublishedFileQueryType_names + 0, 62}, 2 },
-  { {EPublishedFileQueryType_names + 62, 70}, 7 },
-  { {EPublishedFileQueryType_names + 132, 64}, 5 },
-  { {EPublishedFileQueryType_names + 196, 66}, 4 },
-  { {EPublishedFileQueryType_names + 262, 36}, 8 },
-  { {EPublishedFileQueryType_names + 298, 53}, 15 },
-  { {EPublishedFileQueryType_names + 351, 48}, 20 },
-  { {EPublishedFileQueryType_names + 399, 59}, 19 },
-  { {EPublishedFileQueryType_names + 458, 48}, 21 },
-  { {EPublishedFileQueryType_names + 506, 56}, 16 },
-  { {EPublishedFileQueryType_names + 562, 57}, 18 },
-  { {EPublishedFileQueryType_names + 619, 53}, 23 },
-  { {EPublishedFileQueryType_names + 672, 47}, 22 },
-  { {EPublishedFileQueryType_names + 719, 49}, 6 },
-  { {EPublishedFileQueryType_names + 768, 54}, 17 },
-  { {EPublishedFileQueryType_names + 822, 46}, 13 },
-  { {EPublishedFileQueryType_names + 868, 48}, 1 },
-  { {EPublishedFileQueryType_names + 916, 43}, 12 },
-  { {EPublishedFileQueryType_names + 959, 46}, 14 },
-  { {EPublishedFileQueryType_names + 1005, 57}, 9 },
-  { {EPublishedFileQueryType_names + 1062, 46}, 10 },
-  { {EPublishedFileQueryType_names + 1108, 38}, 3 },
-  { {EPublishedFileQueryType_names + 1146, 37}, 0 },
-  { {EPublishedFileQueryType_names + 1183, 40}, 11 },
-};
-
-static const int EPublishedFileQueryType_entries_by_number[] = {
-  22, // 0 -> k_PublishedFileQueryType_RankedByVote
-  16, // 1 -> k_PublishedFileQueryType_RankedByPublicationDate
-  0, // 2 -> k_PublishedFileQueryType_AcceptedForGameRankedByAcceptanceDate
-  21, // 3 -> k_PublishedFileQueryType_RankedByTrend
-  3, // 4 -> k_PublishedFileQueryType_FavoritedByFriendsRankedByPublicationDate
-  2, // 5 -> k_PublishedFileQueryType_CreatedByFriendsRankedByPublicationDate
-  13, // 6 -> k_PublishedFileQueryType_RankedByNumTimesReported
-  1, // 7 -> k_PublishedFileQueryType_CreatedByFollowedUsersRankedByPublicationDate
-  4, // 8 -> k_PublishedFileQueryType_NotYetRated
-  19, // 9 -> k_PublishedFileQueryType_RankedByTotalUniqueSubscriptions
-  20, // 10 -> k_PublishedFileQueryType_RankedByTotalVotesAsc
-  23, // 11 -> k_PublishedFileQueryType_RankedByVotesUp
-  17, // 12 -> k_PublishedFileQueryType_RankedByTextSearch
-  15, // 13 -> k_PublishedFileQueryType_RankedByPlaytimeTrend
-  18, // 14 -> k_PublishedFileQueryType_RankedByTotalPlaytime
-  5, // 15 -> k_PublishedFileQueryType_RankedByAveragePlaytimeTrend
-  9, // 16 -> k_PublishedFileQueryType_RankedByLifetimeAveragePlaytime
-  14, // 17 -> k_PublishedFileQueryType_RankedByPlaytimeSessionsTrend
-  10, // 18 -> k_PublishedFileQueryType_RankedByLifetimePlaytimeSessions
-  7, // 19 -> k_PublishedFileQueryType_RankedByInappropriateContentRating
-  6, // 20 -> k_PublishedFileQueryType_RankedByBanContentCheck
-  8, // 21 -> k_PublishedFileQueryType_RankedByLastUpdatedDate
-  12, // 22 -> k_PublishedFileQueryType_RankedByNumParentItems
-  11, // 23 -> k_PublishedFileQueryType_RankedByNumParentCollections
-};
-
-const std::string& EPublishedFileQueryType_Name(
-    EPublishedFileQueryType value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EPublishedFileQueryType_entries,
-          EPublishedFileQueryType_entries_by_number,
-          24, EPublishedFileQueryType_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EPublishedFileQueryType_entries,
-      EPublishedFileQueryType_entries_by_number,
-      24, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EPublishedFileQueryType_strings[idx].get();
-}
-bool EPublishedFileQueryType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EPublishedFileQueryType* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EPublishedFileQueryType_entries, 24, name, &int_value);
-  if (success) {
-    *value = static_cast<EPublishedFileQueryType>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EPublishedFileInappropriateProvider_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[1];
 }
 bool EPublishedFileInappropriateProvider_IsValid(int value) {
   switch (value) {
@@ -162,49 +811,9 @@ bool EPublishedFileInappropriateProvider_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EPublishedFileInappropriateProvider_strings[3] = {};
-
-static const char EPublishedFileInappropriateProvider_names[] =
-  "k_EPublishedFileInappropriateProvider_Amazon"
-  "k_EPublishedFileInappropriateProvider_Google"
-  "k_EPublishedFileInappropriateProvider_Invalid";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EPublishedFileInappropriateProvider_entries[] = {
-  { {EPublishedFileInappropriateProvider_names + 0, 44}, 2 },
-  { {EPublishedFileInappropriateProvider_names + 44, 44}, 1 },
-  { {EPublishedFileInappropriateProvider_names + 88, 45}, 0 },
-};
-
-static const int EPublishedFileInappropriateProvider_entries_by_number[] = {
-  2, // 0 -> k_EPublishedFileInappropriateProvider_Invalid
-  1, // 1 -> k_EPublishedFileInappropriateProvider_Google
-  0, // 2 -> k_EPublishedFileInappropriateProvider_Amazon
-};
-
-const std::string& EPublishedFileInappropriateProvider_Name(
-    EPublishedFileInappropriateProvider value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EPublishedFileInappropriateProvider_entries,
-          EPublishedFileInappropriateProvider_entries_by_number,
-          3, EPublishedFileInappropriateProvider_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EPublishedFileInappropriateProvider_entries,
-      EPublishedFileInappropriateProvider_entries_by_number,
-      3, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EPublishedFileInappropriateProvider_strings[idx].get();
-}
-bool EPublishedFileInappropriateProvider_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EPublishedFileInappropriateProvider* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EPublishedFileInappropriateProvider_entries, 3, name, &int_value);
-  if (success) {
-    *value = static_cast<EPublishedFileInappropriateProvider>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EPublishedFileInappropriateResult_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[2];
 }
 bool EPublishedFileInappropriateResult_IsValid(int value) {
   switch (value) {
@@ -220,58 +829,9 @@ bool EPublishedFileInappropriateResult_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EPublishedFileInappropriateResult_strings[6] = {};
-
-static const char EPublishedFileInappropriateResult_names[] =
-  "k_EPublishedFileInappropriateResult_Likely"
-  "k_EPublishedFileInappropriateResult_NotScanned"
-  "k_EPublishedFileInappropriateResult_Possible"
-  "k_EPublishedFileInappropriateResult_Unlikely"
-  "k_EPublishedFileInappropriateResult_VeryLikely"
-  "k_EPublishedFileInappropriateResult_VeryUnlikely";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EPublishedFileInappropriateResult_entries[] = {
-  { {EPublishedFileInappropriateResult_names + 0, 42}, 75 },
-  { {EPublishedFileInappropriateResult_names + 42, 46}, 0 },
-  { {EPublishedFileInappropriateResult_names + 88, 44}, 50 },
-  { {EPublishedFileInappropriateResult_names + 132, 44}, 30 },
-  { {EPublishedFileInappropriateResult_names + 176, 46}, 100 },
-  { {EPublishedFileInappropriateResult_names + 222, 48}, 1 },
-};
-
-static const int EPublishedFileInappropriateResult_entries_by_number[] = {
-  1, // 0 -> k_EPublishedFileInappropriateResult_NotScanned
-  5, // 1 -> k_EPublishedFileInappropriateResult_VeryUnlikely
-  3, // 30 -> k_EPublishedFileInappropriateResult_Unlikely
-  2, // 50 -> k_EPublishedFileInappropriateResult_Possible
-  0, // 75 -> k_EPublishedFileInappropriateResult_Likely
-  4, // 100 -> k_EPublishedFileInappropriateResult_VeryLikely
-};
-
-const std::string& EPublishedFileInappropriateResult_Name(
-    EPublishedFileInappropriateResult value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EPublishedFileInappropriateResult_entries,
-          EPublishedFileInappropriateResult_entries_by_number,
-          6, EPublishedFileInappropriateResult_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EPublishedFileInappropriateResult_entries,
-      EPublishedFileInappropriateResult_entries_by_number,
-      6, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EPublishedFileInappropriateResult_strings[idx].get();
-}
-bool EPublishedFileInappropriateResult_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EPublishedFileInappropriateResult* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EPublishedFileInappropriateResult_entries, 6, name, &int_value);
-  if (success) {
-    *value = static_cast<EPublishedFileInappropriateResult>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EPersonaStateFlag_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[3];
 }
 bool EPersonaStateFlag_IsValid(int value) {
   switch (value) {
@@ -291,70 +851,9 @@ bool EPersonaStateFlag_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EPersonaStateFlag_strings[10] = {};
-
-static const char EPersonaStateFlag_names[] =
-  "k_EPersonaStateFlag_ClientTypeMobile"
-  "k_EPersonaStateFlag_ClientTypeTenfoot"
-  "k_EPersonaStateFlag_ClientTypeVR"
-  "k_EPersonaStateFlag_ClientTypeWeb"
-  "k_EPersonaStateFlag_Golden"
-  "k_EPersonaStateFlag_HasRichPresence"
-  "k_EPersonaStateFlag_InJoinableGame"
-  "k_EPersonaStateFlag_LaunchTypeCompatTool"
-  "k_EPersonaStateFlag_LaunchTypeGamepad"
-  "k_EPersonaStateFlag_RemotePlayTogether";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EPersonaStateFlag_entries[] = {
-  { {EPersonaStateFlag_names + 0, 36}, 512 },
-  { {EPersonaStateFlag_names + 36, 37}, 1024 },
-  { {EPersonaStateFlag_names + 73, 32}, 2048 },
-  { {EPersonaStateFlag_names + 105, 33}, 256 },
-  { {EPersonaStateFlag_names + 138, 26}, 4 },
-  { {EPersonaStateFlag_names + 164, 35}, 1 },
-  { {EPersonaStateFlag_names + 199, 34}, 2 },
-  { {EPersonaStateFlag_names + 233, 40}, 8192 },
-  { {EPersonaStateFlag_names + 273, 37}, 4096 },
-  { {EPersonaStateFlag_names + 310, 38}, 8 },
-};
-
-static const int EPersonaStateFlag_entries_by_number[] = {
-  5, // 1 -> k_EPersonaStateFlag_HasRichPresence
-  6, // 2 -> k_EPersonaStateFlag_InJoinableGame
-  4, // 4 -> k_EPersonaStateFlag_Golden
-  9, // 8 -> k_EPersonaStateFlag_RemotePlayTogether
-  3, // 256 -> k_EPersonaStateFlag_ClientTypeWeb
-  0, // 512 -> k_EPersonaStateFlag_ClientTypeMobile
-  1, // 1024 -> k_EPersonaStateFlag_ClientTypeTenfoot
-  2, // 2048 -> k_EPersonaStateFlag_ClientTypeVR
-  8, // 4096 -> k_EPersonaStateFlag_LaunchTypeGamepad
-  7, // 8192 -> k_EPersonaStateFlag_LaunchTypeCompatTool
-};
-
-const std::string& EPersonaStateFlag_Name(
-    EPersonaStateFlag value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EPersonaStateFlag_entries,
-          EPersonaStateFlag_entries_by_number,
-          10, EPersonaStateFlag_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EPersonaStateFlag_entries,
-      EPersonaStateFlag_entries_by_number,
-      10, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EPersonaStateFlag_strings[idx].get();
-}
-bool EPersonaStateFlag_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EPersonaStateFlag* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EPersonaStateFlag_entries, 10, name, &int_value);
-  if (success) {
-    *value = static_cast<EPersonaStateFlag>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EContentCheckProvider_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[4];
 }
 bool EContentCheckProvider_IsValid(int value) {
   switch (value) {
@@ -371,61 +870,9 @@ bool EContentCheckProvider_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EContentCheckProvider_strings[7] = {};
-
-static const char EContentCheckProvider_names[] =
-  "k_EContentCheckProvider_Amazon"
-  "k_EContentCheckProvider_GoogleGemini"
-  "k_EContentCheckProvider_GoogleVertexAI"
-  "k_EContentCheckProvider_Google_DEPRECATED"
-  "k_EContentCheckProvider_Invalid"
-  "k_EContentCheckProvider_Local"
-  "k_EContentCheckProvider_SteamLearn";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EContentCheckProvider_entries[] = {
-  { {EContentCheckProvider_names + 0, 30}, 2 },
-  { {EContentCheckProvider_names + 30, 36}, 5 },
-  { {EContentCheckProvider_names + 66, 38}, 4 },
-  { {EContentCheckProvider_names + 104, 41}, 1 },
-  { {EContentCheckProvider_names + 145, 31}, 0 },
-  { {EContentCheckProvider_names + 176, 29}, 3 },
-  { {EContentCheckProvider_names + 205, 34}, 6 },
-};
-
-static const int EContentCheckProvider_entries_by_number[] = {
-  4, // 0 -> k_EContentCheckProvider_Invalid
-  3, // 1 -> k_EContentCheckProvider_Google_DEPRECATED
-  0, // 2 -> k_EContentCheckProvider_Amazon
-  5, // 3 -> k_EContentCheckProvider_Local
-  2, // 4 -> k_EContentCheckProvider_GoogleVertexAI
-  1, // 5 -> k_EContentCheckProvider_GoogleGemini
-  6, // 6 -> k_EContentCheckProvider_SteamLearn
-};
-
-const std::string& EContentCheckProvider_Name(
-    EContentCheckProvider value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EContentCheckProvider_entries,
-          EContentCheckProvider_entries_by_number,
-          7, EContentCheckProvider_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EContentCheckProvider_entries,
-      EContentCheckProvider_entries_by_number,
-      7, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EContentCheckProvider_strings[idx].get();
-}
-bool EContentCheckProvider_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EContentCheckProvider* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EContentCheckProvider_entries, 7, name, &int_value);
-  if (success) {
-    *value = static_cast<EContentCheckProvider>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EProfileCustomizationType_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[5];
 }
 bool EProfileCustomizationType_IsValid(int value) {
   switch (value) {
@@ -460,115 +907,9 @@ bool EProfileCustomizationType_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EProfileCustomizationType_strings[25] = {};
-
-static const char EProfileCustomizationType_names[] =
-  "k_EProfileCustomizationTypeAchievements"
-  "k_EProfileCustomizationTypeAchievementsCompletionist"
-  "k_EProfileCustomizationTypeArtworkShowcase"
-  "k_EProfileCustomizationTypeBadges"
-  "k_EProfileCustomizationTypeCustomText"
-  "k_EProfileCustomizationTypeFavoriteGame"
-  "k_EProfileCustomizationTypeFavoriteGroup"
-  "k_EProfileCustomizationTypeGameCollector"
-  "k_EProfileCustomizationTypeGreenlight"
-  "k_EProfileCustomizationTypeGuides"
-  "k_EProfileCustomizationTypeInvalid"
-  "k_EProfileCustomizationTypeItemShowcase"
-  "k_EProfileCustomizationTypeLoyaltyRewardReactions"
-  "k_EProfileCustomizationTypeMyGreenlight"
-  "k_EProfileCustomizationTypeMyGuides"
-  "k_EProfileCustomizationTypeMyWorkshop"
-  "k_EProfileCustomizationTypeRareAchievementShowcase"
-  "k_EProfileCustomizationTypeRecommendation"
-  "k_EProfileCustomizationTypeReplay"
-  "k_EProfileCustomizationTypeSalien"
-  "k_EProfileCustomizationTypeScreenshotShowcase"
-  "k_EProfileCustomizationTypeSingleArtworkShowcase"
-  "k_EProfileCustomizationTypeTradeShowcase"
-  "k_EProfileCustomizationTypeVideoShowcase"
-  "k_EProfileCustomizationTypeWorkshopItem";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EProfileCustomizationType_entries[] = {
-  { {EProfileCustomizationType_names + 0, 39}, 17 },
-  { {EProfileCustomizationType_names + 39, 52}, 23 },
-  { {EProfileCustomizationType_names + 91, 42}, 13 },
-  { {EProfileCustomizationType_names + 133, 33}, 5 },
-  { {EProfileCustomizationType_names + 166, 37}, 8 },
-  { {EProfileCustomizationType_names + 203, 39}, 6 },
-  { {EProfileCustomizationType_names + 242, 40}, 9 },
-  { {EProfileCustomizationType_names + 282, 40}, 2 },
-  { {EProfileCustomizationType_names + 322, 37}, 18 },
-  { {EProfileCustomizationType_names + 359, 33}, 15 },
-  { {EProfileCustomizationType_names + 392, 34}, 0 },
-  { {EProfileCustomizationType_names + 426, 39}, 3 },
-  { {EProfileCustomizationType_names + 465, 49}, 21 },
-  { {EProfileCustomizationType_names + 514, 39}, 19 },
-  { {EProfileCustomizationType_names + 553, 35}, 16 },
-  { {EProfileCustomizationType_names + 588, 37}, 12 },
-  { {EProfileCustomizationType_names + 625, 50}, 1 },
-  { {EProfileCustomizationType_names + 675, 41}, 10 },
-  { {EProfileCustomizationType_names + 716, 33}, 24 },
-  { {EProfileCustomizationType_names + 749, 33}, 20 },
-  { {EProfileCustomizationType_names + 782, 45}, 7 },
-  { {EProfileCustomizationType_names + 827, 48}, 22 },
-  { {EProfileCustomizationType_names + 875, 40}, 4 },
-  { {EProfileCustomizationType_names + 915, 40}, 14 },
-  { {EProfileCustomizationType_names + 955, 39}, 11 },
-};
-
-static const int EProfileCustomizationType_entries_by_number[] = {
-  10, // 0 -> k_EProfileCustomizationTypeInvalid
-  16, // 1 -> k_EProfileCustomizationTypeRareAchievementShowcase
-  7, // 2 -> k_EProfileCustomizationTypeGameCollector
-  11, // 3 -> k_EProfileCustomizationTypeItemShowcase
-  22, // 4 -> k_EProfileCustomizationTypeTradeShowcase
-  3, // 5 -> k_EProfileCustomizationTypeBadges
-  5, // 6 -> k_EProfileCustomizationTypeFavoriteGame
-  20, // 7 -> k_EProfileCustomizationTypeScreenshotShowcase
-  4, // 8 -> k_EProfileCustomizationTypeCustomText
-  6, // 9 -> k_EProfileCustomizationTypeFavoriteGroup
-  17, // 10 -> k_EProfileCustomizationTypeRecommendation
-  24, // 11 -> k_EProfileCustomizationTypeWorkshopItem
-  15, // 12 -> k_EProfileCustomizationTypeMyWorkshop
-  2, // 13 -> k_EProfileCustomizationTypeArtworkShowcase
-  23, // 14 -> k_EProfileCustomizationTypeVideoShowcase
-  9, // 15 -> k_EProfileCustomizationTypeGuides
-  14, // 16 -> k_EProfileCustomizationTypeMyGuides
-  0, // 17 -> k_EProfileCustomizationTypeAchievements
-  8, // 18 -> k_EProfileCustomizationTypeGreenlight
-  13, // 19 -> k_EProfileCustomizationTypeMyGreenlight
-  19, // 20 -> k_EProfileCustomizationTypeSalien
-  12, // 21 -> k_EProfileCustomizationTypeLoyaltyRewardReactions
-  21, // 22 -> k_EProfileCustomizationTypeSingleArtworkShowcase
-  1, // 23 -> k_EProfileCustomizationTypeAchievementsCompletionist
-  18, // 24 -> k_EProfileCustomizationTypeReplay
-};
-
-const std::string& EProfileCustomizationType_Name(
-    EProfileCustomizationType value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EProfileCustomizationType_entries,
-          EProfileCustomizationType_entries_by_number,
-          25, EProfileCustomizationType_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EProfileCustomizationType_entries,
-      EProfileCustomizationType_entries_by_number,
-      25, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EProfileCustomizationType_strings[idx].get();
-}
-bool EProfileCustomizationType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EProfileCustomizationType* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EProfileCustomizationType_entries, 25, name, &int_value);
-  if (success) {
-    *value = static_cast<EProfileCustomizationType>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EPublishedFileStorageSystem_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[6];
 }
 bool EPublishedFileStorageSystem_IsValid(int value) {
   switch (value) {
@@ -582,52 +923,9 @@ bool EPublishedFileStorageSystem_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EPublishedFileStorageSystem_strings[4] = {};
-
-static const char EPublishedFileStorageSystem_names[] =
-  "k_EPublishedFileStorageSystemDepot"
-  "k_EPublishedFileStorageSystemInvalid"
-  "k_EPublishedFileStorageSystemLegacyCloud"
-  "k_EPublishedFileStorageSystemUGCCloud";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EPublishedFileStorageSystem_entries[] = {
-  { {EPublishedFileStorageSystem_names + 0, 34}, 2 },
-  { {EPublishedFileStorageSystem_names + 34, 36}, 0 },
-  { {EPublishedFileStorageSystem_names + 70, 40}, 1 },
-  { {EPublishedFileStorageSystem_names + 110, 37}, 3 },
-};
-
-static const int EPublishedFileStorageSystem_entries_by_number[] = {
-  1, // 0 -> k_EPublishedFileStorageSystemInvalid
-  2, // 1 -> k_EPublishedFileStorageSystemLegacyCloud
-  0, // 2 -> k_EPublishedFileStorageSystemDepot
-  3, // 3 -> k_EPublishedFileStorageSystemUGCCloud
-};
-
-const std::string& EPublishedFileStorageSystem_Name(
-    EPublishedFileStorageSystem value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EPublishedFileStorageSystem_entries,
-          EPublishedFileStorageSystem_entries_by_number,
-          4, EPublishedFileStorageSystem_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EPublishedFileStorageSystem_entries,
-      EPublishedFileStorageSystem_entries_by_number,
-      4, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EPublishedFileStorageSystem_strings[idx].get();
-}
-bool EPublishedFileStorageSystem_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EPublishedFileStorageSystem* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EPublishedFileStorageSystem_entries, 4, name, &int_value);
-  if (success) {
-    *value = static_cast<EPublishedFileStorageSystem>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ECloudStoragePersistState_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[7];
 }
 bool ECloudStoragePersistState_IsValid(int value) {
   switch (value) {
@@ -640,49 +938,9 @@ bool ECloudStoragePersistState_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ECloudStoragePersistState_strings[3] = {};
-
-static const char ECloudStoragePersistState_names[] =
-  "k_ECloudStoragePersistStateDeleted"
-  "k_ECloudStoragePersistStateForgotten"
-  "k_ECloudStoragePersistStatePersisted";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ECloudStoragePersistState_entries[] = {
-  { {ECloudStoragePersistState_names + 0, 34}, 2 },
-  { {ECloudStoragePersistState_names + 34, 36}, 1 },
-  { {ECloudStoragePersistState_names + 70, 36}, 0 },
-};
-
-static const int ECloudStoragePersistState_entries_by_number[] = {
-  2, // 0 -> k_ECloudStoragePersistStatePersisted
-  1, // 1 -> k_ECloudStoragePersistStateForgotten
-  0, // 2 -> k_ECloudStoragePersistStateDeleted
-};
-
-const std::string& ECloudStoragePersistState_Name(
-    ECloudStoragePersistState value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          ECloudStoragePersistState_entries,
-          ECloudStoragePersistState_entries_by_number,
-          3, ECloudStoragePersistState_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      ECloudStoragePersistState_entries,
-      ECloudStoragePersistState_entries_by_number,
-      3, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     ECloudStoragePersistState_strings[idx].get();
-}
-bool ECloudStoragePersistState_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ECloudStoragePersistState* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ECloudStoragePersistState_entries, 3, name, &int_value);
-  if (success) {
-    *value = static_cast<ECloudStoragePersistState>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESDCardFormatStage_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[8];
 }
 bool ESDCardFormatStage_IsValid(int value) {
   switch (value) {
@@ -698,58 +956,9 @@ bool ESDCardFormatStage_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ESDCardFormatStage_strings[6] = {};
-
-static const char ESDCardFormatStage_names[] =
-  "k_ESDCardFormatStage_Finalizing"
-  "k_ESDCardFormatStage_Formatting"
-  "k_ESDCardFormatStage_Invalid"
-  "k_ESDCardFormatStage_Rescuing"
-  "k_ESDCardFormatStage_Starting"
-  "k_ESDCardFormatStage_Testing";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ESDCardFormatStage_entries[] = {
-  { {ESDCardFormatStage_names + 0, 31}, 5 },
-  { {ESDCardFormatStage_names + 31, 31}, 4 },
-  { {ESDCardFormatStage_names + 62, 28}, 0 },
-  { {ESDCardFormatStage_names + 90, 29}, 3 },
-  { {ESDCardFormatStage_names + 119, 29}, 1 },
-  { {ESDCardFormatStage_names + 148, 28}, 2 },
-};
-
-static const int ESDCardFormatStage_entries_by_number[] = {
-  2, // 0 -> k_ESDCardFormatStage_Invalid
-  4, // 1 -> k_ESDCardFormatStage_Starting
-  5, // 2 -> k_ESDCardFormatStage_Testing
-  3, // 3 -> k_ESDCardFormatStage_Rescuing
-  1, // 4 -> k_ESDCardFormatStage_Formatting
-  0, // 5 -> k_ESDCardFormatStage_Finalizing
-};
-
-const std::string& ESDCardFormatStage_Name(
-    ESDCardFormatStage value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          ESDCardFormatStage_entries,
-          ESDCardFormatStage_entries_by_number,
-          6, ESDCardFormatStage_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      ESDCardFormatStage_entries,
-      ESDCardFormatStage_entries_by_number,
-      6, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     ESDCardFormatStage_strings[idx].get();
-}
-bool ESDCardFormatStage_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESDCardFormatStage* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ESDCardFormatStage_entries, 6, name, &int_value);
-  if (success) {
-    *value = static_cast<ESDCardFormatStage>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EStorageFormatStage_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[9];
 }
 bool EStorageFormatStage_IsValid(int value) {
   switch (value) {
@@ -766,61 +975,9 @@ bool EStorageFormatStage_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EStorageFormatStage_strings[7] = {};
-
-static const char EStorageFormatStage_names[] =
-  "k_EStorageFormatStage_Finalizing"
-  "k_EStorageFormatStage_Formatting"
-  "k_EStorageFormatStage_Invalid"
-  "k_EStorageFormatStage_NotRunning"
-  "k_EStorageFormatStage_Rescuing"
-  "k_EStorageFormatStage_Starting"
-  "k_EStorageFormatStage_Testing";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EStorageFormatStage_entries[] = {
-  { {EStorageFormatStage_names + 0, 32}, 6 },
-  { {EStorageFormatStage_names + 32, 32}, 5 },
-  { {EStorageFormatStage_names + 64, 29}, 0 },
-  { {EStorageFormatStage_names + 93, 32}, 1 },
-  { {EStorageFormatStage_names + 125, 30}, 4 },
-  { {EStorageFormatStage_names + 155, 30}, 2 },
-  { {EStorageFormatStage_names + 185, 29}, 3 },
-};
-
-static const int EStorageFormatStage_entries_by_number[] = {
-  2, // 0 -> k_EStorageFormatStage_Invalid
-  3, // 1 -> k_EStorageFormatStage_NotRunning
-  5, // 2 -> k_EStorageFormatStage_Starting
-  6, // 3 -> k_EStorageFormatStage_Testing
-  4, // 4 -> k_EStorageFormatStage_Rescuing
-  1, // 5 -> k_EStorageFormatStage_Formatting
-  0, // 6 -> k_EStorageFormatStage_Finalizing
-};
-
-const std::string& EStorageFormatStage_Name(
-    EStorageFormatStage value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EStorageFormatStage_entries,
-          EStorageFormatStage_entries_by_number,
-          7, EStorageFormatStage_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EStorageFormatStage_entries,
-      EStorageFormatStage_entries_by_number,
-      7, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EStorageFormatStage_strings[idx].get();
-}
-bool EStorageFormatStage_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EStorageFormatStage* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EStorageFormatStage_entries, 7, name, &int_value);
-  if (success) {
-    *value = static_cast<EStorageFormatStage>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESystemFanControlMode_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[10];
 }
 bool ESystemFanControlMode_IsValid(int value) {
   switch (value) {
@@ -833,49 +990,9 @@ bool ESystemFanControlMode_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ESystemFanControlMode_strings[3] = {};
-
-static const char ESystemFanControlMode_names[] =
-  "k_SystemFanControlMode_Default"
-  "k_SystemFanControlMode_Disabled"
-  "k_SystemFanControlMode_Invalid";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ESystemFanControlMode_entries[] = {
-  { {ESystemFanControlMode_names + 0, 30}, 2 },
-  { {ESystemFanControlMode_names + 30, 31}, 1 },
-  { {ESystemFanControlMode_names + 61, 30}, 0 },
-};
-
-static const int ESystemFanControlMode_entries_by_number[] = {
-  2, // 0 -> k_SystemFanControlMode_Invalid
-  1, // 1 -> k_SystemFanControlMode_Disabled
-  0, // 2 -> k_SystemFanControlMode_Default
-};
-
-const std::string& ESystemFanControlMode_Name(
-    ESystemFanControlMode value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          ESystemFanControlMode_entries,
-          ESystemFanControlMode_entries_by_number,
-          3, ESystemFanControlMode_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      ESystemFanControlMode_entries,
-      ESystemFanControlMode_entries_by_number,
-      3, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     ESystemFanControlMode_strings[idx].get();
-}
-bool ESystemFanControlMode_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESystemFanControlMode* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ESystemFanControlMode_entries, 3, name, &int_value);
-  if (success) {
-    *value = static_cast<ESystemFanControlMode>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EColorGamutLabelSet_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[11];
 }
 bool EColorGamutLabelSet_IsValid(int value) {
   switch (value) {
@@ -888,49 +1005,9 @@ bool EColorGamutLabelSet_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EColorGamutLabelSet_strings[3] = {};
-
-static const char EColorGamutLabelSet_names[] =
-  "k_ColorGamutLabelSet_Default"
-  "k_ColorGamutLabelSet_Native_sRGB_Boosted"
-  "k_ColorGamutLabelSet_sRGB_Native";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EColorGamutLabelSet_entries[] = {
-  { {EColorGamutLabelSet_names + 0, 28}, 0 },
-  { {EColorGamutLabelSet_names + 28, 40}, 2 },
-  { {EColorGamutLabelSet_names + 68, 32}, 1 },
-};
-
-static const int EColorGamutLabelSet_entries_by_number[] = {
-  0, // 0 -> k_ColorGamutLabelSet_Default
-  2, // 1 -> k_ColorGamutLabelSet_sRGB_Native
-  1, // 2 -> k_ColorGamutLabelSet_Native_sRGB_Boosted
-};
-
-const std::string& EColorGamutLabelSet_Name(
-    EColorGamutLabelSet value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EColorGamutLabelSet_entries,
-          EColorGamutLabelSet_entries_by_number,
-          3, EColorGamutLabelSet_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EColorGamutLabelSet_entries,
-      EColorGamutLabelSet_entries_by_number,
-      3, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EColorGamutLabelSet_strings[idx].get();
-}
-bool EColorGamutLabelSet_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EColorGamutLabelSet* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EColorGamutLabelSet_entries, 3, name, &int_value);
-  if (success) {
-    *value = static_cast<EColorGamutLabelSet>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EWindowStackingOrder_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[12];
 }
 bool EWindowStackingOrder_IsValid(int value) {
   switch (value) {
@@ -943,49 +1020,9 @@ bool EWindowStackingOrder_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EWindowStackingOrder_strings[3] = {};
-
-static const char EWindowStackingOrder_names[] =
-  "k_EWindowStackingOrder_Bottom"
-  "k_EWindowStackingOrder_Invalid"
-  "k_EWindowStackingOrder_Top";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EWindowStackingOrder_entries[] = {
-  { {EWindowStackingOrder_names + 0, 29}, 2 },
-  { {EWindowStackingOrder_names + 29, 30}, 0 },
-  { {EWindowStackingOrder_names + 59, 26}, 1 },
-};
-
-static const int EWindowStackingOrder_entries_by_number[] = {
-  1, // 0 -> k_EWindowStackingOrder_Invalid
-  2, // 1 -> k_EWindowStackingOrder_Top
-  0, // 2 -> k_EWindowStackingOrder_Bottom
-};
-
-const std::string& EWindowStackingOrder_Name(
-    EWindowStackingOrder value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EWindowStackingOrder_entries,
-          EWindowStackingOrder_entries_by_number,
-          3, EWindowStackingOrder_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EWindowStackingOrder_entries,
-      EWindowStackingOrder_entries_by_number,
-      3, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EWindowStackingOrder_strings[idx].get();
-}
-bool EWindowStackingOrder_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EWindowStackingOrder* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EWindowStackingOrder_entries, 3, name, &int_value);
-  if (success) {
-    *value = static_cast<EWindowStackingOrder>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EBluetoothDeviceType_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[13];
 }
 bool EBluetoothDeviceType_IsValid(int value) {
   switch (value) {
@@ -1007,76 +1044,9 @@ bool EBluetoothDeviceType_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EBluetoothDeviceType_strings[12] = {};
-
-static const char EBluetoothDeviceType_names[] =
-  "k_BluetoothDeviceType_Computer"
-  "k_BluetoothDeviceType_Gamepad"
-  "k_BluetoothDeviceType_Headphones"
-  "k_BluetoothDeviceType_Headset"
-  "k_BluetoothDeviceType_Invalid"
-  "k_BluetoothDeviceType_Joystick"
-  "k_BluetoothDeviceType_Keyboard"
-  "k_BluetoothDeviceType_Mouse"
-  "k_BluetoothDeviceType_OtherAudio"
-  "k_BluetoothDeviceType_Phone"
-  "k_BluetoothDeviceType_Speakers"
-  "k_BluetoothDeviceType_Unknown";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EBluetoothDeviceType_entries[] = {
-  { {EBluetoothDeviceType_names + 0, 30}, 3 },
-  { {EBluetoothDeviceType_names + 30, 29}, 10 },
-  { {EBluetoothDeviceType_names + 59, 32}, 5 },
-  { {EBluetoothDeviceType_names + 91, 29}, 4 },
-  { {EBluetoothDeviceType_names + 120, 29}, 0 },
-  { {EBluetoothDeviceType_names + 149, 30}, 9 },
-  { {EBluetoothDeviceType_names + 179, 30}, 11 },
-  { {EBluetoothDeviceType_names + 209, 27}, 8 },
-  { {EBluetoothDeviceType_names + 236, 32}, 7 },
-  { {EBluetoothDeviceType_names + 268, 27}, 2 },
-  { {EBluetoothDeviceType_names + 295, 30}, 6 },
-  { {EBluetoothDeviceType_names + 325, 29}, 1 },
-};
-
-static const int EBluetoothDeviceType_entries_by_number[] = {
-  4, // 0 -> k_BluetoothDeviceType_Invalid
-  11, // 1 -> k_BluetoothDeviceType_Unknown
-  9, // 2 -> k_BluetoothDeviceType_Phone
-  0, // 3 -> k_BluetoothDeviceType_Computer
-  3, // 4 -> k_BluetoothDeviceType_Headset
-  2, // 5 -> k_BluetoothDeviceType_Headphones
-  10, // 6 -> k_BluetoothDeviceType_Speakers
-  8, // 7 -> k_BluetoothDeviceType_OtherAudio
-  7, // 8 -> k_BluetoothDeviceType_Mouse
-  5, // 9 -> k_BluetoothDeviceType_Joystick
-  1, // 10 -> k_BluetoothDeviceType_Gamepad
-  6, // 11 -> k_BluetoothDeviceType_Keyboard
-};
-
-const std::string& EBluetoothDeviceType_Name(
-    EBluetoothDeviceType value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EBluetoothDeviceType_entries,
-          EBluetoothDeviceType_entries_by_number,
-          12, EBluetoothDeviceType_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EBluetoothDeviceType_entries,
-      EBluetoothDeviceType_entries_by_number,
-      12, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EBluetoothDeviceType_strings[idx].get();
-}
-bool EBluetoothDeviceType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EBluetoothDeviceType* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EBluetoothDeviceType_entries, 12, name, &int_value);
-  if (success) {
-    *value = static_cast<EBluetoothDeviceType>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESpeakerConfiguration_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[14];
 }
 bool ESpeakerConfiguration_IsValid(int value) {
   switch (value) {
@@ -1091,55 +1061,9 @@ bool ESpeakerConfiguration_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ESpeakerConfiguration_strings[5] = {};
-
-static const char ESpeakerConfiguration_names[] =
-  "k_ESpeakerConfiguration_51"
-  "k_ESpeakerConfiguration_51_Ac3"
-  "k_ESpeakerConfiguration_71"
-  "k_ESpeakerConfiguration_Other"
-  "k_ESpeakerConfiguration_Stereo";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ESpeakerConfiguration_entries[] = {
-  { {ESpeakerConfiguration_names + 0, 26}, 2 },
-  { {ESpeakerConfiguration_names + 26, 30}, 4 },
-  { {ESpeakerConfiguration_names + 56, 26}, 3 },
-  { {ESpeakerConfiguration_names + 82, 29}, 0 },
-  { {ESpeakerConfiguration_names + 111, 30}, 1 },
-};
-
-static const int ESpeakerConfiguration_entries_by_number[] = {
-  3, // 0 -> k_ESpeakerConfiguration_Other
-  4, // 1 -> k_ESpeakerConfiguration_Stereo
-  0, // 2 -> k_ESpeakerConfiguration_51
-  2, // 3 -> k_ESpeakerConfiguration_71
-  1, // 4 -> k_ESpeakerConfiguration_51_Ac3
-};
-
-const std::string& ESpeakerConfiguration_Name(
-    ESpeakerConfiguration value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          ESpeakerConfiguration_entries,
-          ESpeakerConfiguration_entries_by_number,
-          5, ESpeakerConfiguration_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      ESpeakerConfiguration_entries,
-      ESpeakerConfiguration_entries_by_number,
-      5, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     ESpeakerConfiguration_strings[idx].get();
-}
-bool ESpeakerConfiguration_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESpeakerConfiguration* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ESpeakerConfiguration_entries, 5, name, &int_value);
-  if (success) {
-    *value = static_cast<ESpeakerConfiguration>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESystemAudioDirection_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[15];
 }
 bool ESystemAudioDirection_IsValid(int value) {
   switch (value) {
@@ -1152,49 +1076,9 @@ bool ESystemAudioDirection_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ESystemAudioDirection_strings[3] = {};
-
-static const char ESystemAudioDirection_names[] =
-  "k_SystemAudioDirection_Input"
-  "k_SystemAudioDirection_Invalid"
-  "k_SystemAudioDirection_Output";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ESystemAudioDirection_entries[] = {
-  { {ESystemAudioDirection_names + 0, 28}, 1 },
-  { {ESystemAudioDirection_names + 28, 30}, 0 },
-  { {ESystemAudioDirection_names + 58, 29}, 2 },
-};
-
-static const int ESystemAudioDirection_entries_by_number[] = {
-  1, // 0 -> k_SystemAudioDirection_Invalid
-  0, // 1 -> k_SystemAudioDirection_Input
-  2, // 2 -> k_SystemAudioDirection_Output
-};
-
-const std::string& ESystemAudioDirection_Name(
-    ESystemAudioDirection value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          ESystemAudioDirection_entries,
-          ESystemAudioDirection_entries_by_number,
-          3, ESystemAudioDirection_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      ESystemAudioDirection_entries,
-      ESystemAudioDirection_entries_by_number,
-      3, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     ESystemAudioDirection_strings[idx].get();
-}
-bool ESystemAudioDirection_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESystemAudioDirection* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ESystemAudioDirection_entries, 3, name, &int_value);
-  if (success) {
-    *value = static_cast<ESystemAudioDirection>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESystemAudioChannel_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[16];
 }
 bool ESystemAudioChannel_IsValid(int value) {
   switch (value) {
@@ -1214,70 +1098,9 @@ bool ESystemAudioChannel_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ESystemAudioChannel_strings[10] = {};
-
-static const char ESystemAudioChannel_names[] =
-  "k_SystemAudioChannel_Aggregated"
-  "k_SystemAudioChannel_BackLeft"
-  "k_SystemAudioChannel_BackRight"
-  "k_SystemAudioChannel_FrontCenter"
-  "k_SystemAudioChannel_FrontLeft"
-  "k_SystemAudioChannel_FrontRight"
-  "k_SystemAudioChannel_Invalid"
-  "k_SystemAudioChannel_LFE"
-  "k_SystemAudioChannel_Mono"
-  "k_SystemAudioChannel_Unknown";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ESystemAudioChannel_entries[] = {
-  { {ESystemAudioChannel_names + 0, 31}, 1 },
-  { {ESystemAudioChannel_names + 31, 29}, 5 },
-  { {ESystemAudioChannel_names + 60, 30}, 6 },
-  { {ESystemAudioChannel_names + 90, 32}, 7 },
-  { {ESystemAudioChannel_names + 122, 30}, 2 },
-  { {ESystemAudioChannel_names + 152, 31}, 3 },
-  { {ESystemAudioChannel_names + 183, 28}, 0 },
-  { {ESystemAudioChannel_names + 211, 24}, 4 },
-  { {ESystemAudioChannel_names + 235, 25}, 9 },
-  { {ESystemAudioChannel_names + 260, 28}, 8 },
-};
-
-static const int ESystemAudioChannel_entries_by_number[] = {
-  6, // 0 -> k_SystemAudioChannel_Invalid
-  0, // 1 -> k_SystemAudioChannel_Aggregated
-  4, // 2 -> k_SystemAudioChannel_FrontLeft
-  5, // 3 -> k_SystemAudioChannel_FrontRight
-  7, // 4 -> k_SystemAudioChannel_LFE
-  1, // 5 -> k_SystemAudioChannel_BackLeft
-  2, // 6 -> k_SystemAudioChannel_BackRight
-  3, // 7 -> k_SystemAudioChannel_FrontCenter
-  9, // 8 -> k_SystemAudioChannel_Unknown
-  8, // 9 -> k_SystemAudioChannel_Mono
-};
-
-const std::string& ESystemAudioChannel_Name(
-    ESystemAudioChannel value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          ESystemAudioChannel_entries,
-          ESystemAudioChannel_entries_by_number,
-          10, ESystemAudioChannel_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      ESystemAudioChannel_entries,
-      ESystemAudioChannel_entries_by_number,
-      10, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     ESystemAudioChannel_strings[idx].get();
-}
-bool ESystemAudioChannel_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESystemAudioChannel* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ESystemAudioChannel_entries, 10, name, &int_value);
-  if (success) {
-    *value = static_cast<ESystemAudioChannel>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESystemAudioPortType_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[17];
 }
 bool ESystemAudioPortType_IsValid(int value) {
   switch (value) {
@@ -1292,55 +1115,9 @@ bool ESystemAudioPortType_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ESystemAudioPortType_strings[5] = {};
-
-static const char ESystemAudioPortType_names[] =
-  "k_SystemAudioPortType_Audio32f"
-  "k_SystemAudioPortType_Invalid"
-  "k_SystemAudioPortType_Midi8b"
-  "k_SystemAudioPortType_Unknown"
-  "k_SystemAudioPortType_Video32RGBA";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ESystemAudioPortType_entries[] = {
-  { {ESystemAudioPortType_names + 0, 30}, 2 },
-  { {ESystemAudioPortType_names + 30, 29}, 0 },
-  { {ESystemAudioPortType_names + 59, 28}, 3 },
-  { {ESystemAudioPortType_names + 87, 29}, 1 },
-  { {ESystemAudioPortType_names + 116, 33}, 4 },
-};
-
-static const int ESystemAudioPortType_entries_by_number[] = {
-  1, // 0 -> k_SystemAudioPortType_Invalid
-  3, // 1 -> k_SystemAudioPortType_Unknown
-  0, // 2 -> k_SystemAudioPortType_Audio32f
-  2, // 3 -> k_SystemAudioPortType_Midi8b
-  4, // 4 -> k_SystemAudioPortType_Video32RGBA
-};
-
-const std::string& ESystemAudioPortType_Name(
-    ESystemAudioPortType value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          ESystemAudioPortType_entries,
-          ESystemAudioPortType_entries_by_number,
-          5, ESystemAudioPortType_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      ESystemAudioPortType_entries,
-      ESystemAudioPortType_entries_by_number,
-      5, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     ESystemAudioPortType_strings[idx].get();
-}
-bool ESystemAudioPortType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESystemAudioPortType* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ESystemAudioPortType_entries, 5, name, &int_value);
-  if (success) {
-    *value = static_cast<ESystemAudioPortType>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESystemAudioPortDirection_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[18];
 }
 bool ESystemAudioPortDirection_IsValid(int value) {
   switch (value) {
@@ -1353,49 +1130,9 @@ bool ESystemAudioPortDirection_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ESystemAudioPortDirection_strings[3] = {};
-
-static const char ESystemAudioPortDirection_names[] =
-  "k_SystemAudioPortDirection_Input"
-  "k_SystemAudioPortDirection_Invalid"
-  "k_SystemAudioPortDirection_Output";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ESystemAudioPortDirection_entries[] = {
-  { {ESystemAudioPortDirection_names + 0, 32}, 1 },
-  { {ESystemAudioPortDirection_names + 32, 34}, 0 },
-  { {ESystemAudioPortDirection_names + 66, 33}, 2 },
-};
-
-static const int ESystemAudioPortDirection_entries_by_number[] = {
-  1, // 0 -> k_SystemAudioPortDirection_Invalid
-  0, // 1 -> k_SystemAudioPortDirection_Input
-  2, // 2 -> k_SystemAudioPortDirection_Output
-};
-
-const std::string& ESystemAudioPortDirection_Name(
-    ESystemAudioPortDirection value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          ESystemAudioPortDirection_entries,
-          ESystemAudioPortDirection_entries_by_number,
-          3, ESystemAudioPortDirection_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      ESystemAudioPortDirection_entries,
-      ESystemAudioPortDirection_entries_by_number,
-      3, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     ESystemAudioPortDirection_strings[idx].get();
-}
-bool ESystemAudioPortDirection_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESystemAudioPortDirection* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ESystemAudioPortDirection_entries, 3, name, &int_value);
-  if (success) {
-    *value = static_cast<ESystemAudioPortDirection>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESystemServiceState_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[19];
 }
 bool ESystemServiceState_IsValid(int value) {
   switch (value) {
@@ -1408,49 +1145,9 @@ bool ESystemServiceState_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ESystemServiceState_strings[3] = {};
-
-static const char ESystemServiceState_names[] =
-  "k_ESystemServiceState_Disabled"
-  "k_ESystemServiceState_Enabled"
-  "k_ESystemServiceState_Unavailable";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ESystemServiceState_entries[] = {
-  { {ESystemServiceState_names + 0, 30}, 1 },
-  { {ESystemServiceState_names + 30, 29}, 2 },
-  { {ESystemServiceState_names + 59, 33}, 0 },
-};
-
-static const int ESystemServiceState_entries_by_number[] = {
-  2, // 0 -> k_ESystemServiceState_Unavailable
-  0, // 1 -> k_ESystemServiceState_Disabled
-  1, // 2 -> k_ESystemServiceState_Enabled
-};
-
-const std::string& ESystemServiceState_Name(
-    ESystemServiceState value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          ESystemServiceState_entries,
-          ESystemServiceState_entries_by_number,
-          3, ESystemServiceState_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      ESystemServiceState_entries,
-      ESystemServiceState_entries_by_number,
-      3, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     ESystemServiceState_strings[idx].get();
-}
-bool ESystemServiceState_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESystemServiceState* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ESystemServiceState_entries, 3, name, &int_value);
-  if (success) {
-    *value = static_cast<ESystemServiceState>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EGraphicsPerfOverlayLevel_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[20];
 }
 bool EGraphicsPerfOverlayLevel_IsValid(int value) {
   switch (value) {
@@ -1465,55 +1162,9 @@ bool EGraphicsPerfOverlayLevel_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EGraphicsPerfOverlayLevel_strings[5] = {};
-
-static const char EGraphicsPerfOverlayLevel_names[] =
-  "k_EGraphicsPerfOverlayLevel_Basic"
-  "k_EGraphicsPerfOverlayLevel_Full"
-  "k_EGraphicsPerfOverlayLevel_Hidden"
-  "k_EGraphicsPerfOverlayLevel_Medium"
-  "k_EGraphicsPerfOverlayLevel_Minimal";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EGraphicsPerfOverlayLevel_entries[] = {
-  { {EGraphicsPerfOverlayLevel_names + 0, 33}, 1 },
-  { {EGraphicsPerfOverlayLevel_names + 33, 32}, 3 },
-  { {EGraphicsPerfOverlayLevel_names + 65, 34}, 0 },
-  { {EGraphicsPerfOverlayLevel_names + 99, 34}, 2 },
-  { {EGraphicsPerfOverlayLevel_names + 133, 35}, 4 },
-};
-
-static const int EGraphicsPerfOverlayLevel_entries_by_number[] = {
-  2, // 0 -> k_EGraphicsPerfOverlayLevel_Hidden
-  0, // 1 -> k_EGraphicsPerfOverlayLevel_Basic
-  3, // 2 -> k_EGraphicsPerfOverlayLevel_Medium
-  1, // 3 -> k_EGraphicsPerfOverlayLevel_Full
-  4, // 4 -> k_EGraphicsPerfOverlayLevel_Minimal
-};
-
-const std::string& EGraphicsPerfOverlayLevel_Name(
-    EGraphicsPerfOverlayLevel value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EGraphicsPerfOverlayLevel_entries,
-          EGraphicsPerfOverlayLevel_entries_by_number,
-          5, EGraphicsPerfOverlayLevel_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EGraphicsPerfOverlayLevel_entries,
-      EGraphicsPerfOverlayLevel_entries_by_number,
-      5, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EGraphicsPerfOverlayLevel_strings[idx].get();
-}
-bool EGraphicsPerfOverlayLevel_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EGraphicsPerfOverlayLevel* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EGraphicsPerfOverlayLevel_entries, 5, name, &int_value);
-  if (success) {
-    *value = static_cast<EGraphicsPerfOverlayLevel>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EGPUPerformanceLevel_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[21];
 }
 bool EGPUPerformanceLevel_IsValid(int value) {
   switch (value) {
@@ -1529,58 +1180,9 @@ bool EGPUPerformanceLevel_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EGPUPerformanceLevel_strings[6] = {};
-
-static const char EGPUPerformanceLevel_names[] =
-  "k_EGPUPerformanceLevel_Auto"
-  "k_EGPUPerformanceLevel_High"
-  "k_EGPUPerformanceLevel_Invalid"
-  "k_EGPUPerformanceLevel_Low"
-  "k_EGPUPerformanceLevel_Manual"
-  "k_EGPUPerformanceLevel_Profiling";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EGPUPerformanceLevel_entries[] = {
-  { {EGPUPerformanceLevel_names + 0, 27}, 1 },
-  { {EGPUPerformanceLevel_names + 27, 27}, 4 },
-  { {EGPUPerformanceLevel_names + 54, 30}, 0 },
-  { {EGPUPerformanceLevel_names + 84, 26}, 3 },
-  { {EGPUPerformanceLevel_names + 110, 29}, 2 },
-  { {EGPUPerformanceLevel_names + 139, 32}, 5 },
-};
-
-static const int EGPUPerformanceLevel_entries_by_number[] = {
-  2, // 0 -> k_EGPUPerformanceLevel_Invalid
-  0, // 1 -> k_EGPUPerformanceLevel_Auto
-  4, // 2 -> k_EGPUPerformanceLevel_Manual
-  3, // 3 -> k_EGPUPerformanceLevel_Low
-  1, // 4 -> k_EGPUPerformanceLevel_High
-  5, // 5 -> k_EGPUPerformanceLevel_Profiling
-};
-
-const std::string& EGPUPerformanceLevel_Name(
-    EGPUPerformanceLevel value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EGPUPerformanceLevel_entries,
-          EGPUPerformanceLevel_entries_by_number,
-          6, EGPUPerformanceLevel_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EGPUPerformanceLevel_entries,
-      EGPUPerformanceLevel_entries_by_number,
-      6, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EGPUPerformanceLevel_strings[idx].get();
-}
-bool EGPUPerformanceLevel_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EGPUPerformanceLevel* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EGPUPerformanceLevel_entries, 6, name, &int_value);
-  if (success) {
-    *value = static_cast<EGPUPerformanceLevel>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESplitScalingFilter_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[22];
 }
 bool ESplitScalingFilter_IsValid(int value) {
   switch (value) {
@@ -1595,55 +1197,9 @@ bool ESplitScalingFilter_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ESplitScalingFilter_strings[5] = {};
-
-static const char ESplitScalingFilter_names[] =
-  "k_ESplitScalingFilter_Invalid"
-  "k_ESplitScalingFilter_Linear"
-  "k_ESplitScalingFilter_NIS_Deprecated"
-  "k_ESplitScalingFilter_Nearest"
-  "k_ESplitScalingFilter_Sharp";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ESplitScalingFilter_entries[] = {
-  { {ESplitScalingFilter_names + 0, 29}, 0 },
-  { {ESplitScalingFilter_names + 29, 28}, 1 },
-  { {ESplitScalingFilter_names + 57, 36}, 4 },
-  { {ESplitScalingFilter_names + 93, 29}, 2 },
-  { {ESplitScalingFilter_names + 122, 27}, 3 },
-};
-
-static const int ESplitScalingFilter_entries_by_number[] = {
-  0, // 0 -> k_ESplitScalingFilter_Invalid
-  1, // 1 -> k_ESplitScalingFilter_Linear
-  3, // 2 -> k_ESplitScalingFilter_Nearest
-  4, // 3 -> k_ESplitScalingFilter_Sharp
-  2, // 4 -> k_ESplitScalingFilter_NIS_Deprecated
-};
-
-const std::string& ESplitScalingFilter_Name(
-    ESplitScalingFilter value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          ESplitScalingFilter_entries,
-          ESplitScalingFilter_entries_by_number,
-          5, ESplitScalingFilter_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      ESplitScalingFilter_entries,
-      ESplitScalingFilter_entries_by_number,
-      5, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     ESplitScalingFilter_strings[idx].get();
-}
-bool ESplitScalingFilter_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESplitScalingFilter* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ESplitScalingFilter_entries, 5, name, &int_value);
-  if (success) {
-    *value = static_cast<ESplitScalingFilter>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESplitScalingScaler_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[23];
 }
 bool ESplitScalingScaler_IsValid(int value) {
   switch (value) {
@@ -1659,58 +1215,9 @@ bool ESplitScalingScaler_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ESplitScalingScaler_strings[6] = {};
-
-static const char ESplitScalingScaler_names[] =
-  "k_ESplitScalingScaler_Auto"
-  "k_ESplitScalingScaler_Fill"
-  "k_ESplitScalingScaler_Fit"
-  "k_ESplitScalingScaler_Integer"
-  "k_ESplitScalingScaler_Invalid"
-  "k_ESplitScalingScaler_Stretch";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ESplitScalingScaler_entries[] = {
-  { {ESplitScalingScaler_names + 0, 26}, 1 },
-  { {ESplitScalingScaler_names + 26, 26}, 4 },
-  { {ESplitScalingScaler_names + 52, 25}, 3 },
-  { {ESplitScalingScaler_names + 77, 29}, 2 },
-  { {ESplitScalingScaler_names + 106, 29}, 0 },
-  { {ESplitScalingScaler_names + 135, 29}, 5 },
-};
-
-static const int ESplitScalingScaler_entries_by_number[] = {
-  4, // 0 -> k_ESplitScalingScaler_Invalid
-  0, // 1 -> k_ESplitScalingScaler_Auto
-  3, // 2 -> k_ESplitScalingScaler_Integer
-  2, // 3 -> k_ESplitScalingScaler_Fit
-  1, // 4 -> k_ESplitScalingScaler_Fill
-  5, // 5 -> k_ESplitScalingScaler_Stretch
-};
-
-const std::string& ESplitScalingScaler_Name(
-    ESplitScalingScaler value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          ESplitScalingScaler_entries,
-          ESplitScalingScaler_entries_by_number,
-          6, ESplitScalingScaler_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      ESplitScalingScaler_entries,
-      ESplitScalingScaler_entries_by_number,
-      6, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     ESplitScalingScaler_strings[idx].get();
-}
-bool ESplitScalingScaler_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESplitScalingScaler* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ESplitScalingScaler_entries, 6, name, &int_value);
-  if (success) {
-    *value = static_cast<ESplitScalingScaler>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EGamescopeBlurMode_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[24];
 }
 bool EGamescopeBlurMode_IsValid(int value) {
   switch (value) {
@@ -1723,49 +1230,9 @@ bool EGamescopeBlurMode_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EGamescopeBlurMode_strings[3] = {};
-
-static const char EGamescopeBlurMode_names[] =
-  "k_EGamescopeBlurMode_Always"
-  "k_EGamescopeBlurMode_Disabled"
-  "k_EGamescopeBlurMode_IfOccluded";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EGamescopeBlurMode_entries[] = {
-  { {EGamescopeBlurMode_names + 0, 27}, 2 },
-  { {EGamescopeBlurMode_names + 27, 29}, 0 },
-  { {EGamescopeBlurMode_names + 56, 31}, 1 },
-};
-
-static const int EGamescopeBlurMode_entries_by_number[] = {
-  1, // 0 -> k_EGamescopeBlurMode_Disabled
-  2, // 1 -> k_EGamescopeBlurMode_IfOccluded
-  0, // 2 -> k_EGamescopeBlurMode_Always
-};
-
-const std::string& EGamescopeBlurMode_Name(
-    EGamescopeBlurMode value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EGamescopeBlurMode_entries,
-          EGamescopeBlurMode_entries_by_number,
-          3, EGamescopeBlurMode_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EGamescopeBlurMode_entries,
-      EGamescopeBlurMode_entries_by_number,
-      3, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EGamescopeBlurMode_strings[idx].get();
-}
-bool EGamescopeBlurMode_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EGamescopeBlurMode* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EGamescopeBlurMode_entries, 3, name, &int_value);
-  if (success) {
-    *value = static_cast<EGamescopeBlurMode>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESLSHelper_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[25];
 }
 bool ESLSHelper_IsValid(int value) {
   switch (value) {
@@ -1782,61 +1249,9 @@ bool ESLSHelper_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ESLSHelper_strings[7] = {};
-
-static const char ESLSHelper_names[] =
-  "k_ESLSHelper_Devcoredump"
-  "k_ESLSHelper_Gpu"
-  "k_ESLSHelper_Invalid"
-  "k_ESLSHelper_Journal"
-  "k_ESLSHelper_Kdump"
-  "k_ESLSHelper_Minidump"
-  "k_ESLSHelper_SystemInfo";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ESLSHelper_entries[] = {
-  { {ESLSHelper_names + 0, 24}, 6 },
-  { {ESLSHelper_names + 24, 16}, 4 },
-  { {ESLSHelper_names + 40, 20}, 0 },
-  { {ESLSHelper_names + 60, 20}, 3 },
-  { {ESLSHelper_names + 80, 18}, 2 },
-  { {ESLSHelper_names + 98, 21}, 1 },
-  { {ESLSHelper_names + 119, 23}, 5 },
-};
-
-static const int ESLSHelper_entries_by_number[] = {
-  2, // 0 -> k_ESLSHelper_Invalid
-  5, // 1 -> k_ESLSHelper_Minidump
-  4, // 2 -> k_ESLSHelper_Kdump
-  3, // 3 -> k_ESLSHelper_Journal
-  1, // 4 -> k_ESLSHelper_Gpu
-  6, // 5 -> k_ESLSHelper_SystemInfo
-  0, // 6 -> k_ESLSHelper_Devcoredump
-};
-
-const std::string& ESLSHelper_Name(
-    ESLSHelper value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          ESLSHelper_entries,
-          ESLSHelper_entries_by_number,
-          7, ESLSHelper_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      ESLSHelper_entries,
-      ESLSHelper_entries_by_number,
-      7, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     ESLSHelper_strings[idx].get();
-}
-bool ESLSHelper_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESLSHelper* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ESLSHelper_entries, 7, name, &int_value);
-  if (success) {
-    *value = static_cast<ESLSHelper>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EHDRVisualization_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[26];
 }
 bool EHDRVisualization_IsValid(int value) {
   switch (value) {
@@ -1851,55 +1266,9 @@ bool EHDRVisualization_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EHDRVisualization_strings[5] = {};
-
-static const char EHDRVisualization_names[] =
-  "k_EHDRVisualization_Analysis"
-  "k_EHDRVisualization_Heatmap"
-  "k_EHDRVisualization_HeatmapClassic"
-  "k_EHDRVisualization_HeatmapExtended"
-  "k_EHDRVisualization_None";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EHDRVisualization_entries[] = {
-  { {EHDRVisualization_names + 0, 28}, 2 },
-  { {EHDRVisualization_names + 28, 27}, 1 },
-  { {EHDRVisualization_names + 55, 34}, 4 },
-  { {EHDRVisualization_names + 89, 35}, 3 },
-  { {EHDRVisualization_names + 124, 24}, 0 },
-};
-
-static const int EHDRVisualization_entries_by_number[] = {
-  4, // 0 -> k_EHDRVisualization_None
-  1, // 1 -> k_EHDRVisualization_Heatmap
-  0, // 2 -> k_EHDRVisualization_Analysis
-  3, // 3 -> k_EHDRVisualization_HeatmapExtended
-  2, // 4 -> k_EHDRVisualization_HeatmapClassic
-};
-
-const std::string& EHDRVisualization_Name(
-    EHDRVisualization value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EHDRVisualization_entries,
-          EHDRVisualization_entries_by_number,
-          5, EHDRVisualization_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EHDRVisualization_entries,
-      EHDRVisualization_entries_by_number,
-      5, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EHDRVisualization_strings[idx].get();
-}
-bool EHDRVisualization_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EHDRVisualization* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EHDRVisualization_entries, 5, name, &int_value);
-  if (success) {
-    *value = static_cast<EHDRVisualization>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EHDRToneMapOperator_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[27];
 }
 bool EHDRToneMapOperator_IsValid(int value) {
   switch (value) {
@@ -1912,49 +1281,9 @@ bool EHDRToneMapOperator_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EHDRToneMapOperator_strings[3] = {};
-
-static const char EHDRToneMapOperator_names[] =
-  "k_EHDRToneMapOperator_Invalid"
-  "k_EHDRToneMapOperator_Reinhard"
-  "k_EHDRToneMapOperator_Uncharted";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EHDRToneMapOperator_entries[] = {
-  { {EHDRToneMapOperator_names + 0, 29}, 0 },
-  { {EHDRToneMapOperator_names + 29, 30}, 2 },
-  { {EHDRToneMapOperator_names + 59, 31}, 1 },
-};
-
-static const int EHDRToneMapOperator_entries_by_number[] = {
-  0, // 0 -> k_EHDRToneMapOperator_Invalid
-  2, // 1 -> k_EHDRToneMapOperator_Uncharted
-  1, // 2 -> k_EHDRToneMapOperator_Reinhard
-};
-
-const std::string& EHDRToneMapOperator_Name(
-    EHDRToneMapOperator value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EHDRToneMapOperator_entries,
-          EHDRToneMapOperator_entries_by_number,
-          3, EHDRToneMapOperator_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EHDRToneMapOperator_entries,
-      EHDRToneMapOperator_entries_by_number,
-      3, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EHDRToneMapOperator_strings[idx].get();
-}
-bool EHDRToneMapOperator_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EHDRToneMapOperator* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EHDRToneMapOperator_entries, 3, name, &int_value);
-  if (success) {
-    *value = static_cast<EHDRToneMapOperator>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ECPUGovernor_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[28];
 }
 bool ECPUGovernor_IsValid(int value) {
   switch (value) {
@@ -1968,52 +1297,9 @@ bool ECPUGovernor_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ECPUGovernor_strings[4] = {};
-
-static const char ECPUGovernor_names[] =
-  "k_ECPUGovernor_Invalid"
-  "k_ECPUGovernor_Manual"
-  "k_ECPUGovernor_Perf"
-  "k_ECPUGovernor_Powersave";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ECPUGovernor_entries[] = {
-  { {ECPUGovernor_names + 0, 22}, 0 },
-  { {ECPUGovernor_names + 22, 21}, 3 },
-  { {ECPUGovernor_names + 43, 19}, 1 },
-  { {ECPUGovernor_names + 62, 24}, 2 },
-};
-
-static const int ECPUGovernor_entries_by_number[] = {
-  0, // 0 -> k_ECPUGovernor_Invalid
-  2, // 1 -> k_ECPUGovernor_Perf
-  3, // 2 -> k_ECPUGovernor_Powersave
-  1, // 3 -> k_ECPUGovernor_Manual
-};
-
-const std::string& ECPUGovernor_Name(
-    ECPUGovernor value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          ECPUGovernor_entries,
-          ECPUGovernor_entries_by_number,
-          4, ECPUGovernor_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      ECPUGovernor_entries,
-      ECPUGovernor_entries_by_number,
-      4, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     ECPUGovernor_strings[idx].get();
-}
-bool ECPUGovernor_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ECPUGovernor* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ECPUGovernor_entries, 4, name, &int_value);
-  if (success) {
-    *value = static_cast<ECPUGovernor>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EUpdaterType_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[29];
 }
 bool EUpdaterType_IsValid(int value) {
   switch (value) {
@@ -2031,64 +1317,9 @@ bool EUpdaterType_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EUpdaterType_strings[8] = {};
-
-static const char EUpdaterType_names[] =
-  "k_EUpdaterType_Aggregated"
-  "k_EUpdaterType_BIOS"
-  "k_EUpdaterType_Client"
-  "k_EUpdaterType_Dummy"
-  "k_EUpdaterType_Invalid"
-  "k_EUpdaterType_OS"
-  "k_EUpdaterType_Test1"
-  "k_EUpdaterType_Test2";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EUpdaterType_entries[] = {
-  { {EUpdaterType_names + 0, 25}, 4 },
-  { {EUpdaterType_names + 25, 19}, 3 },
-  { {EUpdaterType_names + 44, 21}, 1 },
-  { {EUpdaterType_names + 65, 20}, 7 },
-  { {EUpdaterType_names + 85, 22}, 0 },
-  { {EUpdaterType_names + 107, 17}, 2 },
-  { {EUpdaterType_names + 124, 20}, 5 },
-  { {EUpdaterType_names + 144, 20}, 6 },
-};
-
-static const int EUpdaterType_entries_by_number[] = {
-  4, // 0 -> k_EUpdaterType_Invalid
-  2, // 1 -> k_EUpdaterType_Client
-  5, // 2 -> k_EUpdaterType_OS
-  1, // 3 -> k_EUpdaterType_BIOS
-  0, // 4 -> k_EUpdaterType_Aggregated
-  6, // 5 -> k_EUpdaterType_Test1
-  7, // 6 -> k_EUpdaterType_Test2
-  3, // 7 -> k_EUpdaterType_Dummy
-};
-
-const std::string& EUpdaterType_Name(
-    EUpdaterType value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EUpdaterType_entries,
-          EUpdaterType_entries_by_number,
-          8, EUpdaterType_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EUpdaterType_entries,
-      EUpdaterType_entries_by_number,
-      8, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EUpdaterType_strings[idx].get();
-}
-bool EUpdaterType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EUpdaterType* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EUpdaterType_entries, 8, name, &int_value);
-  if (success) {
-    *value = static_cast<EUpdaterType>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EUpdaterState_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[30];
 }
 bool EUpdaterState_IsValid(int value) {
   switch (value) {
@@ -2106,64 +1337,9 @@ bool EUpdaterState_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EUpdaterState_strings[8] = {};
-
-static const char EUpdaterState_names[] =
-  "k_EUpdaterState_Applying"
-  "k_EUpdaterState_Available"
-  "k_EUpdaterState_Checking"
-  "k_EUpdaterState_ClientRestartPending"
-  "k_EUpdaterState_Invalid"
-  "k_EUpdaterState_RollBack"
-  "k_EUpdaterState_SystemRestartPending"
-  "k_EUpdaterState_UpToDate";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EUpdaterState_entries[] = {
-  { {EUpdaterState_names + 0, 24}, 5 },
-  { {EUpdaterState_names + 24, 25}, 4 },
-  { {EUpdaterState_names + 49, 24}, 3 },
-  { {EUpdaterState_names + 73, 36}, 6 },
-  { {EUpdaterState_names + 109, 23}, 0 },
-  { {EUpdaterState_names + 132, 24}, 8 },
-  { {EUpdaterState_names + 156, 36}, 7 },
-  { {EUpdaterState_names + 192, 24}, 2 },
-};
-
-static const int EUpdaterState_entries_by_number[] = {
-  4, // 0 -> k_EUpdaterState_Invalid
-  7, // 2 -> k_EUpdaterState_UpToDate
-  2, // 3 -> k_EUpdaterState_Checking
-  1, // 4 -> k_EUpdaterState_Available
-  0, // 5 -> k_EUpdaterState_Applying
-  3, // 6 -> k_EUpdaterState_ClientRestartPending
-  6, // 7 -> k_EUpdaterState_SystemRestartPending
-  5, // 8 -> k_EUpdaterState_RollBack
-};
-
-const std::string& EUpdaterState_Name(
-    EUpdaterState value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EUpdaterState_entries,
-          EUpdaterState_entries_by_number,
-          8, EUpdaterState_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EUpdaterState_entries,
-      EUpdaterState_entries_by_number,
-      8, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EUpdaterState_strings[idx].get();
-}
-bool EUpdaterState_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EUpdaterState* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EUpdaterState_entries, 8, name, &int_value);
-  if (success) {
-    *value = static_cast<EUpdaterState>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EStorageBlockContentType_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[31];
 }
 bool EStorageBlockContentType_IsValid(int value) {
   switch (value) {
@@ -2178,55 +1354,9 @@ bool EStorageBlockContentType_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EStorageBlockContentType_strings[5] = {};
-
-static const char EStorageBlockContentType_names[] =
-  "k_EStorageBlockContentType_Crypto"
-  "k_EStorageBlockContentType_FileSystem"
-  "k_EStorageBlockContentType_Invalid"
-  "k_EStorageBlockContentType_Raid"
-  "k_EStorageBlockContentType_Unknown";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EStorageBlockContentType_entries[] = {
-  { {EStorageBlockContentType_names + 0, 33}, 3 },
-  { {EStorageBlockContentType_names + 33, 37}, 2 },
-  { {EStorageBlockContentType_names + 70, 34}, 0 },
-  { {EStorageBlockContentType_names + 104, 31}, 4 },
-  { {EStorageBlockContentType_names + 135, 34}, 1 },
-};
-
-static const int EStorageBlockContentType_entries_by_number[] = {
-  2, // 0 -> k_EStorageBlockContentType_Invalid
-  4, // 1 -> k_EStorageBlockContentType_Unknown
-  1, // 2 -> k_EStorageBlockContentType_FileSystem
-  0, // 3 -> k_EStorageBlockContentType_Crypto
-  3, // 4 -> k_EStorageBlockContentType_Raid
-};
-
-const std::string& EStorageBlockContentType_Name(
-    EStorageBlockContentType value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EStorageBlockContentType_entries,
-          EStorageBlockContentType_entries_by_number,
-          5, EStorageBlockContentType_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EStorageBlockContentType_entries,
-      EStorageBlockContentType_entries_by_number,
-      5, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EStorageBlockContentType_strings[idx].get();
-}
-bool EStorageBlockContentType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EStorageBlockContentType* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EStorageBlockContentType_entries, 5, name, &int_value);
-  if (success) {
-    *value = static_cast<EStorageBlockContentType>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EStorageBlockFileSystemType_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[32];
 }
 bool EStorageBlockFileSystemType_IsValid(int value) {
   switch (value) {
@@ -2240,52 +1370,9 @@ bool EStorageBlockFileSystemType_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EStorageBlockFileSystemType_strings[4] = {};
-
-static const char EStorageBlockFileSystemType_names[] =
-  "k_EStorageBlockFileSystemType_Ext4"
-  "k_EStorageBlockFileSystemType_Invalid"
-  "k_EStorageBlockFileSystemType_Unknown"
-  "k_EStorageBlockFileSystemType_VFat";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EStorageBlockFileSystemType_entries[] = {
-  { {EStorageBlockFileSystemType_names + 0, 34}, 3 },
-  { {EStorageBlockFileSystemType_names + 34, 37}, 0 },
-  { {EStorageBlockFileSystemType_names + 71, 37}, 1 },
-  { {EStorageBlockFileSystemType_names + 108, 34}, 2 },
-};
-
-static const int EStorageBlockFileSystemType_entries_by_number[] = {
-  1, // 0 -> k_EStorageBlockFileSystemType_Invalid
-  2, // 1 -> k_EStorageBlockFileSystemType_Unknown
-  3, // 2 -> k_EStorageBlockFileSystemType_VFat
-  0, // 3 -> k_EStorageBlockFileSystemType_Ext4
-};
-
-const std::string& EStorageBlockFileSystemType_Name(
-    EStorageBlockFileSystemType value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EStorageBlockFileSystemType_entries,
-          EStorageBlockFileSystemType_entries_by_number,
-          4, EStorageBlockFileSystemType_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EStorageBlockFileSystemType_entries,
-      EStorageBlockFileSystemType_entries_by_number,
-      4, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EStorageBlockFileSystemType_strings[idx].get();
-}
-bool EStorageBlockFileSystemType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EStorageBlockFileSystemType* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EStorageBlockFileSystemType_entries, 4, name, &int_value);
-  if (success) {
-    *value = static_cast<EStorageBlockFileSystemType>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EStorageDriveMediaType_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[33];
 }
 bool EStorageDriveMediaType_IsValid(int value) {
   switch (value) {
@@ -2300,55 +1387,9 @@ bool EStorageDriveMediaType_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EStorageDriveMediaType_strings[5] = {};
-
-static const char EStorageDriveMediaType_names[] =
-  "k_EStorageDriveMediaType_HDD"
-  "k_EStorageDriveMediaType_Invalid"
-  "k_EStorageDriveMediaType_Removable"
-  "k_EStorageDriveMediaType_SSD"
-  "k_EStorageDriveMediaType_Unknown";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EStorageDriveMediaType_entries[] = {
-  { {EStorageDriveMediaType_names + 0, 28}, 2 },
-  { {EStorageDriveMediaType_names + 28, 32}, 0 },
-  { {EStorageDriveMediaType_names + 60, 34}, 4 },
-  { {EStorageDriveMediaType_names + 94, 28}, 3 },
-  { {EStorageDriveMediaType_names + 122, 32}, 1 },
-};
-
-static const int EStorageDriveMediaType_entries_by_number[] = {
-  1, // 0 -> k_EStorageDriveMediaType_Invalid
-  4, // 1 -> k_EStorageDriveMediaType_Unknown
-  0, // 2 -> k_EStorageDriveMediaType_HDD
-  3, // 3 -> k_EStorageDriveMediaType_SSD
-  2, // 4 -> k_EStorageDriveMediaType_Removable
-};
-
-const std::string& EStorageDriveMediaType_Name(
-    EStorageDriveMediaType value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EStorageDriveMediaType_entries,
-          EStorageDriveMediaType_entries_by_number,
-          5, EStorageDriveMediaType_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EStorageDriveMediaType_entries,
-      EStorageDriveMediaType_entries_by_number,
-      5, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EStorageDriveMediaType_strings[idx].get();
-}
-bool EStorageDriveMediaType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EStorageDriveMediaType* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EStorageDriveMediaType_entries, 5, name, &int_value);
-  if (success) {
-    *value = static_cast<EStorageDriveMediaType>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESystemDisplayCompatibilityMode_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[34];
 }
 bool ESystemDisplayCompatibilityMode_IsValid(int value) {
   switch (value) {
@@ -2361,49 +1402,9 @@ bool ESystemDisplayCompatibilityMode_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ESystemDisplayCompatibilityMode_strings[3] = {};
-
-static const char ESystemDisplayCompatibilityMode_names[] =
-  "k_ESystemDisplayCompatibilityMode_Invalid"
-  "k_ESystemDisplayCompatibilityMode_MinimalBandwith"
-  "k_ESystemDisplayCompatibilityMode_None";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ESystemDisplayCompatibilityMode_entries[] = {
-  { {ESystemDisplayCompatibilityMode_names + 0, 41}, 0 },
-  { {ESystemDisplayCompatibilityMode_names + 41, 49}, 2 },
-  { {ESystemDisplayCompatibilityMode_names + 90, 38}, 1 },
-};
-
-static const int ESystemDisplayCompatibilityMode_entries_by_number[] = {
-  0, // 0 -> k_ESystemDisplayCompatibilityMode_Invalid
-  2, // 1 -> k_ESystemDisplayCompatibilityMode_None
-  1, // 2 -> k_ESystemDisplayCompatibilityMode_MinimalBandwith
-};
-
-const std::string& ESystemDisplayCompatibilityMode_Name(
-    ESystemDisplayCompatibilityMode value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          ESystemDisplayCompatibilityMode_entries,
-          ESystemDisplayCompatibilityMode_entries_by_number,
-          3, ESystemDisplayCompatibilityMode_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      ESystemDisplayCompatibilityMode_entries,
-      ESystemDisplayCompatibilityMode_entries_by_number,
-      3, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     ESystemDisplayCompatibilityMode_strings[idx].get();
-}
-bool ESystemDisplayCompatibilityMode_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESystemDisplayCompatibilityMode* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ESystemDisplayCompatibilityMode_entries, 3, name, &int_value);
-  if (success) {
-    *value = static_cast<ESystemDisplayCompatibilityMode>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESteamOSCompatibilityCategory_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[35];
 }
 bool ESteamOSCompatibilityCategory_IsValid(int value) {
   switch (value) {
@@ -2416,49 +1417,9 @@ bool ESteamOSCompatibilityCategory_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ESteamOSCompatibilityCategory_strings[3] = {};
-
-static const char ESteamOSCompatibilityCategory_names[] =
-  "k_ESteamOSCompatibilityCategory_Compatible"
-  "k_ESteamOSCompatibilityCategory_Unknown"
-  "k_ESteamOSCompatibilityCategory_Unsupported";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ESteamOSCompatibilityCategory_entries[] = {
-  { {ESteamOSCompatibilityCategory_names + 0, 42}, 2 },
-  { {ESteamOSCompatibilityCategory_names + 42, 39}, 0 },
-  { {ESteamOSCompatibilityCategory_names + 81, 43}, 1 },
-};
-
-static const int ESteamOSCompatibilityCategory_entries_by_number[] = {
-  1, // 0 -> k_ESteamOSCompatibilityCategory_Unknown
-  2, // 1 -> k_ESteamOSCompatibilityCategory_Unsupported
-  0, // 2 -> k_ESteamOSCompatibilityCategory_Compatible
-};
-
-const std::string& ESteamOSCompatibilityCategory_Name(
-    ESteamOSCompatibilityCategory value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          ESteamOSCompatibilityCategory_entries,
-          ESteamOSCompatibilityCategory_entries_by_number,
-          3, ESteamOSCompatibilityCategory_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      ESteamOSCompatibilityCategory_entries,
-      ESteamOSCompatibilityCategory_entries_by_number,
-      3, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     ESteamOSCompatibilityCategory_strings[idx].get();
-}
-bool ESteamOSCompatibilityCategory_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESteamOSCompatibilityCategory* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ESteamOSCompatibilityCategory_entries, 3, name, &int_value);
-  if (success) {
-    *value = static_cast<ESteamOSCompatibilityCategory>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESteamOSCompatibilityResultDisplayType_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[36];
 }
 bool ESteamOSCompatibilityResultDisplayType_IsValid(int value) {
   switch (value) {
@@ -2472,52 +1433,9 @@ bool ESteamOSCompatibilityResultDisplayType_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ESteamOSCompatibilityResultDisplayType_strings[4] = {};
-
-static const char ESteamOSCompatibilityResultDisplayType_names[] =
-  "k_ESteamOSCompatibilityResultDisplayType_Compatible"
-  "k_ESteamOSCompatibilityResultDisplayType_Informational"
-  "k_ESteamOSCompatibilityResultDisplayType_Invisible"
-  "k_ESteamOSCompatibilityResultDisplayType_Unsupported";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ESteamOSCompatibilityResultDisplayType_entries[] = {
-  { {ESteamOSCompatibilityResultDisplayType_names + 0, 51}, 3 },
-  { {ESteamOSCompatibilityResultDisplayType_names + 51, 54}, 1 },
-  { {ESteamOSCompatibilityResultDisplayType_names + 105, 50}, 0 },
-  { {ESteamOSCompatibilityResultDisplayType_names + 155, 52}, 2 },
-};
-
-static const int ESteamOSCompatibilityResultDisplayType_entries_by_number[] = {
-  2, // 0 -> k_ESteamOSCompatibilityResultDisplayType_Invisible
-  1, // 1 -> k_ESteamOSCompatibilityResultDisplayType_Informational
-  3, // 2 -> k_ESteamOSCompatibilityResultDisplayType_Unsupported
-  0, // 3 -> k_ESteamOSCompatibilityResultDisplayType_Compatible
-};
-
-const std::string& ESteamOSCompatibilityResultDisplayType_Name(
-    ESteamOSCompatibilityResultDisplayType value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          ESteamOSCompatibilityResultDisplayType_entries,
-          ESteamOSCompatibilityResultDisplayType_entries_by_number,
-          4, ESteamOSCompatibilityResultDisplayType_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      ESteamOSCompatibilityResultDisplayType_entries,
-      ESteamOSCompatibilityResultDisplayType_entries_by_number,
-      4, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     ESteamOSCompatibilityResultDisplayType_strings[idx].get();
-}
-bool ESteamOSCompatibilityResultDisplayType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESteamOSCompatibilityResultDisplayType* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ESteamOSCompatibilityResultDisplayType_entries, 4, name, &int_value);
-  if (success) {
-    *value = static_cast<ESteamOSCompatibilityResultDisplayType>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESteamDeckCompatibilityCategory_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[37];
 }
 bool ESteamDeckCompatibilityCategory_IsValid(int value) {
   switch (value) {
@@ -2531,52 +1449,9 @@ bool ESteamDeckCompatibilityCategory_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ESteamDeckCompatibilityCategory_strings[4] = {};
-
-static const char ESteamDeckCompatibilityCategory_names[] =
-  "k_ESteamDeckCompatibilityCategory_Playable"
-  "k_ESteamDeckCompatibilityCategory_Unknown"
-  "k_ESteamDeckCompatibilityCategory_Unsupported"
-  "k_ESteamDeckCompatibilityCategory_Verified";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ESteamDeckCompatibilityCategory_entries[] = {
-  { {ESteamDeckCompatibilityCategory_names + 0, 42}, 2 },
-  { {ESteamDeckCompatibilityCategory_names + 42, 41}, 0 },
-  { {ESteamDeckCompatibilityCategory_names + 83, 45}, 1 },
-  { {ESteamDeckCompatibilityCategory_names + 128, 42}, 3 },
-};
-
-static const int ESteamDeckCompatibilityCategory_entries_by_number[] = {
-  1, // 0 -> k_ESteamDeckCompatibilityCategory_Unknown
-  2, // 1 -> k_ESteamDeckCompatibilityCategory_Unsupported
-  0, // 2 -> k_ESteamDeckCompatibilityCategory_Playable
-  3, // 3 -> k_ESteamDeckCompatibilityCategory_Verified
-};
-
-const std::string& ESteamDeckCompatibilityCategory_Name(
-    ESteamDeckCompatibilityCategory value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          ESteamDeckCompatibilityCategory_entries,
-          ESteamDeckCompatibilityCategory_entries_by_number,
-          4, ESteamDeckCompatibilityCategory_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      ESteamDeckCompatibilityCategory_entries,
-      ESteamDeckCompatibilityCategory_entries_by_number,
-      4, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     ESteamDeckCompatibilityCategory_strings[idx].get();
-}
-bool ESteamDeckCompatibilityCategory_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESteamDeckCompatibilityCategory* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ESteamDeckCompatibilityCategory_entries, 4, name, &int_value);
-  if (success) {
-    *value = static_cast<ESteamDeckCompatibilityCategory>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESteamDeckCompatibilityResultDisplayType_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[38];
 }
 bool ESteamDeckCompatibilityResultDisplayType_IsValid(int value) {
   switch (value) {
@@ -2591,55 +1466,9 @@ bool ESteamDeckCompatibilityResultDisplayType_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ESteamDeckCompatibilityResultDisplayType_strings[5] = {};
-
-static const char ESteamDeckCompatibilityResultDisplayType_names[] =
-  "k_ESteamDeckCompatibilityResultDisplayType_Informational"
-  "k_ESteamDeckCompatibilityResultDisplayType_Invisible"
-  "k_ESteamDeckCompatibilityResultDisplayType_Playable"
-  "k_ESteamDeckCompatibilityResultDisplayType_Unsupported"
-  "k_ESteamDeckCompatibilityResultDisplayType_Verified";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ESteamDeckCompatibilityResultDisplayType_entries[] = {
-  { {ESteamDeckCompatibilityResultDisplayType_names + 0, 56}, 1 },
-  { {ESteamDeckCompatibilityResultDisplayType_names + 56, 52}, 0 },
-  { {ESteamDeckCompatibilityResultDisplayType_names + 108, 51}, 3 },
-  { {ESteamDeckCompatibilityResultDisplayType_names + 159, 54}, 2 },
-  { {ESteamDeckCompatibilityResultDisplayType_names + 213, 51}, 4 },
-};
-
-static const int ESteamDeckCompatibilityResultDisplayType_entries_by_number[] = {
-  1, // 0 -> k_ESteamDeckCompatibilityResultDisplayType_Invisible
-  0, // 1 -> k_ESteamDeckCompatibilityResultDisplayType_Informational
-  3, // 2 -> k_ESteamDeckCompatibilityResultDisplayType_Unsupported
-  2, // 3 -> k_ESteamDeckCompatibilityResultDisplayType_Playable
-  4, // 4 -> k_ESteamDeckCompatibilityResultDisplayType_Verified
-};
-
-const std::string& ESteamDeckCompatibilityResultDisplayType_Name(
-    ESteamDeckCompatibilityResultDisplayType value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          ESteamDeckCompatibilityResultDisplayType_entries,
-          ESteamDeckCompatibilityResultDisplayType_entries_by_number,
-          5, ESteamDeckCompatibilityResultDisplayType_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      ESteamDeckCompatibilityResultDisplayType_entries,
-      ESteamDeckCompatibilityResultDisplayType_entries_by_number,
-      5, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     ESteamDeckCompatibilityResultDisplayType_strings[idx].get();
-}
-bool ESteamDeckCompatibilityResultDisplayType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESteamDeckCompatibilityResultDisplayType* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ESteamDeckCompatibilityResultDisplayType_entries, 5, name, &int_value);
-  if (success) {
-    *value = static_cast<ESteamDeckCompatibilityResultDisplayType>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESteamDeckCompatibilityTestResult_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[39];
 }
 bool ESteamDeckCompatibilityTestResult_IsValid(int value) {
   switch (value) {
@@ -2654,55 +1483,9 @@ bool ESteamDeckCompatibilityTestResult_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ESteamDeckCompatibilityTestResult_strings[5] = {};
-
-static const char ESteamDeckCompatibilityTestResult_names[] =
-  "k_ESteamDeckCompatibilityTestResult_Fail"
-  "k_ESteamDeckCompatibilityTestResult_FailMinor"
-  "k_ESteamDeckCompatibilityTestResult_Invalid"
-  "k_ESteamDeckCompatibilityTestResult_NotApplicable"
-  "k_ESteamDeckCompatibilityTestResult_Pass";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ESteamDeckCompatibilityTestResult_entries[] = {
-  { {ESteamDeckCompatibilityTestResult_names + 0, 40}, 3 },
-  { {ESteamDeckCompatibilityTestResult_names + 40, 45}, 4 },
-  { {ESteamDeckCompatibilityTestResult_names + 85, 43}, 0 },
-  { {ESteamDeckCompatibilityTestResult_names + 128, 49}, 1 },
-  { {ESteamDeckCompatibilityTestResult_names + 177, 40}, 2 },
-};
-
-static const int ESteamDeckCompatibilityTestResult_entries_by_number[] = {
-  2, // 0 -> k_ESteamDeckCompatibilityTestResult_Invalid
-  3, // 1 -> k_ESteamDeckCompatibilityTestResult_NotApplicable
-  4, // 2 -> k_ESteamDeckCompatibilityTestResult_Pass
-  0, // 3 -> k_ESteamDeckCompatibilityTestResult_Fail
-  1, // 4 -> k_ESteamDeckCompatibilityTestResult_FailMinor
-};
-
-const std::string& ESteamDeckCompatibilityTestResult_Name(
-    ESteamDeckCompatibilityTestResult value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          ESteamDeckCompatibilityTestResult_entries,
-          ESteamDeckCompatibilityTestResult_entries_by_number,
-          5, ESteamDeckCompatibilityTestResult_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      ESteamDeckCompatibilityTestResult_entries,
-      ESteamDeckCompatibilityTestResult_entries_by_number,
-      5, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     ESteamDeckCompatibilityTestResult_strings[idx].get();
-}
-bool ESteamDeckCompatibilityTestResult_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESteamDeckCompatibilityTestResult* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ESteamDeckCompatibilityTestResult_entries, 5, name, &int_value);
-  if (success) {
-    *value = static_cast<ESteamDeckCompatibilityTestResult>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EACState_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[40];
 }
 bool EACState_IsValid(int value) {
   switch (value) {
@@ -2716,52 +1499,9 @@ bool EACState_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EACState_strings[4] = {};
-
-static const char EACState_names[] =
-  "k_EACState_Connected"
-  "k_EACState_ConnectedSlow"
-  "k_EACState_Disconnected"
-  "k_EACState_Unknown";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EACState_entries[] = {
-  { {EACState_names + 0, 20}, 2 },
-  { {EACState_names + 20, 24}, 3 },
-  { {EACState_names + 44, 23}, 1 },
-  { {EACState_names + 67, 18}, 0 },
-};
-
-static const int EACState_entries_by_number[] = {
-  3, // 0 -> k_EACState_Unknown
-  2, // 1 -> k_EACState_Disconnected
-  0, // 2 -> k_EACState_Connected
-  1, // 3 -> k_EACState_ConnectedSlow
-};
-
-const std::string& EACState_Name(
-    EACState value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EACState_entries,
-          EACState_entries_by_number,
-          4, EACState_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EACState_entries,
-      EACState_entries_by_number,
-      4, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EACState_strings[idx].get();
-}
-bool EACState_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EACState* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EACState_entries, 4, name, &int_value);
-  if (success) {
-    *value = static_cast<EACState>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EBatteryState_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[41];
 }
 bool EBatteryState_IsValid(int value) {
   switch (value) {
@@ -2775,52 +1515,9 @@ bool EBatteryState_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EBatteryState_strings[4] = {};
-
-static const char EBatteryState_names[] =
-  "k_EBatteryState_Charging"
-  "k_EBatteryState_Discharging"
-  "k_EBatteryState_Full"
-  "k_EBatteryState_Unknown";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EBatteryState_entries[] = {
-  { {EBatteryState_names + 0, 24}, 2 },
-  { {EBatteryState_names + 24, 27}, 1 },
-  { {EBatteryState_names + 51, 20}, 3 },
-  { {EBatteryState_names + 71, 23}, 0 },
-};
-
-static const int EBatteryState_entries_by_number[] = {
-  3, // 0 -> k_EBatteryState_Unknown
-  1, // 1 -> k_EBatteryState_Discharging
-  0, // 2 -> k_EBatteryState_Charging
-  2, // 3 -> k_EBatteryState_Full
-};
-
-const std::string& EBatteryState_Name(
-    EBatteryState value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EBatteryState_entries,
-          EBatteryState_entries_by_number,
-          4, EBatteryState_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EBatteryState_entries,
-      EBatteryState_entries_by_number,
-      4, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EBatteryState_strings[idx].get();
-}
-bool EBatteryState_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EBatteryState* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EBatteryState_entries, 4, name, &int_value);
-  if (success) {
-    *value = static_cast<EBatteryState>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EOSBranch_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[42];
 }
 bool EOSBranch_IsValid(int value) {
   switch (value) {
@@ -2839,67 +1536,9 @@ bool EOSBranch_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EOSBranch_strings[9] = {};
-
-static const char EOSBranch_names[] =
-  "k_EOSBranch_Beta"
-  "k_EOSBranch_BetaCandidate"
-  "k_EOSBranch_Main"
-  "k_EOSBranch_Preview"
-  "k_EOSBranch_PreviewCandidate"
-  "k_EOSBranch_Release"
-  "k_EOSBranch_ReleaseCandidate"
-  "k_EOSBranch_Staging"
-  "k_EOSBranch_Unknown";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EOSBranch_entries[] = {
-  { {EOSBranch_names + 0, 16}, 3 },
-  { {EOSBranch_names + 16, 25}, 4 },
-  { {EOSBranch_names + 41, 16}, 7 },
-  { {EOSBranch_names + 57, 19}, 5 },
-  { {EOSBranch_names + 76, 28}, 6 },
-  { {EOSBranch_names + 104, 19}, 1 },
-  { {EOSBranch_names + 123, 28}, 2 },
-  { {EOSBranch_names + 151, 19}, 8 },
-  { {EOSBranch_names + 170, 19}, 0 },
-};
-
-static const int EOSBranch_entries_by_number[] = {
-  8, // 0 -> k_EOSBranch_Unknown
-  5, // 1 -> k_EOSBranch_Release
-  6, // 2 -> k_EOSBranch_ReleaseCandidate
-  0, // 3 -> k_EOSBranch_Beta
-  1, // 4 -> k_EOSBranch_BetaCandidate
-  3, // 5 -> k_EOSBranch_Preview
-  4, // 6 -> k_EOSBranch_PreviewCandidate
-  2, // 7 -> k_EOSBranch_Main
-  7, // 8 -> k_EOSBranch_Staging
-};
-
-const std::string& EOSBranch_Name(
-    EOSBranch value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EOSBranch_entries,
-          EOSBranch_entries_by_number,
-          9, EOSBranch_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EOSBranch_entries,
-      EOSBranch_entries_by_number,
-      9, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EOSBranch_strings[idx].get();
-}
-bool EOSBranch_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EOSBranch* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EOSBranch_entries, 9, name, &int_value);
-  if (success) {
-    *value = static_cast<EOSBranch>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EBrowserGPUStatus_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[43];
 }
 bool EBrowserGPUStatus_IsValid(int value) {
   switch (value) {
@@ -2919,70 +1558,9 @@ bool EBrowserGPUStatus_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EBrowserGPUStatus_strings[10] = {};
-
-static const char EBrowserGPUStatus_names[] =
-  "k_EBrowserGPUStatus_DisabledBlocklist"
-  "k_EBrowserGPUStatus_DisabledChildCommandLine"
-  "k_EBrowserGPUStatus_DisabledCommandLine"
-  "k_EBrowserGPUStatus_DisabledCompositingCommandLine"
-  "k_EBrowserGPUStatus_DisabledCrashCount"
-  "k_EBrowserGPUStatus_DisabledJSRequest"
-  "k_EBrowserGPUStatus_DisabledRuntimeDetect"
-  "k_EBrowserGPUStatus_DisabledUnknown"
-  "k_EBrowserGPUStatus_Enabled"
-  "k_EBrowserGPUStatus_Invalid";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EBrowserGPUStatus_entries[] = {
-  { {EBrowserGPUStatus_names + 0, 37}, 5 },
-  { {EBrowserGPUStatus_names + 37, 44}, 9 },
-  { {EBrowserGPUStatus_names + 81, 39}, 7 },
-  { {EBrowserGPUStatus_names + 120, 50}, 10 },
-  { {EBrowserGPUStatus_names + 170, 38}, 4 },
-  { {EBrowserGPUStatus_names + 208, 37}, 6 },
-  { {EBrowserGPUStatus_names + 245, 41}, 8 },
-  { {EBrowserGPUStatus_names + 286, 35}, 2 },
-  { {EBrowserGPUStatus_names + 321, 27}, 1 },
-  { {EBrowserGPUStatus_names + 348, 27}, 0 },
-};
-
-static const int EBrowserGPUStatus_entries_by_number[] = {
-  9, // 0 -> k_EBrowserGPUStatus_Invalid
-  8, // 1 -> k_EBrowserGPUStatus_Enabled
-  7, // 2 -> k_EBrowserGPUStatus_DisabledUnknown
-  4, // 4 -> k_EBrowserGPUStatus_DisabledCrashCount
-  0, // 5 -> k_EBrowserGPUStatus_DisabledBlocklist
-  5, // 6 -> k_EBrowserGPUStatus_DisabledJSRequest
-  2, // 7 -> k_EBrowserGPUStatus_DisabledCommandLine
-  6, // 8 -> k_EBrowserGPUStatus_DisabledRuntimeDetect
-  1, // 9 -> k_EBrowserGPUStatus_DisabledChildCommandLine
-  3, // 10 -> k_EBrowserGPUStatus_DisabledCompositingCommandLine
-};
-
-const std::string& EBrowserGPUStatus_Name(
-    EBrowserGPUStatus value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EBrowserGPUStatus_entries,
-          EBrowserGPUStatus_entries_by_number,
-          10, EBrowserGPUStatus_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EBrowserGPUStatus_entries,
-      EBrowserGPUStatus_entries_by_number,
-      10, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EBrowserGPUStatus_strings[idx].get();
-}
-bool EBrowserGPUStatus_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EBrowserGPUStatus* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EBrowserGPUStatus_entries, 10, name, &int_value);
-  if (success) {
-    *value = static_cast<EBrowserGPUStatus>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EBrowserFeatureStatus_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[44];
 }
 bool EBrowserFeatureStatus_IsValid(int value) {
   switch (value) {
@@ -3006,82 +1584,9 @@ bool EBrowserFeatureStatus_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EBrowserFeatureStatus_strings[14] = {};
-
-static const char EBrowserFeatureStatus_names[] =
-  "k_EBrowserFeatureStatus_DisabledOff"
-  "k_EBrowserFeatureStatus_DisabledOffOk"
-  "k_EBrowserFeatureStatus_DisabledSoftware"
-  "k_EBrowserFeatureStatus_Enabled"
-  "k_EBrowserFeatureStatus_EnabledForce"
-  "k_EBrowserFeatureStatus_EnabledForceOn"
-  "k_EBrowserFeatureStatus_EnabledOn"
-  "k_EBrowserFeatureStatus_EnabledReadback"
-  "k_EBrowserFeatureStatus_Invalid"
-  "k_EBrowserFeatureStatus_NotFound"
-  "k_EBrowserFeatureStatus_UnavailableOff"
-  "k_EBrowserFeatureStatus_UnavailableOffOk"
-  "k_EBrowserFeatureStatus_UnavailableSoftware"
-  "k_EBrowserFeatureStatus_Unknown";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EBrowserFeatureStatus_entries[] = {
-  { {EBrowserFeatureStatus_names + 0, 35}, 4 },
-  { {EBrowserFeatureStatus_names + 35, 37}, 5 },
-  { {EBrowserFeatureStatus_names + 72, 40}, 3 },
-  { {EBrowserFeatureStatus_names + 112, 31}, 11 },
-  { {EBrowserFeatureStatus_names + 143, 36}, 10 },
-  { {EBrowserFeatureStatus_names + 179, 38}, 13 },
-  { {EBrowserFeatureStatus_names + 217, 33}, 12 },
-  { {EBrowserFeatureStatus_names + 250, 39}, 9 },
-  { {EBrowserFeatureStatus_names + 289, 31}, 0 },
-  { {EBrowserFeatureStatus_names + 320, 32}, 1 },
-  { {EBrowserFeatureStatus_names + 352, 38}, 7 },
-  { {EBrowserFeatureStatus_names + 390, 40}, 8 },
-  { {EBrowserFeatureStatus_names + 430, 43}, 6 },
-  { {EBrowserFeatureStatus_names + 473, 31}, 2 },
-};
-
-static const int EBrowserFeatureStatus_entries_by_number[] = {
-  8, // 0 -> k_EBrowserFeatureStatus_Invalid
-  9, // 1 -> k_EBrowserFeatureStatus_NotFound
-  13, // 2 -> k_EBrowserFeatureStatus_Unknown
-  2, // 3 -> k_EBrowserFeatureStatus_DisabledSoftware
-  0, // 4 -> k_EBrowserFeatureStatus_DisabledOff
-  1, // 5 -> k_EBrowserFeatureStatus_DisabledOffOk
-  12, // 6 -> k_EBrowserFeatureStatus_UnavailableSoftware
-  10, // 7 -> k_EBrowserFeatureStatus_UnavailableOff
-  11, // 8 -> k_EBrowserFeatureStatus_UnavailableOffOk
-  7, // 9 -> k_EBrowserFeatureStatus_EnabledReadback
-  4, // 10 -> k_EBrowserFeatureStatus_EnabledForce
-  3, // 11 -> k_EBrowserFeatureStatus_Enabled
-  6, // 12 -> k_EBrowserFeatureStatus_EnabledOn
-  5, // 13 -> k_EBrowserFeatureStatus_EnabledForceOn
-};
-
-const std::string& EBrowserFeatureStatus_Name(
-    EBrowserFeatureStatus value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EBrowserFeatureStatus_entries,
-          EBrowserFeatureStatus_entries_by_number,
-          14, EBrowserFeatureStatus_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EBrowserFeatureStatus_entries,
-      EBrowserFeatureStatus_entries_by_number,
-      14, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EBrowserFeatureStatus_strings[idx].get();
-}
-bool EBrowserFeatureStatus_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EBrowserFeatureStatus* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EBrowserFeatureStatus_entries, 14, name, &int_value);
-  if (success) {
-    *value = static_cast<EBrowserFeatureStatus>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EGpuDriverId_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[45];
 }
 bool EGpuDriverId_IsValid(int value) {
   switch (value) {
@@ -3111,100 +1616,9 @@ bool EGpuDriverId_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EGpuDriverId_strings[20] = {};
-
-static const char EGpuDriverId_names[] =
-  "k_EGpuDriverId_AmdOpenSource"
-  "k_EGpuDriverId_AmdProprietary"
-  "k_EGpuDriverId_ArmProprietary"
-  "k_EGpuDriverId_BroadcomProprietary"
-  "k_EGpuDriverId_GoogleSwiftshader"
-  "k_EGpuDriverId_IntelPropietary"
-  "k_EGpuDriverId_Invalid"
-  "k_EGpuDriverId_MesaDozen"
-  "k_EGpuDriverId_MesaHoneyKrisp"
-  "k_EGpuDriverId_MesaIntel"
-  "k_EGpuDriverId_MesaLLVMPipe"
-  "k_EGpuDriverId_MesaNVK"
-  "k_EGpuDriverId_MesaPanVK"
-  "k_EGpuDriverId_MesaRadv"
-  "k_EGpuDriverId_MesaTurnip"
-  "k_EGpuDriverId_MesaVenus"
-  "k_EGpuDriverId_MoltenVK"
-  "k_EGpuDriverId_NvidiaProprietary"
-  "k_EGpuDriverId_QualcommProprietary"
-  "k_EGpuDriverId_Unknown";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EGpuDriverId_entries[] = {
-  { {EGpuDriverId_names + 0, 28}, 3 },
-  { {EGpuDriverId_names + 28, 29}, 2 },
-  { {EGpuDriverId_names + 57, 29}, 9 },
-  { {EGpuDriverId_names + 86, 34}, 11 },
-  { {EGpuDriverId_names + 120, 32}, 10 },
-  { {EGpuDriverId_names + 152, 30}, 6 },
-  { {EGpuDriverId_names + 182, 22}, 0 },
-  { {EGpuDriverId_names + 204, 24}, 17 },
-  { {EGpuDriverId_names + 228, 29}, 19 },
-  { {EGpuDriverId_names + 257, 24}, 7 },
-  { {EGpuDriverId_names + 281, 27}, 12 },
-  { {EGpuDriverId_names + 308, 22}, 18 },
-  { {EGpuDriverId_names + 330, 24}, 15 },
-  { {EGpuDriverId_names + 354, 23}, 4 },
-  { {EGpuDriverId_names + 377, 25}, 14 },
-  { {EGpuDriverId_names + 402, 24}, 16 },
-  { {EGpuDriverId_names + 426, 23}, 13 },
-  { {EGpuDriverId_names + 449, 32}, 5 },
-  { {EGpuDriverId_names + 481, 34}, 8 },
-  { {EGpuDriverId_names + 515, 22}, 1 },
-};
-
-static const int EGpuDriverId_entries_by_number[] = {
-  6, // 0 -> k_EGpuDriverId_Invalid
-  19, // 1 -> k_EGpuDriverId_Unknown
-  1, // 2 -> k_EGpuDriverId_AmdProprietary
-  0, // 3 -> k_EGpuDriverId_AmdOpenSource
-  13, // 4 -> k_EGpuDriverId_MesaRadv
-  17, // 5 -> k_EGpuDriverId_NvidiaProprietary
-  5, // 6 -> k_EGpuDriverId_IntelPropietary
-  9, // 7 -> k_EGpuDriverId_MesaIntel
-  18, // 8 -> k_EGpuDriverId_QualcommProprietary
-  2, // 9 -> k_EGpuDriverId_ArmProprietary
-  4, // 10 -> k_EGpuDriverId_GoogleSwiftshader
-  3, // 11 -> k_EGpuDriverId_BroadcomProprietary
-  10, // 12 -> k_EGpuDriverId_MesaLLVMPipe
-  16, // 13 -> k_EGpuDriverId_MoltenVK
-  14, // 14 -> k_EGpuDriverId_MesaTurnip
-  12, // 15 -> k_EGpuDriverId_MesaPanVK
-  15, // 16 -> k_EGpuDriverId_MesaVenus
-  7, // 17 -> k_EGpuDriverId_MesaDozen
-  11, // 18 -> k_EGpuDriverId_MesaNVK
-  8, // 19 -> k_EGpuDriverId_MesaHoneyKrisp
-};
-
-const std::string& EGpuDriverId_Name(
-    EGpuDriverId value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EGpuDriverId_entries,
-          EGpuDriverId_entries_by_number,
-          20, EGpuDriverId_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EGpuDriverId_entries,
-      EGpuDriverId_entries_by_number,
-      20, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EGpuDriverId_strings[idx].get();
-}
-bool EGpuDriverId_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EGpuDriverId* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EGpuDriverId_entries, 20, name, &int_value);
-  if (success) {
-    *value = static_cast<EGpuDriverId>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ECommunityItemClass_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[46];
 }
 bool ECommunityItemClass_IsValid(int value) {
   switch (value) {
@@ -3232,94 +1646,9 @@ bool ECommunityItemClass_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ECommunityItemClass_strings[18] = {};
-
-static const char ECommunityItemClass_names[] =
-  "k_ECommunityItemClass_AnimatedAvatar"
-  "k_ECommunityItemClass_AvatarFrame"
-  "k_ECommunityItemClass_Badge"
-  "k_ECommunityItemClass_BoosterPack"
-  "k_ECommunityItemClass_ChatEffect"
-  "k_ECommunityItemClass_Consumable"
-  "k_ECommunityItemClass_Emoticon"
-  "k_ECommunityItemClass_GameCard"
-  "k_ECommunityItemClass_GameGoo"
-  "k_ECommunityItemClass_Invalid"
-  "k_ECommunityItemClass_MiniProfileBackground"
-  "k_ECommunityItemClass_ProfileBackground"
-  "k_ECommunityItemClass_ProfileModifier"
-  "k_ECommunityItemClass_SalienItem"
-  "k_ECommunityItemClass_Scene"
-  "k_ECommunityItemClass_SteamDeckKeyboardSkin"
-  "k_ECommunityItemClass_SteamDeckStartupMovie"
-  "k_ECommunityItemClass_Sticker";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ECommunityItemClass_entries[] = {
-  { {ECommunityItemClass_names + 0, 36}, 15 },
-  { {ECommunityItemClass_names + 36, 33}, 14 },
-  { {ECommunityItemClass_names + 69, 27}, 1 },
-  { {ECommunityItemClass_names + 96, 33}, 5 },
-  { {ECommunityItemClass_names + 129, 32}, 12 },
-  { {ECommunityItemClass_names + 161, 32}, 6 },
-  { {ECommunityItemClass_names + 193, 30}, 4 },
-  { {ECommunityItemClass_names + 223, 30}, 2 },
-  { {ECommunityItemClass_names + 253, 29}, 7 },
-  { {ECommunityItemClass_names + 282, 29}, 0 },
-  { {ECommunityItemClass_names + 311, 43}, 13 },
-  { {ECommunityItemClass_names + 354, 39}, 3 },
-  { {ECommunityItemClass_names + 393, 37}, 8 },
-  { {ECommunityItemClass_names + 430, 32}, 10 },
-  { {ECommunityItemClass_names + 462, 27}, 9 },
-  { {ECommunityItemClass_names + 489, 43}, 16 },
-  { {ECommunityItemClass_names + 532, 43}, 17 },
-  { {ECommunityItemClass_names + 575, 29}, 11 },
-};
-
-static const int ECommunityItemClass_entries_by_number[] = {
-  9, // 0 -> k_ECommunityItemClass_Invalid
-  2, // 1 -> k_ECommunityItemClass_Badge
-  7, // 2 -> k_ECommunityItemClass_GameCard
-  11, // 3 -> k_ECommunityItemClass_ProfileBackground
-  6, // 4 -> k_ECommunityItemClass_Emoticon
-  3, // 5 -> k_ECommunityItemClass_BoosterPack
-  5, // 6 -> k_ECommunityItemClass_Consumable
-  8, // 7 -> k_ECommunityItemClass_GameGoo
-  12, // 8 -> k_ECommunityItemClass_ProfileModifier
-  14, // 9 -> k_ECommunityItemClass_Scene
-  13, // 10 -> k_ECommunityItemClass_SalienItem
-  17, // 11 -> k_ECommunityItemClass_Sticker
-  4, // 12 -> k_ECommunityItemClass_ChatEffect
-  10, // 13 -> k_ECommunityItemClass_MiniProfileBackground
-  1, // 14 -> k_ECommunityItemClass_AvatarFrame
-  0, // 15 -> k_ECommunityItemClass_AnimatedAvatar
-  15, // 16 -> k_ECommunityItemClass_SteamDeckKeyboardSkin
-  16, // 17 -> k_ECommunityItemClass_SteamDeckStartupMovie
-};
-
-const std::string& ECommunityItemClass_Name(
-    ECommunityItemClass value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          ECommunityItemClass_entries,
-          ECommunityItemClass_entries_by_number,
-          18, ECommunityItemClass_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      ECommunityItemClass_entries,
-      ECommunityItemClass_entries_by_number,
-      18, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     ECommunityItemClass_strings[idx].get();
-}
-bool ECommunityItemClass_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ECommunityItemClass* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ECommunityItemClass_entries, 18, name, &int_value);
-  if (success) {
-    *value = static_cast<ECommunityItemClass>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESteamDeckCompatibilityFeedback_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[47];
 }
 bool ESteamDeckCompatibilityFeedback_IsValid(int value) {
   switch (value) {
@@ -3333,52 +1662,9 @@ bool ESteamDeckCompatibilityFeedback_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ESteamDeckCompatibilityFeedback_strings[4] = {};
-
-static const char ESteamDeckCompatibilityFeedback_names[] =
-  "k_ESteamDeckCompatibilityFeedback_Agree"
-  "k_ESteamDeckCompatibilityFeedback_Disagree"
-  "k_ESteamDeckCompatibilityFeedback_Ignore"
-  "k_ESteamDeckCompatibilityFeedback_Unset";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ESteamDeckCompatibilityFeedback_entries[] = {
-  { {ESteamDeckCompatibilityFeedback_names + 0, 39}, 1 },
-  { {ESteamDeckCompatibilityFeedback_names + 39, 42}, 2 },
-  { {ESteamDeckCompatibilityFeedback_names + 81, 40}, 3 },
-  { {ESteamDeckCompatibilityFeedback_names + 121, 39}, 0 },
-};
-
-static const int ESteamDeckCompatibilityFeedback_entries_by_number[] = {
-  3, // 0 -> k_ESteamDeckCompatibilityFeedback_Unset
-  0, // 1 -> k_ESteamDeckCompatibilityFeedback_Agree
-  1, // 2 -> k_ESteamDeckCompatibilityFeedback_Disagree
-  2, // 3 -> k_ESteamDeckCompatibilityFeedback_Ignore
-};
-
-const std::string& ESteamDeckCompatibilityFeedback_Name(
-    ESteamDeckCompatibilityFeedback value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          ESteamDeckCompatibilityFeedback_entries,
-          ESteamDeckCompatibilityFeedback_entries_by_number,
-          4, ESteamDeckCompatibilityFeedback_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      ESteamDeckCompatibilityFeedback_entries,
-      ESteamDeckCompatibilityFeedback_entries_by_number,
-      4, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     ESteamDeckCompatibilityFeedback_strings[idx].get();
-}
-bool ESteamDeckCompatibilityFeedback_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESteamDeckCompatibilityFeedback* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ESteamDeckCompatibilityFeedback_entries, 4, name, &int_value);
-  if (success) {
-    *value = static_cast<ESteamDeckCompatibilityFeedback>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EProvideDeckFeedbackPreference_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[48];
 }
 bool EProvideDeckFeedbackPreference_IsValid(int value) {
   switch (value) {
@@ -3391,49 +1677,9 @@ bool EProvideDeckFeedbackPreference_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EProvideDeckFeedbackPreference_strings[3] = {};
-
-static const char EProvideDeckFeedbackPreference_names[] =
-  "k_EProvideDeckFeedbackPreference_No"
-  "k_EProvideDeckFeedbackPreference_Unset"
-  "k_EProvideDeckFeedbackPreference_Yes";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EProvideDeckFeedbackPreference_entries[] = {
-  { {EProvideDeckFeedbackPreference_names + 0, 35}, 2 },
-  { {EProvideDeckFeedbackPreference_names + 35, 38}, 0 },
-  { {EProvideDeckFeedbackPreference_names + 73, 36}, 1 },
-};
-
-static const int EProvideDeckFeedbackPreference_entries_by_number[] = {
-  1, // 0 -> k_EProvideDeckFeedbackPreference_Unset
-  2, // 1 -> k_EProvideDeckFeedbackPreference_Yes
-  0, // 2 -> k_EProvideDeckFeedbackPreference_No
-};
-
-const std::string& EProvideDeckFeedbackPreference_Name(
-    EProvideDeckFeedbackPreference value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EProvideDeckFeedbackPreference_entries,
-          EProvideDeckFeedbackPreference_entries_by_number,
-          3, EProvideDeckFeedbackPreference_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EProvideDeckFeedbackPreference_entries,
-      EProvideDeckFeedbackPreference_entries_by_number,
-      3, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EProvideDeckFeedbackPreference_strings[idx].get();
-}
-bool EProvideDeckFeedbackPreference_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EProvideDeckFeedbackPreference* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EProvideDeckFeedbackPreference_entries, 3, name, &int_value);
-  if (success) {
-    *value = static_cast<EProvideDeckFeedbackPreference>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EHardwareCompatibilityFeedbackDetails_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[49];
 }
 bool EHardwareCompatibilityFeedbackDetails_IsValid(int value) {
   switch (value) {
@@ -3449,58 +1695,9 @@ bool EHardwareCompatibilityFeedbackDetails_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EHardwareCompatibilityFeedbackDetails_strings[6] = {};
-
-static const char EHardwareCompatibilityFeedbackDetails_names[] =
-  "k_EHardwareCompatibilityFeedbackDetails_Input"
-  "k_EHardwareCompatibilityFeedbackDetails_Legibility"
-  "k_EHardwareCompatibilityFeedbackDetails_Other"
-  "k_EHardwareCompatibilityFeedbackDetails_Performance"
-  "k_EHardwareCompatibilityFeedbackDetails_Stability"
-  "k_EHardwareCompatibilityFeedbackDetails_Unset";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EHardwareCompatibilityFeedbackDetails_entries[] = {
-  { {EHardwareCompatibilityFeedbackDetails_names + 0, 45}, 8 },
-  { {EHardwareCompatibilityFeedbackDetails_names + 45, 50}, 4 },
-  { {EHardwareCompatibilityFeedbackDetails_names + 95, 45}, 16 },
-  { {EHardwareCompatibilityFeedbackDetails_names + 140, 51}, 1 },
-  { {EHardwareCompatibilityFeedbackDetails_names + 191, 49}, 2 },
-  { {EHardwareCompatibilityFeedbackDetails_names + 240, 45}, 0 },
-};
-
-static const int EHardwareCompatibilityFeedbackDetails_entries_by_number[] = {
-  5, // 0 -> k_EHardwareCompatibilityFeedbackDetails_Unset
-  3, // 1 -> k_EHardwareCompatibilityFeedbackDetails_Performance
-  4, // 2 -> k_EHardwareCompatibilityFeedbackDetails_Stability
-  1, // 4 -> k_EHardwareCompatibilityFeedbackDetails_Legibility
-  0, // 8 -> k_EHardwareCompatibilityFeedbackDetails_Input
-  2, // 16 -> k_EHardwareCompatibilityFeedbackDetails_Other
-};
-
-const std::string& EHardwareCompatibilityFeedbackDetails_Name(
-    EHardwareCompatibilityFeedbackDetails value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EHardwareCompatibilityFeedbackDetails_entries,
-          EHardwareCompatibilityFeedbackDetails_entries_by_number,
-          6, EHardwareCompatibilityFeedbackDetails_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EHardwareCompatibilityFeedbackDetails_entries,
-      EHardwareCompatibilityFeedbackDetails_entries_by_number,
-      6, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EHardwareCompatibilityFeedbackDetails_strings[idx].get();
-}
-bool EHardwareCompatibilityFeedbackDetails_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EHardwareCompatibilityFeedbackDetails* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EHardwareCompatibilityFeedbackDetails_entries, 6, name, &int_value);
-  if (success) {
-    *value = static_cast<EHardwareCompatibilityFeedbackDetails>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EGameFrameRateReportingPreference_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[50];
 }
 bool EGameFrameRateReportingPreference_IsValid(int value) {
   switch (value) {
@@ -3514,52 +1711,9 @@ bool EGameFrameRateReportingPreference_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EGameFrameRateReportingPreference_strings[4] = {};
-
-static const char EGameFrameRateReportingPreference_names[] =
-  "k_EGameFrameRateReportingPreference_No"
-  "k_EGameFrameRateReportingPreference_Unset"
-  "k_EGameFrameRateReportingPreference_Yes_Anonymous"
-  "k_EGameFrameRateReportingPreference_Yes_NonAnonymous";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EGameFrameRateReportingPreference_entries[] = {
-  { {EGameFrameRateReportingPreference_names + 0, 38}, 1 },
-  { {EGameFrameRateReportingPreference_names + 38, 41}, 0 },
-  { {EGameFrameRateReportingPreference_names + 79, 49}, 2 },
-  { {EGameFrameRateReportingPreference_names + 128, 52}, 3 },
-};
-
-static const int EGameFrameRateReportingPreference_entries_by_number[] = {
-  1, // 0 -> k_EGameFrameRateReportingPreference_Unset
-  0, // 1 -> k_EGameFrameRateReportingPreference_No
-  2, // 2 -> k_EGameFrameRateReportingPreference_Yes_Anonymous
-  3, // 3 -> k_EGameFrameRateReportingPreference_Yes_NonAnonymous
-};
-
-const std::string& EGameFrameRateReportingPreference_Name(
-    EGameFrameRateReportingPreference value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EGameFrameRateReportingPreference_entries,
-          EGameFrameRateReportingPreference_entries_by_number,
-          4, EGameFrameRateReportingPreference_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EGameFrameRateReportingPreference_entries,
-      EGameFrameRateReportingPreference_entries_by_number,
-      4, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EGameFrameRateReportingPreference_strings[idx].get();
-}
-bool EGameFrameRateReportingPreference_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EGameFrameRateReportingPreference* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EGameFrameRateReportingPreference_entries, 4, name, &int_value);
-  if (success) {
-    *value = static_cast<EGameFrameRateReportingPreference>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ETouchGesture_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[51];
 }
 bool ETouchGesture_IsValid(int value) {
   switch (value) {
@@ -3583,82 +1737,9 @@ bool ETouchGesture_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ETouchGesture_strings[14] = {};
-
-static const char ETouchGesture_names[] =
-  "k_ETouchGestureDoubleTap"
-  "k_ETouchGestureFlingCancelled"
-  "k_ETouchGestureFlingStart"
-  "k_ETouchGestureLongPress"
-  "k_ETouchGestureLongTap"
-  "k_ETouchGestureNone"
-  "k_ETouchGesturePinchBegin"
-  "k_ETouchGesturePinchEnd"
-  "k_ETouchGesturePinchUpdate"
-  "k_ETouchGestureShortPress"
-  "k_ETouchGestureTap"
-  "k_ETouchGestureTapCancelled"
-  "k_ETouchGestureTouch"
-  "k_ETouchGestureTwoFingerTap";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ETouchGesture_entries[] = {
-  { {ETouchGesture_names + 0, 24}, 3 },
-  { {ETouchGesture_names + 24, 29}, 13 },
-  { {ETouchGesture_names + 53, 25}, 12 },
-  { {ETouchGesture_names + 78, 24}, 5 },
-  { {ETouchGesture_names + 102, 22}, 6 },
-  { {ETouchGesture_names + 124, 19}, 0 },
-  { {ETouchGesture_names + 143, 25}, 9 },
-  { {ETouchGesture_names + 168, 23}, 11 },
-  { {ETouchGesture_names + 191, 26}, 10 },
-  { {ETouchGesture_names + 217, 25}, 4 },
-  { {ETouchGesture_names + 242, 18}, 2 },
-  { {ETouchGesture_names + 260, 27}, 8 },
-  { {ETouchGesture_names + 287, 20}, 1 },
-  { {ETouchGesture_names + 307, 27}, 7 },
-};
-
-static const int ETouchGesture_entries_by_number[] = {
-  5, // 0 -> k_ETouchGestureNone
-  12, // 1 -> k_ETouchGestureTouch
-  10, // 2 -> k_ETouchGestureTap
-  0, // 3 -> k_ETouchGestureDoubleTap
-  9, // 4 -> k_ETouchGestureShortPress
-  3, // 5 -> k_ETouchGestureLongPress
-  4, // 6 -> k_ETouchGestureLongTap
-  13, // 7 -> k_ETouchGestureTwoFingerTap
-  11, // 8 -> k_ETouchGestureTapCancelled
-  6, // 9 -> k_ETouchGesturePinchBegin
-  8, // 10 -> k_ETouchGesturePinchUpdate
-  7, // 11 -> k_ETouchGesturePinchEnd
-  2, // 12 -> k_ETouchGestureFlingStart
-  1, // 13 -> k_ETouchGestureFlingCancelled
-};
-
-const std::string& ETouchGesture_Name(
-    ETouchGesture value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          ETouchGesture_entries,
-          ETouchGesture_entries_by_number,
-          14, ETouchGesture_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      ETouchGesture_entries,
-      ETouchGesture_entries_by_number,
-      14, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     ETouchGesture_strings[idx].get();
-}
-bool ETouchGesture_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ETouchGesture* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ETouchGesture_entries, 14, name, &int_value);
-  if (success) {
-    *value = static_cast<ETouchGesture>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ESessionPersistence_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[52];
 }
 bool ESessionPersistence_IsValid(int value) {
   switch (value) {
@@ -3671,49 +1752,9 @@ bool ESessionPersistence_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ESessionPersistence_strings[3] = {};
-
-static const char ESessionPersistence_names[] =
-  "k_ESessionPersistence_Ephemeral"
-  "k_ESessionPersistence_Invalid"
-  "k_ESessionPersistence_Persistent";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ESessionPersistence_entries[] = {
-  { {ESessionPersistence_names + 0, 31}, 0 },
-  { {ESessionPersistence_names + 31, 29}, -1 },
-  { {ESessionPersistence_names + 60, 32}, 1 },
-};
-
-static const int ESessionPersistence_entries_by_number[] = {
-  1, // -1 -> k_ESessionPersistence_Invalid
-  0, // 0 -> k_ESessionPersistence_Ephemeral
-  2, // 1 -> k_ESessionPersistence_Persistent
-};
-
-const std::string& ESessionPersistence_Name(
-    ESessionPersistence value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          ESessionPersistence_entries,
-          ESessionPersistence_entries_by_number,
-          3, ESessionPersistence_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      ESessionPersistence_entries,
-      ESessionPersistence_entries_by_number,
-      3, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     ESessionPersistence_strings[idx].get();
-}
-bool ESessionPersistence_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ESessionPersistence* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ESessionPersistence_entries, 3, name, &int_value);
-  if (success) {
-    *value = static_cast<ESessionPersistence>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ENewSteamAnnouncementState_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[53];
 }
 bool ENewSteamAnnouncementState_IsValid(int value) {
   switch (value) {
@@ -3727,52 +1768,9 @@ bool ENewSteamAnnouncementState_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ENewSteamAnnouncementState_strings[4] = {};
-
-static const char ENewSteamAnnouncementState_names[] =
-  "k_ENewSteamAnnouncementState_AllRead"
-  "k_ENewSteamAnnouncementState_FeaturedAnnouncement"
-  "k_ENewSteamAnnouncementState_Invalid"
-  "k_ENewSteamAnnouncementState_NewAnnouncement";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ENewSteamAnnouncementState_entries[] = {
-  { {ENewSteamAnnouncementState_names + 0, 36}, 1 },
-  { {ENewSteamAnnouncementState_names + 36, 49}, 3 },
-  { {ENewSteamAnnouncementState_names + 85, 36}, 0 },
-  { {ENewSteamAnnouncementState_names + 121, 44}, 2 },
-};
-
-static const int ENewSteamAnnouncementState_entries_by_number[] = {
-  2, // 0 -> k_ENewSteamAnnouncementState_Invalid
-  0, // 1 -> k_ENewSteamAnnouncementState_AllRead
-  3, // 2 -> k_ENewSteamAnnouncementState_NewAnnouncement
-  1, // 3 -> k_ENewSteamAnnouncementState_FeaturedAnnouncement
-};
-
-const std::string& ENewSteamAnnouncementState_Name(
-    ENewSteamAnnouncementState value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          ENewSteamAnnouncementState_entries,
-          ENewSteamAnnouncementState_entries_by_number,
-          4, ENewSteamAnnouncementState_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      ENewSteamAnnouncementState_entries,
-      ENewSteamAnnouncementState_entries_by_number,
-      4, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     ENewSteamAnnouncementState_strings[idx].get();
-}
-bool ENewSteamAnnouncementState_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ENewSteamAnnouncementState* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ENewSteamAnnouncementState_entries, 4, name, &int_value);
-  if (success) {
-    *value = static_cast<ENewSteamAnnouncementState>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EForumType_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[54];
 }
 bool EForumType_IsValid(int value) {
   switch (value) {
@@ -3791,67 +1789,9 @@ bool EForumType_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EForumType_strings[9] = {};
-
-static const char EForumType_names[] =
-  "k_EForumType_Event"
-  "k_EForumType_General"
-  "k_EForumType_Invalid"
-  "k_EForumType_Max"
-  "k_EForumType_PlayTest"
-  "k_EForumType_PublishedFile"
-  "k_EForumType_ReportedPosts"
-  "k_EForumType_Trading"
-  "k_EForumType_Workshop";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EForumType_entries[] = {
-  { {EForumType_names + 0, 18}, 7 },
-  { {EForumType_names + 18, 20}, 1 },
-  { {EForumType_names + 38, 20}, 0 },
-  { {EForumType_names + 58, 16}, 8 },
-  { {EForumType_names + 74, 21}, 6 },
-  { {EForumType_names + 95, 26}, 4 },
-  { {EForumType_names + 121, 26}, 2 },
-  { {EForumType_names + 147, 20}, 5 },
-  { {EForumType_names + 167, 21}, 3 },
-};
-
-static const int EForumType_entries_by_number[] = {
-  2, // 0 -> k_EForumType_Invalid
-  1, // 1 -> k_EForumType_General
-  6, // 2 -> k_EForumType_ReportedPosts
-  8, // 3 -> k_EForumType_Workshop
-  5, // 4 -> k_EForumType_PublishedFile
-  7, // 5 -> k_EForumType_Trading
-  4, // 6 -> k_EForumType_PlayTest
-  0, // 7 -> k_EForumType_Event
-  3, // 8 -> k_EForumType_Max
-};
-
-const std::string& EForumType_Name(
-    EForumType value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EForumType_entries,
-          EForumType_entries_by_number,
-          9, EForumType_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EForumType_entries,
-      EForumType_entries_by_number,
-      9, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EForumType_strings[idx].get();
-}
-bool EForumType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EForumType* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EForumType_entries, 9, name, &int_value);
-  if (success) {
-    *value = static_cast<EForumType>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ECommentThreadType_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[55];
 }
 bool ECommentThreadType_IsValid(int value) {
   switch (value) {
@@ -3883,106 +1823,9 @@ bool ECommentThreadType_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ECommentThreadType_strings[22] = {};
-
-static const char ECommentThreadType_names[] =
-  "k_ECommentThreadTypeClan"
-  "k_ECommentThreadTypeClanAnnouncement"
-  "k_ECommentThreadTypeClanCuratedApp"
-  "k_ECommentThreadTypeClanEvent"
-  "k_ECommentThreadTypeForumTopic"
-  "k_ECommentThreadTypeInvalid"
-  "k_ECommentThreadTypeMax"
-  "k_ECommentThreadTypeModeratorMessage"
-  "k_ECommentThreadTypeNewsPost"
-  "k_ECommentThreadTypeProfile"
-  "k_ECommentThreadTypePublishedFile_Announcement"
-  "k_ECommentThreadTypePublishedFile_Developer"
-  "k_ECommentThreadTypePublishedFile_Public"
-  "k_ECommentThreadTypeQAndASession"
-  "k_ECommentThreadTypeRecommendation"
-  "k_ECommentThreadTypeScreenshot_Deprecated"
-  "k_ECommentThreadTypeTest"
-  "k_ECommentThreadTypeUserReceivedNewGame"
-  "k_ECommentThreadTypeUserStatusPublished"
-  "k_ECommentThreadTypeVideo_Deprecated"
-  "k_ECommentThreadTypeWorkshopAccount_Developer"
-  "k_ECommentThreadTypeWorkshopAccount_Public";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ECommentThreadType_entries[] = {
-  { {ECommentThreadType_names + 0, 24}, 12 },
-  { {ECommentThreadType_names + 24, 36}, 13 },
-  { {ECommentThreadType_names + 60, 34}, 19 },
-  { {ECommentThreadType_names + 94, 29}, 14 },
-  { {ECommentThreadType_names + 123, 30}, 7 },
-  { {ECommentThreadType_names + 153, 27}, 0 },
-  { {ECommentThreadType_names + 180, 23}, 21 },
-  { {ECommentThreadType_names + 203, 36}, 18 },
-  { {ECommentThreadType_names + 239, 28}, 11 },
-  { {ECommentThreadType_names + 267, 27}, 10 },
-  { {ECommentThreadType_names + 294, 46}, 17 },
-  { {ECommentThreadType_names + 340, 43}, 4 },
-  { {ECommentThreadType_names + 383, 40}, 5 },
-  { {ECommentThreadType_names + 423, 32}, 20 },
-  { {ECommentThreadType_names + 455, 34}, 8 },
-  { {ECommentThreadType_names + 489, 41}, 1 },
-  { {ECommentThreadType_names + 530, 24}, 6 },
-  { {ECommentThreadType_names + 554, 39}, 16 },
-  { {ECommentThreadType_names + 593, 39}, 15 },
-  { {ECommentThreadType_names + 632, 36}, 9 },
-  { {ECommentThreadType_names + 668, 45}, 2 },
-  { {ECommentThreadType_names + 713, 42}, 3 },
-};
-
-static const int ECommentThreadType_entries_by_number[] = {
-  5, // 0 -> k_ECommentThreadTypeInvalid
-  15, // 1 -> k_ECommentThreadTypeScreenshot_Deprecated
-  20, // 2 -> k_ECommentThreadTypeWorkshopAccount_Developer
-  21, // 3 -> k_ECommentThreadTypeWorkshopAccount_Public
-  11, // 4 -> k_ECommentThreadTypePublishedFile_Developer
-  12, // 5 -> k_ECommentThreadTypePublishedFile_Public
-  16, // 6 -> k_ECommentThreadTypeTest
-  4, // 7 -> k_ECommentThreadTypeForumTopic
-  14, // 8 -> k_ECommentThreadTypeRecommendation
-  19, // 9 -> k_ECommentThreadTypeVideo_Deprecated
-  9, // 10 -> k_ECommentThreadTypeProfile
-  8, // 11 -> k_ECommentThreadTypeNewsPost
-  0, // 12 -> k_ECommentThreadTypeClan
-  1, // 13 -> k_ECommentThreadTypeClanAnnouncement
-  3, // 14 -> k_ECommentThreadTypeClanEvent
-  18, // 15 -> k_ECommentThreadTypeUserStatusPublished
-  17, // 16 -> k_ECommentThreadTypeUserReceivedNewGame
-  10, // 17 -> k_ECommentThreadTypePublishedFile_Announcement
-  7, // 18 -> k_ECommentThreadTypeModeratorMessage
-  2, // 19 -> k_ECommentThreadTypeClanCuratedApp
-  13, // 20 -> k_ECommentThreadTypeQAndASession
-  6, // 21 -> k_ECommentThreadTypeMax
-};
-
-const std::string& ECommentThreadType_Name(
-    ECommentThreadType value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          ECommentThreadType_entries,
-          ECommentThreadType_entries_by_number,
-          22, ECommentThreadType_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      ECommentThreadType_entries,
-      ECommentThreadType_entries_by_number,
-      22, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     ECommentThreadType_strings[idx].get();
-}
-bool ECommentThreadType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ECommentThreadType* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ECommentThreadType_entries, 22, name, &int_value);
-  if (success) {
-    *value = static_cast<ECommentThreadType>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EBroadcastPermission_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[56];
 }
 bool EBroadcastPermission_IsValid(int value) {
   switch (value) {
@@ -3997,55 +1840,9 @@ bool EBroadcastPermission_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EBroadcastPermission_strings[5] = {};
-
-static const char EBroadcastPermission_names[] =
-  "k_EBroadcastPermissionDisabled"
-  "k_EBroadcastPermissionFriendsAllowed"
-  "k_EBroadcastPermissionFriendsApprove"
-  "k_EBroadcastPermissionPublic"
-  "k_EBroadcastPermissionSubscribers";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EBroadcastPermission_entries[] = {
-  { {EBroadcastPermission_names + 0, 30}, 0 },
-  { {EBroadcastPermission_names + 30, 36}, 2 },
-  { {EBroadcastPermission_names + 66, 36}, 1 },
-  { {EBroadcastPermission_names + 102, 28}, 3 },
-  { {EBroadcastPermission_names + 130, 33}, 4 },
-};
-
-static const int EBroadcastPermission_entries_by_number[] = {
-  0, // 0 -> k_EBroadcastPermissionDisabled
-  2, // 1 -> k_EBroadcastPermissionFriendsApprove
-  1, // 2 -> k_EBroadcastPermissionFriendsAllowed
-  3, // 3 -> k_EBroadcastPermissionPublic
-  4, // 4 -> k_EBroadcastPermissionSubscribers
-};
-
-const std::string& EBroadcastPermission_Name(
-    EBroadcastPermission value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EBroadcastPermission_entries,
-          EBroadcastPermission_entries_by_number,
-          5, EBroadcastPermission_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EBroadcastPermission_entries,
-      EBroadcastPermission_entries_by_number,
-      5, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EBroadcastPermission_strings[idx].get();
-}
-bool EBroadcastPermission_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EBroadcastPermission* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EBroadcastPermission_entries, 5, name, &int_value);
-  if (success) {
-    *value = static_cast<EBroadcastPermission>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EBroadcastEncoderSetting_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[57];
 }
 bool EBroadcastEncoderSetting_IsValid(int value) {
   switch (value) {
@@ -4057,46 +1854,9 @@ bool EBroadcastEncoderSetting_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EBroadcastEncoderSetting_strings[2] = {};
-
-static const char EBroadcastEncoderSetting_names[] =
-  "k_EBroadcastEncoderBestPerformance"
-  "k_EBroadcastEncoderBestQuality";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EBroadcastEncoderSetting_entries[] = {
-  { {EBroadcastEncoderSetting_names + 0, 34}, 1 },
-  { {EBroadcastEncoderSetting_names + 34, 30}, 0 },
-};
-
-static const int EBroadcastEncoderSetting_entries_by_number[] = {
-  1, // 0 -> k_EBroadcastEncoderBestQuality
-  0, // 1 -> k_EBroadcastEncoderBestPerformance
-};
-
-const std::string& EBroadcastEncoderSetting_Name(
-    EBroadcastEncoderSetting value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EBroadcastEncoderSetting_entries,
-          EBroadcastEncoderSetting_entries_by_number,
-          2, EBroadcastEncoderSetting_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EBroadcastEncoderSetting_entries,
-      EBroadcastEncoderSetting_entries_by_number,
-      2, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EBroadcastEncoderSetting_strings[idx].get();
-}
-bool EBroadcastEncoderSetting_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EBroadcastEncoderSetting* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EBroadcastEncoderSetting_entries, 2, name, &int_value);
-  if (success) {
-    *value = static_cast<EBroadcastEncoderSetting>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ECloudGamingPlatform_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[58];
 }
 bool ECloudGamingPlatform_IsValid(int value) {
   switch (value) {
@@ -4109,49 +1869,9 @@ bool ECloudGamingPlatform_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ECloudGamingPlatform_strings[3] = {};
-
-static const char ECloudGamingPlatform_names[] =
-  "k_ECloudGamingPlatformNVIDIA"
-  "k_ECloudGamingPlatformNone"
-  "k_ECloudGamingPlatformValve";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ECloudGamingPlatform_entries[] = {
-  { {ECloudGamingPlatform_names + 0, 28}, 2 },
-  { {ECloudGamingPlatform_names + 28, 26}, 0 },
-  { {ECloudGamingPlatform_names + 54, 27}, 1 },
-};
-
-static const int ECloudGamingPlatform_entries_by_number[] = {
-  1, // 0 -> k_ECloudGamingPlatformNone
-  2, // 1 -> k_ECloudGamingPlatformValve
-  0, // 2 -> k_ECloudGamingPlatformNVIDIA
-};
-
-const std::string& ECloudGamingPlatform_Name(
-    ECloudGamingPlatform value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          ECloudGamingPlatform_entries,
-          ECloudGamingPlatform_entries_by_number,
-          3, ECloudGamingPlatform_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      ECloudGamingPlatform_entries,
-      ECloudGamingPlatform_entries_by_number,
-      3, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     ECloudGamingPlatform_strings[idx].get();
-}
-bool ECloudGamingPlatform_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ECloudGamingPlatform* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ECloudGamingPlatform_entries, 3, name, &int_value);
-  if (success) {
-    *value = static_cast<ECloudGamingPlatform>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ECompromiseDetectionType_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[59];
 }
 bool ECompromiseDetectionType_IsValid(int value) {
   switch (value) {
@@ -4169,64 +1889,9 @@ bool ECompromiseDetectionType_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ECompromiseDetectionType_strings[8] = {};
-
-static const char ECompromiseDetectionType_names[] =
-  "k_ECompromiseDetectionType_ApiCallRate"
-  "k_ECompromiseDetectionType_DeviceType"
-  "k_ECompromiseDetectionType_MaliciousRefund"
-  "k_ECompromiseDetectionType_Manual"
-  "k_ECompromiseDetectionType_Move2FA"
-  "k_ECompromiseDetectionType_None"
-  "k_ECompromiseDetectionType_TicketAction"
-  "k_ECompromiseDetectionType_TradeEvent";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ECompromiseDetectionType_entries[] = {
-  { {ECompromiseDetectionType_names + 0, 38}, 2 },
-  { {ECompromiseDetectionType_names + 38, 37}, 7 },
-  { {ECompromiseDetectionType_names + 75, 42}, 5 },
-  { {ECompromiseDetectionType_names + 117, 33}, 3 },
-  { {ECompromiseDetectionType_names + 150, 34}, 6 },
-  { {ECompromiseDetectionType_names + 184, 31}, 0 },
-  { {ECompromiseDetectionType_names + 215, 39}, 4 },
-  { {ECompromiseDetectionType_names + 254, 37}, 1 },
-};
-
-static const int ECompromiseDetectionType_entries_by_number[] = {
-  5, // 0 -> k_ECompromiseDetectionType_None
-  7, // 1 -> k_ECompromiseDetectionType_TradeEvent
-  0, // 2 -> k_ECompromiseDetectionType_ApiCallRate
-  3, // 3 -> k_ECompromiseDetectionType_Manual
-  6, // 4 -> k_ECompromiseDetectionType_TicketAction
-  2, // 5 -> k_ECompromiseDetectionType_MaliciousRefund
-  4, // 6 -> k_ECompromiseDetectionType_Move2FA
-  1, // 7 -> k_ECompromiseDetectionType_DeviceType
-};
-
-const std::string& ECompromiseDetectionType_Name(
-    ECompromiseDetectionType value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          ECompromiseDetectionType_entries,
-          ECompromiseDetectionType_entries_by_number,
-          8, ECompromiseDetectionType_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      ECompromiseDetectionType_entries,
-      ECompromiseDetectionType_entries_by_number,
-      8, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     ECompromiseDetectionType_strings[idx].get();
-}
-bool ECompromiseDetectionType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ECompromiseDetectionType* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ECompromiseDetectionType_entries, 8, name, &int_value);
-  if (success) {
-    *value = static_cast<ECompromiseDetectionType>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EAsyncGameSessionUserState_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[60];
 }
 bool EAsyncGameSessionUserState_IsValid(int value) {
   switch (value) {
@@ -4240,52 +1905,9 @@ bool EAsyncGameSessionUserState_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EAsyncGameSessionUserState_strings[4] = {};
-
-static const char EAsyncGameSessionUserState_names[] =
-  "k_EAsyncGameSessionUserStateDone"
-  "k_EAsyncGameSessionUserStateReadyForAction"
-  "k_EAsyncGameSessionUserStateUnknown"
-  "k_EAsyncGameSessionUserStateWaitingForOthers";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EAsyncGameSessionUserState_entries[] = {
-  { {EAsyncGameSessionUserState_names + 0, 32}, 2 },
-  { {EAsyncGameSessionUserState_names + 32, 42}, 1 },
-  { {EAsyncGameSessionUserState_names + 74, 35}, -1 },
-  { {EAsyncGameSessionUserState_names + 109, 44}, 0 },
-};
-
-static const int EAsyncGameSessionUserState_entries_by_number[] = {
-  2, // -1 -> k_EAsyncGameSessionUserStateUnknown
-  3, // 0 -> k_EAsyncGameSessionUserStateWaitingForOthers
-  1, // 1 -> k_EAsyncGameSessionUserStateReadyForAction
-  0, // 2 -> k_EAsyncGameSessionUserStateDone
-};
-
-const std::string& EAsyncGameSessionUserState_Name(
-    EAsyncGameSessionUserState value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EAsyncGameSessionUserState_entries,
-          EAsyncGameSessionUserState_entries_by_number,
-          4, EAsyncGameSessionUserState_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EAsyncGameSessionUserState_entries,
-      EAsyncGameSessionUserState_entries_by_number,
-      4, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EAsyncGameSessionUserState_strings[idx].get();
-}
-bool EAsyncGameSessionUserState_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EAsyncGameSessionUserState* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EAsyncGameSessionUserState_entries, 4, name, &int_value);
-  if (success) {
-    *value = static_cast<EAsyncGameSessionUserState>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EAsyncGameSessionUserVisibility_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[61];
 }
 bool EAsyncGameSessionUserVisibility_IsValid(int value) {
   switch (value) {
@@ -4298,49 +1920,9 @@ bool EAsyncGameSessionUserVisibility_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EAsyncGameSessionUserVisibility_strings[3] = {};
-
-static const char EAsyncGameSessionUserVisibility_names[] =
-  "k_EAsyncGameSessionUserVisibilityDismissed"
-  "k_EAsyncGameSessionUserVisibilityEnvelopeAndSessionList"
-  "k_EAsyncGameSessionUserVisibilitySessionListOnly";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EAsyncGameSessionUserVisibility_entries[] = {
-  { {EAsyncGameSessionUserVisibility_names + 0, 42}, 2 },
-  { {EAsyncGameSessionUserVisibility_names + 42, 55}, 0 },
-  { {EAsyncGameSessionUserVisibility_names + 97, 48}, 1 },
-};
-
-static const int EAsyncGameSessionUserVisibility_entries_by_number[] = {
-  1, // 0 -> k_EAsyncGameSessionUserVisibilityEnvelopeAndSessionList
-  2, // 1 -> k_EAsyncGameSessionUserVisibilitySessionListOnly
-  0, // 2 -> k_EAsyncGameSessionUserVisibilityDismissed
-};
-
-const std::string& EAsyncGameSessionUserVisibility_Name(
-    EAsyncGameSessionUserVisibility value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EAsyncGameSessionUserVisibility_entries,
-          EAsyncGameSessionUserVisibility_entries_by_number,
-          3, EAsyncGameSessionUserVisibility_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EAsyncGameSessionUserVisibility_entries,
-      EAsyncGameSessionUserVisibility_entries_by_number,
-      3, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EAsyncGameSessionUserVisibility_strings[idx].get();
-}
-bool EAsyncGameSessionUserVisibility_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EAsyncGameSessionUserVisibility* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EAsyncGameSessionUserVisibility_entries, 3, name, &int_value);
-  if (success) {
-    *value = static_cast<EAsyncGameSessionUserVisibility>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EGameRecordingType_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[62];
 }
 bool EGameRecordingType_IsValid(int value) {
   switch (value) {
@@ -4355,55 +1937,9 @@ bool EGameRecordingType_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EGameRecordingType_strings[5] = {};
-
-static const char EGameRecordingType_names[] =
-  "k_EGameRecordingType_BackgroundRecording"
-  "k_EGameRecordingType_Clip"
-  "k_EGameRecordingType_ManualRecording"
-  "k_EGameRecordingType_NotRecording"
-  "k_EGameRecordingType_Unknown";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EGameRecordingType_entries[] = {
-  { {EGameRecordingType_names + 0, 40}, 3 },
-  { {EGameRecordingType_names + 40, 25}, 4 },
-  { {EGameRecordingType_names + 65, 36}, 2 },
-  { {EGameRecordingType_names + 101, 33}, 1 },
-  { {EGameRecordingType_names + 134, 28}, 0 },
-};
-
-static const int EGameRecordingType_entries_by_number[] = {
-  4, // 0 -> k_EGameRecordingType_Unknown
-  3, // 1 -> k_EGameRecordingType_NotRecording
-  2, // 2 -> k_EGameRecordingType_ManualRecording
-  0, // 3 -> k_EGameRecordingType_BackgroundRecording
-  1, // 4 -> k_EGameRecordingType_Clip
-};
-
-const std::string& EGameRecordingType_Name(
-    EGameRecordingType value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EGameRecordingType_entries,
-          EGameRecordingType_entries_by_number,
-          5, EGameRecordingType_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EGameRecordingType_entries,
-      EGameRecordingType_entries_by_number,
-      5, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EGameRecordingType_strings[idx].get();
-}
-bool EGameRecordingType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EGameRecordingType* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EGameRecordingType_entries, 5, name, &int_value);
-  if (success) {
-    *value = static_cast<EGameRecordingType>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EGRMode_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[63];
 }
 bool EGRMode_IsValid(int value) {
   switch (value) {
@@ -4416,49 +1952,9 @@ bool EGRMode_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EGRMode_strings[3] = {};
-
-static const char EGRMode_names[] =
-  "k_EGRMode_Always"
-  "k_EGRMode_Manual"
-  "k_EGRMode_Never";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EGRMode_entries[] = {
-  { {EGRMode_names + 0, 16}, 1 },
-  { {EGRMode_names + 16, 16}, 2 },
-  { {EGRMode_names + 32, 15}, 0 },
-};
-
-static const int EGRMode_entries_by_number[] = {
-  2, // 0 -> k_EGRMode_Never
-  0, // 1 -> k_EGRMode_Always
-  1, // 2 -> k_EGRMode_Manual
-};
-
-const std::string& EGRMode_Name(
-    EGRMode value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EGRMode_entries,
-          EGRMode_entries_by_number,
-          3, EGRMode_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EGRMode_entries,
-      EGRMode_entries_by_number,
-      3, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EGRMode_strings[idx].get();
-}
-bool EGRMode_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EGRMode* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EGRMode_entries, 3, name, &int_value);
-  if (success) {
-    *value = static_cast<EGRMode>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EExportCodec_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[64];
 }
 bool EExportCodec_IsValid(int value) {
   switch (value) {
@@ -4471,49 +1967,9 @@ bool EExportCodec_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EExportCodec_strings[3] = {};
-
-static const char EExportCodec_names[] =
-  "k_EExportCodec_Default"
-  "k_EExportCodec_H264"
-  "k_EExportCodec_H265";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EExportCodec_entries[] = {
-  { {EExportCodec_names + 0, 22}, 0 },
-  { {EExportCodec_names + 22, 19}, 1 },
-  { {EExportCodec_names + 41, 19}, 2 },
-};
-
-static const int EExportCodec_entries_by_number[] = {
-  0, // 0 -> k_EExportCodec_Default
-  1, // 1 -> k_EExportCodec_H264
-  2, // 2 -> k_EExportCodec_H265
-};
-
-const std::string& EExportCodec_Name(
-    EExportCodec value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EExportCodec_entries,
-          EExportCodec_entries_by_number,
-          3, EExportCodec_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EExportCodec_entries,
-      EExportCodec_entries_by_number,
-      3, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EExportCodec_strings[idx].get();
-}
-bool EExportCodec_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EExportCodec* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EExportCodec_entries, 3, name, &int_value);
-  if (success) {
-    *value = static_cast<EExportCodec>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EProtoAppType_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[65];
 }
 bool EProtoAppType_IsValid(int value) {
   switch (value) {
@@ -4543,100 +1999,9 @@ bool EProtoAppType_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EProtoAppType_strings[20] = {};
-
-static const char EProtoAppType_names[] =
-  "k_EAppTypeApplication"
-  "k_EAppTypeBeta"
-  "k_EAppTypeComic"
-  "k_EAppTypeConfig"
-  "k_EAppTypeDLC"
-  "k_EAppTypeDemo"
-  "k_EAppTypeDepotOnly"
-  "k_EAppTypeDeprected"
-  "k_EAppTypeDriver"
-  "k_EAppTypeFranchise"
-  "k_EAppTypeGame"
-  "k_EAppTypeGuide"
-  "k_EAppTypeHardware"
-  "k_EAppTypeInvalid"
-  "k_EAppTypeMusicAlbum"
-  "k_EAppTypePlugin"
-  "k_EAppTypeSeries"
-  "k_EAppTypeShortcut"
-  "k_EAppTypeTool"
-  "k_EAppTypeVideo";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EProtoAppType_entries[] = {
-  { {EProtoAppType_names + 0, 21}, 2 },
-  { {EProtoAppType_names + 21, 14}, 65536 },
-  { {EProtoAppType_names + 35, 15}, 32768 },
-  { {EProtoAppType_names + 50, 16}, 256 },
-  { {EProtoAppType_names + 66, 13}, 32 },
-  { {EProtoAppType_names + 79, 14}, 8 },
-  { {EProtoAppType_names + 93, 19}, -2147483648 },
-  { {EProtoAppType_names + 112, 19}, 16 },
-  { {EProtoAppType_names + 131, 16}, 128 },
-  { {EProtoAppType_names + 147, 19}, 1024 },
-  { {EProtoAppType_names + 166, 14}, 1 },
-  { {EProtoAppType_names + 180, 15}, 64 },
-  { {EProtoAppType_names + 195, 18}, 512 },
-  { {EProtoAppType_names + 213, 17}, 0 },
-  { {EProtoAppType_names + 230, 20}, 8192 },
-  { {EProtoAppType_names + 250, 16}, 4096 },
-  { {EProtoAppType_names + 266, 16}, 16384 },
-  { {EProtoAppType_names + 282, 18}, 1073741824 },
-  { {EProtoAppType_names + 300, 14}, 4 },
-  { {EProtoAppType_names + 314, 15}, 2048 },
-};
-
-static const int EProtoAppType_entries_by_number[] = {
-  6, // -2147483648 -> k_EAppTypeDepotOnly
-  13, // 0 -> k_EAppTypeInvalid
-  10, // 1 -> k_EAppTypeGame
-  0, // 2 -> k_EAppTypeApplication
-  18, // 4 -> k_EAppTypeTool
-  5, // 8 -> k_EAppTypeDemo
-  7, // 16 -> k_EAppTypeDeprected
-  4, // 32 -> k_EAppTypeDLC
-  11, // 64 -> k_EAppTypeGuide
-  8, // 128 -> k_EAppTypeDriver
-  3, // 256 -> k_EAppTypeConfig
-  12, // 512 -> k_EAppTypeHardware
-  9, // 1024 -> k_EAppTypeFranchise
-  19, // 2048 -> k_EAppTypeVideo
-  15, // 4096 -> k_EAppTypePlugin
-  14, // 8192 -> k_EAppTypeMusicAlbum
-  16, // 16384 -> k_EAppTypeSeries
-  2, // 32768 -> k_EAppTypeComic
-  1, // 65536 -> k_EAppTypeBeta
-  17, // 1073741824 -> k_EAppTypeShortcut
-};
-
-const std::string& EProtoAppType_Name(
-    EProtoAppType value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EProtoAppType_entries,
-          EProtoAppType_entries_by_number,
-          20, EProtoAppType_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EProtoAppType_entries,
-      EProtoAppType_entries_by_number,
-      20, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EProtoAppType_strings[idx].get();
-}
-bool EProtoAppType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EProtoAppType* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EProtoAppType_entries, 20, name, &int_value);
-  if (success) {
-    *value = static_cast<EProtoAppType>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EAppTestType_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[66];
 }
 bool EAppTestType_IsValid(int value) {
   switch (value) {
@@ -4654,64 +2019,9 @@ bool EAppTestType_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EAppTestType_strings[8] = {};
-
-static const char EAppTestType_names[] =
-  "k_EAppTestType_BuildReview"
-  "k_EAppTestType_SteamChinaPlatformOperator_BuildReview"
-  "k_EAppTestType_SteamChinaPlatformOperator_StorePageReview"
-  "k_EAppTestType_SteamChina_BuildReview"
-  "k_EAppTestType_SteamChina_StorePageReview"
-  "k_EAppTestType_SteamDeckCompatibilityReview"
-  "k_EAppTestType_SteamFrameCompatibilityReview"
-  "k_EAppTestType_StorePageReview";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EAppTestType_entries[] = {
-  { {EAppTestType_names + 0, 26}, 0 },
-  { {EAppTestType_names + 26, 53}, 5 },
-  { {EAppTestType_names + 79, 57}, 4 },
-  { {EAppTestType_names + 136, 37}, 2 },
-  { {EAppTestType_names + 173, 41}, 3 },
-  { {EAppTestType_names + 214, 43}, 6 },
-  { {EAppTestType_names + 257, 44}, 7 },
-  { {EAppTestType_names + 301, 30}, 1 },
-};
-
-static const int EAppTestType_entries_by_number[] = {
-  0, // 0 -> k_EAppTestType_BuildReview
-  7, // 1 -> k_EAppTestType_StorePageReview
-  3, // 2 -> k_EAppTestType_SteamChina_BuildReview
-  4, // 3 -> k_EAppTestType_SteamChina_StorePageReview
-  2, // 4 -> k_EAppTestType_SteamChinaPlatformOperator_StorePageReview
-  1, // 5 -> k_EAppTestType_SteamChinaPlatformOperator_BuildReview
-  5, // 6 -> k_EAppTestType_SteamDeckCompatibilityReview
-  6, // 7 -> k_EAppTestType_SteamFrameCompatibilityReview
-};
-
-const std::string& EAppTestType_Name(
-    EAppTestType value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EAppTestType_entries,
-          EAppTestType_entries_by_number,
-          8, EAppTestType_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EAppTestType_entries,
-      EAppTestType_entries_by_number,
-      8, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EAppTestType_strings[idx].get();
-}
-bool EAppTestType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EAppTestType* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EAppTestType_entries, 8, name, &int_value);
-  if (success) {
-    *value = static_cast<EAppTestType>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EChildProcessQueryCommand_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[67];
 }
 bool EChildProcessQueryCommand_IsValid(int value) {
   switch (value) {
@@ -4724,49 +2034,9 @@ bool EChildProcessQueryCommand_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EChildProcessQueryCommand_strings[3] = {};
-
-static const char EChildProcessQueryCommand_names[] =
-  "k_EChildProcessQueryCommand_GpuTopology"
-  "k_EChildProcessQueryCommand_Invalid"
-  "k_EChildProcessQueryCommand_Max";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EChildProcessQueryCommand_entries[] = {
-  { {EChildProcessQueryCommand_names + 0, 39}, 1 },
-  { {EChildProcessQueryCommand_names + 39, 35}, 0 },
-  { {EChildProcessQueryCommand_names + 74, 31}, 2 },
-};
-
-static const int EChildProcessQueryCommand_entries_by_number[] = {
-  1, // 0 -> k_EChildProcessQueryCommand_Invalid
-  0, // 1 -> k_EChildProcessQueryCommand_GpuTopology
-  2, // 2 -> k_EChildProcessQueryCommand_Max
-};
-
-const std::string& EChildProcessQueryCommand_Name(
-    EChildProcessQueryCommand value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EChildProcessQueryCommand_entries,
-          EChildProcessQueryCommand_entries_by_number,
-          3, EChildProcessQueryCommand_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EChildProcessQueryCommand_entries,
-      EChildProcessQueryCommand_entries_by_number,
-      3, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EChildProcessQueryCommand_strings[idx].get();
-}
-bool EChildProcessQueryCommand_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EChildProcessQueryCommand* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EChildProcessQueryCommand_entries, 3, name, &int_value);
-  if (success) {
-    *value = static_cast<EChildProcessQueryCommand>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EChildProcessQueryExitCode_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[68];
 }
 bool EChildProcessQueryExitCode_IsValid(int value) {
   switch (value) {
@@ -4782,58 +2052,9 @@ bool EChildProcessQueryExitCode_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EChildProcessQueryExitCode_strings[6] = {};
-
-static const char EChildProcessQueryExitCode_names[] =
-  "k_EChildProcessQueryExitCode_ErrorCommandline"
-  "k_EChildProcessQueryExitCode_ErrorFileSave"
-  "k_EChildProcessQueryExitCode_ErrorNotSupportedByPlatform"
-  "k_EChildProcessQueryExitCode_ErrorOther"
-  "k_EChildProcessQueryExitCode_ErrorUnimplemented"
-  "k_EChildProcessQueryExitCode_Success";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EChildProcessQueryExitCode_entries[] = {
-  { {EChildProcessQueryExitCode_names + 0, 45}, -1 },
-  { {EChildProcessQueryExitCode_names + 45, 42}, -4 },
-  { {EChildProcessQueryExitCode_names + 87, 56}, -5 },
-  { {EChildProcessQueryExitCode_names + 143, 39}, -2 },
-  { {EChildProcessQueryExitCode_names + 182, 47}, -3 },
-  { {EChildProcessQueryExitCode_names + 229, 36}, 0 },
-};
-
-static const int EChildProcessQueryExitCode_entries_by_number[] = {
-  2, // -5 -> k_EChildProcessQueryExitCode_ErrorNotSupportedByPlatform
-  1, // -4 -> k_EChildProcessQueryExitCode_ErrorFileSave
-  4, // -3 -> k_EChildProcessQueryExitCode_ErrorUnimplemented
-  3, // -2 -> k_EChildProcessQueryExitCode_ErrorOther
-  0, // -1 -> k_EChildProcessQueryExitCode_ErrorCommandline
-  5, // 0 -> k_EChildProcessQueryExitCode_Success
-};
-
-const std::string& EChildProcessQueryExitCode_Name(
-    EChildProcessQueryExitCode value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EChildProcessQueryExitCode_entries,
-          EChildProcessQueryExitCode_entries_by_number,
-          6, EChildProcessQueryExitCode_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EChildProcessQueryExitCode_entries,
-      EChildProcessQueryExitCode_entries_by_number,
-      6, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EChildProcessQueryExitCode_strings[idx].get();
-}
-bool EChildProcessQueryExitCode_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EChildProcessQueryExitCode* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EChildProcessQueryExitCode_entries, 6, name, &int_value);
-  if (success) {
-    *value = static_cast<EChildProcessQueryExitCode>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EWindowsUpdateInstallationImpact_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[69];
 }
 bool EWindowsUpdateInstallationImpact_IsValid(int value) {
   switch (value) {
@@ -4847,52 +2068,9 @@ bool EWindowsUpdateInstallationImpact_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EWindowsUpdateInstallationImpact_strings[4] = {};
-
-static const char EWindowsUpdateInstallationImpact_names[] =
-  "k_EWindowsUpdateInstallationImpact_ExclusiveHandling"
-  "k_EWindowsUpdateInstallationImpact_Minor"
-  "k_EWindowsUpdateInstallationImpact_Normal"
-  "k_EWindowsUpdateInstallationImpact_Unknown";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EWindowsUpdateInstallationImpact_entries[] = {
-  { {EWindowsUpdateInstallationImpact_names + 0, 52}, 2 },
-  { {EWindowsUpdateInstallationImpact_names + 52, 40}, 1 },
-  { {EWindowsUpdateInstallationImpact_names + 92, 41}, 0 },
-  { {EWindowsUpdateInstallationImpact_names + 133, 42}, -1 },
-};
-
-static const int EWindowsUpdateInstallationImpact_entries_by_number[] = {
-  3, // -1 -> k_EWindowsUpdateInstallationImpact_Unknown
-  2, // 0 -> k_EWindowsUpdateInstallationImpact_Normal
-  1, // 1 -> k_EWindowsUpdateInstallationImpact_Minor
-  0, // 2 -> k_EWindowsUpdateInstallationImpact_ExclusiveHandling
-};
-
-const std::string& EWindowsUpdateInstallationImpact_Name(
-    EWindowsUpdateInstallationImpact value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EWindowsUpdateInstallationImpact_entries,
-          EWindowsUpdateInstallationImpact_entries_by_number,
-          4, EWindowsUpdateInstallationImpact_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EWindowsUpdateInstallationImpact_entries,
-      EWindowsUpdateInstallationImpact_entries_by_number,
-      4, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EWindowsUpdateInstallationImpact_strings[idx].get();
-}
-bool EWindowsUpdateInstallationImpact_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EWindowsUpdateInstallationImpact* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EWindowsUpdateInstallationImpact_entries, 4, name, &int_value);
-  if (success) {
-    *value = static_cast<EWindowsUpdateInstallationImpact>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EWindowsUpdateRebootBehavior_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[70];
 }
 bool EWindowsUpdateRebootBehavior_IsValid(int value) {
   switch (value) {
@@ -4906,52 +2084,9 @@ bool EWindowsUpdateRebootBehavior_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EWindowsUpdateRebootBehavior_strings[4] = {};
-
-static const char EWindowsUpdateRebootBehavior_names[] =
-  "k_EWindowsUpdateRebootBehavior_AlwaysNeedsReboot"
-  "k_EWindowsUpdateRebootBehavior_MightNeedReboot"
-  "k_EWindowsUpdateRebootBehavior_NeverNeedsReboot"
-  "k_EWindowsUpdateRebootBehavior_Unknown";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EWindowsUpdateRebootBehavior_entries[] = {
-  { {EWindowsUpdateRebootBehavior_names + 0, 48}, 1 },
-  { {EWindowsUpdateRebootBehavior_names + 48, 46}, 2 },
-  { {EWindowsUpdateRebootBehavior_names + 94, 47}, 0 },
-  { {EWindowsUpdateRebootBehavior_names + 141, 38}, -1 },
-};
-
-static const int EWindowsUpdateRebootBehavior_entries_by_number[] = {
-  3, // -1 -> k_EWindowsUpdateRebootBehavior_Unknown
-  2, // 0 -> k_EWindowsUpdateRebootBehavior_NeverNeedsReboot
-  0, // 1 -> k_EWindowsUpdateRebootBehavior_AlwaysNeedsReboot
-  1, // 2 -> k_EWindowsUpdateRebootBehavior_MightNeedReboot
-};
-
-const std::string& EWindowsUpdateRebootBehavior_Name(
-    EWindowsUpdateRebootBehavior value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EWindowsUpdateRebootBehavior_entries,
-          EWindowsUpdateRebootBehavior_entries_by_number,
-          4, EWindowsUpdateRebootBehavior_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EWindowsUpdateRebootBehavior_entries,
-      EWindowsUpdateRebootBehavior_entries_by_number,
-      4, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EWindowsUpdateRebootBehavior_strings[idx].get();
-}
-bool EWindowsUpdateRebootBehavior_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EWindowsUpdateRebootBehavior* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EWindowsUpdateRebootBehavior_entries, 4, name, &int_value);
-  if (success) {
-    *value = static_cast<EWindowsUpdateRebootBehavior>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EExternalSaleEventType_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[71];
 }
 bool EExternalSaleEventType_IsValid(int value) {
   switch (value) {
@@ -4967,58 +2102,9 @@ bool EExternalSaleEventType_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EExternalSaleEventType_strings[6] = {};
-
-static const char EExternalSaleEventType_names[] =
-  "k_EExternalSaleEventType_Franchise"
-  "k_EExternalSaleEventType_Publisher"
-  "k_EExternalSaleEventType_Region"
-  "k_EExternalSaleEventType_Showcase"
-  "k_EExternalSaleEventType_Theme"
-  "k_EExternalSaleEventType_Unknown";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EExternalSaleEventType_entries[] = {
-  { {EExternalSaleEventType_names + 0, 34}, 5 },
-  { {EExternalSaleEventType_names + 34, 34}, 1 },
-  { {EExternalSaleEventType_names + 68, 31}, 3 },
-  { {EExternalSaleEventType_names + 99, 33}, 2 },
-  { {EExternalSaleEventType_names + 132, 30}, 4 },
-  { {EExternalSaleEventType_names + 162, 32}, 0 },
-};
-
-static const int EExternalSaleEventType_entries_by_number[] = {
-  5, // 0 -> k_EExternalSaleEventType_Unknown
-  1, // 1 -> k_EExternalSaleEventType_Publisher
-  3, // 2 -> k_EExternalSaleEventType_Showcase
-  2, // 3 -> k_EExternalSaleEventType_Region
-  4, // 4 -> k_EExternalSaleEventType_Theme
-  0, // 5 -> k_EExternalSaleEventType_Franchise
-};
-
-const std::string& EExternalSaleEventType_Name(
-    EExternalSaleEventType value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EExternalSaleEventType_entries,
-          EExternalSaleEventType_entries_by_number,
-          6, EExternalSaleEventType_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EExternalSaleEventType_entries,
-      EExternalSaleEventType_entries_by_number,
-      6, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EExternalSaleEventType_strings[idx].get();
-}
-bool EExternalSaleEventType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EExternalSaleEventType* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EExternalSaleEventType_entries, 6, name, &int_value);
-  if (success) {
-    *value = static_cast<EExternalSaleEventType>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EEnhancedMarketAppearanceStatus_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[72];
 }
 bool EEnhancedMarketAppearanceStatus_IsValid(int value) {
   switch (value) {
@@ -5032,52 +2118,9 @@ bool EEnhancedMarketAppearanceStatus_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EEnhancedMarketAppearanceStatus_strings[4] = {};
-
-static const char EEnhancedMarketAppearanceStatus_names[] =
-  "k_EnhancedMarketAppearanceStatus_Completed"
-  "k_EnhancedMarketAppearanceStatus_InProgress"
-  "k_EnhancedMarketAppearanceStatus_None"
-  "k_EnhancedMarketAppearanceStatus_Pending";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EEnhancedMarketAppearanceStatus_entries[] = {
-  { {EEnhancedMarketAppearanceStatus_names + 0, 42}, 3 },
-  { {EEnhancedMarketAppearanceStatus_names + 42, 43}, 2 },
-  { {EEnhancedMarketAppearanceStatus_names + 85, 37}, 0 },
-  { {EEnhancedMarketAppearanceStatus_names + 122, 40}, 1 },
-};
-
-static const int EEnhancedMarketAppearanceStatus_entries_by_number[] = {
-  2, // 0 -> k_EnhancedMarketAppearanceStatus_None
-  3, // 1 -> k_EnhancedMarketAppearanceStatus_Pending
-  1, // 2 -> k_EnhancedMarketAppearanceStatus_InProgress
-  0, // 3 -> k_EnhancedMarketAppearanceStatus_Completed
-};
-
-const std::string& EEnhancedMarketAppearanceStatus_Name(
-    EEnhancedMarketAppearanceStatus value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EEnhancedMarketAppearanceStatus_entries,
-          EEnhancedMarketAppearanceStatus_entries_by_number,
-          4, EEnhancedMarketAppearanceStatus_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EEnhancedMarketAppearanceStatus_entries,
-      EEnhancedMarketAppearanceStatus_entries_by_number,
-      4, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EEnhancedMarketAppearanceStatus_strings[idx].get();
-}
-bool EEnhancedMarketAppearanceStatus_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EEnhancedMarketAppearanceStatus* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EEnhancedMarketAppearanceStatus_entries, 4, name, &int_value);
-  if (success) {
-    *value = static_cast<EEnhancedMarketAppearanceStatus>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EContentReportSubjectType_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[73];
 }
 bool EContentReportSubjectType_IsValid(int value) {
   switch (value) {
@@ -5095,64 +2138,9 @@ bool EContentReportSubjectType_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EContentReportSubjectType_strings[8] = {};
-
-static const char EContentReportSubjectType_names[] =
-  "k_EContentReportSubjectType_ChatGroup"
-  "k_EContentReportSubjectType_ChatRoomMsg"
-  "k_EContentReportSubjectType_CommentThread"
-  "k_EContentReportSubjectType_ForumPost"
-  "k_EContentReportSubjectType_FriendChatMsg"
-  "k_EContentReportSubjectType_Invalid"
-  "k_EContentReportSubjectType_MAX"
-  "k_EContentReportSubjectType_UGCFile";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EContentReportSubjectType_entries[] = {
-  { {EContentReportSubjectType_names + 0, 37}, 6 },
-  { {EContentReportSubjectType_names + 37, 39}, 5 },
-  { {EContentReportSubjectType_names + 76, 41}, 2 },
-  { {EContentReportSubjectType_names + 117, 37}, 1 },
-  { {EContentReportSubjectType_names + 154, 41}, 4 },
-  { {EContentReportSubjectType_names + 195, 35}, 0 },
-  { {EContentReportSubjectType_names + 230, 31}, 7 },
-  { {EContentReportSubjectType_names + 261, 35}, 3 },
-};
-
-static const int EContentReportSubjectType_entries_by_number[] = {
-  5, // 0 -> k_EContentReportSubjectType_Invalid
-  3, // 1 -> k_EContentReportSubjectType_ForumPost
-  2, // 2 -> k_EContentReportSubjectType_CommentThread
-  7, // 3 -> k_EContentReportSubjectType_UGCFile
-  4, // 4 -> k_EContentReportSubjectType_FriendChatMsg
-  1, // 5 -> k_EContentReportSubjectType_ChatRoomMsg
-  0, // 6 -> k_EContentReportSubjectType_ChatGroup
-  6, // 7 -> k_EContentReportSubjectType_MAX
-};
-
-const std::string& EContentReportSubjectType_Name(
-    EContentReportSubjectType value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EContentReportSubjectType_entries,
-          EContentReportSubjectType_entries_by_number,
-          8, EContentReportSubjectType_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EContentReportSubjectType_entries,
-      EContentReportSubjectType_entries_by_number,
-      8, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EContentReportSubjectType_strings[idx].get();
-}
-bool EContentReportSubjectType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EContentReportSubjectType* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EContentReportSubjectType_entries, 8, name, &int_value);
-  if (success) {
-    *value = static_cast<EContentReportSubjectType>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EControlledLegalCategoryStatus_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[74];
 }
 bool EControlledLegalCategoryStatus_IsValid(int value) {
   switch (value) {
@@ -5166,52 +2154,9 @@ bool EControlledLegalCategoryStatus_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EControlledLegalCategoryStatus_strings[4] = {};
-
-static const char EControlledLegalCategoryStatus_names[] =
-  "k_EControlledLegalCategoryStatus_Accused"
-  "k_EControlledLegalCategoryStatus_Acquitted"
-  "k_EControlledLegalCategoryStatus_Convicted"
-  "k_EControlledLegalCategoryStatus_None";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EControlledLegalCategoryStatus_entries[] = {
-  { {EControlledLegalCategoryStatus_names + 0, 40}, 1 },
-  { {EControlledLegalCategoryStatus_names + 40, 42}, 3 },
-  { {EControlledLegalCategoryStatus_names + 82, 42}, 2 },
-  { {EControlledLegalCategoryStatus_names + 124, 37}, 0 },
-};
-
-static const int EControlledLegalCategoryStatus_entries_by_number[] = {
-  3, // 0 -> k_EControlledLegalCategoryStatus_None
-  0, // 1 -> k_EControlledLegalCategoryStatus_Accused
-  2, // 2 -> k_EControlledLegalCategoryStatus_Convicted
-  1, // 3 -> k_EControlledLegalCategoryStatus_Acquitted
-};
-
-const std::string& EControlledLegalCategoryStatus_Name(
-    EControlledLegalCategoryStatus value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EControlledLegalCategoryStatus_entries,
-          EControlledLegalCategoryStatus_entries_by_number,
-          4, EControlledLegalCategoryStatus_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EControlledLegalCategoryStatus_entries,
-      EControlledLegalCategoryStatus_entries_by_number,
-      4, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EControlledLegalCategoryStatus_strings[idx].get();
-}
-bool EControlledLegalCategoryStatus_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EControlledLegalCategoryStatus* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EControlledLegalCategoryStatus_entries, 4, name, &int_value);
-  if (success) {
-    *value = static_cast<EControlledLegalCategoryStatus>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EContentModeratorLevel_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[75];
 }
 bool EContentModeratorLevel_IsValid(int value) {
   switch (value) {
@@ -5225,52 +2170,9 @@ bool EContentModeratorLevel_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EContentModeratorLevel_strings[4] = {};
-
-static const char EContentModeratorLevel_names[] =
-  "k_EContentModeratorLevel_Any"
-  "k_EContentModeratorLevel_MAX"
-  "k_EContentModeratorLevel_Supervisor"
-  "k_EContentModeratorLevel_Valve";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EContentModeratorLevel_entries[] = {
-  { {EContentModeratorLevel_names + 0, 28}, 0 },
-  { {EContentModeratorLevel_names + 28, 28}, 11 },
-  { {EContentModeratorLevel_names + 56, 35}, 1 },
-  { {EContentModeratorLevel_names + 91, 30}, 10 },
-};
-
-static const int EContentModeratorLevel_entries_by_number[] = {
-  0, // 0 -> k_EContentModeratorLevel_Any
-  2, // 1 -> k_EContentModeratorLevel_Supervisor
-  3, // 10 -> k_EContentModeratorLevel_Valve
-  1, // 11 -> k_EContentModeratorLevel_MAX
-};
-
-const std::string& EContentModeratorLevel_Name(
-    EContentModeratorLevel value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EContentModeratorLevel_entries,
-          EContentModeratorLevel_entries_by_number,
-          4, EContentModeratorLevel_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EContentModeratorLevel_entries,
-      EContentModeratorLevel_entries_by_number,
-      4, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EContentModeratorLevel_strings[idx].get();
-}
-bool EContentModeratorLevel_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EContentModeratorLevel* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EContentModeratorLevel_entries, 4, name, &int_value);
-  if (success) {
-    *value = static_cast<EContentModeratorLevel>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EContentReportResolution_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[76];
 }
 bool EContentReportResolution_IsValid(int value) {
   switch (value) {
@@ -5298,94 +2200,9 @@ bool EContentReportResolution_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EContentReportResolution_strings[18] = {};
-
-static const char EContentReportResolution_names[] =
-  "k_EContentReportResolution_Acquitted"
-  "k_EContentReportResolution_Broken"
-  "k_EContentReportResolution_CountryRestrictionsChanged"
-  "k_EContentReportResolution_DisconnectedFromApp"
-  "k_EContentReportResolution_HarassmentStrike"
-  "k_EContentReportResolution_MAX"
-  "k_EContentReportResolution_Purged"
-  "k_EContentReportResolution_Relabelled"
-  "k_EContentReportResolution_RemoveAndBan"
-  "k_EContentReportResolution_RemoveAndKick"
-  "k_EContentReportResolution_RemoveAndWarn"
-  "k_EContentReportResolution_Removed"
-  "k_EContentReportResolution_Sanctioned"
-  "k_EContentReportResolution_Suspicious"
-  "k_EContentReportResolution_SuspiciousIncludingUpvoters"
-  "k_EContentReportResolution_Sustained"
-  "k_EContentReportResolution_Unresolved"
-  "k_EContentReportResolution_VisibilityChanged";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EContentReportResolution_entries[] = {
-  { {EContentReportResolution_names + 0, 36}, 1 },
-  { {EContentReportResolution_names + 36, 33}, 16 },
-  { {EContentReportResolution_names + 69, 53}, 10 },
-  { {EContentReportResolution_names + 122, 46}, 7 },
-  { {EContentReportResolution_names + 168, 43}, 5 },
-  { {EContentReportResolution_names + 211, 30}, 17 },
-  { {EContentReportResolution_names + 241, 33}, 6 },
-  { {EContentReportResolution_names + 274, 37}, 3 },
-  { {EContentReportResolution_names + 311, 39}, 12 },
-  { {EContentReportResolution_names + 350, 40}, 13 },
-  { {EContentReportResolution_names + 390, 40}, 11 },
-  { {EContentReportResolution_names + 430, 34}, 2 },
-  { {EContentReportResolution_names + 464, 37}, 14 },
-  { {EContentReportResolution_names + 501, 37}, 4 },
-  { {EContentReportResolution_names + 538, 54}, 8 },
-  { {EContentReportResolution_names + 592, 36}, 15 },
-  { {EContentReportResolution_names + 628, 37}, 0 },
-  { {EContentReportResolution_names + 665, 44}, 9 },
-};
-
-static const int EContentReportResolution_entries_by_number[] = {
-  16, // 0 -> k_EContentReportResolution_Unresolved
-  0, // 1 -> k_EContentReportResolution_Acquitted
-  11, // 2 -> k_EContentReportResolution_Removed
-  7, // 3 -> k_EContentReportResolution_Relabelled
-  13, // 4 -> k_EContentReportResolution_Suspicious
-  4, // 5 -> k_EContentReportResolution_HarassmentStrike
-  6, // 6 -> k_EContentReportResolution_Purged
-  3, // 7 -> k_EContentReportResolution_DisconnectedFromApp
-  14, // 8 -> k_EContentReportResolution_SuspiciousIncludingUpvoters
-  17, // 9 -> k_EContentReportResolution_VisibilityChanged
-  2, // 10 -> k_EContentReportResolution_CountryRestrictionsChanged
-  10, // 11 -> k_EContentReportResolution_RemoveAndWarn
-  8, // 12 -> k_EContentReportResolution_RemoveAndBan
-  9, // 13 -> k_EContentReportResolution_RemoveAndKick
-  12, // 14 -> k_EContentReportResolution_Sanctioned
-  15, // 15 -> k_EContentReportResolution_Sustained
-  1, // 16 -> k_EContentReportResolution_Broken
-  5, // 17 -> k_EContentReportResolution_MAX
-};
-
-const std::string& EContentReportResolution_Name(
-    EContentReportResolution value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EContentReportResolution_entries,
-          EContentReportResolution_entries_by_number,
-          18, EContentReportResolution_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EContentReportResolution_entries,
-      EContentReportResolution_entries_by_number,
-      18, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EContentReportResolution_strings[idx].get();
-}
-bool EContentReportResolution_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EContentReportResolution* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EContentReportResolution_entries, 18, name, &int_value);
-  if (success) {
-    *value = static_cast<EContentReportResolution>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EContentModerationSanction_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[77];
 }
 bool EContentModerationSanction_IsValid(int value) {
   switch (value) {
@@ -5407,76 +2224,9 @@ bool EContentModerationSanction_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EContentModerationSanction_strings[12] = {};
-
-static const char EContentModerationSanction_names[] =
-  "k_EContentModerationSanction_CommentHistoryDeleted"
-  "k_EContentModerationSanction_CommunityBanned"
-  "k_EContentModerationSanction_Deleted"
-  "k_EContentModerationSanction_HarassmentBanned"
-  "k_EContentModerationSanction_HubBanned"
-  "k_EContentModerationSanction_Invalid"
-  "k_EContentModerationSanction_KickedFromGroup"
-  "k_EContentModerationSanction_MAX"
-  "k_EContentModerationSanction_MarkAsSuspicious"
-  "k_EContentModerationSanction_Relabelled"
-  "k_EContentModerationSanction_TradeBanned"
-  "k_EContentModerationSanction_Warned";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EContentModerationSanction_entries[] = {
-  { {EContentModerationSanction_names + 0, 50}, 5 },
-  { {EContentModerationSanction_names + 50, 44}, 2 },
-  { {EContentModerationSanction_names + 94, 36}, 1 },
-  { {EContentModerationSanction_names + 130, 45}, 10 },
-  { {EContentModerationSanction_names + 175, 38}, 3 },
-  { {EContentModerationSanction_names + 213, 36}, 0 },
-  { {EContentModerationSanction_names + 249, 44}, 9 },
-  { {EContentModerationSanction_names + 293, 32}, 11 },
-  { {EContentModerationSanction_names + 325, 45}, 7 },
-  { {EContentModerationSanction_names + 370, 39}, 6 },
-  { {EContentModerationSanction_names + 409, 40}, 4 },
-  { {EContentModerationSanction_names + 449, 35}, 8 },
-};
-
-static const int EContentModerationSanction_entries_by_number[] = {
-  5, // 0 -> k_EContentModerationSanction_Invalid
-  2, // 1 -> k_EContentModerationSanction_Deleted
-  1, // 2 -> k_EContentModerationSanction_CommunityBanned
-  4, // 3 -> k_EContentModerationSanction_HubBanned
-  10, // 4 -> k_EContentModerationSanction_TradeBanned
-  0, // 5 -> k_EContentModerationSanction_CommentHistoryDeleted
-  9, // 6 -> k_EContentModerationSanction_Relabelled
-  8, // 7 -> k_EContentModerationSanction_MarkAsSuspicious
-  11, // 8 -> k_EContentModerationSanction_Warned
-  6, // 9 -> k_EContentModerationSanction_KickedFromGroup
-  3, // 10 -> k_EContentModerationSanction_HarassmentBanned
-  7, // 11 -> k_EContentModerationSanction_MAX
-};
-
-const std::string& EContentModerationSanction_Name(
-    EContentModerationSanction value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EContentModerationSanction_entries,
-          EContentModerationSanction_entries_by_number,
-          12, EContentModerationSanction_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EContentModerationSanction_entries,
-      EContentModerationSanction_entries_by_number,
-      12, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EContentModerationSanction_strings[idx].get();
-}
-bool EContentModerationSanction_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EContentModerationSanction* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EContentModerationSanction_entries, 12, name, &int_value);
-  if (success) {
-    *value = static_cast<EContentModerationSanction>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EContentReportSubjectAction_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[78];
 }
 bool EContentReportSubjectAction_IsValid(int value) {
   switch (value) {
@@ -5510,112 +2260,9 @@ bool EContentReportSubjectAction_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EContentReportSubjectAction_strings[24] = {};
-
-static const char EContentReportSubjectAction_names[] =
-  "k_EContentReportSubjectAction_Acquitted"
-  "k_EContentReportSubjectAction_BannedFromCommunity"
-  "k_EContentReportSubjectAction_BannedFromHub"
-  "k_EContentReportSubjectAction_Cancelled"
-  "k_EContentReportSubjectAction_Claimed"
-  "k_EContentReportSubjectAction_Deleted"
-  "k_EContentReportSubjectAction_Disputed"
-  "k_EContentReportSubjectAction_Escalated"
-  "k_EContentReportSubjectAction_EscalatedForCSAM"
-  "k_EContentReportSubjectAction_EscalatedForTerrorism"
-  "k_EContentReportSubjectAction_Invalid"
-  "k_EContentReportSubjectAction_Locked"
-  "k_EContentReportSubjectAction_MarkedAsSuspicious"
-  "k_EContentReportSubjectAction_OwnerDisputed"
-  "k_EContentReportSubjectAction_PrivateMessaged"
-  "k_EContentReportSubjectAction_Released"
-  "k_EContentReportSubjectAction_ResetContent"
-  "k_EContentReportSubjectAction_Sanctioned"
-  "k_EContentReportSubjectAction_Sustained"
-  "k_EContentReportSubjectAction_TradeBanned"
-  "k_EContentReportSubjectAction_Unlocked"
-  "k_EContentReportSubjectAction_Unresolved"
-  "k_EContentReportSubjectAction_Updated"
-  "k_EContentReportSubjectAction_Warned";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EContentReportSubjectAction_entries[] = {
-  { {EContentReportSubjectAction_names + 0, 39}, 3 },
-  { {EContentReportSubjectAction_names + 39, 49}, 14 },
-  { {EContentReportSubjectAction_names + 88, 43}, 13 },
-  { {EContentReportSubjectAction_names + 131, 39}, 4 },
-  { {EContentReportSubjectAction_names + 170, 37}, 20 },
-  { {EContentReportSubjectAction_names + 207, 37}, 11 },
-  { {EContentReportSubjectAction_names + 244, 38}, 7 },
-  { {EContentReportSubjectAction_names + 282, 39}, 6 },
-  { {EContentReportSubjectAction_names + 321, 46}, 18 },
-  { {EContentReportSubjectAction_names + 367, 51}, 19 },
-  { {EContentReportSubjectAction_names + 418, 37}, 0 },
-  { {EContentReportSubjectAction_names + 455, 36}, 9 },
-  { {EContentReportSubjectAction_names + 491, 48}, 16 },
-  { {EContentReportSubjectAction_names + 539, 43}, 23 },
-  { {EContentReportSubjectAction_names + 582, 45}, 22 },
-  { {EContentReportSubjectAction_names + 627, 38}, 21 },
-  { {EContentReportSubjectAction_names + 665, 42}, 17 },
-  { {EContentReportSubjectAction_names + 707, 40}, 2 },
-  { {EContentReportSubjectAction_names + 747, 39}, 8 },
-  { {EContentReportSubjectAction_names + 786, 41}, 15 },
-  { {EContentReportSubjectAction_names + 827, 38}, 10 },
-  { {EContentReportSubjectAction_names + 865, 40}, 1 },
-  { {EContentReportSubjectAction_names + 905, 37}, 5 },
-  { {EContentReportSubjectAction_names + 942, 36}, 12 },
-};
-
-static const int EContentReportSubjectAction_entries_by_number[] = {
-  10, // 0 -> k_EContentReportSubjectAction_Invalid
-  21, // 1 -> k_EContentReportSubjectAction_Unresolved
-  17, // 2 -> k_EContentReportSubjectAction_Sanctioned
-  0, // 3 -> k_EContentReportSubjectAction_Acquitted
-  3, // 4 -> k_EContentReportSubjectAction_Cancelled
-  22, // 5 -> k_EContentReportSubjectAction_Updated
-  7, // 6 -> k_EContentReportSubjectAction_Escalated
-  6, // 7 -> k_EContentReportSubjectAction_Disputed
-  18, // 8 -> k_EContentReportSubjectAction_Sustained
-  11, // 9 -> k_EContentReportSubjectAction_Locked
-  20, // 10 -> k_EContentReportSubjectAction_Unlocked
-  5, // 11 -> k_EContentReportSubjectAction_Deleted
-  23, // 12 -> k_EContentReportSubjectAction_Warned
-  2, // 13 -> k_EContentReportSubjectAction_BannedFromHub
-  1, // 14 -> k_EContentReportSubjectAction_BannedFromCommunity
-  19, // 15 -> k_EContentReportSubjectAction_TradeBanned
-  12, // 16 -> k_EContentReportSubjectAction_MarkedAsSuspicious
-  16, // 17 -> k_EContentReportSubjectAction_ResetContent
-  8, // 18 -> k_EContentReportSubjectAction_EscalatedForCSAM
-  9, // 19 -> k_EContentReportSubjectAction_EscalatedForTerrorism
-  4, // 20 -> k_EContentReportSubjectAction_Claimed
-  15, // 21 -> k_EContentReportSubjectAction_Released
-  14, // 22 -> k_EContentReportSubjectAction_PrivateMessaged
-  13, // 23 -> k_EContentReportSubjectAction_OwnerDisputed
-};
-
-const std::string& EContentReportSubjectAction_Name(
-    EContentReportSubjectAction value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EContentReportSubjectAction_entries,
-          EContentReportSubjectAction_entries_by_number,
-          24, EContentReportSubjectAction_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EContentReportSubjectAction_entries,
-      EContentReportSubjectAction_entries_by_number,
-      24, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EContentReportSubjectAction_strings[idx].get();
-}
-bool EContentReportSubjectAction_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EContentReportSubjectAction* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EContentReportSubjectAction_entries, 24, name, &int_value);
-  if (success) {
-    *value = static_cast<EContentReportSubjectAction>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EContentReportReason_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[79];
 }
 bool EContentReportReason_IsValid(int value) {
   switch (value) {
@@ -5691,238 +2338,9 @@ bool EContentReportReason_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EContentReportReason_strings[66] = {};
-
-static const char EContentReportReason_names[] =
-  "k_EContentReportReason_Advertising"
-  "k_EContentReportReason_AttemptedScamming"
-  "k_EContentReportReason_AutoCreatedOnModeration"
-  "k_EContentReportReason_Baiting"
-  "k_EContentReportReason_Begging"
-  "k_EContentReportReason_BullyingAndIntimidation"
-  "k_EContentReportReason_CSAMFakedSexualContent"
-  "k_EContentReportReason_CSAMGroomingOrEnticement"
-  "k_EContentReportReason_CSAMOther"
-  "k_EContentReportReason_CSAMSexualContent"
-  "k_EContentReportReason_CredibleThreatOfViolence"
-  "k_EContentReportReason_Derailing"
-  "k_EContentReportReason_Discrimination"
-  "k_EContentReportReason_Doxxing"
-  "k_EContentReportReason_EncouragingSelfHarm"
-  "k_EContentReportReason_EncouragingSuicide"
-  "k_EContentReportReason_EncouragingTerrorism"
-  "k_EContentReportReason_EncouragingViolence"
-  "k_EContentReportReason_FakedGenderedNonConsensualMaterial"
-  "k_EContentReportReason_FakedNonConsensualMaterial"
-  "k_EContentReportReason_Gambling"
-  "k_EContentReportReason_GenderedBullyingAndIntimidation"
-  "k_EContentReportReason_GenderedDoxxing"
-  "k_EContentReportReason_GenderedEncouragingViolence"
-  "k_EContentReportReason_GenderedHarassment"
-  "k_EContentReportReason_GenderedNonConsensualMaterial"
-  "k_EContentReportReason_GenderedOtherHarassment"
-  "k_EContentReportReason_GenderedStalking"
-  "k_EContentReportReason_GenderedTargetedAbuse"
-  "k_EContentReportReason_Harassment"
-  "k_EContentReportReason_HiddenAdvertisementOrCommercialCommunication"
-  "k_EContentReportReason_Impersonation"
-  "k_EContentReportReason_InauthenticReview"
-  "k_EContentReportReason_Invalid"
-  "k_EContentReportReason_LinkingToMaliciousContent"
-  "k_EContentReportReason_MAX"
-  "k_EContentReportReason_MisleadingInformationAboutConsumerRights"
-  "k_EContentReportReason_MisleadingInformationAboutGoodsOrServices"
-  "k_EContentReportReason_MissingProcessingGroundForData"
-  "k_EContentReportReason_NamingAndShaming"
-  "k_EContentReportReason_NegativeEffectonDiscourseOrElections"
-  "k_EContentReportReason_NonConsensualMaterial"
-  "k_EContentReportReason_NoncomplianceWithPricingRegulations"
-  "k_EContentReportReason_None"
-  "k_EContentReportReason_NudityOrSexualContent"
-  "k_EContentReportReason_OrganizingTerrorism"
-  "k_EContentReportReason_OtherAbuse"
-  "k_EContentReportReason_OtherCommercialActivity"
-  "k_EContentReportReason_OtherDataProtectionAndPrivacyViolation"
-  "k_EContentReportReason_OtherDisruptive"
-  "k_EContentReportReason_OtherHarassment"
-  "k_EContentReportReason_OtherOffTopic"
-  "k_EContentReportReason_OtherScamsAndTheft"
-  "k_EContentReportReason_OtherTerrorism"
-  "k_EContentReportReason_OtherViolenceOrSelfHarm"
-  "k_EContentReportReason_PhishingOrAccountTheft"
-  "k_EContentReportReason_QuotesModeratedContent"
-  "k_EContentReportReason_Raffles"
-  "k_EContentReportReason_ReferralLinks"
-  "k_EContentReportReason_Reposting"
-  "k_EContentReportReason_RightToBeForgottenViolation"
-  "k_EContentReportReason_Spam"
-  "k_EContentReportReason_Stalking"
-  "k_EContentReportReason_TargetedAbuse"
-  "k_EContentReportReason_Trolling"
-  "k_EContentReportReason_Unknown";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EContentReportReason_entries[] = {
-  { {EContentReportReason_names + 0, 34}, 37 },
-  { {EContentReportReason_names + 34, 40}, 13 },
-  { {EContentReportReason_names + 74, 46}, 64 },
-  { {EContentReportReason_names + 120, 30}, 25 },
-  { {EContentReportReason_names + 150, 30}, 29 },
-  { {EContentReportReason_names + 180, 46}, 4 },
-  { {EContentReportReason_names + 226, 45}, 57 },
-  { {EContentReportReason_names + 271, 47}, 33 },
-  { {EContentReportReason_names + 318, 32}, 34 },
-  { {EContentReportReason_names + 350, 40}, 32 },
-  { {EContentReportReason_names + 390, 47}, 63 },
-  { {EContentReportReason_names + 437, 32}, 26 },
-  { {EContentReportReason_names + 469, 37}, 22 },
-  { {EContentReportReason_names + 506, 30}, 6 },
-  { {EContentReportReason_names + 536, 42}, 9 },
-  { {EContentReportReason_names + 578, 41}, 10 },
-  { {EContentReportReason_names + 619, 43}, 17 },
-  { {EContentReportReason_names + 662, 42}, 8 },
-  { {EContentReportReason_names + 704, 57}, 59 },
-  { {EContentReportReason_names + 761, 49}, 60 },
-  { {EContentReportReason_names + 810, 31}, 39 },
-  { {EContentReportReason_names + 841, 54}, 51 },
-  { {EContentReportReason_names + 895, 38}, 53 },
-  { {EContentReportReason_names + 933, 50}, 55 },
-  { {EContentReportReason_names + 983, 41}, 50 },
-  { {EContentReportReason_names + 1024, 52}, 58 },
-  { {EContentReportReason_names + 1076, 46}, 54 },
-  { {EContentReportReason_names + 1122, 39}, 52 },
-  { {EContentReportReason_names + 1161, 44}, 56 },
-  { {EContentReportReason_names + 1205, 33}, 3 },
-  { {EContentReportReason_names + 1238, 67}, 43 },
-  { {EContentReportReason_names + 1305, 36}, 15 },
-  { {EContentReportReason_names + 1341, 40}, 42 },
-  { {EContentReportReason_names + 1381, 30}, 0 },
-  { {EContentReportReason_names + 1411, 48}, 14 },
-  { {EContentReportReason_names + 1459, 26}, 65 },
-  { {EContentReportReason_names + 1485, 63}, 45 },
-  { {EContentReportReason_names + 1548, 64}, 44 },
-  { {EContentReportReason_names + 1612, 53}, 48 },
-  { {EContentReportReason_names + 1665, 39}, 21 },
-  { {EContentReportReason_names + 1704, 59}, 61 },
-  { {EContentReportReason_names + 1763, 44}, 36 },
-  { {EContentReportReason_names + 1807, 58}, 46 },
-  { {EContentReportReason_names + 1865, 27}, 1 },
-  { {EContentReportReason_names + 1892, 44}, 35 },
-  { {EContentReportReason_names + 1936, 42}, 18 },
-  { {EContentReportReason_names + 1978, 33}, 23 },
-  { {EContentReportReason_names + 2011, 46}, 41 },
-  { {EContentReportReason_names + 2057, 61}, 49 },
-  { {EContentReportReason_names + 2118, 38}, 27 },
-  { {EContentReportReason_names + 2156, 38}, 7 },
-  { {EContentReportReason_names + 2194, 36}, 31 },
-  { {EContentReportReason_names + 2230, 41}, 16 },
-  { {EContentReportReason_names + 2271, 37}, 19 },
-  { {EContentReportReason_names + 2308, 46}, 11 },
-  { {EContentReportReason_names + 2354, 45}, 12 },
-  { {EContentReportReason_names + 2399, 45}, 62 },
-  { {EContentReportReason_names + 2444, 30}, 40 },
-  { {EContentReportReason_names + 2474, 36}, 38 },
-  { {EContentReportReason_names + 2510, 32}, 30 },
-  { {EContentReportReason_names + 2542, 50}, 47 },
-  { {EContentReportReason_names + 2592, 27}, 28 },
-  { {EContentReportReason_names + 2619, 31}, 5 },
-  { {EContentReportReason_names + 2650, 36}, 20 },
-  { {EContentReportReason_names + 2686, 31}, 24 },
-  { {EContentReportReason_names + 2717, 30}, 2 },
-};
-
-static const int EContentReportReason_entries_by_number[] = {
-  33, // 0 -> k_EContentReportReason_Invalid
-  43, // 1 -> k_EContentReportReason_None
-  65, // 2 -> k_EContentReportReason_Unknown
-  29, // 3 -> k_EContentReportReason_Harassment
-  5, // 4 -> k_EContentReportReason_BullyingAndIntimidation
-  62, // 5 -> k_EContentReportReason_Stalking
-  13, // 6 -> k_EContentReportReason_Doxxing
-  50, // 7 -> k_EContentReportReason_OtherHarassment
-  17, // 8 -> k_EContentReportReason_EncouragingViolence
-  14, // 9 -> k_EContentReportReason_EncouragingSelfHarm
-  15, // 10 -> k_EContentReportReason_EncouragingSuicide
-  54, // 11 -> k_EContentReportReason_OtherViolenceOrSelfHarm
-  55, // 12 -> k_EContentReportReason_PhishingOrAccountTheft
-  1, // 13 -> k_EContentReportReason_AttemptedScamming
-  34, // 14 -> k_EContentReportReason_LinkingToMaliciousContent
-  31, // 15 -> k_EContentReportReason_Impersonation
-  52, // 16 -> k_EContentReportReason_OtherScamsAndTheft
-  16, // 17 -> k_EContentReportReason_EncouragingTerrorism
-  45, // 18 -> k_EContentReportReason_OrganizingTerrorism
-  53, // 19 -> k_EContentReportReason_OtherTerrorism
-  63, // 20 -> k_EContentReportReason_TargetedAbuse
-  39, // 21 -> k_EContentReportReason_NamingAndShaming
-  12, // 22 -> k_EContentReportReason_Discrimination
-  46, // 23 -> k_EContentReportReason_OtherAbuse
-  64, // 24 -> k_EContentReportReason_Trolling
-  3, // 25 -> k_EContentReportReason_Baiting
-  11, // 26 -> k_EContentReportReason_Derailing
-  49, // 27 -> k_EContentReportReason_OtherDisruptive
-  61, // 28 -> k_EContentReportReason_Spam
-  4, // 29 -> k_EContentReportReason_Begging
-  59, // 30 -> k_EContentReportReason_Reposting
-  51, // 31 -> k_EContentReportReason_OtherOffTopic
-  9, // 32 -> k_EContentReportReason_CSAMSexualContent
-  7, // 33 -> k_EContentReportReason_CSAMGroomingOrEnticement
-  8, // 34 -> k_EContentReportReason_CSAMOther
-  44, // 35 -> k_EContentReportReason_NudityOrSexualContent
-  41, // 36 -> k_EContentReportReason_NonConsensualMaterial
-  0, // 37 -> k_EContentReportReason_Advertising
-  58, // 38 -> k_EContentReportReason_ReferralLinks
-  20, // 39 -> k_EContentReportReason_Gambling
-  57, // 40 -> k_EContentReportReason_Raffles
-  47, // 41 -> k_EContentReportReason_OtherCommercialActivity
-  32, // 42 -> k_EContentReportReason_InauthenticReview
-  30, // 43 -> k_EContentReportReason_HiddenAdvertisementOrCommercialCommunication
-  37, // 44 -> k_EContentReportReason_MisleadingInformationAboutGoodsOrServices
-  36, // 45 -> k_EContentReportReason_MisleadingInformationAboutConsumerRights
-  42, // 46 -> k_EContentReportReason_NoncomplianceWithPricingRegulations
-  60, // 47 -> k_EContentReportReason_RightToBeForgottenViolation
-  38, // 48 -> k_EContentReportReason_MissingProcessingGroundForData
-  48, // 49 -> k_EContentReportReason_OtherDataProtectionAndPrivacyViolation
-  24, // 50 -> k_EContentReportReason_GenderedHarassment
-  21, // 51 -> k_EContentReportReason_GenderedBullyingAndIntimidation
-  27, // 52 -> k_EContentReportReason_GenderedStalking
-  22, // 53 -> k_EContentReportReason_GenderedDoxxing
-  26, // 54 -> k_EContentReportReason_GenderedOtherHarassment
-  23, // 55 -> k_EContentReportReason_GenderedEncouragingViolence
-  28, // 56 -> k_EContentReportReason_GenderedTargetedAbuse
-  6, // 57 -> k_EContentReportReason_CSAMFakedSexualContent
-  25, // 58 -> k_EContentReportReason_GenderedNonConsensualMaterial
-  18, // 59 -> k_EContentReportReason_FakedGenderedNonConsensualMaterial
-  19, // 60 -> k_EContentReportReason_FakedNonConsensualMaterial
-  40, // 61 -> k_EContentReportReason_NegativeEffectonDiscourseOrElections
-  56, // 62 -> k_EContentReportReason_QuotesModeratedContent
-  10, // 63 -> k_EContentReportReason_CredibleThreatOfViolence
-  2, // 64 -> k_EContentReportReason_AutoCreatedOnModeration
-  35, // 65 -> k_EContentReportReason_MAX
-};
-
-const std::string& EContentReportReason_Name(
-    EContentReportReason value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EContentReportReason_entries,
-          EContentReportReason_entries_by_number,
-          66, EContentReportReason_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EContentReportReason_entries,
-      EContentReportReason_entries_by_number,
-      66, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EContentReportReason_strings[idx].get();
-}
-bool EContentReportReason_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EContentReportReason* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EContentReportReason_entries, 66, name, &int_value);
-  if (success) {
-    *value = static_cast<EContentReportReason>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EResolutionAutomation_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[80];
 }
 bool EResolutionAutomation_IsValid(int value) {
   switch (value) {
@@ -5936,52 +2354,9 @@ bool EResolutionAutomation_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EResolutionAutomation_strings[4] = {};
-
-static const char EResolutionAutomation_names[] =
-  "k_EResolutionAutomation_FullyAutomated"
-  "k_EResolutionAutomation_MAX"
-  "k_EResolutionAutomation_Manual"
-  "k_EResolutionAutomation_PartiallyAutomated";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EResolutionAutomation_entries[] = {
-  { {EResolutionAutomation_names + 0, 38}, 2 },
-  { {EResolutionAutomation_names + 38, 27}, 3 },
-  { {EResolutionAutomation_names + 65, 30}, 0 },
-  { {EResolutionAutomation_names + 95, 42}, 1 },
-};
-
-static const int EResolutionAutomation_entries_by_number[] = {
-  2, // 0 -> k_EResolutionAutomation_Manual
-  3, // 1 -> k_EResolutionAutomation_PartiallyAutomated
-  0, // 2 -> k_EResolutionAutomation_FullyAutomated
-  1, // 3 -> k_EResolutionAutomation_MAX
-};
-
-const std::string& EResolutionAutomation_Name(
-    EResolutionAutomation value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EResolutionAutomation_entries,
-          EResolutionAutomation_entries_by_number,
-          4, EResolutionAutomation_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EResolutionAutomation_entries,
-      EResolutionAutomation_entries_by_number,
-      4, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EResolutionAutomation_strings[idx].get();
-}
-bool EResolutionAutomation_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EResolutionAutomation* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EResolutionAutomation_entries, 4, name, &int_value);
-  if (success) {
-    *value = static_cast<EResolutionAutomation>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EPressOutletAction_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[81];
 }
 bool EPressOutletAction_IsValid(int value) {
   switch (value) {
@@ -6005,82 +2380,9 @@ bool EPressOutletAction_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EPressOutletAction_strings[14] = {};
-
-static const char EPressOutletAction_names[] =
-  "k_EPressOutletAction_Created"
-  "k_EPressOutletAction_Deleted"
-  "k_EPressOutletAction_EnterStaging"
-  "k_EPressOutletAction_ExitStaging"
-  "k_EPressOutletAction_Granted"
-  "k_EPressOutletAction_Invalid"
-  "k_EPressOutletAction_MAX"
-  "k_EPressOutletAction_Removed"
-  "k_EPressOutletAction_ReverseStagedAdd"
-  "k_EPressOutletAction_ReverseStagedDelete"
-  "k_EPressOutletAction_StagedAdd"
-  "k_EPressOutletAction_StagedDelete"
-  "k_EPressOutletAction_Undeleted"
-  "k_EPressOutletAction_Updated";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EPressOutletAction_entries[] = {
-  { {EPressOutletAction_names + 0, 28}, 3 },
-  { {EPressOutletAction_names + 28, 28}, 5 },
-  { {EPressOutletAction_names + 56, 33}, 9 },
-  { {EPressOutletAction_names + 89, 32}, 10 },
-  { {EPressOutletAction_names + 121, 28}, 1 },
-  { {EPressOutletAction_names + 149, 28}, 0 },
-  { {EPressOutletAction_names + 177, 24}, 13 },
-  { {EPressOutletAction_names + 201, 28}, 2 },
-  { {EPressOutletAction_names + 229, 37}, 11 },
-  { {EPressOutletAction_names + 266, 40}, 12 },
-  { {EPressOutletAction_names + 306, 30}, 7 },
-  { {EPressOutletAction_names + 336, 33}, 8 },
-  { {EPressOutletAction_names + 369, 30}, 6 },
-  { {EPressOutletAction_names + 399, 28}, 4 },
-};
-
-static const int EPressOutletAction_entries_by_number[] = {
-  5, // 0 -> k_EPressOutletAction_Invalid
-  4, // 1 -> k_EPressOutletAction_Granted
-  7, // 2 -> k_EPressOutletAction_Removed
-  0, // 3 -> k_EPressOutletAction_Created
-  13, // 4 -> k_EPressOutletAction_Updated
-  1, // 5 -> k_EPressOutletAction_Deleted
-  12, // 6 -> k_EPressOutletAction_Undeleted
-  10, // 7 -> k_EPressOutletAction_StagedAdd
-  11, // 8 -> k_EPressOutletAction_StagedDelete
-  2, // 9 -> k_EPressOutletAction_EnterStaging
-  3, // 10 -> k_EPressOutletAction_ExitStaging
-  8, // 11 -> k_EPressOutletAction_ReverseStagedAdd
-  9, // 12 -> k_EPressOutletAction_ReverseStagedDelete
-  6, // 13 -> k_EPressOutletAction_MAX
-};
-
-const std::string& EPressOutletAction_Name(
-    EPressOutletAction value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EPressOutletAction_entries,
-          EPressOutletAction_entries_by_number,
-          14, EPressOutletAction_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EPressOutletAction_entries,
-      EPressOutletAction_entries_by_number,
-      14, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EPressOutletAction_strings[idx].get();
-}
-bool EPressOutletAction_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EPressOutletAction* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EPressOutletAction_entries, 14, name, &int_value);
-  if (success) {
-    *value = static_cast<EPressOutletAction>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EPressOutletMemberPendingState_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[82];
 }
 bool EPressOutletMemberPendingState_IsValid(int value) {
   switch (value) {
@@ -6094,52 +2396,9 @@ bool EPressOutletMemberPendingState_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> EPressOutletMemberPendingState_strings[4] = {};
-
-static const char EPressOutletMemberPendingState_names[] =
-  "k_EPressOutletMemberPendingState_MAX"
-  "k_EPressOutletMemberPendingState_Member"
-  "k_EPressOutletMemberPendingState_StagedAdd"
-  "k_EPressOutletMemberPendingState_StagedDelete";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry EPressOutletMemberPendingState_entries[] = {
-  { {EPressOutletMemberPendingState_names + 0, 36}, 3 },
-  { {EPressOutletMemberPendingState_names + 36, 39}, 0 },
-  { {EPressOutletMemberPendingState_names + 75, 42}, 2 },
-  { {EPressOutletMemberPendingState_names + 117, 45}, 1 },
-};
-
-static const int EPressOutletMemberPendingState_entries_by_number[] = {
-  1, // 0 -> k_EPressOutletMemberPendingState_Member
-  3, // 1 -> k_EPressOutletMemberPendingState_StagedDelete
-  2, // 2 -> k_EPressOutletMemberPendingState_StagedAdd
-  0, // 3 -> k_EPressOutletMemberPendingState_MAX
-};
-
-const std::string& EPressOutletMemberPendingState_Name(
-    EPressOutletMemberPendingState value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          EPressOutletMemberPendingState_entries,
-          EPressOutletMemberPendingState_entries_by_number,
-          4, EPressOutletMemberPendingState_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      EPressOutletMemberPendingState_entries,
-      EPressOutletMemberPendingState_entries_by_number,
-      4, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     EPressOutletMemberPendingState_strings[idx].get();
-}
-bool EPressOutletMemberPendingState_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EPressOutletMemberPendingState* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      EPressOutletMemberPendingState_entries, 4, name, &int_value);
-  if (success) {
-    *value = static_cast<EPressOutletMemberPendingState>(int_value);
-  }
-  return success;
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ECommentDeleteReason_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[83];
 }
 bool ECommentDeleteReason_IsValid(int value) {
   switch (value) {
@@ -6156,62 +2415,6 @@ bool ECommentDeleteReason_IsValid(int value) {
   }
 }
 
-static ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<std::string> ECommentDeleteReason_strings[7] = {};
-
-static const char ECommentDeleteReason_names[] =
-  "k_ECommentDeleteReason_AccountDeletion"
-  "k_ECommentDeleteReason_Invalid"
-  "k_ECommentDeleteReason_Moderator"
-  "k_ECommentDeleteReason_Spam"
-  "k_ECommentDeleteReason_Support"
-  "k_ECommentDeleteReason_ThreadOwner"
-  "k_ECommentDeleteReason_User";
-
-static const ::PROTOBUF_NAMESPACE_ID::internal::EnumEntry ECommentDeleteReason_entries[] = {
-  { {ECommentDeleteReason_names + 0, 38}, 6 },
-  { {ECommentDeleteReason_names + 38, 30}, 0 },
-  { {ECommentDeleteReason_names + 68, 32}, 3 },
-  { {ECommentDeleteReason_names + 100, 27}, 5 },
-  { {ECommentDeleteReason_names + 127, 30}, 4 },
-  { {ECommentDeleteReason_names + 157, 34}, 2 },
-  { {ECommentDeleteReason_names + 191, 27}, 1 },
-};
-
-static const int ECommentDeleteReason_entries_by_number[] = {
-  1, // 0 -> k_ECommentDeleteReason_Invalid
-  6, // 1 -> k_ECommentDeleteReason_User
-  5, // 2 -> k_ECommentDeleteReason_ThreadOwner
-  2, // 3 -> k_ECommentDeleteReason_Moderator
-  4, // 4 -> k_ECommentDeleteReason_Support
-  3, // 5 -> k_ECommentDeleteReason_Spam
-  0, // 6 -> k_ECommentDeleteReason_AccountDeletion
-};
-
-const std::string& ECommentDeleteReason_Name(
-    ECommentDeleteReason value) {
-  static const bool dummy =
-      ::PROTOBUF_NAMESPACE_ID::internal::InitializeEnumStrings(
-          ECommentDeleteReason_entries,
-          ECommentDeleteReason_entries_by_number,
-          7, ECommentDeleteReason_strings);
-  (void) dummy;
-  int idx = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumName(
-      ECommentDeleteReason_entries,
-      ECommentDeleteReason_entries_by_number,
-      7, value);
-  return idx == -1 ? ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString() :
-                     ECommentDeleteReason_strings[idx].get();
-}
-bool ECommentDeleteReason_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ECommentDeleteReason* value) {
-  int int_value;
-  bool success = ::PROTOBUF_NAMESPACE_ID::internal::LookUpEnumValue(
-      ECommentDeleteReason_entries, 7, name, &int_value);
-  if (success) {
-    *value = static_cast<ECommentDeleteReason>(int_value);
-  }
-  return success;
-}
 
 // @@protoc_insertion_point(namespace_scope)
 PROTOBUF_NAMESPACE_OPEN

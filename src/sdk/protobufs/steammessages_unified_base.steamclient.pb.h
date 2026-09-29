@@ -26,10 +26,12 @@
 #include <google/protobuf/generated_message_table_driven.h>
 #include <google/protobuf/generated_message_util.h>
 #include <google/protobuf/metadata_lite.h>
-#include <google/protobuf/message_lite.h>
+#include <google/protobuf/generated_message_reflection.h>
+#include <google/protobuf/message.h>
 #include <google/protobuf/repeated_field.h>  // IWYU pragma: export
 #include <google/protobuf/extension_set.h>  // IWYU pragma: export
-#include <google/protobuf/generated_enum_util.h>
+#include <google/protobuf/generated_enum_reflection.h>
+#include <google/protobuf/unknown_field_set.h>
 #include <google/protobuf/descriptor.pb.h>
 // @@protoc_insertion_point(includes)
 #include <google/protobuf/port_def.inc>
@@ -52,6 +54,8 @@ struct TableStruct_steammessages_5funified_5fbase_2esteamclient_2eproto {
   static const ::PROTOBUF_NAMESPACE_ID::internal::SerializationTable serialization_table[];
   static const ::PROTOBUF_NAMESPACE_ID::uint32 offsets[];
 };
+extern const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable descriptor_table_steammessages_5funified_5fbase_2esteamclient_2eproto;
+::PROTOBUF_NAMESPACE_ID::Metadata descriptor_table_steammessages_5funified_5fbase_2esteamclient_2eproto_metadata_getter(int index);
 class NoResponse;
 struct NoResponseDefaultTypeInternal;
 extern NoResponseDefaultTypeInternal _NoResponse_default_instance_;
@@ -68,16 +72,20 @@ constexpr EProtoExecutionSite EProtoExecutionSite_MIN = k_EProtoExecutionSiteUnk
 constexpr EProtoExecutionSite EProtoExecutionSite_MAX = k_EProtoExecutionSiteSteamClient;
 constexpr int EProtoExecutionSite_ARRAYSIZE = EProtoExecutionSite_MAX + 1;
 
-const std::string& EProtoExecutionSite_Name(EProtoExecutionSite value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EProtoExecutionSite_descriptor();
 template<typename T>
 inline const std::string& EProtoExecutionSite_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EProtoExecutionSite>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EProtoExecutionSite_Name.");
-  return EProtoExecutionSite_Name(static_cast<EProtoExecutionSite>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EProtoExecutionSite_descriptor(), enum_t_value);
 }
-bool EProtoExecutionSite_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EProtoExecutionSite* value);
+inline bool EProtoExecutionSite_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EProtoExecutionSite* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EProtoExecutionSite>(
+    EProtoExecutionSite_descriptor(), name, value);
+}
 enum EProtoServiceType : int {
   k_EProtoServiceTypeSteamMessages = 0,
   k_EProtoServiceTypeVRGamepadUIMessages = 1
@@ -87,20 +95,24 @@ constexpr EProtoServiceType EProtoServiceType_MIN = k_EProtoServiceTypeSteamMess
 constexpr EProtoServiceType EProtoServiceType_MAX = k_EProtoServiceTypeVRGamepadUIMessages;
 constexpr int EProtoServiceType_ARRAYSIZE = EProtoServiceType_MAX + 1;
 
-const std::string& EProtoServiceType_Name(EProtoServiceType value);
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EProtoServiceType_descriptor();
 template<typename T>
 inline const std::string& EProtoServiceType_Name(T enum_t_value) {
   static_assert(::std::is_same<T, EProtoServiceType>::value ||
     ::std::is_integral<T>::value,
     "Incorrect type passed to function EProtoServiceType_Name.");
-  return EProtoServiceType_Name(static_cast<EProtoServiceType>(enum_t_value));
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    EProtoServiceType_descriptor(), enum_t_value);
 }
-bool EProtoServiceType_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EProtoServiceType* value);
+inline bool EProtoServiceType_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, EProtoServiceType* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<EProtoServiceType>(
+    EProtoServiceType_descriptor(), name, value);
+}
 // ===================================================================
 
 class NoResponse PROTOBUF_FINAL :
-    public ::PROTOBUF_NAMESPACE_ID::MessageLite /* @@protoc_insertion_point(class_definition:NoResponse) */ {
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:NoResponse) */ {
  public:
   inline NoResponse() : NoResponse(nullptr) {}
   virtual ~NoResponse();
@@ -125,13 +137,22 @@ class NoResponse PROTOBUF_FINAL :
     return *this;
   }
 
-  inline const std::string& unknown_fields() const {
-    return _internal_metadata_.unknown_fields<std::string>(::PROTOBUF_NAMESPACE_ID::internal::GetEmptyString);
+  inline const ::PROTOBUF_NAMESPACE_ID::UnknownFieldSet& unknown_fields() const {
+    return _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance);
   }
-  inline std::string* mutable_unknown_fields() {
-    return _internal_metadata_.mutable_unknown_fields<std::string>();
+  inline ::PROTOBUF_NAMESPACE_ID::UnknownFieldSet* mutable_unknown_fields() {
+    return _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
   }
 
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return GetMetadataStatic().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return GetMetadataStatic().reflection;
+  }
   static const NoResponse& default_instance() {
     return *internal_default_instance();
   }
@@ -168,8 +189,8 @@ class NoResponse PROTOBUF_FINAL :
   NoResponse* New(::PROTOBUF_NAMESPACE_ID::Arena* arena) const final {
     return CreateMaybeMessage<NoResponse>(arena);
   }
-  void CheckTypeAndMergeFrom(const ::PROTOBUF_NAMESPACE_ID::MessageLite& from)
-    final;
+  void CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) final;
+  void MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) final;
   void CopyFrom(const NoResponse& from);
   void MergeFrom(const NoResponse& from);
   PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
@@ -179,13 +200,12 @@ class NoResponse PROTOBUF_FINAL :
   const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
   ::PROTOBUF_NAMESPACE_ID::uint8* _InternalSerialize(
       ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
-  void DiscardUnknownFields();
   int GetCachedSize() const final { return _cached_size_.Get(); }
 
   private:
   inline void SharedCtor();
   inline void SharedDtor();
-  void SetCachedSize(int size) const;
+  void SetCachedSize(int size) const final;
   void InternalSwap(NoResponse* other);
   friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
   static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
@@ -198,7 +218,13 @@ class NoResponse PROTOBUF_FINAL :
   inline void RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena* arena);
   public:
 
-  std::string GetTypeName() const final;
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+  private:
+  static ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadataStatic() {
+    return ::descriptor_table_steammessages_5funified_5fbase_2esteamclient_2eproto_metadata_getter(kIndexInFileMessages);
+  }
+
+  public:
 
   // nested types ----------------------------------------------------
 
@@ -235,7 +261,15 @@ class NoResponse PROTOBUF_FINAL :
 PROTOBUF_NAMESPACE_OPEN
 
 template <> struct is_proto_enum< ::EProtoExecutionSite> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EProtoExecutionSite>() {
+  return ::EProtoExecutionSite_descriptor();
+}
 template <> struct is_proto_enum< ::EProtoServiceType> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::EProtoServiceType>() {
+  return ::EProtoServiceType_descriptor();
+}
 
 PROTOBUF_NAMESPACE_CLOSE
 
