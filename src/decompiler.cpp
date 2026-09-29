@@ -565,9 +565,11 @@ void Decompiler::__parseFunction
 
 			continue;
 		}
-		else if(strcmp(instr.mnemonic, "ret") == 0 || strcmp(instr.mnemonic, "retn") == 0)
+		//Checking the log it seems like capstone is turning all ret instructions into just ret.
+		//But just in case we check for all of them
+		else if(strcmp(instr.mnemonic, "ret") == 0 || strcmp(instr.mnemonic, "retn") == 0 || strcmp(instr.mnemonic, "retf") == 0)
 		{
-			//g_pLog->debug("Hit ret instruction at %p, stopping\n", instr.address);
+			//g_pLog->debug("Hit %s instruction at %p, stopping\n", instr.mnemonic, instr.address);
 			return;
 		}
 
