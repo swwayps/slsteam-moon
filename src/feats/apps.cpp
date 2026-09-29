@@ -13,7 +13,6 @@
 
 #include "../config.hpp"
 #include "../globals.hpp"
-#include "../utils.hpp"
 
 #include "appinfo_provision.hpp"
 #include "appinfostate.hpp"
@@ -21,6 +20,7 @@
 #include "synthmark.hpp"
 #include "../utils/ManifestFetch.hpp"
 
+#include <charconv>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -32,6 +32,7 @@
 #include <unordered_set>
 #include <vector>
 #include <string>
+#include <string_view>
 
 namespace
 {
@@ -677,32 +678,44 @@ void Apps::sendMsg(CNetPacket *pkt)
 
 void Apps::setConfigStoreString(const char* key, const char* value)
 {
-	if (!std::string(key).starts_with("WebStorage\\PrivateApps"))
+	if (!key || !value || !std::string_view(key).starts_with("WebStorage\\PrivateApps"))
 	{
 		return;
 	}
 
 	g_pLog->debug("%s -> %s\n", key, value);
 
-	auto str = std::string(value);
-	if (str.size() < 3) //List is empty, nope out
+	// Steam stores the list as a JSON array ([730,240,440]). Anything that is
+	// not a plain app id is skipped: this runs inside a Steam caller, so a
+	// throw would unwind into the client.
+	std::string_view list(value);
+	if (list.starts_with('['))
 	{
-		return;
+		list.remove_prefix(1);
+	}
+	if (list.ends_with(']'))
+	{
+		list.remove_suffix(1);
 	}
 
-	privateApps.clear();
-	str = str.substr(1, str.size() - 2); //[730,240,440,etc]
-	const auto split = Utils::strsplit(const_cast<char*>(str.c_str()), ",");
-
-	for(const auto& s : split)
+	std::unordered_set<AppId_t> apps;
+	while (!list.empty())
 	{
-		if (!Utils::isNumber(s.c_str()))
+		const auto comma = list.find(',');
+		const auto item = list.substr(0, comma);
+		list.remove_prefix(comma == std::string_view::npos ? list.size() : comma + 1);
+
+		AppId_t appId = 0;
+		const auto [end, ec] = std::from_chars(item.data(), item.data() + item.size(), appId);
+		if (ec != std::errc() || end != item.data() + item.size() || !appId)
 		{
-			g_pLog->debug("%s is not a number! Skipping\n", s.c_str());
+			g_pLog->debug("%.*s is not an app id! Skipping\n", static_cast<int>(item.size()), item.data());
+			continue;
 		}
 
-		const AppId_t appId = std::stoul(s);
-		privateApps.emplace(appId);
+		apps.emplace(appId);
 		g_pLog->debug("Added %u to privateApps\n", appId);
 	}
+
+	privateApps = std::move(apps);
 }
