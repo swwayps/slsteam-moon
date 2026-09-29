@@ -2,7 +2,8 @@
 
 The vendored protobuf runtime in `include/google/protobuf/` declares
 `GOOGLE_PROTOBUF_VERSION 3015003` and the prebuilt static lib at
-`lib/libprotobuf-lite.a` is the matching 3.15.x build. Generated
+`lib/libprotobuf.a` is the matching 3.15.x build (full runtime, as
+upstream ships it). Generated
 `.pb.h` / `.pb.cc` files must come from a `protoc` in the same minor
 line; system `protoc` 4.x emits headers that fail the
 `PROTOBUF_MIN_PROTOC_VERSION` check baked into the runtime headers.
@@ -40,17 +41,15 @@ mv src/sdk/protobufs/steammessages_contentserverdirectory.pb.cc \
 
 ## .proto requirements
 
-Every `.proto` in `src/sdk/protobufs/` must declare:
+The messages from upstream are full-runtime code. Local `.proto` files
+(only `steammessages_contentserverdirectory.proto` today) declare
 
 ```proto
 option optimize_for = LITE_RUNTIME;
 ```
 
-The shipped `libprotobuf-lite.a` only provides the lite runtime
-symbols. Without this option, generated code references the full
-`Message` base class (descriptor pool, reflection, `UnknownFieldSet`),
-none of which is in lite, and the link fails with undefined
-references to `AssignDescriptors`, `UnknownFieldParse`, etc.
+which keeps their generated code small; the full runtime also provides
+the lite symbols, so both kinds link together.
 
 ## Refresh
 
