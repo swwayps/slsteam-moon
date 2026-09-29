@@ -59,7 +59,7 @@ endif
 .PHONY: test-manifestdonor test-manifestfetch
 .PHONY: test-reconcilepin-scan
 .PHONY: test-depotkey-recv-policy
-.PHONY: test-private-apps test-config-settings
+.PHONY: test-private-apps test-config-settings test-curl-child
 
 test-manifestdonor:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror \
@@ -452,6 +452,11 @@ test-curl-timeout:
 		-o /tmp/test_curl_timeout
 	/tmp/test_curl_timeout
 
+test-curl-child:
+	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src \
+		tools/test_curl_child.cpp src/curl.cpp -ldl -pthread \
+		-o /tmp/test_curl_child
+	/tmp/test_curl_child
 test-contentserverdirectory:
 	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
 		-Wall -Wextra -Wpedantic -Werror -I include -I src \
