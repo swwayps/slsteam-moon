@@ -297,6 +297,20 @@ static void test_bounded()
 	      "a newer snapshot still coalesces when the queue is at capacity");
 	CHECK(snapshotCapacity.push(Command::ensureCompat(5, 0, 0), kT0 + 2) == PushResult::Full,
 	      "a different command kind is rejected at snapshot capacity");
+
+	// Compat polls of a bulk Proton add can fill the queue; the snapshot must
+	// still reach the owner, or the watcher runs it inline under HotReload's
+	// lock while the owner drains a compat step that waits for that lock.
+	Queue compatFull(2);
+	compatFull.push(Command::ensureCompat(1, 0, 0), kT0);
+	compatFull.push(Command::ensureCompat(2, 0, 0), kT0);
+	CHECK(compatFull.push(Command::syncPackage0(
+		PackageSnapshot{ 1, { 1 }, { 11 }, true, {}, {} }), kT0) == PushResult::Queued,
+	      "a snapshot is accepted when compat requests fill the queue");
+	CHECK(compatFull.push(Command::syncPackage0(
+		PackageSnapshot{ 2, { 2 }, { 22 }, true, {}, {} }), kT0) == PushResult::Coalesced &&
+	      compatFull.depth() == 3,
+	      "that snapshot stays a single record");
 }
 
 static void test_large_library_snapshot()

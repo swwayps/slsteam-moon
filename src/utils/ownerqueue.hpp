@@ -534,7 +534,10 @@ namespace OwnerQueue
 				}
 			}
 
-			if (into.size() >= m_capacity)
+			// A snapshot is never refused for capacity: it coalesces into at
+			// most one record, and refusing it would run the package-0 sync
+			// inline on a thread that holds HotReload's lock (see ownerwork.hpp).
+			if (into.size() >= m_capacity && cmd.kind() != Kind::SyncPackage0)
 				return false;
 
 			into.push_back(Entry{ cmd, nowUs });
