@@ -120,12 +120,13 @@ namespace
 					break;
 				}
 
-				IClientCompat* const compat = getLocalClientCompat();
+				IClientCompat* const compat = g_pClientCompat;
 				if (compat == nullptr)
 				{
 					// No live compatibility manager to talk to yet. Retry a
-					// bounded number of frames (it resolves once the local user
-					// is observed); if it never appears, the mapping we already
+					// bounded number of frames (the CCompatManager detour
+					// captures it on Steam's first compat call, within the first
+					// frames after boot); if it never appears, the mapping we already
 					// persisted for the next preinit pass applies on restart, so
 					// keep the title hidden until then rather than publish a
 					// windows-only app Steam would treat as "no applicable

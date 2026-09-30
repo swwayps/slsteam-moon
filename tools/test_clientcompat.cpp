@@ -6,12 +6,7 @@
 
 #include <cstdint>
 #include <cstdio>
-#include <fstream>
-#include <iterator>
-#include <span>
 #include <string>
-#include <string_view>
-#include <vector>
 
 namespace
 {
@@ -60,37 +55,6 @@ void fakeSpecifyCompatTool(
 	if (fake.reflectSpecified) fake.appMapping = fake.specifiedName;
 }
 
-std::vector<std::size_t> findCompatOffsetSignature(const std::string& image)
-{
-	// lea ebx,[esi+disp32] ; spill ; push ebx ; mov ebx,edi ; call ctor ;
-	// pop/pop ; initialize the next CUser member. The displacement is decoded
-	// by CompatLive rather than pinned to one Steam build.
-	static constexpr int pattern[] = {
-		0x8d, 0x9e, -1, -1, -1, -1,
-		0x89, 0x9d, -1, -1, -1, -1,
-		0x53, 0x89, 0xfb, 0xe8, -1, -1, -1, -1,
-		0x58, 0x5a, 0xc7, 0x86, -1, -1, -1, -1,
-		0xff, 0xff, 0xff, 0xff,
-	};
-	std::vector<std::size_t> matches;
-	for (std::size_t offset = 0;
-		offset + std::size(pattern) <= image.size(); ++offset)
-	{
-		bool equal = true;
-		for (std::size_t index = 0; index < std::size(pattern); ++index)
-		{
-			if (pattern[index] >= 0 &&
-				static_cast<unsigned char>(image[offset + index]) !=
-					static_cast<unsigned char>(pattern[index]))
-			{
-				equal = false;
-				break;
-			}
-		}
-		if (equal) matches.push_back(offset);
-	}
-	return matches;
-}
 }
 
 // The registry resolves these slots by name from IClientCompatMap at boot
@@ -105,7 +69,7 @@ VFTableInfo_t GetCompatToolDisplayName{"16IClientCompatMap", "GetCompatToolDispl
 VFTableInfo_t GetCompatToolName{"16IClientCompatMap", "GetCompatToolName", 4};
 VFTableInfo_t SpecifyCompatTool{"16IClientCompatMap", "SpecifyCompatTool", 1};
 }
-int main(int argc, char** argv)
+int main()
 {
 	void* vtable[8]{};
 	vtable[VFTIndexes::IClientCompat::SpecifyCompatTool.index] =
@@ -159,38 +123,6 @@ int main(int argc, char** argv)
 	check(CompatLive::step(nullptr, 582010, false).status ==
 	      CompatLive::StepStatus::Unavailable,
 	      "a missing live interface fails closed");
-
-	const std::uint8_t locator[] = {0x8d, 0x9e, 0x78, 0x35, 0x00, 0x00};
-	const auto decoded = CompatLive::decodeManagerOffset(locator);
-	check(decoded.has_value() && *decoded == 0x3578,
-	      "the CUser member locator decodes its little-endian displacement");
-	const std::uint8_t invalid[] = {0x8d, 0x86, 0x78, 0x35, 0x00, 0x00};
-	check(!CompatLive::decodeManagerOffset(invalid).has_value(),
-	      "a neighboring LEA register form is rejected");
-
-	if (argc == 2)
-	{
-		std::ifstream input(argv[1], std::ios::binary);
-		check(static_cast<bool>(input), "Steam client fixture opens");
-		if (input)
-		{
-			const std::string image{
-				std::istreambuf_iterator<char>(input),
-				std::istreambuf_iterator<char>()};
-			const auto matches = findCompatOffsetSignature(image);
-			check(matches.size() == 1,
-			      "CCompatManager member locator is unique in the Steam client");
-			if (matches.size() == 1)
-			{
-				const auto* bytes = reinterpret_cast<const std::uint8_t*>(
-					image.data() + matches.front());
-				const auto offset = CompatLive::decodeManagerOffset(
-					std::span<const std::uint8_t>(bytes, 6));
-				check(offset.has_value() && *offset > 0,
-				      "unique live locator yields a positive CUser member offset");
-			}
-		}
-	}
 
 	if (failures == 0)
 	{
