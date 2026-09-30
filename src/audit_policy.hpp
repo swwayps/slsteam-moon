@@ -1,7 +1,10 @@
 #pragma once
 
 #include <cstring>
+#include <fcntl.h>
 #include <link.h>
+#include <span>
+#include <unistd.h>
 
 namespace AuditBinding
 {
@@ -63,5 +66,56 @@ namespace AuditBinding
 		if (isBindingTarget(objectName))
 			flags |= LA_FLG_BINDTO;
 		return flags;
+	}
+
+	// Host directories holding 32-bit libraries, most specific first: on Arch
+	// /usr/lib holds the 64-bit copies, on Fedora it is the 32-bit tree.
+	inline constexpr const char* systemLibraryDirs[] =
+	{
+		"/usr/lib32",              // Arch, SteamOS
+		"/usr/lib/i386-linux-gnu", // Debian, Ubuntu, Mint
+		"/usr/local/lib32",        // Bazzite
+		"/usr/lib",                // Fedora, 32-bit systems
+		"/usr/local/lib",
+	};
+
+	inline bool isElf32(const char* path) noexcept
+	{
+		const int fd = open(path, O_RDONLY | O_CLOEXEC);
+		if (fd < 0)
+			return false;
+		unsigned char ident[EI_NIDENT];
+		const bool elf32 = read(fd, ident, sizeof ident) == static_cast<ssize_t>(sizeof ident)
+			&& std::memcmp(ident, ELFMAG, SELFMAG) == 0
+			&& ident[EI_CLASS] == ELFCLASS32;
+		close(fd);
+		return elf32;
+	}
+
+	// la_objsearch body. Steam's runtime pins its own old libcurl ahead of
+	// the host copy, so a bare libcurl.so[.N] lookup gets the first 32-bit
+	// host copy in dirs, built in buffer. Any other name, or one without a
+	// host copy, is returned unchanged. Runs inside the loader: no
+	// allocation, locale or logging.
+	inline const char* systemLibraryFor(const char* name,
+	                                    std::span<const char* const> dirs,
+	                                    std::span<char> buffer) noexcept
+	{
+		if (name == nullptr || std::strncmp(name, "libcurl.so", 10) != 0
+		    || (name[10] != '\0' && name[10] != '.'))
+			return name;
+		const std::size_t nameLength = std::strlen(name);
+		for (const char* dir : dirs)
+		{
+			const std::size_t dirLength = std::strlen(dir);
+			if (dirLength + 1 + nameLength >= buffer.size())
+				continue;
+			std::memcpy(buffer.data(), dir, dirLength);
+			buffer[dirLength] = '/';
+			std::memcpy(buffer.data() + dirLength + 1, name, nameLength + 1);
+			if (isElf32(buffer.data()))
+				return buffer.data();
+		}
+		return name;
 	}
 }

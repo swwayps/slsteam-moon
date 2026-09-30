@@ -117,18 +117,19 @@ echo "== test-wrapper-guard =="
   || bad "wrapper mode follows caller umask: $(stat -c '%a' "$WRAP")"
 
 # An old desktop entry can invoke the wrapper with our audit objects already in
-# LD_AUDIT.  The wrapper must canonicalize its own entries to one pair and keep
-# unrelated auditors intact.
+# LD_AUDIT.  The wrapper must canonicalize its own entries to SLSsteam alone and
+# keep unrelated auditors intact: a second auditor of ours makes exceptions
+# thrown inside SLSsteam uncatchable.
 reset_state
 export LD_AUDIT="$SLSDIR/library-inject.so:$SLSDIR/SLSsteam.so:$SLSDIR/library-inject.so:$HOME_DIR/foreign-auditor.so"
 export LD_PRELOAD="/lib/x86_64-linux-gnu/libm.so.6"
 export LD_LIBRARY_PATH="$HOME_DIR/foreign-libs"
 run_wrapper
-expected_audit="$SLSDIR/library-inject.so:$SLSDIR/SLSsteam.so:$HOME_DIR/foreign-auditor.so"
+expected_audit="$SLSDIR/SLSsteam.so:$HOME_DIR/foreign-auditor.so"
 actual_audit="$(sed -n 's/^LD_AUDIT=//p' "$ENV_CAPTURE")"
 [ "$actual_audit" = "$expected_audit" ] && ok "wrapper canonicalizes inherited SLS audit entries" || bad "audit was not canonicalized: $actual_audit"
-[ "$(printf '%s' "$actual_audit" | awk -F: -v a="$SLSDIR/library-inject.so" 'BEGIN{n=0}{for(i=1;i<=NF;i++) if($i==a)n++} END{print n}')" = 1 ] \
-  && ok "wrapper keeps one library-inject auditor" || bad "library-inject was duplicated"
+[ "$(printf '%s' "$actual_audit" | awk -F: -v a="$SLSDIR/library-inject.so" 'BEGIN{n=0}{for(i=1;i<=NF;i++) if($i==a)n++} END{print n}')" = 0 ] \
+  && ok "wrapper drops the old library-inject auditor" || bad "library-inject is still an auditor"
 
 # A captured managed shim must never be accepted as an explicit Steam binary.
 # The wrapper should discard it and resolve the normal Steam script instead.

@@ -39,6 +39,7 @@
 #include "libmem/libmem.h"
 
 #include <cerrno>
+#include <climits>
 #include <fcntl.h>
 #include <sys/file.h>
 #include <unistd.h>
@@ -421,9 +422,8 @@ static void setup()
 	}
 
 
-	// Some distros honour LD_LIBRARY_PATH differently; make sure the
-	// system lib dirs are searchable so library-inject.so's libcurl
-	// redirect resolves.  Harmless append.
+	// Upstream appends the system lib dirs for processes Steam starts; the
+	// loader read LD_LIBRARY_PATH at startup, so this process is unaffected.
 	{
 		const char* cur = getenv("LD_LIBRARY_PATH");
 		std::string ldLibPath = cur ? cur : "";
@@ -796,8 +796,10 @@ static void load()
 // ───────────────────────────────────────────────────────────────────────
 // Injection model: LD_AUDIT (rtld-audit).
 //
-// SLSsteam is loaded as an audit module via
-//   LD_AUDIT="library-inject.so:SLSsteam.so"
+// SLSsteam is loaded as the only audit module via
+//   LD_AUDIT="SLSsteam.so"
+// (with a second audit module loaded, any exception thrown in this module
+// aborts the client, even one caught in the same function),
 // which places it in the dynamic linker's *auditing* link namespace,
 // separate from the application's namespace.  This is essential: the .so
 // statically links protobuf / yaml-cpp / an old-ABI libstdc++ and therefore
@@ -825,6 +827,21 @@ static void load()
 extern "C" unsigned int la_version(unsigned int)
 {
 	return LAV_CURRENT;
+}
+
+// Client-namespace libcurl lookups (CloudRedirect) get the host's 32-bit copy
+// instead of the runtime's pinned one. The loader never calls this for lookups
+// made by an audit module, so SLSsteam's own libcurl is unaffected. Callbacks
+// run under the loader's lock and it copies the result, so one buffer serves.
+extern "C" char* la_objsearch(const char* name,
+                              __attribute__((unused)) uintptr_t* cookie,
+                              unsigned int flag)
+{
+	static char path[PATH_MAX];
+	if (flag != LA_SER_ORIG)
+		return const_cast<char*>(name);
+	return const_cast<char*>(AuditBinding::systemLibraryFor(
+		name, AuditBinding::systemLibraryDirs, path));
 }
 
 // ───────────────────────────────────────────────────────────────────────

@@ -333,9 +333,9 @@ create_steam_wrapper()
 #!/bin/sh
 # slsteam-moon wrapper. Injects SLSsteam via LD_AUDIT (rtld-audit) so the audit
 # namespace can't interpose on Steam's own copies of protobuf / yaml-cpp /
-# libstdc++. library-inject.so redirects libcurl to the system copy and must
-# come first. CloudRedirect (cloud saves) is injected separately via LD_PRELOAD
-# (see its block below).
+# libstdc++. SLSsteam must be our only auditor: with a second one loaded, any
+# exception thrown inside it aborts Steam. CloudRedirect (cloud saves) is
+# injected separately via LD_PRELOAD (see its block below).
 SLSDIR="$HOME/.local/share/SLSsteam"
 
 # Desktop entries from older installs may invoke this wrapper with our audit
@@ -812,7 +812,8 @@ slsm_refresh_patterns
 # attaches on slow-bootstrap distros (Arch/CachyOS) too. It is a plain
 # LD_PRELOAD library: loading it as an LD_AUDIT auditor corrupts the client
 # heap (realloc(): invalid pointer) during init, so it must NOT go in the
-# LD_AUDIT list. SLSsteam stays on LD_AUDIT (library-inject.so first).
+# LD_AUDIT list. SLSsteam stays on LD_AUDIT and sends CloudRedirect's libcurl
+# lookup to the host copy.
 # CloudRedirect's constructor self-removes itself from LD_PRELOAD so child
 # processes (the game, steamwebhelper) don't inherit it.
 CR_SO="$HOME/.local/share/CloudRedirect/cloud_redirect.so"
@@ -855,7 +856,7 @@ if [ -x "$LUMEN_DIR/lumen" ] && ! pgrep -f "$LUMEN_DIR/lumen" >/dev/null 2>&1; t
 	    setsid "$LUMEN_DIR/lumen" >/dev/null 2>&1 < /dev/null &
 fi
 
-AUDIT="$SLSDIR/library-inject.so:$SLSDIR/SLSsteam.so"
+AUDIT="$SLSDIR/SLSsteam.so"
 
 # Re-assert desktop-entry coverage without putting reconciliation on the launch
 # critical path. Prefer the serialized guardian; retain the legacy CLI fallback

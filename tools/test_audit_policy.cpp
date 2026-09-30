@@ -4,6 +4,7 @@
 #include "audit_policy.hpp"
 
 #include <algorithm>
+#include <climits>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
@@ -77,6 +78,52 @@ int main()
 	check(!AuditBinding::narrowValueEnabled("0"),
 	      "audit narrowing rejects disabled values");
 
+	// Steam's runtime pins its own libcurl ahead of the host copy; client
+	// namespace lookups (CloudRedirect) are sent to the host's 32-bit copy.
+	{
+		using AuditBinding::systemLibraryFor;
+		char root[] = "/tmp/slssteam-libdirs-XXXXXX";
+		check(mkdtemp(root) != nullptr, "temporary library root can be created");
+		const std::string lib64 = std::string(root) + "/lib";
+		const std::string lib32 = std::string(root) + "/lib32";
+		std::filesystem::create_directories(lib64);
+		std::filesystem::create_directories(lib32);
+		const auto writeElf = [](const std::string& path, unsigned char elfClass)
+		{
+			const unsigned char ident[EI_NIDENT] = {ELFMAG0, ELFMAG1, ELFMAG2, ELFMAG3, elfClass};
+			std::ofstream(path, std::ios::binary)
+				.write(reinterpret_cast<const char*>(ident), sizeof ident);
+		};
+		writeElf(lib64 + "/libcurl.so.4", ELFCLASS64);
+		writeElf(lib32 + "/libcurl.so.4.8.0", ELFCLASS32);
+		std::filesystem::create_symlink("libcurl.so.4.8.0", lib32 + "/libcurl.so.4");
+
+		const char* const dirs[] = {lib64.c_str(), lib32.c_str()};
+		const char* const only64[] = {lib64.c_str()};
+		char buffer[PATH_MAX];
+		const char* name = "libcurl.so.4";
+		const char* found = systemLibraryFor(name, dirs, buffer);
+		check(found != nullptr && found == lib32 + "/libcurl.so.4",
+		      "libcurl resolves to the first 32-bit system copy");
+		check(systemLibraryFor(name, only64, buffer) == name,
+		      "a 64-bit copy is never offered to the 32-bit loader");
+		const char* other = "libz.so.1";
+		check(systemLibraryFor(other, dirs, buffer) == other,
+		      "other libraries are left to the loader");
+		const char* gnutls = "libcurl-gnutls.so.4";
+		check(systemLibraryFor(gnutls, dirs, buffer) == gnutls,
+		      "only the libcurl.so names are redirected");
+		const char* missing = "libcurl.so.3";
+		check(systemLibraryFor(missing, dirs, buffer) == missing,
+		      "a soname without a system copy is left to the loader");
+		char tiny[8];
+		check(systemLibraryFor(name, dirs, tiny) == name,
+		      "a path that does not fit the buffer is not truncated");
+		check(systemLibraryFor(nullptr, dirs, buffer) == nullptr,
+		      "a null name is passed through");
+		std::filesystem::remove_all(root);
+	}
+
 	std::ifstream mainSource("src/main.cpp");
 	const std::string mainText(
 		(std::istreambuf_iterator<char>(mainSource)),
@@ -86,6 +133,11 @@ int main()
 	check(mainSource.is_open() && rawLogOpen != std::string::npos
 	          && setupLock != std::string::npos && rawLogOpen < setupLock,
 	      "raw audit log fd opens before the namespace setup lock");
+	// The wrapper runs SLSsteam as the only auditor (a second one makes our
+	// exceptions uncatchable), so the libcurl redirect must live here.
+	check(mainText.find("extern \"C\" char* la_objsearch(") != std::string::npos
+	          && mainText.find("AuditBinding::systemLibraryFor(") != std::string::npos,
+	      "SLSsteam exports the libcurl lookup redirect");
 
 	const auto rawLogPath = mainText.find("g_rawLogPath");
 	std::ifstream auditLogSource("src/audit_log.hpp");
