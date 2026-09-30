@@ -26,13 +26,13 @@ enum EReleaseState
 	k_EAppReleaseStateDisabled = 0x5
 };
 
-struct AppOwnershipTicketReceived_t
+SDK_Struct AppOwnershipTicketReceived_t
 {
 	EResult result;
 	uint32_t appId;
 };
 
-struct AppLicensesChanged_t
+SDK_Struct AppLicensesChanged_t
 {
 	static constexpr unsigned int MAX_APPS_PER_CALLBACK = 0x40;
 
@@ -45,7 +45,7 @@ struct AppLicensesChanged_t
 	uint64_t appsAdded;						//0x10C
 }; //0x114
 
-struct AppOwnershipInfo_t {
+SDK_Struct AppOwnershipInfo_t {
     int32_t subId;
     int32_t releaseState;
     uint32_t owner;
@@ -77,7 +77,7 @@ struct AppOwnershipInfo_t {
     bool field28_0x37;
 }; //0x38
 
-class CUser
+SDK_Class CUser
 {
 public:
 	IClientAppManager* getAppManager();

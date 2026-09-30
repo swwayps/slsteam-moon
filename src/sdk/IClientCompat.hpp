@@ -6,7 +6,7 @@
 #include <cstdint>
 
 
-class IClientCompat
+SDK_Class IClientCompat
 {
 public:
 	bool isCompatToolEnabled(const AppId_t appId);

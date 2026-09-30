@@ -86,7 +86,7 @@ std::string EIPCInterface_ToString(const EIPCInterface interface);
 class IProcessPipe { };
 using CUtlString = char*;
 
-class __attribute__((packed)) __attribute__((aligned(1))) CServerPipe
+SDK_Class CServerPipe
 {
 public:
 	IProcessPipe* internalPipe;		//0x0
@@ -109,7 +109,7 @@ public:
 static_assert(offsetof(CServerPipe, pipeHandle) == 0x8);
 static_assert(offsetof(CServerPipe, pid) == 0x14);
 
-class CSteamEngine
+SDK_Class CSteamEngine
 {
 public:
 	CServerPipe* getServerPipe(HSteamPipe pipe);

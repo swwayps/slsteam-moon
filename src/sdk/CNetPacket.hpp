@@ -16,7 +16,7 @@
 
 
 //Helper class to make calculations more legible
-class CNetPacketBody
+SDK_Class CNetPacketBody
 {
 public:
 

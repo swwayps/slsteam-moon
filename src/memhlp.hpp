@@ -189,6 +189,7 @@ namespace MemHlp
 	constexpr auto callVFunc(unsigned int index, void* thisPtr, Args... args)
 	{
 		const auto fn = reinterpret_cast<tFN>(*(*reinterpret_cast<lm_address_t***>(thisPtr) + index));
+		LOG_TRACE("Calling vfunc %u from %s at %p\n", index, getTypeName(thisPtr), reinterpret_cast<void*>(fn));
 		return fn(thisPtr, args...);
 	}
 }

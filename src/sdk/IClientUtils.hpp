@@ -2,7 +2,8 @@
 
 #include "types.hpp"
 
-class IClientUtils
+
+SDK_Class IClientUtils
 {
 public:
 	HSteamPipe getCurrentSteamPipe();

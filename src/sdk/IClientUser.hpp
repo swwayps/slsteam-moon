@@ -5,7 +5,7 @@
 #include <cstdint>
 
 
-class IClientUser
+SDK_Class IClientUser
 {
 public:
 

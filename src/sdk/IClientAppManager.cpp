@@ -35,9 +35,9 @@ uint32_t IClientAppManager::getNumLibraryFolders()
 	return MemHlp::callVFunc<uint32_t(*)(void*)>(VFTIndexes::IClientAppManager::GetNumLibraryFolders.index, this);
 }
 
-bool IClientAppManager::installApp(const AppId_t appId, const uint32_t librarIndex)
+bool IClientAppManager::installApp(const AppId_t appId, const uint32_t libraryIndex)
 {
-	return MemHlp::callVFunc<bool(*)(void*, AppId_t, uint32_t, uint8_t)>(VFTIndexes::IClientAppManager::InstallApp.index, this, appId, librarIndex, 0);
+	return MemHlp::callVFunc<bool(*)(void*, AppId_t, uint32_t, uint8_t)>(VFTIndexes::IClientAppManager::InstallApp.index, this, appId, libraryIndex, 0);
 }
 
 uint32_t IClientAppManager::uninstallApp(const AppId_t appId)

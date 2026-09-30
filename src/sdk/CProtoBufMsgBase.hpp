@@ -22,7 +22,7 @@ enum EGameFlags
 	k_EGameFlagMultiplayer = 1 << 13,
 };
 
-class CProtoBufMsgBase
+SDK_Class CProtoBufMsgBase
 {
 public:
 	uint8_t __pad_0x0[0x14];	//0x0

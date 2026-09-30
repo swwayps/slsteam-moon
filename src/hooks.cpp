@@ -1407,6 +1407,10 @@ void Hooks::placeVFTHooks()
 	g_pClientApps = user->getClientApps();
 	g_pClientUtils = utils;
 
+	// The interfaces are packed SDK classes (alignment 1); their first word is
+	// the vtable pointer either way (upstream 2710ef9).
+	#pragma GCC diagnostic push
+	#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
 	{
 		auto vft = std::make_shared<lm_vmt_t>();
 		LM_VmtNew(*reinterpret_cast<lm_address_t**>(g_pClientAppManager), vft.get());
@@ -1460,6 +1464,7 @@ void Hooks::placeVFTHooks()
 		IClientUtils_GetOfflineMode.place();
 		g_pLog->debug("IClientUtils->vft at %p\n", vft->vtable);
 	}
+	#pragma GCC diagnostic pop
 
 	placed.store(true, std::memory_order_release);
 }

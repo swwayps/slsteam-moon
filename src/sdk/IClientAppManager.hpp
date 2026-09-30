@@ -29,7 +29,7 @@ enum EAppState : uint32_t
 	k_EAppStateUpdatedDisabledbyapp = 0x80000
 };
 
-struct DepotInfo_t
+SDK_Struct DepotInfo_t
 {
 	AppId_t depotId;			//0x0
 	AppId_t appId;				//0x4
@@ -37,14 +37,14 @@ struct DepotInfo_t
 	uint8_t __pad0x10[0x10];	//0x10
 }; //0x20
 
-class IClientAppManager
+SDK_Class IClientAppManager
 {
 public:
 	uint32_t getNumLibraryFolders();
 	uint32_t getLibraryFolderLabel(const uint32_t index, char* pChLabel, const uint32_t labelSize);
 	uint32_t getLibraryFolderPath(const uint32_t index, char* pChPath, const uint32_t pathSize);
 	EAppState getAppInstallState(const AppId_t appId);
-	bool installApp(const AppId_t appId, const uint32_t librarIndex);
+	bool installApp(const AppId_t appId, const uint32_t libraryIndex);
 	uint32_t uninstallApp(const AppId_t appId);
 };
 

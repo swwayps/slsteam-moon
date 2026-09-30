@@ -3,6 +3,9 @@
 #include <cstdint>
 
 
+#define SDK_Class class __attribute__((packed)) __attribute__((aligned(1)))
+#define SDK_Struct struct __attribute__((packed)) __attribute__((aligned(1)))
+
 typedef uint32_t AppId_t;
 typedef uint64_t GameId_t;
 
@@ -10,7 +13,6 @@ typedef int32_t ENetPacket;
 
 typedef uint32_t HSteamPipe;
 typedef uint32_t HSteamUser;
-
 
 constexpr uint64_t GAME_TYPE_SHORTCUT = 0x2000000ULL;
 
