@@ -609,7 +609,6 @@ static void load()
 			}
 		};
 		logBuildId("SLSsteam.so", "candidate");
-		logBuildId("library-inject.so", "audit-loader");
 		logBuildId("steamclient.so", "steamclient");
 		logBuildId("steamui.so", "steamui");
 		logBuildId("cloud_redirect.so", "cloud-redirect");

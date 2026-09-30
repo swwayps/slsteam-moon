@@ -49,4 +49,4 @@ echo "==> portable build (using $runtime, image slsteam-moon-builder)"
 
 scripts/check-pattern-refresh-abi.sh bin/pattern-refresh
 
-echo "==> built: bin/SLSsteam.so, bin/library-inject.so, bin/pattern-refresh"
+echo "==> built: bin/SLSsteam.so, bin/pattern-refresh"

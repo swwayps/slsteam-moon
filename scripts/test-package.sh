@@ -47,12 +47,7 @@ fi
 STUBBED=()
 BACKUP_DIR="$(mktemp -d)"
 BACKED_UP=()
-# The subproject build output behind bin/library-inject.so must not share
-# storage with it, or the stubs below would overwrite what make reuses.
-INJECT_OUT="tools/library-inject/library-inject.so"
-INJECT_SUM=""
-[ -f "$INJECT_OUT" ] && INJECT_SUM="$(sha256sum < "$INJECT_OUT")"
-for f in bin/SLSsteam.so bin/library-inject.so bin/pattern-refresh; do
+for f in bin/SLSsteam.so bin/pattern-refresh; do
     mkdir -p bin
     if [ -e "$f" ]; then
         cp -a "$f" "$BACKUP_DIR/$(basename "$f")"
@@ -62,11 +57,6 @@ for f in bin/SLSsteam.so bin/library-inject.so bin/pattern-refresh; do
     [ "$f" != bin/pattern-refresh ] || chmod +x "$f"
     STUBBED+=("$f")
 done
-if [ -n "$INJECT_SUM" ]; then
-    [ "$(sha256sum < "$INJECT_OUT")" = "$INJECT_SUM" ] \
-        && ok "stubbing bin/ leaves $INJECT_OUT intact" \
-        || bad "bin/library-inject.so shares storage with $INJECT_OUT"
-fi
 
 ABI_TMP="$(mktemp -d)"
 ABI_READELF="$ABI_TMP/readelf"
@@ -141,7 +131,7 @@ trap cleanup EXIT
 # Non-empty but stale binaries must not be accepted as a release input. This
 # catches the ignored-bin failure mode where package.sh silently copies a
 # previous build after source files have changed.
-touch -d '@1' bin/SLSsteam.so bin/library-inject.so bin/pattern-refresh
+touch -d '@1' bin/SLSsteam.so bin/pattern-refresh
 if scripts/package.sh --version "$STALE_VERSION" >/dev/null 2>&1; then
     bad "package.sh accepted stale binaries"
 else
@@ -149,7 +139,7 @@ else
 fi
 
 # Make the test binaries current for the positive packaging assertion below.
-touch bin/SLSsteam.so bin/library-inject.so bin/pattern-refresh
+touch bin/SLSsteam.so bin/pattern-refresh
 
 if scripts/package.sh --version "$TEST_VERSION" >/dev/null 2>&1; then
     ZIP="dist/slsteam-moon-linux-${TEST_VERSION}.zip"
@@ -176,6 +166,10 @@ if scripts/package.sh --version "$TEST_VERSION" >/dev/null 2>&1; then
         echo "$listing" | grep -q "bin/pattern-refresh" \
             && ok "zip bundles signed pattern refresh helper" \
             || bad "zip is missing signed pattern refresh helper"
+        # SLSsteam must be the only audit module (see setup.sh wrapper).
+        echo "$listing" | grep -q "library-inject" \
+            && bad "zip still ships library-inject.so" \
+            || ok "zip ships no second audit module"
     else
         bad "package.sh did not produce $ZIP"
     fi

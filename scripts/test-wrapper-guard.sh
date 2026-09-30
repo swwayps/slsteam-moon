@@ -50,7 +50,6 @@ GUARD_DIR="$XDG_STATE_HOME/slsteam-moon"
 
 mkdir -p "$SLSDIR"
 printf 'so'  > "$SLSDIR/SLSsteam.so"
-printf 'inj' > "$SLSDIR/library-inject.so"
 
 ( umask 0002; log_info() { :; }; log_success() { :; }; log_warn() { :; }; eval "$FN"; SLSDIR="$SLSDIR" create_steam_wrapper )
 WRAP="$SLSDIR/path/steam"
@@ -159,7 +158,6 @@ SYMLINK_SLSDIR="$SYMLINK_HOME/.local/share/SLSsteam"
 SYMLINK_ORIG="$SYMLINK_SLSDIR/system-launcher-backup/usr/bin/steam.orig"
 SYMLINK_LOG="$SYMLINK_ROOT/invocation.log"
 printf 'so' > "$SYMLINK_SLSDIR/SLSsteam.so"
-printf 'inj' > "$SYMLINK_SLSDIR/library-inject.so"
 (
 	export HOME="$SYMLINK_HOME" SLSDIR="$SYMLINK_SLSDIR"
 	log_info() { :; }

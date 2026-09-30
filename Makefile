@@ -1,7 +1,7 @@
 # Build glue for slsteam-moon.
 #
 # Common invocations:
-#   make             Build bin/SLSsteam.so + bin/library-inject.so on the host.
+#   make             Build bin/SLSsteam.so + bin/pattern-refresh on the host.
 #                    Use scripts/build.sh --portable for a release-grade
 #                    binary with broader glibc compatibility.
 #   make clean       Remove all build artefacts.
@@ -141,19 +141,12 @@ test-stats-audit: bin/SLSsteam.so
 	LD_AUDIT=$(CURDIR)/bin/SLSsteam.so /tmp/test_stats_audit audit
 
 all: build
-build: bin/SLSsteam.so bin/library-inject.so bin/pattern-refresh
+build: bin/SLSsteam.so bin/pattern-refresh
 rebuild: clean build
 
 bin/SLSsteam.so: $(objs) $(libs)
 	@mkdir -p bin
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
-
-# Audit-side helper that redirects libcurl loading to a system copy.
-# Loaded ahead of SLSsteam.so via $LD_AUDIT.
-bin/library-inject.so: tools/library-inject/main.cpp tools/library-inject/Makefile
-	@mkdir -p bin
-	$(MAKE) -C tools/library-inject
-	cp tools/library-inject/library-inject.so $@
 
 PATTERN_PUBLIC_KEY_HEX = $(shell tr -d '[:space:]' < res/pattern-public-key.hex 2>/dev/null)
 
@@ -204,7 +197,6 @@ clean-libs:
 		"bin/" \
 		"dist/" \
 		"zips/" \
-		"tools/library-inject/library-inject.so" \
 		"tools/ticket-grabber/bin" \
 		"tools/ticket-grabber/obj" \
 		"tools/schema-grabber/bin" \

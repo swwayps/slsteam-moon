@@ -3,9 +3,9 @@
 slsteam-moon is a 32-bit shared library that hooks into Steam through
 `LD_AUDIT`. The build produces two artefacts:
 
-- `bin/SLSsteam.so` — main hook library
-- `bin/library-inject.so` — small audit helper that redirects libcurl
-  loading to the system copy
+- `bin/SLSsteam.so` — main hook library, the only `LD_AUDIT` module
+- `bin/pattern-refresh` — native helper the wrapper runs before Steam to
+  refresh the signed pattern catalog
 
 ## Quick start
 
@@ -82,7 +82,7 @@ expect:
 
 ```
 slsteam-moon-<ver>/
-  bin/{SLSsteam.so, library-inject.so}
+  bin/{SLSsteam.so, pattern-refresh}
   setup.sh
   res/config.yaml
   docs/LICENSE/

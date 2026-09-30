@@ -11,7 +11,6 @@
 #   slsteam-moon-<version>/
 #     bin/
 #       SLSsteam.so
-#       library-inject.so
 #       pattern-refresh
 #     docs/
 #       LICENSE/                   (third-party + slsteam-moon licenses)
@@ -29,7 +28,7 @@
 #         Steamless.CLI.exe
 #         Plugins/*.dll
 #
-# Requires: bin/SLSsteam.so + bin/library-inject.so + bin/pattern-refresh
+# Requires: bin/SLSsteam.so + bin/pattern-refresh
 # (run scripts/build.sh first).
 #
 # Usage:
@@ -66,7 +65,7 @@ if [ -z "$VERSION" ]; then
 fi
 
 # Sanity-check the binaries are present and look right.
-for f in bin/SLSsteam.so bin/library-inject.so bin/pattern-refresh; do
+for f in bin/SLSsteam.so bin/pattern-refresh; do
 	if [ ! -f "$f" ]; then
 		echo "missing $f" >&2
 		echo "build first:  scripts/build.sh   (or scripts/build.sh --host for dev)" >&2
@@ -75,7 +74,7 @@ for f in bin/SLSsteam.so bin/library-inject.so bin/pattern-refresh; do
 done
 
 # Empty/zero-byte binaries would silently produce a broken release zip.
-if [ ! -s bin/SLSsteam.so ] || [ ! -s bin/library-inject.so ] \
+if [ ! -s bin/SLSsteam.so ] \
    || [ ! -s bin/pattern-refresh ] || [ ! -x bin/pattern-refresh ]; then
 	echo "binaries in bin/ are empty -- rebuild before packaging" >&2
 	exit 1
@@ -100,8 +99,6 @@ check_binary_freshness() {
 check_binary_freshness bin/SLSsteam.so SLSsteam.so \
 	src include lib res Makefile scripts/build.sh scripts/_build-host.sh \
 	scripts/_build-portable.sh scripts/Dockerfile scripts/check-sls-abi.sh embed-config.sh embed-version.sh
-check_binary_freshness bin/library-inject.so library-inject.so \
-	tools/library-inject Makefile
 check_binary_freshness bin/pattern-refresh pattern-refresh \
 	tools/pattern-refresh src/pattern_catalog.cpp src/pattern_catalog.hpp \
 	src/utils/process_lock.hpp res/pattern-public-key.hex Makefile \
@@ -118,7 +115,6 @@ rm -rf "$PKG_DIR" "$ZIP_PATH"
 mkdir -p "$PKG_DIR/bin" "$PKG_DIR/docs" "$PKG_DIR/res" "$PKG_DIR/tools"
 
 cp bin/SLSsteam.so       "$PKG_DIR/bin/"
-cp bin/library-inject.so "$PKG_DIR/bin/"
 cp bin/pattern-refresh   "$PKG_DIR/bin/"
 cp setup.sh              "$PKG_DIR/"
 cp res/config.yaml       "$PKG_DIR/res/"

@@ -46,4 +46,4 @@ fi
 
 make clean
 make
-echo "==> built: bin/SLSsteam.so, bin/library-inject.so"
+echo "==> built: bin/SLSsteam.so, bin/pattern-refresh"

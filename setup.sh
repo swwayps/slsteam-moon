@@ -306,6 +306,9 @@ install_slssteam()
 	log_info "Installing SLSsteam libraries"
 	mkdir -p "$SLSDIR" || exit 1
 	cp -v ./bin/* "$SLSDIR/" | sed "s|^|   ${MUTED}${NC}|"
+	# Older releases shipped a second audit module; an old desktop entry that
+	# still names it would load it next to SLSsteam.
+	rm -f "$SLSDIR/library-inject.so"
 	# Desktop-coverage helper (scan + patch all *steam*.desktop). Shipped in the
 	# release; copied next to the wrapper so the wrapper and Lumen can invoke it.
 	install -m 0644 ./tools/desktop-coverage.lib.sh "$SLSDIR/desktop-coverage.lib.sh" 2>/dev/null || \

@@ -3,4 +3,4 @@
 # get a precise backtrace of the SIGILL in the IPC:CSteamEngine thread.
 ulimit -c unlimited
 SLSDIR="$HOME/.local/share/SLSsteam"
-LD_AUDIT="$SLSDIR/library-inject.so:$SLSDIR/SLSsteam.so${LD_AUDIT:+:$LD_AUDIT}" exec /usr/games/steam "$@"
+LD_AUDIT="$SLSDIR/SLSsteam.so${LD_AUDIT:+:$LD_AUDIT}" exec /usr/games/steam "$@"
