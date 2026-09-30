@@ -1760,7 +1760,7 @@ void Hooks::place()
 	// la_objopen). That was a harmless no-op before the owner-thread work queue
 	// existed. Closing the queue from there refuses every watcher-originated
 	// Steam call for the WHOLE SESSION — the work is abandoned, not merely
-	// executed elsewhere: no package-0 injection and no license broadcast for
+	// executed elsewhere: no package-0 sync and no compatibility mapping for
 	// as long as the client runs.
 	//
 	// Marking here (rather than at the end of place()) means a teardown that

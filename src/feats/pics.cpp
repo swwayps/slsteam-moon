@@ -11,12 +11,10 @@
 #include "prewarm.hpp"
 #include "synthmark.hpp"
 #include "apps.hpp"
-#include "packagepatch.hpp"
 
 #include "../config.hpp"
 #include "../globals.hpp"
 #include "../log.hpp"
-#include "../ownerwork.hpp"
 #include "../sdk/CProtoBufMsgBase.hpp"
 #include "../thread_start.hpp"
 
@@ -279,18 +277,15 @@ std::mutex g_rawCacheQueueMu;
 std::map<uint32_t, RawCacheItem> g_rawCachePending;
 bool g_rawCacheWorkerActive = false;
 
-void refreshDlcInjectionAfterCachePublication()
+// Package 0 is owned by the HotReload snapshot; a published cache only widens
+// the local DLC set used by launch-time checks.
+void refreshDiscoveredDlcAfterCachePublication()
 {
 	std::lock_guard<std::mutex> passLock(
 		AppInfoProvision::provisioningPassMutex());
 	bool complete = false;
 	const auto dlcIds = AppInfoProvision::collectDlcAppIdsForAddedApps(&complete);
-	if (!complete) return;
-	PackagePatch::setExtraAppIds(dlcIds.package0);
-	Apps::setDiscoveredAppDlcIds(dlcIds.appDlc);
-	const auto ids = AppInfoProvision::mergePackage0AppIds(
-		g_config.addedAppIds.get(), dlcIds.package0);
-	if (!ids.empty()) (void)OwnerWork::submitHotAdd(ids);
+	if (complete) Apps::setDiscoveredAppDlcIds(dlcIds.appDlc);
 }
 
 void runRawCacheWorker()
@@ -362,7 +357,7 @@ void runRawCacheWorker()
 		}
 		if (publishedAny)
 		{
-			try { refreshDlcInjectionAfterCachePublication(); }
+			try { refreshDiscoveredDlcAfterCachePublication(); }
 			catch (...) {}
 		}
 		if (!deferred.empty())

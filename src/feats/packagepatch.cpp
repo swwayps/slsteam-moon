@@ -68,7 +68,7 @@ namespace
 
 	// Saved pointer to package 0's PackageInfo — captured the first time
 	// LoadPackage is called with PackageId == 0.  Used by
-	// injectIntoPackage0 for re-injection if our config loaded late.
+	// synchronizePackage0 to apply a snapshot between package loads.
 	std::atomic<PackageInfo*> g_pPackage0{nullptr};
 
 	// Set of (appid, depotid) already appended to package 0, so we
@@ -90,13 +90,6 @@ namespace
 	// nothing to reconcile), and the CheckAppOwnership-driven retry
 	// path keys off it.
 	std::atomic<bool> g_package0Injected{false};
-
-	// DLC appids (discovered from each AddedApp's provisioned appinfo)
-	// that must ALSO be injected into package 0's AppIdVec on every
-	// load, so the install planner schedules their `dlcappid` depots.
-	// Guarded by g_seededMutex.  Merged with managed base app ids at
-	// inject time.
-	std::vector<uint32_t> g_extraAppIds;
 
 	// Runtime desired state.  All fields are guarded by g_seededMutex.  The
 	// snapshot is stored even while package 0 is unavailable so a later
@@ -550,10 +543,8 @@ namespace
 		}
 		if (action == Action::Defer)
 		{
-			const char* reason = !unresolvedStateSafe
-				? "app metadata is unresolved and the guard is unavailable"
-				: "mark/process capability is unavailable";
-			logDeferredOnce(generation, reason);
+			logDeferredOnce(generation,
+				"app metadata is unresolved and the guard is unavailable");
 			return RuntimeRefreshResult::Deferred;
 		}
 		if (t_processingRuntimeRefresh)
@@ -579,21 +570,34 @@ namespace
 			return RuntimeRefreshResult::Deferred;
 		}
 
+		if (action == Action::Broadcast)
 		{
-			auto span = AffTrace::fnSpan(
-				AffTrace::Call::MarkLicenseChanged, AffTrace::Mode::NA);
-			(void)g_pMarkLicenseAsChanged(user, 0, true);
+			// Degraded client: mark/process did not resolve after an update.
+			// One LicensesUpdated_t per generation is the best live nudge left;
+			// restart stays the complete recovery.
+			g_pLog->info(
+				"PackagePatch: mark/process capability unavailable; license broadcast for generation %llu\n",
+				static_cast<unsigned long long>(generation));
+			reconcileGenerationOnce(generation);
 		}
-		bool processed = false;
+		else
 		{
-			auto span = AffTrace::fnSpan(
-				AffTrace::Call::ProcessLicenseUpdates, AffTrace::Mode::NA);
-			processed = g_pProcessPendingLicenseUpdates(user);
-		}
-		if (!processed)
-		{
-			logDeferredOnce(generation, "Steam retained the pending update");
-			return RuntimeRefreshResult::Deferred;
+			{
+				auto span = AffTrace::fnSpan(
+					AffTrace::Call::MarkLicenseChanged, AffTrace::Mode::NA);
+				(void)g_pMarkLicenseAsChanged(user, 0, true);
+			}
+			bool processed = false;
+			{
+				auto span = AffTrace::fnSpan(
+					AffTrace::Call::ProcessLicenseUpdates, AffTrace::Mode::NA);
+				processed = g_pProcessPendingLicenseUpdates(user);
+			}
+			if (!processed)
+			{
+				logDeferredOnce(generation, "Steam retained the pending update");
+				return RuntimeRefreshResult::Deferred;
+			}
 		}
 
 		{
@@ -607,9 +611,12 @@ namespace
 			g_runtimeRefreshPendingHint.store(
 				g_runtimeRefreshPending, std::memory_order_release);
 		}
-		g_pLog->info(
-			"PackagePatch: processed runtime package change generation %llu\n",
-			static_cast<unsigned long long>(generation));
+		if (action == Action::Process)
+		{
+			g_pLog->info(
+				"PackagePatch: processed runtime package change generation %llu\n",
+				static_cast<unsigned long long>(generation));
+		}
 		return RuntimeRefreshResult::Complete;
 	}
 
@@ -777,9 +784,11 @@ namespace
 		}
 
 		// Once the runtime coordinator has published a complete snapshot it is
-		// authoritative across every later package reload.  Before that point,
-		// retain the boot path, but source it only from the managed stplug-in /
-		// luaappids union plus its discovered planner IDs.
+		// authoritative across every later package reload.  HotReload::initialize
+		// publishes one during setup, so the boot path below is only the safety
+		// net for a boot where that publication failed (oversized snapshot,
+		// exception, teardown); it injects the managed stplug-in / luaappids
+		// union.
 		try
 		{
 			SnapshotApplyResult applied;
@@ -871,13 +880,7 @@ namespace
 		}
 
 		const auto managed = g_config.managedAppIds.get();
-		std::vector<uint32_t> ids(managed.begin(), managed.end());
-		{
-			// Append the registered DLC appids (under the same lock that
-			// guards g_extraAppIds and the seeding sets below).
-			std::lock_guard<std::mutex> lk(g_seededMutex);
-			ids.insert(ids.end(), g_extraAppIds.begin(), g_extraAppIds.end());
-		}
+		const std::vector<uint32_t> ids(managed.begin(), managed.end());
 		if (ids.empty())
 		{
 			return result;
@@ -988,7 +991,6 @@ namespace PackagePatch
 		std::lock_guard<std::mutex> lk(g_seededMutex);
 		g_seededAppIds.clear();
 		g_seededDepotIds.clear();
-		g_extraAppIds.clear();
 		g_desiredSnapshot = {};
 		g_hasDesiredSnapshot = false;
 		g_appliedGeneration = 0;
@@ -1004,50 +1006,12 @@ namespace PackagePatch
 		g_fallbackReconcileGeneration = 0;
 	}
 
-	void setExtraAppIds(const std::vector<uint32_t>& appIds)
-	{
-		std::lock_guard<std::mutex> lk(g_seededMutex);
-		g_extraAppIds = appIds;
-	}
-
-	bool injectIntoPackage0(const std::vector<uint32_t>& appIds)
-	{
-		PackageInfo* pPkg = g_pPackage0.load(std::memory_order_acquire);
-		if (!pPkg || !g_pCUtlMemoryGrow || appIds.empty())
-		{
-			return false;
-		}
-		bool injected;
-		{
-			std::lock_guard<std::mutex> lk(g_seededMutex);
-			injected = injectFullSetLocked(pPkg, appIds) > 0;
-		}
-
-		// Reconcile after the manual re-inject path too (covers the
-		// case where Steam loaded package 0 before our hook was placed).
-		reconcileLicensesOnce();
-		return injected;
-	}
-
 	void tryReconcileLicenses()
 	{
 		// Cheap, lock-free retry entry point driven by a hook that
 		// reliably has a valid local user (CheckAppOwnership).  No-op
 		// after the one-shot broadcast has happened, or before package
 		// 0 has actually been injected.
-		reconcileLicensesOnce();
-	}
-
-	void forceReconcileLicenses()
-	{
-		// Hot-reload: re-arm the one-shot gate and broadcast again so the
-		// reconcile can fire after boot.  Still guarded on g_package0Injected
-		// and a valid local user, so it's a safe no-op early on.
-		if (!g_package0Injected.load(std::memory_order_acquire))
-		{
-			return;
-		}
-		g_licenseReconciled.store(false, std::memory_order_release);
 		reconcileLicensesOnce();
 	}
 

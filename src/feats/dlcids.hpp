@@ -279,24 +279,6 @@ inline void appendUnique(std::vector<uint32_t>& out,
 	if (id != 0 && seen.insert(id).second) out.push_back(id);
 }
 
-// Merge managed app ids with a late-discovered package-0 DLC set.  The cold
-// PICS path can discover DLC after load() has already built its initial list,
-// so keep this pure and deduplicated for both startup and refresh callers.
-inline std::vector<uint32_t> mergePackage0AppIds(
-    const std::unordered_set<uint32_t>& baseAppIds,
-    const std::vector<uint32_t>& extraAppIds)
-{
-	std::vector<uint32_t> out;
-	out.reserve(baseAppIds.size() + extraAppIds.size());
-	std::unordered_set<uint32_t> seen;
-	seen.reserve(baseAppIds.size() + extraAppIds.size());
-	for (uint32_t id : baseAppIds)
-		appendUnique(out, seen, id);
-	for (uint32_t id : extraAppIds)
-		appendUnique(out, seen, id);
-	return out;
-}
-
 // `advertisedWithContent` contains advertised DLC ids for which the caller
 // found own content in the base appinfo or on disk.  Depot-tagged ids always
 // enter package 0; other advertised ids enter it only when content-backed,

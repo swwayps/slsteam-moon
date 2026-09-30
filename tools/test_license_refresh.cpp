@@ -26,10 +26,12 @@ int main()
 		"complete capability processes change");
 	check(decide(true, true, false, true) == Action::Defer,
 		"missing unresolved-app guard defers an unsafe change");
-	check(decide(false, true, true, true) == Action::Defer,
-		"missing mark function leaves the change restart-recoverable");
-	check(decide(true, false, true, true) == Action::Defer,
-		"missing process function leaves the change restart-recoverable");
+	check(decide(false, true, true, true) == Action::Broadcast,
+		"missing mark function falls back to the license broadcast");
+	check(decide(true, false, true, true) == Action::Broadcast,
+		"missing process function falls back to the license broadcast");
+	check(decide(false, false, false, true) == Action::Defer,
+		"the broadcast fallback waits while an unresolved addition is unguarded");
 	check(decide(true, true, true, false) == Action::NoChange,
 		"unchanged state emits no duplicate refresh");
 	check(decide(false, false, false, false) == Action::NoChange,

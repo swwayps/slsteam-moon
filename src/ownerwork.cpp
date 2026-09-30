@@ -65,8 +65,6 @@ namespace
 	{
 		switch (kind)
 		{
-			case OwnerQueue::Kind::InjectPackage0:    return AffTrace::Call::Package0Inject;
-			case OwnerQueue::Kind::ReconcileLicenses: return AffTrace::Call::LicenseReconcile;
 			case OwnerQueue::Kind::SyncPackage0:     return AffTrace::Call::Package0Sync;
 			case OwnerQueue::Kind::EnsureCompat:     return AffTrace::Call::CompatMapping;
 		}
@@ -97,12 +95,6 @@ namespace
 		auto span = AffTrace::callSpan(AffTrace::Src::Config, traceCall(cmd.kind()), mode);
 		switch (cmd.kind())
 		{
-			case OwnerQueue::Kind::InjectPackage0:
-				PackagePatch::injectIntoPackage0(cmd.appIds());
-				break;
-			case OwnerQueue::Kind::ReconcileLicenses:
-				PackagePatch::forceReconcileLicenses();
-				break;
 			case OwnerQueue::Kind::SyncPackage0:
 				PackagePatch::synchronizePackage0(cmd.packageSnapshot());
 				break;
@@ -408,18 +400,6 @@ namespace OwnerWork
 		AffTrace::queueStale(flushed, static_cast<std::uint32_t>(queue().depth()));
 		g_pLog->warn("OwnerWork: owner IPC thread did not drain within %ums; ran %zu "
 		             "command(s) on this thread instead\n", staleMs, flushed);
-	}
-
-	Mode submitHotAdd(const std::vector<std::uint32_t>& appIds)
-	{
-		if (appIds.empty())
-		{
-			// Preserve the existing order: injection first, then the license
-			// broadcast. With no ids there is nothing to inject.
-			return submitBatch({ OwnerQueue::Command::reconcileLicenses() });
-		}
-		return submitBatch({ OwnerQueue::Command::injectPackage0(appIds),
-		                     OwnerQueue::Command::reconcileLicenses() });
 	}
 
 	Mode submitManagedState(const PackageSnapshot& snapshot)

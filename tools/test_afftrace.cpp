@@ -106,7 +106,7 @@ static void test_record_format_and_privacy()
 	r.tMonoUs = 1234567;
 	r.kind = AffTrace::Kind::SteamCallExit;
 	r.src = AffTrace::Src::Config;
-	r.call = AffTrace::Call::Package0Inject;
+	r.call = AffTrace::Call::Package0Sync;
 	r.mode = AffTrace::Mode::Queued;
 	r.tid = 4242;
 	r.ownerTid = 99;
@@ -145,7 +145,7 @@ static void test_record_format_and_privacy()
 	CHECK(fields == sizeof(kKeys) / sizeof(kKeys[0]), "every approved field present");
 	CHECK(line.find("kind=STEAMCALL_EXIT") != std::string::npos, "symbolic kind label");
 	CHECK(line.find("src=config") != std::string::npos, "symbolic source label");
-	CHECK(line.find("call=package0_inject") != std::string::npos, "symbolic call label");
+	CHECK(line.find("call=package0_sync") != std::string::npos, "symbolic call label");
 	CHECK(line.find("mode=queued") != std::string::npos, "symbolic mode label");
 	CHECK(line.find("off_owner=1") != std::string::npos, "off-owner flag");
 
@@ -202,12 +202,12 @@ static void test_disabled_by_default()
 	AffTrace::latchOwner();
 	AffTrace::ipcFrameEnter();
 	AffTrace::ipcFrameExit();
-	AffTrace::queuePush(AffTrace::Src::Config, AffTrace::Call::Package0Inject,
+	AffTrace::queuePush(AffTrace::Src::Config, AffTrace::Call::Package0Sync,
 	                    AffTrace::Mode::Queued, 1);
 	{
 		auto watch = AffTrace::watchSpan(AffTrace::Src::Config);
 		auto call = AffTrace::callSpan(AffTrace::Src::Config,
-		                              AffTrace::Call::Package0Inject,
+		                              AffTrace::Call::Package0Sync,
 		                              AffTrace::Mode::Direct);
 		auto fn = AffTrace::fnSpan(AffTrace::Call::CutlMemoryGrow,
 		                           AffTrace::Mode::Direct);
@@ -246,7 +246,7 @@ static void test_enabled_sink()
 	// IPC hook uses, so depth accounting is exercised the same way).
 	{
 		auto call = AffTrace::callSpan(AffTrace::Src::Config,
-		                              AffTrace::Call::Package0Inject,
+		                              AffTrace::Call::Package0Sync,
 		                              AffTrace::Mode::Queued);
 		AffTrace::FrameGuard frame;
 		CHECK(AffTrace::ipcDepth() == 1, "frame guard tracks IPC depth");
@@ -280,7 +280,7 @@ static void test_offowner_overlap_capture()
 	{
 		auto watch = AffTrace::watchSpan(AffTrace::Src::Config);
 		auto call = AffTrace::callSpan(AffTrace::Src::Config,
-		                              AffTrace::Call::Package0Inject,
+		                              AffTrace::Call::Package0Sync,
 		                              AffTrace::Mode::Direct);
 		auto fn = AffTrace::fnSpan(AffTrace::Call::CutlMemoryGrow,
 		                           AffTrace::Mode::Direct);
@@ -340,7 +340,7 @@ static void test_owner_frame_accounting()
 			CHECK(AffTrace::ipcDepth() == 1, "the drain runs inside an owner IPC frame");
 			AffTrace::queueDrain(2, 0);
 			auto call = AffTrace::callSpan(AffTrace::Src::Config,
-			                              AffTrace::Call::Package0Inject,
+			                              AffTrace::Call::Package0Sync,
 			                              AffTrace::Mode::Queued);
 		}
 	}
@@ -381,7 +381,7 @@ static void test_hourly_growth()
 			{
 				auto watch = AffTrace::watchSpan(AffTrace::Src::Config);
 				auto call = AffTrace::callSpan(AffTrace::Src::Config,
-				                              AffTrace::Call::Package0Inject,
+				                              AffTrace::Call::Package0Sync,
 				                              AffTrace::Mode::Direct);
 			});
 			watcher.join();
@@ -389,7 +389,7 @@ static void test_hourly_growth()
 		AffTrace::ipcFrameExit();
 		std::this_thread::sleep_for(std::chrono::milliseconds(3));
 		// Traffic in the new bucket flushes the previous bucket's counters.
-		AffTrace::queuePush(AffTrace::Src::Config, AffTrace::Call::Package0Inject,
+		AffTrace::queuePush(AffTrace::Src::Config, AffTrace::Call::Package0Sync,
 		                    AffTrace::Mode::Queued, 0);
 	}
 
@@ -419,7 +419,7 @@ static void test_record_bound()
 	enableTracing();
 	for (std::size_t i = 0; i < AffTrace::kMaxRecords + 500; ++i)
 	{
-		AffTrace::queuePush(AffTrace::Src::Config, AffTrace::Call::Package0Inject,
+		AffTrace::queuePush(AffTrace::Src::Config, AffTrace::Call::Package0Sync,
 		                    AffTrace::Mode::Queued, 1);
 	}
 	const auto lines = readLines();

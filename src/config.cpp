@@ -258,7 +258,7 @@ static void onFileChange()
 	const std::lock_guard reloadLock(reloadMutex);
 
 	// This runs on the inotify watcher pthread. Everything below is local
-	// bookkeeping EXCEPT the package-0 injection and the license broadcast,
+	// bookkeeping EXCEPT the package-0 sync and the compatibility mapping,
 	// which enter Steam-owned code — those are handed to the owner IPC thread
 	// (see ownerwork.hpp).
 	auto watchSpan = AffTrace::watchSpan(AffTrace::Src::Config);

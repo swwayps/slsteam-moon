@@ -3,10 +3,10 @@
 // Owner-IPC-thread execution site for watcher-originated Steam-owned work.
 //
 // SCOPE — this is HARDENING plus DIAGNOSTICS, not a cumulative-failure fix.
-// A controlled VM run proved that the inotify config-watcher pthread executes
+// A controlled VM run proved that the inotify config-watcher pthread executed
 // Steam-owned calls itself (the resolved `CUtlMemoryGrow` while appending to
-// package 0's live CUtlVector, and Steam's `NotifyLicensesUpdated`) while the
-// latched owner thread (the one dispatching IClientUtils IPC) is a different thread.
+// package 0's live CUtlVector, and Steam's license calls) while the latched
+// owner thread (the one dispatching IClientUtils IPC) was a different thread.
 // The same run did NOT reproduce any client failure and did NOT observe the
 // hypothesised overlap with an in-flight owner frame, so nothing here is
 // claimed to fix anything. What it does is remove an unwanted execution site:
@@ -28,10 +28,11 @@
 // expired: the watcher paid 1.5 s of latency and then ran the work off-owner
 // anyway — the worst of both options.
 //
-// So the handoff is now fire-and-forget: `submitHotAdd`/`submitManagedState`
-// enqueue and return (microseconds), and the owner thread drains whenever it
-// next runs a frame. The hot-add is already asynchronous from the user's point
-// of view, so seconds of handoff latency cost nothing.
+// So the handoff is now fire-and-forget: `submitManagedState` and
+// `submitCompatReadiness` enqueue and return (microseconds), and the owner
+// thread drains whenever it next runs a frame. The hot-add is already
+// asynchronous from the user's point of view, so seconds of handoff latency
+// cost nothing.
 //
 // WHAT IF THE OWNER NEVER DRAINS?
 // -------------------------------
@@ -58,7 +59,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
-#include <vector>
 
 #include "feats/hotreload_types.hpp"
 
@@ -185,14 +185,9 @@ namespace OwnerWork
 	// pending. Never re-enters itself.
 	void drainOnOwnerFrame();
 
-	// Config-watcher hot-add: append the app ids to package 0 and broadcast
-	// the license update, in that order, on the owner IPC thread. Returns
-	// without waiting for the owner.
-	Mode submitHotAdd(const std::vector<std::uint32_t>& appIds);
-
-	// Managed-state watcher handoff. The complete snapshot is coalesced by
-	// generation in the owner queue; the older hot-add API remains available
-	// until the watcher switches over in a later task.
+	// Managed-state handoff: reconcile package 0 to the complete snapshot on
+	// the owner IPC thread. Snapshots coalesce by generation in the owner
+	// queue. Returns without waiting for the owner.
 	Mode submitManagedState(const PackageSnapshot& snapshot);
 
 	// Apply and confirm a per-app compatibility mapping on the owner IPC

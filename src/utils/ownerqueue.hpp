@@ -4,13 +4,13 @@
 //
 // WHY THIS EXISTS
 // ---------------
-// The config watcher (and the API watcher) are plain inotify pthreads. Today
-// they reach into Steam-owned code directly: the package-0 hot-add path calls
-// the resolved `CUtlMemoryGrow` on a live CUtlVector, and the license
-// reconcile calls Steam's `NotifyLicensesUpdated`. A runtime trace on a
-// controlled VM confirmed this: those Steam-owned calls executed on the
-// watcher pthread while the latched owner thread of
-// IClientUtils IPC dispatch was a different thread.
+// The config watcher (and the API watcher) are plain inotify pthreads, but
+// the work they produce touches Steam-owned state: the package-0 sync grows a
+// live CUtlVector through the resolved `CUtlMemoryGrow` and runs Steam's
+// license mark/process pass, and the compatibility step writes Steam's
+// ConfigStore. A runtime trace on a controlled VM showed such calls executing
+// on the watcher pthread while the latched owner thread of IClientUtils IPC
+// dispatch was a different thread.
 //
 // That is an unwanted execution site regardless of whether it ever causes a
 // user-visible failure: it is off-owner mutation of Steam-owned state. This
@@ -59,11 +59,10 @@
 //  * Bounded. A fixed pending capacity and a per-command id cap. On overflow
 //    the push is REJECTED so the caller can run the work itself — semantics
 //    are preserved, only the execution site degrades to today's behaviour.
-//  * Coalescing. Two pending package-0 injections merge into one whose id list
-//    is the first-seen-order union, which is exactly what running them in
-//    sequence would leave behind (injection is per-id idempotent). A second
-//    pending license reconcile is redundant, as is a duplicate compat request
-//    for the same (app, generation) pair.
+//  * Coalescing. A newer pending package-0 snapshot replaces the older one in
+//    place (the complete snapshot is last-write-wins; still-relevant additions
+//    are carried forward). A duplicate compat request for the same
+//    (app, generation) pair is redundant.
 //  * Idempotent enqueue. Re-pushing work already pending is a no-op that
 //    reports `Duplicate`.
 //  * Exactly once. Every accepted command is executed by exactly one of the
@@ -102,15 +101,14 @@
 
 namespace OwnerQueue
 {
-	// Default pending capacity. The realistic pending set is 1 injection +
-	// 1 reconcile + 1 snapshot + a few compat requests, so 32 is generous; the cap exists
-	// to bound memory and to make overflow behaviour explicit and testable.
+	// Default pending capacity. The realistic pending set is 1 snapshot + a
+	// few compat requests, so 32 is generous; the cap exists to bound memory
+	// and to make overflow behaviour explicit and testable.
 	inline constexpr std::size_t kDefaultCapacity = 32;
 
-	// Per-command id-list cap. The hot-add command carries the whole active
-	// app set, while a managed-state snapshot carries app and depot ids. Each
-	// list is checked independently so the bound never relies on overflowing
-	// size arithmetic.
+	// Per-command id-list cap. A managed-state snapshot carries app, depot,
+	// added and appinfo-request id lists. Each list is checked independently
+	// so the bound never relies on overflowing size arithmetic.
 	inline constexpr std::size_t kMaxIdsPerCommand = 4096;
 
 	// Monotonic microseconds. Used for enqueue timestamps, so the staleness
@@ -127,8 +125,6 @@ namespace OwnerQueue
 
 	enum class Kind : std::uint8_t
 	{
-		InjectPackage0 = 0,     // CUtlMemoryGrow on package 0's vectors
-		ReconcileLicenses = 1,  // NotifyLicensesUpdated broadcast
 		SyncPackage0 = 3,       // complete managed package-0 snapshot
 		EnsureCompat = 4,       // apply/poll a live compatibility mapping
 	};
@@ -138,29 +134,20 @@ namespace OwnerQueue
 	class Command
 	{
 	public:
-		static Command injectPackage0(std::vector<std::uint32_t> appIds)
-		{
-			return Command(Kind::InjectPackage0, std::move(appIds), 0, {});
-		}
-		static Command reconcileLicenses()
-		{
-			return Command(Kind::ReconcileLicenses, {}, 0, {});
-		}
 		static Command syncPackage0(PackageSnapshot snapshot)
 		{
-			return Command(Kind::SyncPackage0, {}, 0, std::move(snapshot));
+			return Command(Kind::SyncPackage0, 0, std::move(snapshot));
 		}
 		static Command ensureCompat(
 			std::uint32_t appId,
 			std::uint64_t managedGeneration,
 			std::uint32_t attempt)
 		{
-			return Command(Kind::EnsureCompat, {}, appId, {},
+			return Command(Kind::EnsureCompat, appId, {},
 				managedGeneration, attempt);
 		}
 
 		Kind kind() const { return m_kind; }
-		const std::vector<std::uint32_t>& appIds() const { return m_appIds; }
 		const PackageSnapshot& packageSnapshot() const { return m_packageSnapshot; }
 		std::uint32_t appId() const { return m_appId; }
 		std::uint64_t managedGeneration() const { return m_managedGeneration; }
@@ -174,10 +161,6 @@ namespace OwnerQueue
 				return false;
 			switch (m_kind)
 			{
-				case Kind::InjectPackage0:
-					return m_appIds == other.m_appIds;
-				case Kind::ReconcileLicenses:
-					return true;
 				case Kind::SyncPackage0:
 					return m_packageSnapshot == other.m_packageSnapshot;
 				case Kind::EnsureCompat:
@@ -188,12 +171,12 @@ namespace OwnerQueue
 		}
 
 	private:
-		Command(Kind kind, std::vector<std::uint32_t> appIds,
+		Command(Kind kind,
 		        std::uint32_t appId,
 		        PackageSnapshot packageSnapshot,
 		        std::uint64_t managedGeneration = 0,
 		        std::uint32_t attempt = 0)
-			: m_kind(kind), m_appIds(std::move(appIds)),
+			: m_kind(kind),
 			  m_packageSnapshot(std::move(packageSnapshot)),
 			  m_appId(appId),
 			  m_managedGeneration(managedGeneration), m_attempt(attempt)
@@ -201,7 +184,6 @@ namespace OwnerQueue
 		}
 
 		Kind                       m_kind;
-		std::vector<std::uint32_t> m_appIds;
 		PackageSnapshot            m_packageSnapshot;
 		std::uint32_t              m_appId;
 		std::uint64_t              m_managedGeneration;
@@ -265,8 +247,8 @@ namespace OwnerQueue
 	// anything has been hooked, which used to be a harmless no-op. Once
 	// Hooks::remove() also closes this queue, that no-op would refuse every
 	// watcher-originated Steam call for the WHOLE SESSION (work abandoned, not
-	// merely executed elsewhere): no package-0 injection, no license
-	// broadcast, for as long as the client runs.
+	// merely executed elsewhere): no package-0 sync, no compatibility
+	// mapping, for as long as the client runs.
 	//
 	// So the queue is closed only when a placement pass has actually been
 	// entered. `notePlacement()` is called at the START of that pass, before
@@ -491,39 +473,12 @@ namespace OwnerQueue
 			Inline = 2,  // mandatory fallback, ordering claim only
 		};
 
-		// First-seen-order union of two id lists. Injecting {A} then {A,B}
-		// leaves the same package-0 vector contents, in the same order, as
-		// injecting {A,B} once, because each id is injected at most once.
-		static std::vector<std::uint32_t> mergeIds(
-			const std::vector<std::uint32_t>& base,
-			const std::vector<std::uint32_t>& extra)
-		{
-			std::vector<std::uint32_t> out = base;
-			for (std::uint32_t id : extra)
-			{
-				bool seen = false;
-				for (std::uint32_t have : out)
-				{
-					if (have == id)
-					{
-						seen = true;
-						break;
-					}
-				}
-				if (!seen)
-					out.push_back(id);
-			}
-			return out;
-		}
-
 		// Apply `cmd` to `into`, honouring coalescing, idempotency and both
 		// bounds. Returns false when the command cannot be accepted.
 		// `result` (optional) reports how it was accepted.
 		bool applyPush(std::vector<Entry>& into, const Command& cmd,
 		               std::uint64_t nowUs, PushResult* result) const
 		{
-			if (cmd.appIds().size() > m_maxIds)
-				return false;
 			if (cmd.kind() == Kind::SyncPackage0 &&
 			    (cmd.packageSnapshot().appIds.size() > m_maxIds ||
 			     cmd.packageSnapshot().depotIds.size() > m_maxIds ||
@@ -544,34 +499,14 @@ namespace OwnerQueue
 					return true;
 				}
 
-				if (cmd.kind() == Kind::InjectPackage0)
-				{
-					auto merged = mergeIds(pending.cmd.appIds(), cmd.appIds());
-					if (merged.size() > m_maxIds)
-						return false;
-					if (merged.size() == pending.cmd.appIds().size())
-					{
-						// Every new id was already pending.
-						if (result)
-							*result = PushResult::Duplicate;
-						return true;
-					}
-					// Keep the ORIGINAL enqueue time: a stream of coalescing
-					// pushes must not be able to keep the escape hatch away
-					// for ever.
-					into[i] = Entry{ Command::injectPackage0(std::move(merged)),
-					                 pending.enqueuedUs };
-					if (result)
-						*result = PushResult::Coalesced;
-					return true;
-				}
-
 				if (cmd.kind() == Kind::SyncPackage0)
 				{
 					// A stale or equal-generation update is already represented by
 					// the pending record. Report it as Duplicate so the caller
 					// knows no newer owner work was added. A newer generation
-					// replaces only the payload and keeps the original age.
+					// replaces only the payload and keeps the original age, so a
+					// stream of coalescing pushes cannot keep the escape hatch
+					// away for ever.
 					if (cmd.packageSnapshot().generation <=
 					    pending.cmd.packageSnapshot().generation)
 					{

@@ -31,7 +31,7 @@ ipc_depth=… ipc_frames=… queue_depth=… dur_us=… frames_during=…
 | `t_mono_us` | `CLOCK_MONOTONIC` microseconds |
 | `kind` | `IPC_OWNER`, `IPC_ENTER`, `IPC_EXIT`, `WATCH_ENTER`, `WATCH_EXIT`, `STEAMCALL_ENTER`, `STEAMCALL_EXIT`, `STEAMFN_ENTER`, `STEAMFN_EXIT`, `QUEUE_PUSH`, `QUEUE_DRAIN`, `QUEUE_STALE`, `HOUR_ROLLUP` |
 | `src` | callback source label: `config`, `api`, `ipc`, `site`, `none` |
-| `call` | symbolic call label: `on_modify`, `package0_inject`, `license_reconcile`, `install_app`, `cutlmemory_grow`, `notify_licenses_updated`, `run_ipc_frame`, `drain` |
+| `call` | symbolic call label: `on_modify`, `package0_sync`, `compat_mapping`, `cutlmemory_grow`, `mark_license_changed`, `process_license_updates`, `notify_licenses_updated`, `run_ipc_frame`, `drain` |
 | `mode` | execution site: `queued`, `direct`, `direct_no_owner`, `direct_overflow`, `direct_disabled`, `direct_stale`, `n/a` |
 | `tid` / `owner_tid` | native thread id / latched owner IPC thread id |
 | `off_owner` | `1` when the record's thread is not the owner thread |

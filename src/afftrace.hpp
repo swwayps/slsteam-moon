@@ -96,9 +96,7 @@ namespace AffTrace
 	{
 		None = 0,
 		OnModify,               // watcher callback
-		Package0Inject,         // package-0 injection unit of work
 		Package0Sync,           // complete desired-state package reconciliation
-		LicenseReconcile,       // license broadcast unit of work
 		CompatMapping,          // live compatibility mapping unit of work
 		CutlMemoryGrow,         // resolved Steam CUtlMemoryGrow
 		MarkLicenseChanged,     // resolved CUser package-change marker
@@ -193,9 +191,7 @@ namespace AffTrace
 		{
 			case Call::None:                  return "none";
 			case Call::OnModify:              return "on_modify";
-			case Call::Package0Inject:        return "package0_inject";
 			case Call::Package0Sync:          return "package0_sync";
-			case Call::LicenseReconcile:      return "license_reconcile";
 			case Call::CompatMapping:         return "compat_mapping";
 			case Call::CutlMemoryGrow:        return "cutlmemory_grow";
 			case Call::MarkLicenseChanged:    return "mark_license_changed";

@@ -1,10 +1,10 @@
 // Unit tests for the bounded owner-thread command queue
 // (src/utils/ownerqueue.hpp) and its policy helpers (src/ownerwork.hpp).
 //
-// The queue exists so watcher-originated Steam-owned work (package-0
-// injection via CUtlMemoryGrow, the NotifyLicensesUpdated broadcast, the
-// compatibility mapping) can execute on the latched owner IPC thread instead of on an
-// inotify pthread. This is defensive thread-affinity HARDENING; no causal
+// The queue exists so watcher-originated Steam-owned work (the package-0
+// snapshot sync, which grows Steam vectors and runs its license pass, and the
+// compatibility mapping) can execute on the latched owner IPC thread instead
+// of on an inotify pthread. This is defensive thread-affinity HARDENING; no causal
 // claim about any client failure is made or tested here.
 //
 // What must hold:
@@ -56,23 +56,29 @@ using ::PackageSnapshot;
 // A fixed, explicit "now" so nothing in these tests has to sleep.
 static constexpr std::uint64_t kT0 = 1'000'000;
 
+static PackageSnapshot snap(std::uint64_t generation,
+                            std::vector<std::uint32_t> appIds = {})
+{
+	return PackageSnapshot{ generation, std::move(appIds), {}, true, {}, {} };
+}
+
 static void test_push_and_fifo_drain()
 {
 	std::printf("[1] enqueue + owner drain keeps FIFO order\n");
 	Queue q;
-	CHECK(q.push(Command::injectPackage0({ 10, 20 }), kT0) == PushResult::Queued,
-	      "injection accepted");
-	CHECK(q.push(Command::reconcileLicenses(), kT0) == PushResult::Queued,
-	      "reconcile accepted");
+	CHECK(q.push(Command::syncPackage0(snap(1, { 10, 20 })), kT0) == PushResult::Queued,
+	      "snapshot accepted");
+	CHECK(q.push(Command::ensureCompat(9, 0, 0), kT0) == PushResult::Queued,
+	      "compat request accepted");
 	CHECK(q.depth() == 2, "both commands pending");
 	CHECK(q.depthHint() == 2, "lock-free depth hint tracks the pending depth");
 
 	std::vector<Kind> seen;
 	const std::size_t drained = q.drain([&](const Command& c) { seen.push_back(c.kind()); });
 	CHECK(drained == 2, "drain takes the whole batch");
-	CHECK(seen.size() == 2 && seen[0] == Kind::InjectPackage0
-	      && seen[1] == Kind::ReconcileLicenses,
-	      "commands run in enqueue order (inject before reconcile)");
+	CHECK(seen.size() == 2 && seen[0] == Kind::SyncPackage0
+	      && seen[1] == Kind::EnsureCompat,
+	      "commands run in enqueue order (snapshot before compat request)");
 	CHECK(q.depth() == 0, "queue empty after drain");
 	CHECK(q.depthHint() == 0, "depth hint cleared after drain (owner hot path sees no work)");
 	CHECK(q.drain([](const Command&) {}) == 0, "drain of an empty queue is a no-op");
@@ -87,38 +93,14 @@ static void test_enqueue_does_not_block()
 	// ~3.3-3.4 s, so anything above a few ms means we reintroduced a wait.
 	const auto start = std::chrono::steady_clock::now();
 	for (int i = 0; i < 50; ++i)
-		q.pushBatch({ Command::injectPackage0({ static_cast<std::uint32_t>(i) }),
-		              Command::reconcileLicenses() }, kT0);
+		q.pushBatch({ Command::syncPackage0(snap(static_cast<std::uint64_t>(i) + 1)),
+		              Command::ensureCompat(9, 0, 0) }, kT0);
 	const auto waited = std::chrono::duration_cast<std::chrono::milliseconds>(
 		std::chrono::steady_clock::now() - start);
 	CHECK(waited < std::chrono::milliseconds(50),
 	      "50 hot-add submits return without waiting for an owner frame");
-	CHECK(q.depth() == 2, "all of it coalesced into one injection + one reconcile");
+	CHECK(q.depth() == 2, "all of it coalesced into one snapshot + one compat request");
 	CHECK(q.depthHint() == 2, "owner still sees the pending work");
-}
-
-static void test_coalescing()
-{
-	std::printf("[3] coalescing of redundant work\n");
-	Queue q;
-	CHECK(q.push(Command::injectPackage0({ 1, 2 }), kT0) == PushResult::Queued,
-	      "first injection queued");
-	CHECK(q.push(Command::injectPackage0({ 2, 3 }), kT0 + 5000) == PushResult::Coalesced,
-	      "second injection coalesces into the pending one");
-	CHECK(q.depth() == 1, "still a single pending injection");
-
-	std::vector<std::uint32_t> ids;
-	q.drain([&](const Command& c) { ids = c.appIds(); });
-	const std::vector<std::uint32_t> expected{ 1, 2, 3 };
-	CHECK(ids == expected,
-	      "merged id list is the first-seen-order union (same result as running both)");
-
-	// A reconcile is a single broadcast: a second pending one is redundant.
-	CHECK(q.push(Command::reconcileLicenses(), kT0) == PushResult::Queued, "reconcile queued");
-	CHECK(q.push(Command::reconcileLicenses(), kT0) == PushResult::Duplicate,
-	      "second pending reconcile is redundant");
-	CHECK(q.depth() == 1, "reconcile not duplicated");
-	q.drain([](const Command&) {});
 }
 
 static void test_package_snapshot_last_write_wins()
@@ -204,12 +186,13 @@ static void test_package_snapshot_last_write_wins()
 	Queue order;
 	std::vector<Kind> kinds;
 	PackageSnapshot orderedSnapshot;
-	CHECK(order.push(Command::injectPackage0({ 7 }), kT0) == PushResult::Queued,
-	      "inject queues before a managed-state command");
+	std::vector<std::uint32_t> compatOrder;
+	CHECK(order.push(Command::ensureCompat(7, 0, 0), kT0) == PushResult::Queued,
+	      "compat request queues before a managed-state command");
 	CHECK(order.push(Command::syncPackage0(a), kT0) == PushResult::Queued,
 	      "managed-state command queues in FIFO position");
-	CHECK(order.push(Command::reconcileLicenses(), kT0) == PushResult::Queued,
-	      "reconcile queues after the managed-state command");
+	CHECK(order.push(Command::ensureCompat(8, 0, 0), kT0) == PushResult::Queued,
+	      "compat request queues after the managed-state command");
 	CHECK(order.push(Command::syncPackage0(b), kT0 + 10) == PushResult::Coalesced,
 	      "replacement does not move the managed-state FIFO position");
 	CHECK(order.push(Command::ensureCompat(9, 0, 0), kT0) == PushResult::Queued,
@@ -219,9 +202,12 @@ static void test_package_snapshot_last_write_wins()
 		kinds.push_back(cmd.kind());
 		if (cmd.kind() == Kind::SyncPackage0)
 			orderedSnapshot = cmd.packageSnapshot();
+		else
+			compatOrder.push_back(cmd.appId());
 	}) == 4, "mixed command queue drains all records");
-	CHECK(kinds == std::vector<Kind>({ Kind::InjectPackage0, Kind::SyncPackage0,
-	                                   Kind::ReconcileLicenses, Kind::EnsureCompat }),
+	CHECK(kinds == std::vector<Kind>({ Kind::EnsureCompat, Kind::SyncPackage0,
+	                                   Kind::EnsureCompat, Kind::EnsureCompat }) &&
+	      compatOrder == std::vector<std::uint32_t>({ 7, 8, 9 }),
 	      "snapshot replacement preserves FIFO position relative to other kinds");
 	CHECK(orderedSnapshot == carriedB,
 	      "the FIFO snapshot record carries the latest payload and pending additions");
@@ -231,20 +217,13 @@ static void test_idempotent_enqueue()
 {
 	std::printf("[4] idempotent enqueue\n");
 	Queue q;
-	q.push(Command::injectPackage0({ 7, 8 }), kT0);
-	CHECK(q.push(Command::injectPackage0({ 7, 8 }), kT0) == PushResult::Duplicate,
-	      "identical injection is a no-op");
-	CHECK(q.push(Command::injectPackage0({ 8 }), kT0) == PushResult::Duplicate,
-	      "subset injection adds nothing new");
-	CHECK(q.depth() == 1, "no extra pending record");
-
 	q.push(Command::ensureCompat(480, 0, 0), kT0);
 	CHECK(q.push(Command::ensureCompat(480, 0, 0), kT0) == PushResult::Duplicate,
 	      "identical compat request is a no-op");
 	CHECK(q.push(Command::ensureCompat(480, 1, 0), kT0) == PushResult::Queued,
 	      "compat request for a different generation is distinct work");
-	CHECK(q.depth() == 3, "one injection + two compat requests pending");
-	CHECK(q.stats().duplicates == 3, "duplicate pushes counted");
+	CHECK(q.depth() == 2, "two compat requests pending");
+	CHECK(q.stats().duplicates == 1, "duplicate pushes counted");
 
 	CHECK(q.push(Command::ensureCompat(582010, 0, 0), kT0) ==
 	          PushResult::Queued,
@@ -277,31 +256,6 @@ static void test_bounded()
 	      "3rd compat request rejected at capacity (caller runs it itself)");
 	CHECK(q.depth() == 2, "capacity never exceeded");
 	CHECK(q.stats().rejectedFull == 1, "overflow rejection counted");
-
-	// Coalescing still works at capacity: it adds no record.
-	Queue small(1);
-	CHECK(small.push(Command::injectPackage0({ 5 }), kT0) == PushResult::Queued,
-	      "injection fits");
-	CHECK(small.push(Command::injectPackage0({ 6 }), kT0) == PushResult::Coalesced,
-	      "coalescing is allowed at capacity (no new record)");
-	CHECK(small.push(Command::reconcileLicenses(), kT0) == PushResult::Full,
-	      "a different kind is rejected at capacity");
-
-	// Per-command id cap.
-	Queue capped(8, 4);
-	CHECK(capped.push(Command::injectPackage0({ 1, 2, 3, 4 }), kT0) == PushResult::Queued,
-	      "id list at the cap is accepted");
-	CHECK(capped.push(Command::injectPackage0({ 5 }), kT0) == PushResult::Full,
-	      "merge past the id cap is rejected, pending record untouched");
-	std::vector<std::uint32_t> ids;
-	capped.drain([&](const Command& c) { ids = c.appIds(); });
-	const std::vector<std::uint32_t> expected{ 1, 2, 3, 4 };
-	CHECK(ids == expected, "rejected merge left the pending command unchanged");
-
-	Queue capped2(8, 2);
-	CHECK(capped2.push(Command::injectPackage0({ 1, 2, 3 }), kT0) == PushResult::Full,
-	      "oversized command rejected outright");
-	CHECK(capped2.depth() == 0, "nothing queued from a rejected command");
 
 	Queue snapshotAppCap(8, 3);
 	CHECK(snapshotAppCap.push(Command::syncPackage0(
@@ -348,15 +302,15 @@ static void test_shutdown_rejection()
 {
 	std::printf("[6] shutdown rejection\n");
 	Queue q;
-	q.push(Command::injectPackage0({ 42 }), kT0);
-	q.push(Command::reconcileLicenses(), kT0);
+	q.push(Command::syncPackage0(snap(1, { 42 })), kT0);
+	q.push(Command::ensureCompat(42, 0, 0), kT0);
 	q.shutdown();
 	CHECK(q.isShuttingDown(), "queue reports shutdown");
 	CHECK(q.depth() == 0, "pending work abandoned at shutdown");
 	CHECK(q.stats().abandoned == 2, "abandoned commands counted");
-	CHECK(q.push(Command::reconcileLicenses(), kT0) == PushResult::ShuttingDown,
+	CHECK(q.push(Command::ensureCompat(43, 0, 0), kT0) == PushResult::ShuttingDown,
 	      "push after shutdown is rejected");
-	CHECK(q.pushBatch({ Command::reconcileLicenses() }, kT0) == false,
+	CHECK(q.pushBatch({ Command::ensureCompat(44, 0, 0) }, kT0) == false,
 	      "batch push after shutdown is rejected");
 	CHECK(q.stats().rejectedShutdown == 2, "shutdown rejections counted");
 	CHECK(q.drain([](const Command&) {}) == 0, "nothing to drain after shutdown");
@@ -378,7 +332,7 @@ static void test_shutdown_rejection()
 // and its "the other module isn't mapped yet" retry goes
 // load() -> unload() -> Hooks::remove() BEFORE anything is hooked. If that
 // closes the queue, every watcher hot-add for the rest of the session is
-// abandoned: no package-0 injection, no license broadcast, whole session.
+// abandoned: no package-0 sync, no compatibility mapping, whole session.
 static void test_teardown_gate()
 {
 	std::printf("[7] teardown gate: pre-hook remove() must NOT close the queue\n");
@@ -391,27 +345,27 @@ static void test_teardown_gate()
 	CHECK(!OwnerQueue::applyTeardown(gate, q),
 	      "pre-hook teardown does not close the queue");
 	CHECK(!q.isShuttingDown(), "queue still open after the benign retry path");
-	CHECK(q.push(Command::injectPackage0({ 480 }), kT0) == PushResult::Queued,
+	CHECK(q.push(Command::ensureCompat(480, 0, 0), kT0) == PushResult::Queued,
 	      "a pre-hook Hooks::remove() leaves the queue accepting work");
 
 	// Several retries in a row must stay harmless.
 	for (int i = 0; i < 3; ++i)
 		CHECK(!OwnerQueue::applyTeardown(gate, q), "repeated pre-hook teardown stays a no-op");
-	CHECK(q.push(Command::reconcileLicenses(), kT0) == PushResult::Queued,
+	CHECK(q.push(Command::syncPackage0(snap(1)), kT0) == PushResult::Queued,
 	      "queue still accepts work after repeated pre-hook teardowns");
 	CHECK(q.drain([](const Command&) {}) == 2, "the queued work is still drainable");
 
 	// --- second la_objopen: both modules mapped, the hooking pass runs.
 	gate.notePlacement();
 	CHECK(gate.placed(), "placement recorded");
-	CHECK(q.push(Command::injectPackage0({ 480 }), kT0) == PushResult::Queued,
+	CHECK(q.push(Command::ensureCompat(480, 0, 0), kT0) == PushResult::Queued,
 	      "queue accepts work while hooks are live");
 
 	// --- real teardown.
 	CHECK(OwnerQueue::applyTeardown(gate, q), "a real teardown closes the queue");
 	CHECK(q.isShuttingDown(), "queue reports shutdown after a real teardown");
 	CHECK(q.depth() == 0, "pending work abandoned by the real teardown");
-	CHECK(q.push(Command::reconcileLicenses(), kT0) == PushResult::ShuttingDown,
+	CHECK(q.push(Command::syncPackage0(snap(2)), kT0) == PushResult::ShuttingDown,
 	      "nothing is accepted after a real teardown");
 	CHECK(!OwnerQueue::applyTeardown(gate, q), "a repeated teardown is a no-op");
 	CHECK(q.isShuttingDown(), "the queue stays closed");
@@ -421,9 +375,9 @@ static void test_exception_containment()
 {
 	std::printf("[8] exception containment during drain\n");
 	Queue q;
-	q.push(Command::injectPackage0({ 1 }), kT0);
-	q.push(Command::reconcileLicenses(), kT0);
+	q.push(Command::syncPackage0(snap(1)), kT0);
 	q.push(Command::ensureCompat(9, 0, 0), kT0);
+	q.push(Command::ensureCompat(10, 0, 0), kT0);
 
 	int ran = 0;
 	std::size_t drained = 0;
@@ -433,7 +387,7 @@ static void test_exception_containment()
 		drained = q.drain([&](const Command& c)
 		{
 			++ran;
-			if (c.kind() == Kind::ReconcileLicenses)
+			if (c.kind() == Kind::EnsureCompat && c.appId() == 9)
 				throw std::runtime_error("simulated Steam-side failure");
 		});
 	}
@@ -449,7 +403,7 @@ static void test_exception_containment()
 	CHECK(q.depth() == 0, "queue drained despite the failure");
 
 	// The queue must stay usable after a failed command.
-	CHECK(q.push(Command::reconcileLicenses(), kT0) == PushResult::Queued,
+	CHECK(q.push(Command::ensureCompat(9, 0, 0), kT0) == PushResult::Queued,
 	      "queue still accepts work after a failure");
 
 	// The inline fallback needs the same barrier: it runs on a watcher thread.
@@ -457,7 +411,7 @@ static void test_exception_containment()
 	bool escaped2 = false;
 	try
 	{
-		q2.runPendingThen({ Command::reconcileLicenses() },
+		q2.runPendingThen({ Command::ensureCompat(1, 0, 0) },
 		                  [](const Command&) { throw std::runtime_error("boom"); });
 	}
 	catch (...)
@@ -472,12 +426,12 @@ static void test_reentrancy_guard()
 {
 	std::printf("[9] drain is not re-entrant\n");
 	Queue q;
-	q.push(Command::injectPackage0({ 1 }), kT0);
+	q.push(Command::ensureCompat(1, 0, 0), kT0);
 	std::size_t inner = 1;
 	q.drain([&](const Command&)
 	{
 		// A nested owner frame must not start a second drain.
-		q.push(Command::reconcileLicenses(), kT0);
+		q.push(Command::ensureCompat(2, 0, 0), kT0);
 		inner = q.drain([](const Command&) {});
 	});
 	CHECK(inner == 0, "nested drain takes nothing");
@@ -498,7 +452,8 @@ static void test_stale_escape_hatch()
 	CHECK(!OwnerQueue::isStale(kT0, kT0 - 5, 1000), "a backwards clock never triggers it");
 
 	Queue q;
-	q.pushBatch({ Command::injectPackage0({ 480 }), Command::reconcileLicenses() }, kT0);
+	q.pushBatch({ Command::syncPackage0(snap(1, { 480 })),
+	              Command::ensureCompat(480, 0, 0) }, kT0);
 
 	std::vector<Kind> ran;
 	const auto runner = [&](const Command& c) { ran.push_back(c.kind()); };
@@ -510,8 +465,8 @@ static void test_stale_escape_hatch()
 
 	const std::size_t flushed = q.flushStale(kT0 + 30'000'000, 30'000'000, runner);
 	CHECK(flushed == 2, "past the threshold the whole pending set is flushed");
-	CHECK(ran.size() == 2 && ran[0] == Kind::InjectPackage0
-	      && ran[1] == Kind::ReconcileLicenses,
+	CHECK(ran.size() == 2 && ran[0] == Kind::SyncPackage0
+	      && ran[1] == Kind::EnsureCompat,
 	      "the escape hatch preserves the original order");
 	CHECK(q.depth() == 0, "flushed work is no longer pending (runs exactly once)");
 	CHECK(q.stats().flushedStale == 2, "stale flush counted");
@@ -521,20 +476,21 @@ static void test_stale_escape_hatch()
 	// Coalescing must not be able to postpone the escape hatch for ever: the
 	// merged record keeps the ORIGINAL enqueue time.
 	Queue q2;
-	q2.push(Command::injectPackage0({ 1 }), kT0);
+	q2.push(Command::syncPackage0(snap(1)), kT0);
 	for (int i = 2; i < 40; ++i)
-		q2.push(Command::injectPackage0({ static_cast<std::uint32_t>(i) }),
+		q2.push(Command::syncPackage0(snap(static_cast<std::uint64_t>(i))),
 		        kT0 + static_cast<std::uint64_t>(i) * 1'000'000);
-	CHECK(q2.depth() == 1, "all those injections coalesced");
-	std::size_t merged = 0;
+	CHECK(q2.depth() == 1, "all those snapshots coalesced");
+	std::uint64_t flushedGeneration = 0;
 	CHECK(q2.flushStale(kT0 + 30'000'000, 30'000'000,
-	                    [&](const Command& c) { merged = c.appIds().size(); }) == 1,
+	                    [&](const Command& c)
+	                    { flushedGeneration = c.packageSnapshot().generation; }) == 1,
 	      "a stream of coalescing pushes cannot starve the escape hatch");
-	CHECK(merged == 39, "the flushed command carries every merged id");
+	CHECK(flushedGeneration == 39, "the flushed command carries the latest generation");
 
 	// The age reported for diagnostics tracks the oldest entry.
 	Queue q3;
-	q3.push(Command::reconcileLicenses(), kT0);
+	q3.push(Command::ensureCompat(1, 0, 0), kT0);
 	CHECK(q3.oldestAgeUs(kT0 + 2'500'000) == 2'500'000, "oldest age reported for logging");
 	CHECK(Queue().oldestAgeUs(kT0) == 0, "empty queue reports no age");
 }
@@ -626,21 +582,21 @@ static void test_push_batch_atomicity()
 	std::printf("[13] batch enqueue is all-or-nothing\n");
 	Queue q(2);
 	std::vector<PushResult> per;
-	const bool ok = q.pushBatch({ Command::injectPackage0({ 1 }),
-	                              Command::reconcileLicenses() }, kT0, &per);
+	const bool ok = q.pushBatch({ Command::syncPackage0(snap(1, { 1 })),
+	                              Command::ensureCompat(4, 0, 0) }, kT0, &per);
 	CHECK(ok, "batch that fits is accepted");
 	CHECK(per.size() == 2 && per[0] == PushResult::Queued && per[1] == PushResult::Queued,
 	      "per-command results reported");
 
 	// Capacity is full: a batch needing a third record must be rejected whole.
-	const bool rejected = q.pushBatch({ Command::injectPackage0({ 2 }),
+	const bool rejected = q.pushBatch({ Command::syncPackage0(snap(2, { 2 })),
 	                                    Command::ensureCompat(5, 0, 0) }, kT0, &per);
 	CHECK(!rejected, "batch that does not fit is rejected");
 	CHECK(q.depth() == 2, "rejected batch leaves the queue untouched");
 	std::vector<std::uint32_t> ids;
 	q.drain([&](const Command& c)
 	{
-		if (c.kind() == Kind::InjectPackage0) ids = c.appIds();
+		if (c.kind() == Kind::SyncPackage0) ids = c.packageSnapshot().appIds;
 	});
 	const std::vector<std::uint32_t> expected{ 1 };
 	CHECK(ids == expected, "rejected batch did not partially coalesce");
@@ -774,7 +730,6 @@ int main()
 {
 	test_push_and_fifo_drain();
 	test_enqueue_does_not_block();
-	test_coalescing();
 	test_package_snapshot_last_write_wins();
 	test_idempotent_enqueue();
 	test_bounded();
