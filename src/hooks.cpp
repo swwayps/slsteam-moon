@@ -374,9 +374,12 @@ static void hkCMInterface_RecvPkt(void* pCMInterface, CNetPacket* pNetPacket)
 	// stable layout) unless a packet fails to validate there.
 	CNetPacket::detectLayout(pNetPacket);
 
-	g_pLog->debug(
-		"RecvPkt %u\n",
-		pNetPacket ? pNetPacket->getType() : CNetPacket::INVALID_MESSAGE_TYPE);
+	if (g_config.extendedLogging.get())
+	{
+		g_pLog->debug(
+			"RecvPkt %u\n",
+			pNetPacket ? pNetPacket->getType() : CNetPacket::INVALID_MESSAGE_TYPE);
+	}
 
 	if (pNetPacket && pNetPacket->isProtoBuf())
 	{

@@ -714,8 +714,8 @@ void Apps::sendPICSInfoRequest(CNetPacket* pkt)
 
 		for (int idx : strip) // descending, safe for in-place delete
 		{
-			g_pLog->debug("PICS-request: stripping locally authoritative app %u\n",
-			              msg.apps(idx).appid());
+			g_pLog->debugOnce("PICS-request: stripping locally authoritative app %u\n",
+			                  msg.apps(idx).appid());
 			msg.mutable_apps()->DeleteSubrange(idx, 1);
 		}
 	}
@@ -746,8 +746,8 @@ void Apps::sendPICSInfoRequest(CNetPacket* pkt)
 		if (i) sentIds << ',';
 		sentIds << msg.apps(i).appid();
 	}
-	g_pLog->debug("PICS-request: apps=%d packages=%d ids=[%s]\n",
-	              msg.apps_size(), msg.packages_size(), sentIds.str().c_str());
+	g_pLog->debugOnce("PICS-request: apps=%d packages=%d ids=[%s]\n",
+	                  msg.apps_size(), msg.packages_size(), sentIds.str().c_str());
 	pkt->serialize(msg);
 }
 

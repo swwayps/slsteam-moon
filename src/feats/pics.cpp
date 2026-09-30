@@ -441,7 +441,7 @@ void recvProductInfoResponse(CMsgClientPICSProductInfoResponse* resp)
 	const auto responseManagedApps =
 		selectManagedResponseApps(managed, responseAppIds);
 
-	g_pLog->debug
+	g_pLog->debugOnce
 	(
 		"PICS: response apps=%d packages=%d unknown_apps=%d unknown_packages=%d meta_only=%i\n",
 		resp->apps_size(),

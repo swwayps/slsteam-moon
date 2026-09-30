@@ -276,7 +276,8 @@ void dispatchSend(uint32_t eMsg,
 	{
 		return;
 	}
-	g_pLog->debug("WebSocket service method send: %s\n", hdr.target_job_name().c_str());
+	if (g_config.extendedLogging.get())
+		g_pLog->debug("WebSocket service method send: %s\n", hdr.target_job_name().c_str());
 	const auto h = fnvHash(hdr.target_job_name().c_str());
 	switch (h)
 	{
@@ -619,7 +620,8 @@ bool hkBRouteMsgToJob(void* pJobMgr, void* arg2, void* pMsg, void* pJob)
 	CMsgProtoBufHeader hdr;
 	if (hdr.ParseFromArray(pBuf + sizeof(MsgHdr), cbProtoHdr) && hdr.has_target_job_name())
 	{
-		g_pLog->debug("BRouteMsgToJob service method response: %s\n", hdr.target_job_name().c_str());
+		if (g_config.extendedLogging.get())
+			g_pLog->debug("BRouteMsgToJob service method response: %s\n", hdr.target_job_name().c_str());
 		if (fnvHash(hdr.target_job_name().c_str()) != kHashGetManifestRequestCode)
 		{
 			return Hooks::CJobMgr_BRouteMsgToJob.tramp.fn(pJobMgr, arg2, pMsg, pJob);

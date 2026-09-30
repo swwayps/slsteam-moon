@@ -67,7 +67,6 @@ void* watchLoop(void* args)
 			return nullptr;
 		}
 
-		g_pLog->debug("Watching for changes...\n");
 
 		// Bounded wait instead of a blocking read, so this thread also gets a
 		// periodic tick with NO extra thread (spawning threads from the
