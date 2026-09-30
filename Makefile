@@ -27,9 +27,12 @@ deps := $(objs:%.o=%.d)
 # Exceptions do not depend on it: an audit module built with block
 # partitioning catches its own throws, and the boot loops once blamed on
 # ".cold" landing pads came from a second audit module (see setup.sh).
+# A log format that does not match its arguments is an error: it runs inside
+# Steam, where a bad conversion reads garbage or crashes the client.
+WARNFLAGS := -Wall -Wextra -Wpedantic -Werror=format -Werror=format-security
 CXXFLAGS := -O3 -flto=auto -fPIC -m32 -std=c++20 \
             -fno-reorder-blocks-and-partition \
-            -Wall -Wextra -Wpedantic -Wno-error=format-security \
+            $(WARNFLAGS) \
             -D_GLIBCXX_USE_CXX11_ABI=0
 
 LDFLAGS := -shared -Wl,--no-undefined -lpthread -ldl
@@ -683,9 +686,16 @@ test-patternscan:
 	/tmp/test_patternscan
 
 test-log-format:
-	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror -Wformat-security -I src \
+	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror -I src \
 		tools/test_log_format.cpp -o /tmp/test_log_format
 	/tmp/test_log_format
+	@for c in MISMATCH NONLITERAL CUSTOM; do \
+		if $(CXX) -std=c++20 $(WARNFLAGS) -I src -fsyntax-only -DLOG_FORMAT_$$c \
+			tools/test_log_format.cpp 2>/dev/null; then \
+			echo "FAIL: LOG_FORMAT_$$c compiled"; exit 1; \
+		fi; \
+		echo "ok: LOG_FORMAT_$$c rejected"; \
+	done
 test-vftable-anchors:
 	$(CXX) -O2 -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem include -I src \
 		tools/test_vftable_anchors.cpp src/decompiler.cpp src/vftableinfo.cpp \

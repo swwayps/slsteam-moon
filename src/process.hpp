@@ -50,14 +50,15 @@ public:
 		const std::string& path, LogLevel logErrorLevel = LogLevel::Warn);
 
 protected:
-	template<typename ...Args>
-	void logFailure(const char* message, Args... args) const
+	__attribute__((format(printf, 2, 3)))
+	void logFailure(const char* message, ...) const
 	{
 		if (!g_pLog) return;
-		if (errorLevel == LogLevel::Debug)
-			g_pLog->debug(message, args...);
-		else
-			g_pLog->warn(message, args...);
+		va_list args;
+		va_start(args, message);
+		g_pLog->vwrite(errorLevel == LogLevel::Debug ? LogLevel::Debug : LogLevel::Warn,
+		               false, message, args);
+		va_end(args);
 	}
 };
 

@@ -314,7 +314,7 @@ namespace
 		g_pLog->info("PlanTrace[%s]: app=%u depot=%u gid=%llu base=%p sp=%p\n",
 		             tag, appId, depotId,
 		             static_cast<unsigned long long>(gid),
-		             g_modSteamClient.base, reinterpret_cast<void*>(sp));
+		             reinterpret_cast<void*>(g_modSteamClient.base), reinterpret_cast<void*>(sp));
 
 		int shown = 0;
 		for (uintptr_t i = 0; i < scanWords && shown < 24; ++i)

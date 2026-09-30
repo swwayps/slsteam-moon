@@ -860,7 +860,7 @@ static bool hkClientAppManager_GetUpdateInfo(void* pClientAppManager, uint32_t a
 	LOG_TRACE("Calling original\n");
 
 	const bool success = Hooks::IClientAppManager_GetAppUpdateInfo.originalFn.fn(pClientAppManager, appId, a2);
-	g_pLog->debugOnce("IClientAppManager::GetUpdateInfo(%p, %u, %p) -> %i\n", pClientAppManager, appId, a2, success);
+	g_pLog->debugOnce("IClientAppManager::GetUpdateInfo(%p, %u, %p) -> %i\n", pClientAppManager, appId, static_cast<void*>(a2), success);
 
 	if (Apps::shouldDisableUpdates(appId))
 	{
@@ -1442,7 +1442,7 @@ void Hooks::placeVFTHooks()
 			IClientAppManager_GetAppStateInfo.place();
 			IClientAppManager_LaunchApp.place();
 			IClientAppManager_IsAppDlcInstalled.place();
-			g_pLog->debug("IClientAppManager->vft at %p\n", vft->vtable);
+			g_pLog->debug("IClientAppManager->vft at %p\n", static_cast<void*>(vft->vtable));
 		}
 		{
 			auto vft = std::make_shared<lm_vmt_t>();
@@ -1451,7 +1451,7 @@ void Hooks::placeVFTHooks()
 			IClientApps_GetDLCCount.setup(vft, VFTIndexes::IClientApps::GetDLCCount, hkClientApps_GetDLCCount);
 			IClientApps_GetDLCDataByIndex.place();
 			IClientApps_GetDLCCount.place();
-			g_pLog->debug("IClientApps->vft at %p\n", vft->vtable);
+			g_pLog->debug("IClientApps->vft at %p\n", static_cast<void*>(vft->vtable));
 		}
 		{
 			IClientUser* const clientUser = user->getClientUser();
@@ -1469,7 +1469,7 @@ void Hooks::placeVFTHooks()
 			IClientUser_IsUserSubscribedAppInTicket.place();
 			IClientUser_GetEncryptedAppTicket.place();
 			IClientUser_GetLegacyCDKey.place();
-			g_pLog->debug("IClientUser->vft at %p\n", vft->vtable);
+			g_pLog->debug("IClientUser->vft at %p\n", static_cast<void*>(vft->vtable));
 		}
 		{
 			auto vft = std::make_shared<lm_vmt_t>();
@@ -1478,7 +1478,7 @@ void Hooks::placeVFTHooks()
 			IClientUtils_GetOfflineMode.setup(vft, VFTIndexes::IClientUtils::GetOfflineMode, hkClientUtils_GetOfflineMode);
 			IClientUtils_GetAppId.place();
 			IClientUtils_GetOfflineMode.place();
-			g_pLog->debug("IClientUtils->vft at %p\n", vft->vtable);
+			g_pLog->debug("IClientUtils->vft at %p\n", static_cast<void*>(vft->vtable));
 		}
 		#pragma GCC diagnostic pop
 

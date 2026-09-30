@@ -3,6 +3,7 @@
 #include "notify.hpp" // LogLevel + the notify-send command builder
 #include "usermsg.hpp" // user-facing message catalog (UserMsg/Lang/messageFor)
 
+#include <cstdarg>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
@@ -88,18 +89,12 @@ class CLog
 		}
 	}
 
-	template<typename ...Args>
+	// Writes one formatted message. A LogLevel::Once message is written once
+	// per session.
 	__attribute__((hot))
-	void __log(LogLevel lvl, const char* msg, Args... args)
+	void write(LogLevel lvl, const std::string& formatted)
 	{
-		if (lvl < getMinLevel())
-		{
-			return;
-		}
-
-		const std::string formatted = format(msg, args...);
-
-		// NOTE: __log no longer raises desktop popups. Every log level here
+		// NOTE: writing never raises desktop popups. Every log level here
 		// (warn/notify/info/...) writes ONLY to the file, so the raw
 		// developer diagnostics stay available for debugging without ever
 		// reaching the user's screen. The single popup path is notifyUser(),
@@ -136,6 +131,20 @@ class CLog
 		ofstream.flush();
 	}
 
+	__attribute__((format(printf, 1, 0)))
+	static std::string vformat(const char* msg, va_list args)
+	{
+		va_list sizing;
+		va_copy(sizing, args);
+		const int size = vsnprintf(nullptr, 0, msg, sizing);
+		va_end(sizing);
+		if (size <= 0) return {};
+		std::string formatted(static_cast<size_t>(size) + 1, '\0');
+		vsnprintf(formatted.data(), formatted.size(), msg, args);
+		formatted.resize(static_cast<size_t>(size));
+		return formatted;
+	}
+
 	// Per-(level,message) deduplication state used by the *Once
 	// helpers below.  We can't piggy-back on msgHist because that
 	// set holds raw strings and is also touched by LogLevel::Once
@@ -158,102 +167,96 @@ public:
 	CLog(const char* path);
 	~CLog();
 
-	// printf formatting. A message without arguments is text, so a '%' in it
-	// is never read as a conversion.
-	template<typename ...Args>
-	static std::string format(const char* msg, Args... args)
+	// Every message is a printf format that the compiler checks against its
+	// arguments (the build makes a mismatch an error). Pass run-time text as
+	// ("%s", text).
+	__attribute__((format(printf, 1, 2)))
+	static std::string format(const char* msg, ...)
 	{
-		if constexpr (sizeof...(Args) == 0)
+		va_list args;
+		va_start(args, msg);
+		std::string formatted = vformat(msg, args);
+		va_end(args);
+		return formatted;
+	}
+
+	// Formats and writes one message at `lvl`; `dedupe` drops a message that
+	// this level already wrote (the *Once helpers).
+	__attribute__((format(printf, 4, 0)))
+	void vwrite(LogLevel lvl, bool dedupe, const char* msg, va_list args)
+	{
+		if (lvl < getMinLevel())
 		{
-			return msg;
+			return;
 		}
-		else
+		const std::string formatted = vformat(msg, args);
+		if (dedupe && seenBefore(lvl, formatted))
 		{
-			const int size = snprintf(nullptr, 0, msg, args...);
-			if (size <= 0) return {};
-			std::string formatted(static_cast<size_t>(size) + 1, '\0');
-			snprintf(formatted.data(), formatted.size(), msg, args...);
-			formatted.resize(static_cast<size_t>(size));
-			return formatted;
+			return;
 		}
+		write(lvl, formatted);
 	}
 
-	template<typename ...Args>
-	constexpr void once(const char* msg, Args... args)
-	{
-		__log(LogLevel::Once, msg, args...);
-	}
+	__attribute__((format(printf, 2, 3))) void once(const char* msg, ...)
+	{ va_list a; va_start(a, msg); vwrite(LogLevel::Once, false, msg, a); va_end(a); }
 
-	template<typename ...Args>
-	constexpr void debug(const char* msg, Args... args)
-	{
-		__log(LogLevel::Debug, msg, args...);
-	}
+	__attribute__((format(printf, 2, 3))) void debug(const char* msg, ...)
+	{ va_list a; va_start(a, msg); vwrite(LogLevel::Debug, false, msg, a); va_end(a); }
 
-	template<typename ...Args>
-	constexpr void info(const char* msg, Args... args)
-	{
-		__log(LogLevel::Info, msg, args...);
-	}
+	__attribute__((format(printf, 2, 3))) void info(const char* msg, ...)
+	{ va_list a; va_start(a, msg); vwrite(LogLevel::Info, false, msg, a); va_end(a); }
 
 	// Variants of debug/info that suppress repeated messages with
 	// identical formatted text.  Use these for diagnostics that fire
 	// per-app/per-depot/etc. — the first occurrence is logged, the
 	// rest are squelched, so a hot loop doesn't drown the file.
-	template<typename ...Args>
-	void infoOnce(const char* msg, Args... args)
-	{
-		if (LogLevel::Info < getMinLevel()) return;
-		const std::string formatted = format(msg, args...);
-		if (seenBefore(LogLevel::Info, formatted)) return;
-		__log(LogLevel::Info, "%s", formatted.c_str());
-	}
+	__attribute__((format(printf, 2, 3))) void infoOnce(const char* msg, ...)
+	{ va_list a; va_start(a, msg); vwrite(LogLevel::Info, true, msg, a); va_end(a); }
 
-	template<typename ...Args>
-	void debugOnce(const char* msg, Args... args)
-	{
-		if (LogLevel::Debug < getMinLevel()) return;
-		const std::string formatted = format(msg, args...);
-		if (seenBefore(LogLevel::Debug, formatted)) return;
-		__log(LogLevel::Debug, "%s", formatted.c_str());
-	}
+	__attribute__((format(printf, 2, 3))) void debugOnce(const char* msg, ...)
+	{ va_list a; va_start(a, msg); vwrite(LogLevel::Debug, true, msg, a); va_end(a); }
 
-	template<typename ...Args>
-	constexpr void notify(const char* msg, Args... args)
-	{
-		__log(LogLevel::NotifyShort, msg, args...);
-	}
+	__attribute__((format(printf, 2, 3))) void notify(const char* msg, ...)
+	{ va_list a; va_start(a, msg); vwrite(LogLevel::NotifyShort, false, msg, a); va_end(a); }
 
-	template<typename ...Args>
-	constexpr void notifyLong(const char* msg, Args... args)
-	{
-		__log(LogLevel::NotifyLong, msg, args...);
-	}
+	__attribute__((format(printf, 2, 3))) void notifyLong(const char* msg, ...)
+	{ va_list a; va_start(a, msg); vwrite(LogLevel::NotifyLong, false, msg, a); va_end(a); }
 
-	template<typename ...Args>
-	constexpr void warn(const char* msg, Args... args)
-	{
-		__log(LogLevel::Warn, msg, args...);
-	}
+	__attribute__((format(printf, 2, 3))) void warn(const char* msg, ...)
+	{ va_list a; va_start(a, msg); vwrite(LogLevel::Warn, false, msg, a); va_end(a); }
 
 	// Upstream's LOG_CUSTOM: the most severe level in `flags` picks the local
 	// level, k_ELogLevelOnce deduplicates info and debug lines.
-	template<typename ...Args>
-	void custom(uint32_t flags, const char* msg, Args... args)
+	__attribute__((format(printf, 3, 4)))
+	void custom(uint32_t flags, const char* msg, ...)
 	{
-		const bool once = flags & k_ELogLevelOnce;
+		const bool onceFlag = flags & k_ELogLevelOnce;
+		LogLevel lvl = LogLevel::Once;
+		bool dedupe = false;
 		if (flags & (k_ELogLevelWarn | k_ELogLevelError))
-			warn(msg, args...);
+			lvl = LogLevel::Warn;
 		else if (flags & k_ELogLevelNotifyLong)
-			notifyLong(msg, args...);
+			lvl = LogLevel::NotifyLong;
 		else if (flags & k_ELogLevelNotifyShort)
-			notify(msg, args...);
+			lvl = LogLevel::NotifyShort;
 		else if (flags & (k_ELogLevelInfo | k_ELogLevelAPI))
-			once ? infoOnce(msg, args...) : info(msg, args...);
+		{
+			lvl = LogLevel::Info;
+			dedupe = onceFlag;
+		}
 		else if (flags & k_ELogLevelDebug)
-			once ? debugOnce(msg, args...) : debug(msg, args...);
-		else if (once)
-			this->once(msg, args...);
+		{
+			lvl = LogLevel::Debug;
+			dedupe = onceFlag;
+		}
+		else if (!onceFlag)
+		{
+			return;
+		}
+		va_list a;
+		va_start(a, msg);
+		vwrite(lvl, dedupe, msg, a);
+		va_end(a);
 	}
 
 	// The ONLY desktop-popup path. Renders a friendly, localized message

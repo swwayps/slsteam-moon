@@ -163,7 +163,7 @@ MemHlp::SignatureSearchResult MemHlp::searchSignatureDetailed(
 			result.match = static_cast<lm_address_t>(allMatches.front());
 			result.target = *converged;
 			g_pLog->info("Signature for '%s' matched %zu call sites converging on %p\n",
-			             name, matches, result.target);
+			             name, matches, reinterpret_cast<void*>(result.target));
 			return result;
 		}
 
@@ -184,12 +184,12 @@ MemHlp::SignatureSearchResult MemHlp::searchSignatureDetailed(
 		switch (mode)
 		{
 			case SigFollowMode::Relative:
-				g_pLog->debug("Resolving relative of %s at %p\n", name, result.match);
+				g_pLog->debug("Resolving relative of %s at %p\n", name, reinterpret_cast<void*>(result.match));
 				result.target = MemHlp::getJmpTarget(result.match);
 				break;
 
 			case SigFollowMode::PrologueUpwards:
-				g_pLog->debug("Searching function prologue of %s from %p\n", name, result.match);
+				g_pLog->debug("Searching function prologue of %s from %p\n", name, reinterpret_cast<void*>(result.match));
 				{
 					lm_segment_t matchSegment{};
 					if (!LM_FindSegment(result.match, &matchSegment))
@@ -210,7 +210,7 @@ MemHlp::SignatureSearchResult MemHlp::searchSignatureDetailed(
 				break;
 		}
 
-		g_pLog->debug("%s at %p\n", name, result.target);
+		g_pLog->debug("%s at %p\n", name, reinterpret_cast<void*>(result.target));
 	}
 
 	return result;
