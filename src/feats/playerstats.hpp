@@ -196,18 +196,4 @@ inline std::vector<uint8_t> buildSpoofedRequest(uint64_t steamid, uint32_t appid
 	return out;
 }
 
-// Copy a CPlayer_GetUserStats_Response, dropping the repeated stats (field 4)
-// so the library shows the achievement schema without the impersonated
-// owner's unlock progress. Other fields (incl. schema=3) are preserved
-// verbatim. On malformed input returns whatever was copied before the fault.
-inline std::vector<uint8_t> stripResponseStats(const uint8_t* d, std::size_t len)
-{
-	std::vector<uint8_t> out;
-	detail::walk(d, len, [&](const detail::Field& f) {
-		if (f.number == 4) return; // drop stats
-		out.insert(out.end(), d + f.start, d + f.end);
-	});
-	return out;
-}
-
 } // namespace PlayerStats

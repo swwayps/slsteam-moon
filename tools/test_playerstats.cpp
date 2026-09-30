@@ -99,37 +99,11 @@ int main()
 		CHECK(!hasField(out.data(), out.size(), 4), "spoofed request drops crc_stats");
 	}
 
-	// 6) strip stats (field 4) from a response, keeping schema (field 3).
-	{
-		std::vector<uint8_t> resp;
-		resp.push_back(0x1a); putVarint(resp, 5); resp.insert(resp.end(), {'h','e','l','l','o'}); // schema=3 "hello"
-		resp.push_back(0x22); putVarint(resp, 3); resp.insert(resp.end(), {0x08,0x01,0x02});      // stats=4 (a Stats msg)
-		resp.push_back(0x22); putVarint(resp, 2); resp.insert(resp.end(), {0x08,0x07});           // stats=4 (another)
-		auto stripped = stripResponseStats(resp.data(), resp.size());
-		CHECK(hasField(stripped.data(), stripped.size(), 3), "stripResponseStats keeps schema");
-		CHECK(!hasField(stripped.data(), stripped.size(), 4), "stripResponseStats drops stats");
-		// schema content preserved.
-		auto schema = fieldBytes(stripped.data(), stripped.size(), 3);
-		CHECK(schema.size() == 5 && schema[0] == 'h', "stripResponseStats preserves schema bytes");
-	}
-
-	// 7) strip is a no-op-shaped passthrough when there are no stats.
-	{
-		std::vector<uint8_t> resp;
-		resp.push_back(0x1a); putVarint(resp, 2); resp.insert(resp.end(), {'h','i'}); // schema only
-		auto stripped = stripResponseStats(resp.data(), resp.size());
-		CHECK(hasField(stripped.data(), stripped.size(), 3), "no-stats response keeps schema");
-		CHECK(!hasField(stripped.data(), stripped.size(), 4), "no-stats response still has no stats");
-	}
-
-	// 8) robustness: truncated/garbage input never crashes, returns empty/none.
+	// 6) robustness: truncated/garbage input never crashes, returns empty/none.
 	{
 		const uint8_t bad[] = { 0x1a, 0x7f }; // says 127 bytes follow, but none do
 		auto appid = parseRequestAppId(bad, sizeof(bad));
 		CHECK(!appid.has_value(), "truncated input -> no appid, no crash");
-		auto stripped = stripResponseStats(bad, sizeof(bad));
-		CHECK(stripped.empty() || !hasField(stripped.data(), stripped.size(), 4),
-		      "truncated response strip -> no crash");
 	}
 
 	if (g_failures == 0) { std::printf("\nALL PASS\n"); return 0; }
