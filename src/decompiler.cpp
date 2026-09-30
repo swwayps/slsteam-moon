@@ -465,13 +465,65 @@ void Decompiler::parseModule(const lm_module_t &mod)
 	}
 }
 
+// LM_Disassemble opens and closes a capstone handle for every instruction
+// (about 6.5 us each), which made up 1.39 s of the 1.41 s registry scan at
+// load. The walk reads short sequential runs (5 instructions on average), so
+// it decodes up to kRunLength ahead in one call and serves the run from here.
+struct Decompiler::DecodedRun
+{
+	static constexpr lm_size_t kRunLength = 16;
+
+	lm_inst_t* insts = nullptr;
+	lm_size_t count = 0;
+	lm_address_t segmentBase = 0;
+	lm_address_t segmentEnd = 0;
+
+	DecodedRun() = default;
+	DecodedRun(const DecodedRun&) = delete;
+	DecodedRun& operator=(const DecodedRun&) = delete;
+	~DecodedRun() { LM_FreeInstructions(insts); }
+
+	bool decode(lm_address_t address, lm_inst_t* out)
+	{
+		for (lm_size_t i = 0; i < count; i++)
+		{
+			if (insts[i].address == address)
+			{
+				*out = insts[i];
+				return true;
+			}
+		}
+
+		// Never read past the mapped segment that holds the address.
+		if (address < segmentBase || address >= segmentEnd)
+		{
+			lm_segment_t segment {};
+			if (!LM_FindSegment(address, &segment))
+				return LM_Disassemble(address, out);
+			segmentBase = segment.base;
+			segmentEnd = segment.end;
+		}
+
+		LM_FreeInstructions(insts);
+		insts = nullptr;
+		count = LM_DisassembleEx(address, LM_GetArchitecture(),
+			std::min<lm_size_t>(segmentEnd - address, kRunLength * LM_INST_MAX),
+			kRunLength, address, &insts);
+		if (count == 0)
+			return false;
+		*out = insts[0];
+		return true;
+	}
+};
+
 void Decompiler::parseFunction(const lm_address_t begin, std::unordered_map<lm_address_t, unsigned int>& references)
 {
 	auto branchesTaken = std::unordered_set<lm_address_t>();
 	std::string thunkReg;
 	lm_address_t leaOffset = LM_ADDRESS_BAD;
 
-	__parseFunction(begin, references, branchesTaken, thunkReg, leaOffset);
+	DecodedRun run;
+	__parseFunction(begin, references, branchesTaken, thunkReg, leaOffset, run);
 }
 
 void Decompiler::__parseFunction
@@ -480,7 +532,8 @@ void Decompiler::__parseFunction
 	std::unordered_map<lm_address_t, unsigned int>& references,
 	std::unordered_set<lm_address_t>& branchesTaken,
 	std::string& thunkReg,
-	lm_address_t& leaOffset
+	lm_address_t& leaOffset,
+	DecodedRun& run
 )
 {
 	lm_address_t addr = begin;
@@ -488,7 +541,7 @@ void Decompiler::__parseFunction
 
 	for (;;)
 	{
-		if (!LM_Disassemble(addr, &instr))
+		if (!run.decode(addr, &instr))
 		{
 			LOG_WARN("Failed to disassemble function 0x%x at 0x%x!\n", begin, addr);
 			return;
@@ -528,7 +581,7 @@ void Decompiler::__parseFunction
 			{
 				if (!taken)
 				{
-					__parseFunction(branch, references, branchesTaken, thunkReg, leaOffset);
+					__parseFunction(branch, references, branchesTaken, thunkReg, leaOffset, run);
 				}
 			}
 

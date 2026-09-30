@@ -59,6 +59,9 @@ namespace Decompiler
 	bool parseHeader(const lm_module_t& mod);
 	void parseModule(const lm_module_t& mod);
 
+	// Instructions decoded ahead of the walk (see decompiler.cpp).
+	struct DecodedRun;
+
 	void parseFunction(const lm_address_t begin, std::unordered_map<lm_address_t, unsigned int>& references);
 	void __parseFunction
 	(
@@ -66,7 +69,8 @@ namespace Decompiler
 		std::unordered_map<lm_address_t, unsigned int>& references,
 		std::unordered_set<lm_address_t>& branchesTaken,
 		std::string& thunkReg,
-		lm_address_t& leaOffset
+		lm_address_t& leaOffset,
+		DecodedRun& run
 	);
 	
 	std::map<std::string, unsigned int> parseInterfaceMapBase(const char* interface);
