@@ -8,8 +8,9 @@
 #include "CUtl.hpp"
 #include "IClientAppManager.hpp"
 #include "IClientApps.hpp"
+#include "IClientCompat.hpp"
 #include "IClientFriends.hpp"
 #include "IClientUser.hpp"
 #include "IClientUtils.hpp"
-
+#include "steam.hpp"
 #include "types.hpp"

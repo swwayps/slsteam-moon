@@ -61,6 +61,9 @@ namespace VFTIndexes
 		extern VFTableInfo_t BCanRemotePlayTogether;
 		extern VFTableInfo_t BIsDlcEnabled;
 		extern VFTableInfo_t GetAppInstallState;
+		extern VFTableInfo_t GetLibraryFolderLabel;
+		extern VFTableInfo_t GetLibraryFolderPath;
+		extern VFTableInfo_t GetNumLibraryFolders;
 		extern VFTableInfo_t GetUpdateInfo;
 		extern VFTableInfo_t InstallApp;
 		extern VFTableInfo_t IsAppDlcInstalled;
@@ -71,6 +74,9 @@ namespace VFTIndexes
 	// Called on CCompatManager, whose slots follow IClientCompatMap.
 	namespace IClientCompat
 	{
+		extern VFTableInfo_t BIsCompatLayerEnabled;
+		extern VFTableInfo_t BIsCompatibilityToolEnabled;
+		extern VFTableInfo_t GetCompatToolDisplayName;
 		extern VFTableInfo_t GetCompatToolName;
 		extern VFTableInfo_t SpecifyCompatTool;
 	}

@@ -100,6 +100,8 @@ VFTableInfo_t::VFTableInfo_t(const char* type, const char* function, unsigned in
 	: typeName(type), functionName(function), address(0), index(slot) {}
 namespace VFTIndexes::IClientCompat
 {
+VFTableInfo_t BIsCompatibilityToolEnabled{"16IClientCompatMap", "BIsCompatibilityToolEnabled", 3};
+VFTableInfo_t GetCompatToolDisplayName{"16IClientCompatMap", "GetCompatToolDisplayName", 6};
 VFTableInfo_t GetCompatToolName{"16IClientCompatMap", "GetCompatToolName", 4};
 VFTableInfo_t SpecifyCompatTool{"16IClientCompatMap", "SpecifyCompatTool", 1};
 }

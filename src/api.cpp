@@ -1,6 +1,7 @@
 #include "api.hpp"
 
 #include "sdk/IClientAppManager.hpp"
+#include "sdk/IClientCompat.hpp"
 
 #include "afftrace.hpp"
 #include "config.hpp"
@@ -27,9 +28,9 @@ namespace SLSAPI
 	std::fstream fstream;
 	CFileWatcher* watcher;
 
-	std::mutex executionMutex;
-	std::vector<InstallCommand_t> installs;
-	std::vector<uint32_t> uninstalls;
+	std::mutex cmdMutex;
+	std::vector<CompatOp_t> compatOps;
+	std::vector<LibraryOp_t> libraryOps;
 }
 
 bool SLSAPI::isEnabled()
@@ -39,9 +40,9 @@ bool SLSAPI::isEnabled()
 
 void SLSAPI::onFileChange()
 {
-	// Runs on the API watcher pthread. Install and uninstall requests enter
-	// Steam-owned code, so they are queued for runIPCFrame() on Steam's IPC
-	// thread; parsing stays here.
+	// Runs on the API watcher pthread. Every command enters Steam-owned code,
+	// so it is queued for runIPCFrame() on Steam's IPC thread; parsing stays
+	// here.
 	auto watchSpan = AffTrace::watchSpan(AffTrace::Src::Api);
 
 	//Hot reload support :)
@@ -85,39 +86,76 @@ void SLSAPI::onFileChange()
 
 	LOG_DEBUG("API Running %s\n", cmd);
 
-	auto split = Utils::strsplit(cmd, "|");
+	const auto split = Utils::strsplit(cmd, "|");
 	// Size first: an empty line (or one made only of separators) produces no
 	// fields at all, and split[0] on an empty vector is out of bounds. The old
 	// order read split[0] before checking, so a blank write to the command file
 	// took the client down.
-	if (split.size() > 2 && split[0] == "install")
+	if (split.empty())
 	{
-		try
-		{
-			uint32_t appId = std::strtoul(split[1].c_str(), nullptr, 10);
-			uint32_t library = std::strtoul(split[2].c_str(), nullptr, 10);
-
-			std::lock_guard guard(executionMutex);
-			installs.emplace_back(InstallCommand_t { appId, library } );
-		}
-		catch(...)
-		{
-			LOG_INFO("API Failed to parse %s or %s!\n", split[1].c_str(), split[2].c_str());
-		}
+		return;
 	}
-	else if (split.size() > 1 && split[0] == "uninstall")
-	{
-		try
-		{
-			uint32_t appId = std::strtoul(split[1].c_str(), nullptr, 10);
 
-			std::lock_guard guard(executionMutex);
-			uninstalls.emplace_back(appId);
-		}
-		catch(...)
+	const std::string& name = split[0];
+	AppId_t appId = 0;
+
+	//Compatibility Manager
+	if (name == "getcompat" && split.size() > 1)
+	{
+		if (!Utils::tryConvertToNumber(split[1].c_str(), appId))
 		{
-			LOG_INFO("API Failed to parse %s!\n", split[1].c_str());
+			LOG_ERROR("Failed to get compat for %s (not a number)!\n", split[1].c_str());
+			return;
 		}
+
+		const std::lock_guard guard(cmdMutex);
+		compatOps.emplace_back(CompatOp_t { CompatOp_t::OpType::Get, appId, "" } );
+	}
+	else if (name == "setcompat" && split.size() > 1)
+	{
+		if (!Utils::tryConvertToNumber(split[1].c_str(), appId))
+		{
+			LOG_ERROR("Failed to set compat for %s (not a number)!\n", split[1].c_str());
+			return;
+		}
+
+		const std::lock_guard guard(cmdMutex);
+		compatOps.emplace_back(CompatOp_t { CompatOp_t::OpType::Set, appId, split.size() > 2 ? split[2] : "" } );
+	}
+	//Application Manager
+	else if (name == "dumplibraries")
+	{
+		const std::lock_guard guard(cmdMutex);
+		libraryOps.emplace_back(LibraryOp_t { LibraryOp_t::OpType::Dump, 0, 0 } );
+	}
+	else if (name == "install" && split.size() > 2)
+	{
+		uint32_t library = 0;
+		if (!Utils::tryConvertToNumber(split[1].c_str(), appId))
+		{
+			LOG_ERROR("Failed to install %s (not a number)!\n", split[1].c_str());
+			return;
+		}
+
+		if (!Utils::tryConvertToNumber(split[2].c_str(), library))
+		{
+			LOG_ERROR("Failed to install %u to %s (not a number)!\n", appId, split[2].c_str());
+			return;
+		}
+
+		const std::lock_guard guard(cmdMutex);
+		libraryOps.emplace_back(LibraryOp_t { LibraryOp_t::OpType::Install, appId, library } );
+	}
+	else if (name == "uninstall" && split.size() > 1)
+	{
+		if (!Utils::tryConvertToNumber(split[1].c_str(), appId))
+		{
+			LOG_ERROR("Failed to uninstall %s (not a number)!\n", split[1].c_str());
+			return;
+		}
+
+		const std::lock_guard guard(cmdMutex);
+		libraryOps.emplace_back(LibraryOp_t { LibraryOp_t::OpType::Uninstall, appId, 0 } );
 	}
 }
 
@@ -183,30 +221,108 @@ void SLSAPI::init()
 	g_pLog->debug("SLSsteam API initialized at %s\n", path);
 }
 
-void SLSAPI::runIPCFrame()
+void SLSAPI::runCompatOps()
 {
-	if (!installs.size() && !uninstalls.size()) //No need to lock mutex when no commands are queued
+	// Captured by the CCompatManager detour; commands wait in the queue until
+	// Steam has called into the compatibility manager once.
+	IClientCompat* const compat = g_pClientCompat;
+	if (!compat)
 	{
 		return;
 	}
 
-	std::lock_guard guard(executionMutex);
-
-	while(installs.size())
+	while (compatOps.size())
 	{
-		const auto app = installs.begin();
-		g_pClientAppManager->installApp(app->appId, app->libraryIndex);
-		installs.erase(app);
+		const auto op = compatOps.begin();
+		switch(op->type)
+		{
+			case CompatOp_t::OpType::Get:
+			{
+				const char* name = compat->isCompatToolEnabled(op->appId)
+					? compat->getCompatToolName(op->appId)
+					: nullptr;
+				if (!name)
+				{
+					LOG_API("Get compatibility tool for %u: Compatibility tool is disabled!\n", op->appId);
+					break;
+				}
 
-		LOG_DEBUG("Installed %u to %u\n", app->appId, app->libraryIndex);
+				const char* displayName = compat->getDisplayName(name);
+				LOG_API("Get compatibility tool for %u: \"%s\" (%s)\n", op->appId, displayName ? displayName : "", name);
+				break;
+			}
+			case CompatOp_t::OpType::Set:
+			{
+				//Steam calls them with the same values
+				compat->specifyCompatTool(op->appId, op->tool.c_str(), "", 250);
+				LOG_DEBUG("Set compatibility tool for %u to %s\n", op->appId, op->tool.c_str());
+				break;
+			}
+		}
+
+		compatOps.erase(op);
+	}
+}
+
+void SLSAPI::runInstallOps()
+{
+	IClientAppManager* const appManager = g_pClientAppManager;
+	if (!appManager)
+	{
+		return;
 	}
 
-	while(uninstalls.size())
+	while (libraryOps.size())
 	{
-		const auto app = uninstalls.begin();
-		g_pClientAppManager->uninstallApp(*app);
-		uninstalls.erase(app);
+		const auto op = libraryOps.begin();
+		switch(op->type)
+		{
+			case LibraryOp_t::OpType::Dump:
+			{
+				const uint32_t num = appManager->getNumLibraryFolders();
+				for (uint32_t i = 0; i < num; i++)
+				{
+					// Same sizes Steam passes. Zeroed and terminated here, so the
+					// output never depends on what the returned lengths count.
+					char pathBuf[0x1000] {};
+					char labelBuf[0x80] {};
+					const uint32_t pathLen = appManager->getLibraryFolderPath(i, pathBuf, sizeof(pathBuf));
+					const uint32_t labelLen = appManager->getLibraryFolderLabel(i, labelBuf, sizeof(labelBuf));
+					pathBuf[sizeof(pathBuf) - 1] = '\0';
+					labelBuf[sizeof(labelBuf) - 1] = '\0';
 
-		LOG_DEBUG("Uninstalled %u\n", *app);
+					if (labelLen && labelBuf[0])
+					{
+						LOG_API("Library \"%s\" at \"%s\" has index %u\n", labelBuf, pathLen ? pathBuf : "", i);
+					}
+					else
+					{
+						LOG_API("Library at \"%s\" has index %u\n", pathLen ? pathBuf : "", i);
+					}
+				}
+				break;
+			}
+			case LibraryOp_t::OpType::Install:
+			{
+				appManager->installApp(op->appId, op->libraryIndex);
+				LOG_DEBUG("Installed %u to %u\n", op->appId, op->libraryIndex);
+				break;
+			}
+			case LibraryOp_t::OpType::Uninstall:
+			{
+				appManager->uninstallApp(op->appId);
+				LOG_DEBUG("Uninstalled %u\n", op->appId);
+				break;
+			}
+		}
+
+		libraryOps.erase(op);
 	}
+}
+
+void SLSAPI::runIPCFrame()
+{
+	const std::lock_guard guard(cmdMutex);
+	runCompatOps();
+	runInstallOps();
 }

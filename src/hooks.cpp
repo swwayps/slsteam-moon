@@ -21,6 +21,7 @@
 #include "sdk/types.hpp"
 #include "sdk/IClientAppManager.hpp"
 #include "sdk/IClientApps.hpp"
+#include "sdk/IClientCompat.hpp"
 #include "sdk/IClientFriends.hpp"
 #include "sdk/IClientUser.hpp"
 #include "sdk/IClientUtils.hpp"
@@ -1275,6 +1276,17 @@ static void hkCGameInfoDialog_ServerResponded(void* pGameInfoDialog, gameserverd
 	Hooks::CGameInfoDialog_ServerResponded.tramp.fn(pGameInfoDialog, details);
 }
 
+static bool hkClientCompat_BIsCompatLayerEnabled(void* pClientCompat)
+{
+	if (!g_pClientCompat)
+	{
+		g_pClientCompat = reinterpret_cast<IClientCompat*>(pClientCompat);
+		LOG_DEBUG("g_pClientCompat at %p\n", pClientCompat);
+	}
+
+	return Hooks::IClientCompat_BIsCompatLayerEnabled.tramp.fn(pClientCompat);
+}
+
 static bool hkClientConfigStore_SetString(void* pClientConfigStore, uint32_t store, const char* key, const char* value)
 {
 	LOG_TRACE("Calling tramp\n");
@@ -1305,6 +1317,7 @@ namespace Hooks
 	static bool playerStatsHookReady = false;
 	static bool depotOverrideHookReady = false;
 	static bool cloudToggleHookReady = false;
+	static bool compatLayerHookReady = false;
 	static bool configStoreHookReady = false;
 	static bool friendGameHookReady = false;
 
@@ -1347,6 +1360,7 @@ namespace Hooks
 	VFTHook<IClientApps_GetDLCCount_t> IClientApps_GetDLCCount("IClientApps::GetDLCCount");
 	VFTHook<IClientApps_GetAppData_t> IClientApps_GetAppData("IClientApps::GetAppData");
 
+	DetourHook<IClientCompat_BIsCompatLayerEnabled_t> IClientCompat_BIsCompatLayerEnabled;
 	DetourHook<IClientConfigStore_SetString_t> IClientConfigStore_SetString;
 
 	DetourHook<IClientRemoteStorage_IsCloudEnabledForApp_t> IClientRemoteStorage_IsCloudEnabledForApp;
@@ -1521,6 +1535,25 @@ bool Hooks::setup()
 		g_pLog->warn("IsCloudEnabledForApp hook unavailable; DisableCloud disabled\n");
 	}
 
+	// CCompatManager's BIsCompatLayerEnabled slot captures the compatibility
+	// manager for the API's getcompat/setcompat (upstream b7407e4). Only those
+	// commands ride it.
+	{
+		const auto& entry = VFTIndexes::IClientCompat::BIsCompatLayerEnabled;
+		const auto compat = Decompiler::vftables.find("14CCompatManager");
+		if (compat != Decompiler::vftables.end())
+		{
+			const auto& slots = compat->second.functions;
+			compatLayerHookReady = entry.index < slots.size()
+				&& IClientCompat_BIsCompatLayerEnabled.setup(
+					entry.getPrintName().c_str(), slots[entry.index],
+					hkClientCompat_BIsCompatLayerEnabled);
+		}
+	}
+	if (!compatLayerHookReady)
+	{
+		g_pLog->warn("BIsCompatLayerEnabled hook unavailable; API compat commands disabled\n");
+	}
 	// The private app list is read from CConfigStore's own SetString slot
 	// (upstream b8ef92f), which also sees stores that skip the IPC proxy.
 	// Only the presence title redaction rides it.
@@ -1641,6 +1674,10 @@ void Hooks::place()
 
 	CGameInfoDialog_ServerResponded.place();
 
+	if (compatLayerHookReady)
+	{
+		IClientCompat_BIsCompatLayerEnabled.place();
+	}
 	if (configStoreHookReady)
 	{
 		IClientConfigStore_SetString.place();
@@ -1720,6 +1757,11 @@ void Hooks::remove()
 	IClientUser_IsUserSubscribedAppInTicket.remove();
 
 	CGameInfoDialog_ServerResponded.remove();
+	if (compatLayerHookReady)
+	{
+		IClientCompat_BIsCompatLayerEnabled.remove();
+		compatLayerHookReady = false;
+	}
 	if (configStoreHookReady)
 	{
 		IClientConfigStore_SetString.remove();

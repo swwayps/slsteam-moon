@@ -8,7 +8,6 @@
 #include <mutex>
 #include <vector>
 
-
 class CFileWatcher;
 
 namespace SLSAPI
@@ -16,8 +15,30 @@ namespace SLSAPI
 	// Resolved at init() inside the user's private runtime directory; empty (and
 	// `path` an empty string) until then.
 	extern std::string contractPath;
-	struct InstallCommand_t
+
+	struct CompatOp_t
 	{
+		enum class OpType
+		{
+			Get,
+			Set
+		};
+
+		OpType type;
+		AppId_t appId;
+		std::string tool;
+	};
+
+	struct LibraryOp_t
+	{
+		enum class OpType
+		{
+			Dump,
+			Install,
+			Uninstall
+		};
+
+		OpType type;
 		AppId_t appId;
 		uint32_t libraryIndex;
 	};
@@ -26,13 +47,14 @@ namespace SLSAPI
 	extern std::fstream fstream;
 	extern CFileWatcher* watcher;
 
-	extern std::mutex executionMutex;
-	extern std::vector<InstallCommand_t> installs;
-	extern std::vector<AppId_t> uninstalls;
+	extern std::mutex cmdMutex;
+	extern std::vector<CompatOp_t> compatOps;
+	extern std::vector<LibraryOp_t> libraryOps;
 
 	bool isEnabled();
 	void onFileChange();
 	void init();
-
+	void runCompatOps();
+	void runInstallOps();
 	void runIPCFrame();
 }

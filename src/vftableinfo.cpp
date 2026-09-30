@@ -158,6 +158,21 @@ namespace VFTIndexes
 			"20IClientAppManagerMap",
 			"GetAppInstallState"
 		};
+		VFTableInfo_t GetLibraryFolderLabel
+		{
+			"20IClientAppManagerMap",
+			"GetLibraryFolderLabel"
+		};
+		VFTableInfo_t GetLibraryFolderPath
+		{
+			"20IClientAppManagerMap",
+			"GetLibraryFolderPath"
+		};
+		VFTableInfo_t GetNumLibraryFolders
+		{
+			"20IClientAppManagerMap",
+			"GetNumLibraryFolders"
+		};
 		VFTableInfo_t GetUpdateInfo
 		{
 			"20IClientAppManagerMap",
@@ -198,6 +213,21 @@ namespace VFTIndexes
 
 	namespace IClientCompat
 	{
+		VFTableInfo_t BIsCompatLayerEnabled
+		{
+			"16IClientCompatMap",
+			"BIsCompatLayerEnabled"
+		};
+		VFTableInfo_t BIsCompatibilityToolEnabled
+		{
+			"16IClientCompatMap",
+			"BIsCompatibilityToolEnabled"
+		};
+		VFTableInfo_t GetCompatToolDisplayName
+		{
+			"16IClientCompatMap",
+			"GetCompatToolDisplayName"
+		};
 		VFTableInfo_t GetCompatToolName
 		{
 			"16IClientCompatMap",

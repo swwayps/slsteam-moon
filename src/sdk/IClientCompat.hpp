@@ -1,15 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #pragma once
 
+#include "types.hpp"
+
 #include <cstdint>
+
 
 class IClientCompat
 {
 public:
-	void specifyCompatTool(
-		std::uint32_t appId,
-		const char* name,
-		const char* config,
-		int priority);
-	const char* getCompatToolName(std::uint32_t appId);
+	bool isCompatToolEnabled(const AppId_t appId);
+	const char* getDisplayName(const char* name);
+	const char* getCompatToolName(const AppId_t appId);
+
+	//Set name to "" to unset
+	void specifyCompatTool(const AppId_t appId, const char* name, const char* config, int32_t priority);
 };
+
+extern IClientCompat* g_pClientCompat;

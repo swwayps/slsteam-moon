@@ -40,9 +40,12 @@ struct DepotInfo_t
 class IClientAppManager
 {
 public:
+	uint32_t getNumLibraryFolders();
+	uint32_t getLibraryFolderLabel(const uint32_t index, char* pChLabel, const uint32_t labelSize);
+	uint32_t getLibraryFolderPath(const uint32_t index, char* pChPath, const uint32_t pathSize);
+	EAppState getAppInstallState(const AppId_t appId);
 	bool installApp(const AppId_t appId, const uint32_t librarIndex);
 	uint32_t uninstallApp(const AppId_t appId);
-	EAppState getAppInstallState(const AppId_t appId);
 };
 
 extern IClientAppManager* g_pClientAppManager;
