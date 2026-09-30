@@ -19,7 +19,6 @@
 #include "../ownerwork.hpp"
 #include "../sdk/CProtoBufMsgBase.hpp"
 #include "../thread_start.hpp"
-#include "../update.hpp"
 
 #include "../utils/ManifestFetch.hpp"
 #include "../utils/process_lock.hpp"
@@ -753,11 +752,6 @@ void recvProductInfoResponse(CMsgClientPICSProductInfoResponse* resp)
 	if (!refreshRequests.empty())
 		AppInfoProvision::refreshInBackground(appinfoVdfPath, refreshRequests);
 
-	// Refresh the safe-mode-hash cache (updates.yaml) off the boot path.
-	// init() served it from disk synchronously so Steam's launch never
-	// blocks on GitHub; this brings it up to date from a real worker
-	// thread, gated by a TTL so we don't fetch on every relaunch.
-	Updater::refreshInBackgroundIfStale();
 	// Run migration repair only after response-specific hot-add/cache work has
 	// been queued, so an older library entry can never delay the game that
 	// triggered this callback. The coordinator applies its own cooldown.

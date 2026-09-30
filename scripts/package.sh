@@ -32,7 +32,6 @@
 # (run scripts/build.sh first).
 #
 # Usage:
-#   scripts/package.sh                      # version from res/version.txt
 #   scripts/package.sh --version 2.0        # explicit version
 #   scripts/package.sh --help
 
@@ -54,14 +53,10 @@ while [ $# -gt 0 ]; do
 	esac
 done
 
+# Releases are named after the git tag (AGENTS.md §4.2); there is no default.
 if [ -z "$VERSION" ]; then
-	if [ -r res/version.txt ]; then
-		VERSION="$(tr -d '[:space:]' < res/version.txt)"
-	fi
-fi
-if [ -z "$VERSION" ]; then
-	echo "could not determine version (no --version, no res/version.txt)" >&2
-	exit 1
+	echo "missing --version (e.g. --version 2.8-lumen; see git tag -l)" >&2
+	exit 2
 fi
 
 # Sanity-check the binaries are present and look right.
@@ -98,7 +93,7 @@ check_binary_freshness() {
 }
 check_binary_freshness bin/SLSsteam.so SLSsteam.so \
 	src include lib res Makefile scripts/build.sh scripts/_build-host.sh \
-	scripts/_build-portable.sh scripts/Dockerfile scripts/check-sls-abi.sh embed-config.sh embed-version.sh
+	scripts/_build-portable.sh scripts/Dockerfile scripts/check-sls-abi.sh embed-config.sh
 check_binary_freshness bin/pattern-refresh pattern-refresh \
 	tools/pattern-refresh src/pattern_catalog.cpp src/pattern_catalog.hpp \
 	src/utils/process_lock.hpp res/pattern-public-key.hex Makefile \

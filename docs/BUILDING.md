@@ -71,7 +71,6 @@ already include `-D_GLIBCXX_USE_CXX11_ABI=0` for C++ ABI compatibility.
 ## Releasing
 
 ```
-scripts/release.sh                    # version from res/version.txt
 scripts/release.sh --version 2.1      # explicit version
 ```
 

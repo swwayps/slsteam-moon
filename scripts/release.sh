@@ -8,7 +8,6 @@
 # Output: dist/slsteam-moon-linux-<version>.zip
 #
 # Usage:
-#   scripts/release.sh                # version from res/version.txt
 #   scripts/release.sh --version 2.0  # forwarded to package.sh
 #   scripts/release.sh --help
 

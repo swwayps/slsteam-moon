@@ -33,8 +33,6 @@ enum class UserMsg
 	BirthdayGreeting,          // easter egg (Feb 22) — replaces LoadSuccess
 
 	// --- startup / compatibility (hard) ---
-	SteamVersionUnsupported,   // unknown steamclient.so, SafeMode aborted load
-	SteamVersionMismatch,      // hash mismatch, update recommended
 	InitializationFailed,      // could not locate required patterns, aborted
 
 	// --- install / download ---
@@ -152,22 +150,6 @@ inline UiMessage messageFor(UserMsg m, Lang lang)
 			return { pt ? "slsteam-moon carregou com sucesso. (E feliz aniversário, SLSsteam!)"
 			            : "slsteam-moon loaded successfully. (And happy birthday, SLSsteam!)",
 			         Severity::Info };
-
-		case UserMsg::SteamVersionUnsupported:
-			return { pt ? "O slsteam-moon foi desativado por segurança porque esta "
-			              "versão do Steam não é compatível."
-			            : "slsteam-moon was disabled for safety because this Steam "
-			              "version isn't compatible.",
-			         Severity::Error };
-
-		case UserMsg::SteamVersionMismatch:
-			return { pt ? "A Steam foi atualizada e ainda não validamos esta versão. "
-			              "A maioria das coisas deve funcionar, mas se algo falhar, "
-			              "procure uma atualização."
-			            : "Steam was updated and we haven't validated this version yet. "
-			              "Most things should still work; if something breaks, check "
-			              "for an update.",
-			         Severity::Warning };
 
 		case UserMsg::InitializationFailed:
 			return { pt ? "O slsteam-moon não encontrou os padrões de código da "

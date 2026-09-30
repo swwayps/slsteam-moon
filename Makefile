@@ -56,7 +56,7 @@ endif
 .PHONY: test-manifestdonor test-manifestfetch
 .PHONY: test-reconcilepin-scan
 .PHONY: test-depotkey-recv-policy
-.PHONY: test-private-apps test-config-settings test-plugin-config test-curl-child test-legacy-cdkey test-utils-number test-launch-options
+.PHONY: test-private-apps test-config-settings test-config-tolerance test-plugin-config test-curl-child test-legacy-cdkey test-utils-number test-launch-options
 
 test-manifestdonor:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror \
@@ -169,12 +169,6 @@ schema-grabber:
 
 ticket-grabber:
 	$(MAKE) -C tools/ticket-grabber
-
--include $(deps)
-obj/update.o: src/update.cpp res/version.txt
-	$(shell ./embed-version.sh)
-	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -isysteminclude -MMD -MP -c $< -o $@
 
 -include $(deps)
 obj/config.o: src/config.cpp res/config.yaml
@@ -611,7 +605,7 @@ obj/feats/appinfo_vdf_test.o: src/feats/appinfo_vdf.cpp $(deps_early)
 		-c src/feats/appinfo_vdf.cpp -o obj/feats/appinfo_vdf_test.o
 
 test-appinfo-transaction: obj/feats/appinfo_vdf_test.o obj/log.o obj/config.o \
-		obj/globals.o obj/filewatcher.o obj/update.o obj/api.o \
+		obj/globals.o obj/filewatcher.o obj/api.o \
 		obj/feats/depotkey.o obj/feats/manifestid.o obj/feats/librarydates.o \
 		obj/ownerwork.o obj/sdk/protobufs/steammessages_clientserver_appinfo.pb.o \
 		obj/sdk/protobufs/steammessages_base.pb.o
@@ -623,8 +617,20 @@ test-appinfo-transaction: obj/feats/appinfo_vdf_test.o obj/log.o obj/config.o \
 		-o /tmp/test_appinfo_transaction
 	/tmp/test_appinfo_transaction
 
+test-config-tolerance: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
+		obj/api.o obj/feats/depotkey.o obj/feats/manifestid.o \
+		obj/feats/librarydates.o obj/ownerwork.o \
+		obj/sdk/protobufs/steammessages_clientserver_appinfo.pb.o \
+		obj/sdk/protobufs/steammessages_base.pb.o
+	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
+		-I include -isysteminclude tools/test_config_tolerance.cpp \
+		$(filter obj/%.o,$^) \
+		lib/libyaml-cpp.a lib/libprotobuf.a -lcrypto -lpthread -ldl \
+		-o /tmp/test_config_tolerance
+	/tmp/test_config_tolerance
+
 test-plugin-config: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
-		obj/update.o obj/api.o obj/feats/depotkey.o obj/feats/manifestid.o \
+		obj/api.o obj/feats/depotkey.o obj/feats/manifestid.o \
 		obj/feats/librarydates.o obj/ownerwork.o \
 		obj/sdk/protobufs/steammessages_clientserver_appinfo.pb.o \
 		obj/sdk/protobufs/steammessages_base.pb.o
@@ -640,7 +646,7 @@ test-plugin-config: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
 test-cmclient-live: build
 	$(CXX) $(CXXFLAGS) -DCMWIRE_PROTOBUF \
 		-I include -isysteminclude tools/test_cmclient_live.cpp \
-		obj/feats/cmclient.o obj/log.o obj/config.o obj/globals.o obj/update.o obj/filewatcher.o \
+		obj/feats/cmclient.o obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
 		obj/feats/librarydates.o \
 		obj/sdk/protobufs/steammessages_base.pb.o \
 		obj/sdk/protobufs/steammessages_clientserver_appinfo.pb.o \

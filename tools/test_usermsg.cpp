@@ -32,8 +32,6 @@ static bool contains(const std::string& hay, const std::string& needle)
 static const UserMsg kAll[] = {
 	UserMsg::LoadSuccess,
 	UserMsg::BirthdayGreeting,
-	UserMsg::SteamVersionUnsupported,
-	UserMsg::SteamVersionMismatch,
 	UserMsg::InitializationFailed,
 	UserMsg::ContentServersUnavailable,
 	UserMsg::DownloadAuthUnavailable,

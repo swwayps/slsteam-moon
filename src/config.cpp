@@ -506,18 +506,7 @@ bool CConfig::loadSettings()
 	useWhiteList = getSetting<bool>(node, "UseWhitelist", false);
 	smartTickets = getSetting<SmartTicketsFlags_t>(node, "SmartTickets", 1);
 	maxSchemaTries = getSetting<uint32_t>(node, "MaxSchemaTries", 10);
-	// SafeMode (abort the load on an unknown steamclient.so hash) is force-
-	// disabled. Its hash whitelist cannot be kept current: it goes stale on
-	// every Steam client update and would disable an otherwise-working client,
-	// and it is sourced from an upstream mirror we do not control. The Steam
-	// wrapper's crash-loop fail-safe (setup.sh) now covers the Game Mode brick
-	// scenario SafeMode guarded, recovering on the first crash after a client
-	// change. The key is still read so an existing "SafeMode: yes" neither
-	// errors nor gates the load; the feature code is kept intact, just inert.
-	(void)getSetting<bool>(node, "SafeMode", false);
-	safeMode = false;
 	notifications = getSetting<bool>(node, "Notifications", true);
-	warnHashMissmatch = getSetting<bool>(node, "WarnHashMissmatch", false);
 	notifyInit = getSetting<bool>(node, "NotifyInit", true);
 	api = getSetting<bool>(node, "API", true);
 	plugins = getSetting<bool>(node, "Plugins", false);
@@ -568,15 +557,15 @@ bool CConfig::loadSettings()
 	//TODO: Create smart logging function to log them automatically via getSetting
 	g_pLog->info(
 		"Config: DisableFamilyShareLock=%i DisableParentalRestrictions=%i "
-		"UseWhitelist=%i SafeMode=%i "
-		"Notifications=%i WarnHashMissmatch=%i NotifyInit=%i API=%i "
+		"UseWhitelist=%i "
+		"Notifications=%i NotifyInit=%i API=%i "
 		"FakeName=%s FakeEmail=%s FakeWalletBalance=%i DisableCloud=%i DisableUpdates=%i Donate=%i "
 		"InjectAllAdvertisedDlc=%i Achievements=%i PatternCache=%i "
 		"AsyncProvision=%i ExtendedLogging=%i AutoUpdateApps=%i LogLevel=%u "
 		"MaxSchemaTries=%u DumpClientInterfaces=%i\n",
 		disableFamilyLock.get(), disableParentalRestrictions.get(),
 		useWhiteList.get(),
-		safeMode.get(), notifications.get(), warnHashMissmatch.get(),
+		notifications.get(),
 		notifyInit.get(), api.get(), fakeName.get().c_str(), fakeEmail.get().c_str(),
 		fakeWalletBalance.get(), disableCloud.get(), disableUpdates.get(),
 		donate.get().enabled,

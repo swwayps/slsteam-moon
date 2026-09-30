@@ -1,7 +1,6 @@
 // TDD regression test for recoverable worker-thread startup.
 
 #include "thread_start.hpp"
-#include "update_cache.hpp"
 
 #include <atomic>
 #include <cstdio>
@@ -40,15 +39,6 @@ int main()
 	      "throwing starter reports failure");
 	check(!started && reset, "throwing starter invokes reset callback");
 
-	Updater::cache::RefreshGate refreshGate;
-	check(refreshGate.tryStart(), "refresh gate admits the first worker");
-	refreshGate.finish();
-	check(refreshGate.tryStart(),
-	      "ordinary refresh failure releases the gate after worker exit");
-	refreshGate.markSucceeded();
-	refreshGate.finish();
-	check(!refreshGate.tryStart(),
-	      "successful refresh remains one-shot");
 
 	bool bodyRan = false;
 	bool bodyFailure = false;

@@ -126,9 +126,7 @@ public:
 	MTVariable<bool> useWhiteList;
 	MTVariable<SmartTicketsFlags_t> smartTickets;
 	MTVariable<uint32_t> maxSchemaTries;
-	MTVariable<bool> safeMode;
 	MTVariable<bool> notifications;
-	MTVariable<bool> warnHashMissmatch;
 	MTVariable<bool> notifyInit;
 	MTVariable<bool> api;
 	// Run Lua plugins from <config dir>/plugins (off by default: they run

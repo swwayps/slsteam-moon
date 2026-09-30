@@ -18,7 +18,6 @@
 #include "patterns.hpp"
 #include "runtime_attestation.hpp"
 #include "runtime_dependencies.hpp"
-#include "update.hpp"
 #include "utils.hpp"
 #include "utils/process_lock.hpp"
 
@@ -432,7 +431,6 @@ static void setup()
 		setenv("LD_LIBRARY_PATH", ldLibPath.c_str(), true);
 	}
 
-	Updater::init();
 
 	setupSuccess = true;
 }
@@ -615,21 +613,6 @@ static void load()
 		logBuildId("cloud_redirect.so", "cloud-redirect");
 	}
 
-	if (!Updater::verifySafeModeHash())
-	{
-		if (g_config.safeMode.get())
-		{
-			g_pLog->warn("Unknown steamclient.so hash! Aborting...");
-			g_pLog->notifyUser(UserMsg::SteamVersionUnsupported);
-			unload();
-			return;
-		}
-		else if (g_config.warnHashMissmatch.get())
-		{
-			g_pLog->warn("steamclient.so hash missmatch! Please update :)");
-			g_pLog->notifyUser(UserMsg::SteamVersionMismatch);
-		}
-	}
 
 	if (!Steam::init())
 	{
