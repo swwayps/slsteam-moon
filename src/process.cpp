@@ -178,9 +178,8 @@ std::vector<uint8_t> IExecutableFile::readSection(const SectionHdr_t& section)
 {
 	//offset/size come straight from on-disk headers. A corrupt or hostile
 	//binary can advertise a multi-gigabyte section; resize() would then throw
-	//bad_alloc/length_error (unreliable to catch across the release build's
-	//.cold EH partition) or fread would block on a huge read. Reject anything
-	//that does not fit inside the file.
+	//bad_alloc/length_error or fread would block on a huge read. Reject
+	//anything that does not fit inside the file.
 	if (fileSize == 0
 		|| section.offset > fileSize
 		|| section.size > fileSize - section.offset)

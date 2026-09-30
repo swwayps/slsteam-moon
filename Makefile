@@ -23,13 +23,10 @@ srcs := $(shell find src/ -type f -iname "*.cpp")
 objs := $(srcs:src/%.cpp=obj/%.o)
 deps := $(objs:%.o=%.d)
 
-# -fno-reorder-blocks-and-partition: keep exception landing pads in the hot
-# partition. With block partitioning (implied at -O2+), a throw's handler can
-# land in the ".cold" section and the call-site table fails to route to it, so
-# even catch(...) is bypassed and the client aborts (see config.hpp / the
-# FakeWalletBalance + malformed-config boot loops). We avoid throwing across
-# this boundary in the config path regardless, but pinning the landing pads
-# makes every remaining try/catch a reliable backstop.
+# -fno-reorder-blocks-and-partition keeps SLSsteam.so about 590 KB smaller.
+# Exceptions do not depend on it: an audit module built with block
+# partitioning catches its own throws, and the boot loops once blamed on
+# ".cold" landing pads came from a second audit module (see setup.sh).
 CXXFLAGS := -O3 -flto=auto -fPIC -m32 -std=c++20 \
             -fno-reorder-blocks-and-partition \
             -Wall -Wextra -Wpedantic -Wno-error=format-security \

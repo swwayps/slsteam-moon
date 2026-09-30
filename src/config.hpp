@@ -199,14 +199,8 @@ public:
 			return defVal;
 		}
 
-		// Decode without throwing. We can NOT rely on catching the
-		// YAML::TypedBadConversion<T> that as<T>() raises: under the release
-		// build (-O3 -flto -freorder-blocks-and-partition) the throw lives in
-		// the function's ".cold" partition and the call-site table fails to
-		// route it to the catch landing pad, so even catch (...) is bypassed
-		// and the client aborts at startup (a huge FakeWalletBalance bricked
-		// Steam on every launch). A bad scalar falls back to the default and
-		// is reported by key instead.
+		// Decode without throwing: a bad scalar (say, a huge
+		// FakeWalletBalance) falls back to the default and is reported by key.
 		T value {};
 		if (!YAML::convert<T>::decode(node[name], value))
 		{

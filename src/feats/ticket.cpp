@@ -69,9 +69,8 @@ Ticket::SavedTicket Ticket::getCachedTicket(uint32_t appId)
 
 	// The cache file is untrusted on-disk state: a truncated or corrupt
 	// ticket_<appid>.yaml makes YAML::LoadFile / node.as<>() / base64 decode
-	// throw. Uncaught on this IPC path the throw aborts the whole client. The
-	// release build pins -fno-reorder-blocks-and-partition, keeping this catch
-	// a reliable backstop; treat any parse failure as a cache miss.
+	// throw. Uncaught on this IPC path the throw aborts the whole client, so
+	// treat any parse failure as a cache miss.
 	try
 	{
 		auto node = YAML::LoadFile(path);

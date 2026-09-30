@@ -89,8 +89,8 @@ std::vector<uint8_t> makeStrippedElf64()
 // A valid-magic 64-bit ELF whose single section header advertises a ~4 GiB
 // string table (sh_size = 0xFFFFFFFF) that cannot fit in the tiny file. The
 // parser must reject it instead of strSec.resize()/fread()-ing 4 GiB sized
-// straight from the header (bad_alloc/length_error thrown across the release
-// build's .cold EH partition aborts the client; a real read stalls it).
+// straight from the header (a bad_alloc/length_error, or a real read that
+// stalls).
 std::vector<uint8_t> makeHugeStringTableElf64()
 {
 	std::vector<uint8_t> b(sizeof(Elf64_Ehdr) + sizeof(Elf64_Shdr), 0);

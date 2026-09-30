@@ -34,12 +34,9 @@
 
 namespace
 {
-	// Non-throwing uint64 parse for pin gids.  std::stoull THROWS on an empty /
-	// non-numeric / overflowing string, and under the release build
-	// (-O3 -flto -freorder-blocks-and-partition) such a throw can escape the
-	// surrounding catch (the .cold-partition EH defect documented in
-	// config.hpp), aborting the client at startup.  Returns false on any bad
-	// input so the caller skips the entry instead of throwing.
+	// Non-throwing uint64 parse for pin gids (std::stoull throws on an empty,
+	// non-numeric or overflowing string). Returns false on any bad input so
+	// the caller skips the entry.
 	bool parsePinGid(const std::string& s, uint64_t& out)
 	{
 		if (s.empty()) return false;
@@ -430,9 +427,8 @@ bool CConfig::loadSettings()
 	//
 	// A malformed config (most commonly the LuaTools AdditionalApps writer
 	// leaving inconsistent list indentation) used to make YAML::LoadFile throw
-	// YAML::ParserException; under the release build that throw can escape the
-	// catch (the .cold-partition EH defect documented in config.hpp) and abort
-	// Steam at startup -> boot loop. We now:
+	// YAML::ParserException, and while a second audit module was loaded that
+	// throw aborted Steam at startup -> boot loop. We now:
 	//   1. read the file as plain text (no throw),
 	//   2. hand it to ConfLoad::parseWithRepair, which normalises inconsistent
 	//      block-sequence indentation and parses the fixed text FIRST (so the
@@ -793,10 +789,8 @@ bool CConfig::loadSettings()
 	// Parse defensively with non-throwing accessors and explicit node-type
 	// guards: a malformed block (a scalar where a map is expected, a stray
 	// "<depot>: gid" line at app level, a non-numeric gid) must be SKIPPED, not
-	// thrown.  The catch (...) below is a last resort only -- under the release
-	// build a yaml-cpp/std::stoull throw can escape it (the .cold-partition EH
-	// defect noted in config.hpp), which is exactly what aborts the client at
-	// startup, so we must not rely on it for routine bad input.
+	// thrown.  The catch (...) below is a last resort only, not the path for
+	// routine bad input.
 	{
 		ManifestPins::PinMap pinMap;
 		const auto pinsNode = node["ManifestPins"];
