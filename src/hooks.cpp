@@ -945,23 +945,6 @@ static bool hkClientAppManager_GetAppStateInfo(void* pClientAppManager, uint32_t
 	return success;
 }
 
-static int32_t hkClientApps_GetAppData(void* pClientApps, uint32_t appId, const char* name, char* pChOut, uint32_t outSize)
-{
-	const int32_t ret = Hooks::IClientApps_GetAppData.originalFn.fn(pClientApps, appId, name, pChOut, outSize);
-
-	g_pLog->debugOnce
-	(
-		"%s(%u, %s, len=%u) -> %i\n",
-		Hooks::IClientApps_GetAppData.name.c_str(),
-		appId,
-		name ? name : "(null)",
-		outSize,
-		ret
-	);
-
-	return ret;
-}
-
 static unsigned int hkClientApps_GetDLCCount(void* pClientApps, uint32_t appId)
 {
 	LOG_TRACE("Calling original\n");
@@ -1455,7 +1438,6 @@ namespace Hooks
 
 	VFTHook<IClientApps_GetDLCDataByIndex_t> IClientApps_GetDLCDataByIndex("IClientApps::GetDLCDataByIndex");
 	VFTHook<IClientApps_GetDLCCount_t> IClientApps_GetDLCCount("IClientApps::GetDLCCount");
-	VFTHook<IClientApps_GetAppData_t> IClientApps_GetAppData("IClientApps::GetAppData");
 
 	DetourHook<IClientCompat_BIsCompatLayerEnabled_t> IClientCompat_BIsCompatLayerEnabled;
 	DetourHook<IClientConfigStore_SetString_t> IClientConfigStore_SetString;
@@ -1531,10 +1513,8 @@ void Hooks::placeVFTHooks()
 			LM_VmtNew(*reinterpret_cast<lm_address_t**>(g_pClientApps), vft.get());
 			IClientApps_GetDLCDataByIndex.setup(vft, VFTIndexes::IClientApps::GetDLCDataByIndex, hkClientApps_GetDLCDataByIndex);
 			IClientApps_GetDLCCount.setup(vft, VFTIndexes::IClientApps::GetDLCCount, hkClientApps_GetDLCCount);
-			IClientApps_GetAppData.setup(vft, VFTIndexes::IClientApps::GetAppData, hkClientApps_GetAppData);
 			IClientApps_GetDLCDataByIndex.place();
 			IClientApps_GetDLCCount.place();
-			IClientApps_GetAppData.place();
 			g_pLog->debug("IClientApps->vft at %p\n", vft->vtable);
 		}
 		{

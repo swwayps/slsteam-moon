@@ -187,7 +187,6 @@ namespace Hooks
 	typedef bool(*IClientAppManager_IsAppDlcInstalled_t)(void*, uint32_t, uint32_t);
 	typedef unsigned int(*IClientApps_GetDLCCount_t)(void*, uint32_t);
 	typedef bool(*IClientApps_GetDLCDataByIndex_t)(void*, uint32_t, int, uint32_t*, bool*, char*, size_t);
-	typedef int32_t(*IClientApps_GetAppData_t)(void*, uint32_t, const char*, char*, uint32_t);
 	typedef bool(*IClientRemoteStorage_IsCloudEnabledForApp_t)(void*, uint32_t);
 	typedef bool(*IClientCompat_BIsCompatLayerEnabled_t)(void*);
 	typedef bool(*IClientConfigStore_SetString_t)(void*, uint32_t, const char*, const char*);
@@ -202,7 +201,6 @@ namespace Hooks
 
 	extern VFTHook<IClientApps_GetDLCDataByIndex_t> IClientApps_GetDLCDataByIndex;
 	extern VFTHook<IClientApps_GetDLCCount_t> IClientApps_GetDLCCount;
-	extern VFTHook<IClientApps_GetAppData_t> IClientApps_GetAppData;
 
 	extern DetourHook<IClientRemoteStorage_IsCloudEnabledForApp_t> IClientRemoteStorage_IsCloudEnabledForApp;
 	extern DetourHook<IClientCompat_BIsCompatLayerEnabled_t> IClientCompat_BIsCompatLayerEnabled;
