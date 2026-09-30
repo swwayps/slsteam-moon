@@ -656,17 +656,6 @@ bool Patterns::init()
 	// metadata.  A catalog whose required flags or symbols disagree with this
 	// registry is rejected in full.
 
-	// CAPIJob::GetPlayerStats is a pure observation hook: hkCAPIJob_GetPlayerStats
-	// calls the original and emits a debug line, returning the result unchanged
-	// (it modifies nothing).  It was previously required, so a client that
-	// restructured this function aborted the ENTIRE injection and left Steam
-	// unmodified.  A later beta rewrote the function body (prologue, member
-	// layout and control flow all changed), which is exactly that failure.
-	// Reclassify it optional to match every other observational hook here: its
-	// absence is a genuine safe no-op (only the debug log is lost), so a drift
-	// disables just this log instead of every hook.
-	CAPIJob::GetPlayerStats.optional = true;
-
 	CUser::MarkLicenseAsChanged.optional = true;
 	CUser::ProcessPendingLicenseUpdates.optional = true;
 	CUser::NotifyLicensesUpdated.optional = true;
@@ -828,16 +817,6 @@ namespace Patterns
 			SigFollowMode::None,
 			&g_modSteamUI,
 			"Patterns::SteamUI::OwnershipFlagsReference"
-		};
-	}
-
-	namespace CAPIJob
-	{
-		Pattern_t GetPlayerStats
-		{
-			"CAPIJob::GetPlayerStats",
-			"E8 ? ? ? ? 83 C4 10 89 C5 E9 ? ? ? ? ? ? 80 BE ? ? ? ? 00",
-			SigFollowMode::Relative
 		};
 	}
 

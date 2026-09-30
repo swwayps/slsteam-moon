@@ -62,12 +62,6 @@ namespace Patterns
 		extern Pattern_t OwnershipFlagsReference;
 	}
 
-	namespace CAPIJob
-	{
-		extern Pattern_t GetPlayerStats;
-	}
-
-
 	namespace CSteamEngine
 	{
 		extern Pattern_t GetServerPipe;

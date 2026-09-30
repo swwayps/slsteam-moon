@@ -114,7 +114,6 @@ namespace Hooks
 	typedef void(*TraceIPC_t)(const char*, const char*);
 
 
-	typedef uint32_t(*CAPIJob_GetPlayerStats_t)(void*);
 	typedef uint32_t(*CAPIJob_SendAndRecv_t)(CAPIJob*, CProtoBufMsgBase*, uint32_t, uint32_t, CProtoBufMsgBase*, EMsg);
 	typedef uint32_t(*CClientUnifiedServiceMethod_SendAndRecvMsg_t)(CClientUnifiedServiceTransport*, const char*, void*, void*, void*);
 
@@ -154,7 +153,6 @@ namespace Hooks
 
 	extern DetourHook<TraceIPC_t> TraceIPC;
 
-	extern DetourHook<CAPIJob_GetPlayerStats_t> CAPIJob_GetPlayerStats;
 	extern DetourHook<CAPIJob_SendAndRecv_t> CAPIJob_SendAndRecv;
 	extern DetourHook<CClientUnifiedServiceMethod_SendAndRecvMsg_t> CClientUnifiedServiceMethod_SendAndRecvMsg;
 

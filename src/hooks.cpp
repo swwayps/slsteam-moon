@@ -309,21 +309,6 @@ static void hkTraceIPC(const char* iface, const char* fn)
 	Hooks::TraceIPC.tramp.fn(iface, fn);
 }
 
-static uint32_t hkCAPIJob_GetPlayerStats(void* pAPIJob)
-{
-	uint32_t res = Hooks::CAPIJob_GetPlayerStats.tramp.fn(pAPIJob);
-
-	g_pLog->debug
-	(
-		"%s(%p) -> %i\n",
-		Hooks::CAPIJob_GetPlayerStats.name.c_str(),
-		pAPIJob,
-		res
-	);
-
-	return res;
-}
-
 static uint32_t hkAPIJob_SendAndRecv(CAPIJob* pAPIJob, CProtoBufMsgBase* send, uint32_t a2, uint32_t timeOut, CProtoBufMsgBase* recv, EMsg targetType)
 {
 	uint32_t ret = Achievements::sendAndRecvGetUserStats(pAPIJob, send, timeOut, recv, targetType);
@@ -1425,7 +1410,6 @@ static bool hkClientConfigStore_SetString(void* pClientConfigStore, uint32_t sto
 
 namespace Hooks
 {
-	static bool playerStatsHookReady = false;
 	static bool depotOverrideHookReady = false;
 	static bool spawnGameHookReady = false;
 	static bool cloudToggleHookReady = false;
@@ -1436,7 +1420,6 @@ namespace Hooks
 	DetourHook<TraceIPC_t> TraceIPC;
 
 
-	DetourHook<CAPIJob_GetPlayerStats_t> CAPIJob_GetPlayerStats;
 	DetourHook<CAPIJob_SendAndRecv_t> CAPIJob_SendAndRecv;
 	DetourHook<CClientUnifiedServiceMethod_SendAndRecvMsg_t> CClientUnifiedServiceMethod_SendAndRecvMsg;
 
@@ -1621,17 +1604,6 @@ bool Hooks::setup()
 
 
 
-	// CAPIJob::GetPlayerStats is a debug-only observation hook, and its pattern
-	// is optional (Patterns::init).  It must NOT sit in the mandatory
-	// `succeeded` chain above: a client build that restructures the function
-	// (as a later beta did) leaves the pattern unresolved, so its .setup()
-	// returns false and would drag the whole chain to false -- making
-	// Hooks::setup() report failure and tear down EVERY hook (no ownership, no
-	// injection).  Set it up separately and place it only when resolved,
-	// exactly like the optional Family Share hook above.
-	playerStatsHookReady = CAPIJob_GetPlayerStats.setup(
-		Patterns::CAPIJob::GetPlayerStats, &hkCAPIJob_GetPlayerStats);
-
 	// Only the DepotBlacklist and ManifestIds keys ride this detour, so an
 	// unresolved locator disables those two keys instead of every hook.
 	depotOverrideHookReady = CUserAppManager_BuildDepotDependency.setup(
@@ -1770,11 +1742,6 @@ void Hooks::place()
 	OwnerWork::notePlacement();
 	TraceIPC.place();
 
-	if (playerStatsHookReady)
-	{
-		CAPIJob_GetPlayerStats.place();
-	}
-
 	CCMInterface_RecvPkt.place();
 
 	CRemoteClientManager_RecvPkt.place();
@@ -1851,12 +1818,6 @@ void Hooks::remove()
 	AppInfoState::remove();
 
 	TraceIPC.remove();
-
-	if (playerStatsHookReady)
-	{
-		CAPIJob_GetPlayerStats.remove();
-		playerStatsHookReady = false;
-	}
 
 	CCMInterface_RecvPkt.remove();
 
