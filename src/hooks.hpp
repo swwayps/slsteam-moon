@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 class CAPIJob;
 class CClientUnifiedServiceTransport;
@@ -84,6 +85,28 @@ public:
 	virtual void remove();
 
 	void setup(std::shared_ptr<lm_vmt_t> vft, const VFTableInfo_t& info, T hookFn);
+};
+
+// Lua plugin hooks (upstream): a code detour a plugin places and removes
+// itself. Each instance registers under a free index for place_lua_hook().
+// Only Lua code touches these, always under Lua::stateMutex.
+class LuaHook
+{
+public:
+	static std::unordered_map<int, LuaHook*> hooks;
+
+	std::string name = "";
+	lm_address_t fn = LM_ADDRESS_BAD;
+	lm_address_t hookFn = LM_ADDRESS_BAD;
+	lm_address_t tramp = 0;
+	size_t size = 0;
+	int idx = -1;
+
+	LuaHook(const char* name, void* targetFn);
+	~LuaHook();
+
+	void* place();
+	bool remove();
 };
 
 namespace Hooks

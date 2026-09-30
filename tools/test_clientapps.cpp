@@ -41,8 +41,8 @@ struct FakeClientApps
 
 // The registry resolves these slots from the client at boot; the wrapper is
 // tested against the slot the registry hands it.
-VFTableInfo_t::VFTableInfo_t(const char* type, const char* function, unsigned int slot)
-	: typeName(type), functionName(function), address(0), index(slot) {}
+VFTableInfo_t::VFTableInfo_t(const char* type, const char* function, unsigned int slot, unsigned int subClass)
+	: typeName(type), functionName(function), address(0), index(slot), subClassIndex(subClass) {}
 namespace VFTIndexes::IClientApps
 {
 VFTableInfo_t GetAppData{"14IClientAppsMap", "GetAppData", 0};

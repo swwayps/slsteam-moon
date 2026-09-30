@@ -1,5 +1,4 @@
 #include "curl.hpp"
-
 #include "log.hpp"
 
 #include <cstdlib>
@@ -8,14 +7,20 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <vector>
 
 
 //Spawn an external instance of curl, read it's stdout into out and return it's exit code
 //It's necessary because SteamOS seems broken. Curling certain URLs
 //will crash inside libssl.3.so (might have to do with broken certs, idk for sure).
-int Curl::getString(const char* url, std::string& out)
+int Curl::downloadString(const char* url, std::string& out, const int timeOut)
 {
-	LOG_DEBUG("Curl::getString(%s)\n", url);
+	return downloadString(url, { }, out, timeOut);
+}
+
+int Curl::downloadString(const char* url, const std::vector<std::string>& headers, std::string& out, const int timeOut)
+{
+	LOG_DEBUG("Curl::downloadString(%s)\n", url);
 
 	// Close-on-exec: a program Steam starts on another thread meanwhile would
 	// otherwise inherit the write end and hold the read below open.
@@ -34,18 +39,24 @@ int Curl::getString(const char* url, std::string& out)
 		nullptr
 	};
 
-	// Bounded like the in-process libcurl client this replaced: a stalled
-	// server must not hold the calling Steam thread. --max-time caps the whole
-	// transfer at 10 s, the connect phase included.
-	const char* args[] =
+	// timeOut bounds the whole transfer, the connect phase included: a
+	// stalled server must not hold the calling Steam thread. argv is built
+	// before fork(), the child only execs.
+	const std::string seconds = std::to_string(timeOut);
+	std::vector<const char*> args =
 	{
 		"curl",
 		"--silent",
-		"--connect-timeout", "15",
-		"--max-time", "10",
-		url,
-		nullptr
+		"--connect-timeout", seconds.c_str(),
+		"--max-time", seconds.c_str(),
 	};
+	for (const auto& header : headers)
+	{
+		args.push_back("-H");
+		args.push_back(header.c_str());
+	}
+	args.push_back(url);
+	args.push_back(nullptr);
 
 	const pid_t pid = fork();
 	if (pid == -1)
@@ -67,11 +78,10 @@ int Curl::getString(const char* url, std::string& out)
 			_exit(1);
 		}
 
-		execve("/bin/curl", const_cast<char**>(args), const_cast<char**>(env));
-		execve("/usr/bin/curl", const_cast<char**>(args), const_cast<char**>(env));
+		execve("/bin/curl", const_cast<char**>(args.data()), const_cast<char**>(env));
+		execve("/usr/bin/curl", const_cast<char**>(args.data()), const_cast<char**>(env));
 		//NixOS
-		execve("/run/current-system/sw/bin/curl", const_cast<char**>(args), const_cast<char**>(env));
-
+		execve("/run/current-system/sw/bin/curl", const_cast<char**>(args.data()), const_cast<char**>(env));
 		_exit(127);
 	}
 
@@ -83,7 +93,6 @@ int Curl::getString(const char* url, std::string& out)
 	std::ostringstream bufSS;
 	char buf[8192];
 	int numRead;
-
 	while((numRead = read(pipefd[0], buf, sizeof(buf))) > 0)
 	{
 		bufSS << std::string(buf, numRead);
@@ -103,7 +112,6 @@ int Curl::getString(const char* url, std::string& out)
 	}
 
 	status = WEXITSTATUS(status);
-
 	LOG_DEBUG("Exit Status: %i\n", status);
 
 	out = bufSS.str();

@@ -27,6 +27,13 @@ public:
 		return T(instance);
 	}
 
+	// Upstream's name for a by-value read. Upstream's get() returns a shared
+	// snapshot pointer instead; here every get() is already a copy.
+	T copy()
+	{
+		return get();
+	}
+
 	template<typename Key>
 	bool contains(const Key& key)
 	{

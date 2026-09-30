@@ -171,15 +171,15 @@ void Achievements::recvMessage(uint32_t type, bool hasSteamId, uint64_t steamId)
 }
 
 std::unordered_map<AppId_t, std::chrono::time_point<std::chrono::system_clock>> Achievements::fetchCooldowns = std::unordered_map<AppId_t, std::chrono::time_point<std::chrono::system_clock>>();
-std::unordered_map<AppId_t, uint64_t> Achievements::preferredOwners;
-std::unordered_map<AppId_t, std::unordered_set<uint64_t>> Achievements::ownerBlacklist;
+std::unordered_map<AppId_t, uint64_t> Achievements::preferredOwners = std::unordered_map<AppId_t, uint64_t>();
+std::unordered_map<AppId_t, std::unordered_set<uint64_t>> Achievements::ownerBlacklist = std::unordered_map<AppId_t, std::unordered_set<uint64_t>>();
 
 std::string Achievements::getReviewUrl(const AppId_t appId)
 {
 	std::ostringstream url;
 	url << "https://store.steampowered.com/appreviews/" << appId
 		<< "?json=1&filter=recent&language=all&purchase_type=all&num_per_page="
-		<< g_config.maxSchemaTries.get();
+		<< g_config.maxSchemaTries.copy();
 
 	return url.str();
 }
@@ -187,7 +187,7 @@ std::string Achievements::getReviewUrl(const AppId_t appId)
 std::unordered_set<uint64_t> Achievements::getReviewersForGame(const AppId_t appId)
 {
 	auto list = std::unordered_set<uint64_t>();
-	if (!g_config.maxSchemaTries.get())
+	if (!g_config.maxSchemaTries.copy())
 	{
 		return list;
 	}
@@ -206,7 +206,7 @@ std::unordered_set<uint64_t> Achievements::getReviewersForGame(const AppId_t app
 	auto url = getReviewUrl(appId);
 	std::string reviews;
 
-	if (Curl::getString(url.c_str(), reviews))
+	if (Curl::downloadString(url.c_str(), reviews))
 	{
 		LOG_WARN("Failed to get reviewer list for %u!\n", appId);
 		return list;

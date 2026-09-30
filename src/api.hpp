@@ -6,6 +6,7 @@
 #include <fstream>
 #include <string>
 #include <mutex>
+#include <atomic>
 #include <vector>
 
 class CFileWatcher;
@@ -46,6 +47,8 @@ namespace SLSAPI
 	extern const char* path;
 	extern std::fstream fstream;
 	extern CFileWatcher* watcher;
+	// The Lua runtime's reload, set in load(); null where it is not linked.
+	extern std::atomic<void(*)()> reloadPlugins;
 
 	extern std::mutex cmdMutex;
 	extern std::vector<CompatOp_t> compatOps;

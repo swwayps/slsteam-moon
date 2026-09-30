@@ -95,7 +95,8 @@ namespace
 	bool fetchParseAndStore()
 	{
 		std::string data;
-		const int res = Curl::getString(kUpdatesUrl, data);
+		// 10 s total, the bound this fetch has always had.
+		const int res = Curl::downloadString(kUpdatesUrl, data, 10);
 		if (res != 0 || data.empty())
 		{
 			g_pLog->debug("Updater: network fetch failed (curl=%d)\n", res);

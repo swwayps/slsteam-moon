@@ -21,3 +21,8 @@ uninstall|appId : Uninstalls appId
 getcompat|appId : Lists the current compatibility tool for appId
 
 setcompat|appId\[|tool-name\] : Set's or clears the compatibility tool for appId
+
+
+### Lua
+
+reloadlua : Reloads the Lua plugins (only when `Plugins: yes` was set at Steam start)

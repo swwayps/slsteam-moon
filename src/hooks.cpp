@@ -5,6 +5,7 @@
 #include "decompiler.hpp"
 #include "globals.hpp"
 #include "log.hpp"
+#include "lua.hpp"
 #include "memhlp.hpp"
 #include "patterns.hpp"
 #include "process.hpp"
@@ -384,6 +385,65 @@ static uint32_t hkClientUnifiedServiceTransport_SendAndRecvMsg(CClientUnifiedSer
 	return ret;
 }
 
+std::unordered_map<int, LuaHook*> LuaHook::hooks;
+
+LuaHook::LuaHook(const char* name, void* targetFn)
+	:
+	name(name),
+	fn(reinterpret_cast<lm_address_t>(targetFn))
+{
+	for (int i = 0; ; i++)
+	{
+		if (!hooks.contains(i))
+		{
+			idx = i;
+			break;
+		}
+	}
+
+	hooks[idx] = this;
+	LOG_DEBUG("Created LuaHook %s (%i) from %p\n", name, idx, targetFn);
+}
+
+LuaHook::~LuaHook()
+{
+	remove();
+	hooks.erase(idx);
+}
+
+void* LuaHook::place()
+{
+	if (fn == LM_ADDRESS_BAD || hookFn == LM_ADDRESS_BAD)
+	{
+		LOG_ERROR("Failed to place LuaHook %s, targetFn is LM_ADDRESS_BAD\n", name.c_str());
+		return nullptr;
+	}
+
+	size = LM_HookCode(fn, hookFn, &tramp);
+	if (!size)
+	{
+		return nullptr;
+	}
+
+	MemHlp::fixPICThunkCall(name.c_str(), fn, tramp);
+	LOG_DEBUG("Placed LuaHook %s from %p to %p\n", name.c_str(),
+	          reinterpret_cast<void*>(fn), reinterpret_cast<void*>(hookFn));
+	return reinterpret_cast<void*>(tramp);
+}
+
+bool LuaHook::remove()
+{
+	if (!size)
+	{
+		return false;
+	}
+
+	LM_UnhookCode(fn, tramp, size);
+	size = 0;
+	LOG_DEBUG("Removed LuaHook %s\n", name.c_str());
+	return true;
+}
+
 static void hkCMInterface_RecvPkt(void* pCMInterface, CNetPacket* pNetPacket)
 {
 	// Settle the packet field layout from the first live Steam-owned packet
@@ -421,6 +481,7 @@ static void hkCMInterface_RecvPkt(void* pCMInterface, CNetPacket* pNetPacket)
 		// PICS, ticket, wallet/email, license list, login-state).
 		// dispatchNetPacket may rewrite the packet body in place before Steam
 		// processes it.
+		Lua::fireCallback(Lua::Callbacks::Network_RecvPkt, pNetPacket);
 		CmRecv::dispatchNetPacket(pNetPacket);
 	}
 
@@ -1439,89 +1500,95 @@ void Hooks::placeVFTHooks()
 		return;
 	}
 
-	static std::mutex mutex;
-	const std::lock_guard guard(mutex);
-	if (placed.load(std::memory_order_relaxed) || !g_pSteamEngine)
 	{
-		return;
+		static std::mutex mutex;
+		const std::lock_guard guard(mutex);
+		if (placed.load(std::memory_order_relaxed) || !g_pSteamEngine)
+		{
+			return;
+		}
+
+		// The interface objects are members of the local user (and of the engine
+		// for IClientUtils), located by offset instead of being captured from the
+		// IClient*::RunIPCFrame dispatchers (upstream 8de3384).
+		CUser* const user = g_pSteamEngine->getUser();
+		IClientUtils* const utils = g_pSteamEngine->getUtils();
+		if (!user || !utils)
+		{
+			return;
+		}
+
+		g_pClientAppManager = user->getAppManager();
+		g_pClientApps = user->getClientApps();
+		g_pClientUtils = utils;
+
+		// The interfaces are packed SDK classes (alignment 1); their first word is
+		// the vtable pointer either way (upstream 2710ef9).
+		#pragma GCC diagnostic push
+		#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+		{
+			auto vft = std::make_shared<lm_vmt_t>();
+			LM_VmtNew(*reinterpret_cast<lm_address_t**>(g_pClientAppManager), vft.get());
+			IClientAppManager_BCanRemotePlayTogether.setup(vft, VFTIndexes::IClientAppManager::BCanRemotePlayTogether, hkClientAppManager_BCanRemotePlayTogether);
+			IClientAppManager_BIsDlcEnabled.setup(vft, VFTIndexes::IClientAppManager::BIsDlcEnabled, hkClientAppManager_BIsDlcEnabled);
+			IClientAppManager_GetAppUpdateInfo.setup(vft, VFTIndexes::IClientAppManager::GetUpdateInfo, hkClientAppManager_GetUpdateInfo);
+			IClientAppManager_GetAppStateInfo.setup(vft, VFTIndexes::IClientAppManager::GetAppStateInfo, hkClientAppManager_GetAppStateInfo);
+			IClientAppManager_LaunchApp.setup(vft, VFTIndexes::IClientAppManager::LaunchApp, hkClientAppManager_LaunchApp);
+			IClientAppManager_IsAppDlcInstalled.setup(vft, VFTIndexes::IClientAppManager::IsAppDlcInstalled, hkClientAppManager_IsAppDlcInstalled);
+			IClientAppManager_BCanRemotePlayTogether.place();
+			IClientAppManager_BIsDlcEnabled.place();
+			IClientAppManager_GetAppUpdateInfo.place();
+			IClientAppManager_GetAppStateInfo.place();
+			IClientAppManager_LaunchApp.place();
+			IClientAppManager_IsAppDlcInstalled.place();
+			g_pLog->debug("IClientAppManager->vft at %p\n", vft->vtable);
+		}
+		{
+			auto vft = std::make_shared<lm_vmt_t>();
+			LM_VmtNew(*reinterpret_cast<lm_address_t**>(g_pClientApps), vft.get());
+			IClientApps_GetDLCDataByIndex.setup(vft, VFTIndexes::IClientApps::GetDLCDataByIndex, hkClientApps_GetDLCDataByIndex);
+			IClientApps_GetDLCCount.setup(vft, VFTIndexes::IClientApps::GetDLCCount, hkClientApps_GetDLCCount);
+			IClientApps_GetAppData.setup(vft, VFTIndexes::IClientApps::GetAppData, hkClientApps_GetAppData);
+			IClientApps_GetDLCDataByIndex.place();
+			IClientApps_GetDLCCount.place();
+			IClientApps_GetAppData.place();
+			g_pLog->debug("IClientApps->vft at %p\n", vft->vtable);
+		}
+		{
+			IClientUser* const clientUser = user->getClientUser();
+			auto vft = std::make_shared<lm_vmt_t>();
+			LM_VmtNew(*reinterpret_cast<lm_address_t**>(clientUser), vft.get());
+			IClientUser_BLoggedOn.setup(vft, VFTIndexes::IClientUser::BLoggedOn, &hkClientUser_BLoggedOn);
+			IClientUser_BUpdateAppOwnershipTicket.setup(vft, VFTIndexes::IClientUser::BUpdateAppOwnershipTicket, hkClientUser_BUpdateAppOwnershipTicket);
+			IClientUser_GetAppOwnershipTicketExtendedData.setup(vft, VFTIndexes::IClientUser::GetAppOwnershipTicketExtendedData, hkClientUser_GetAppOwnershipTicketExtendedData);
+			IClientUser_IsUserSubscribedAppInTicket.setup(vft, VFTIndexes::IClientUser::IsUserSubscribedAppInTicket, &hkClientUser_IsUserSubscribedAppInTicket);
+			IClientUser_GetEncryptedAppTicket.setup(vft, VFTIndexes::IClientUser::GetEncryptedAppTicket, hkClientUser_GetEncryptedAppTicket);
+			IClientUser_GetLegacyCDKey.setup(vft, VFTIndexes::IClientUser::GetLegacyCDKey, hkClientUser_GetLegacyCDKey);
+			IClientUser_BLoggedOn.place();
+			IClientUser_BUpdateAppOwnershipTicket.place();
+			IClientUser_GetAppOwnershipTicketExtendedData.place();
+			IClientUser_IsUserSubscribedAppInTicket.place();
+			IClientUser_GetEncryptedAppTicket.place();
+			IClientUser_GetLegacyCDKey.place();
+			g_pLog->debug("IClientUser->vft at %p\n", vft->vtable);
+		}
+		{
+			auto vft = std::make_shared<lm_vmt_t>();
+			LM_VmtNew(*reinterpret_cast<lm_address_t**>(utils), vft.get());
+			IClientUtils_GetAppId.setup(vft, VFTIndexes::IClientUtils::GetAppId, hkClientUtils_GetAppId);
+			IClientUtils_GetOfflineMode.setup(vft, VFTIndexes::IClientUtils::GetOfflineMode, hkClientUtils_GetOfflineMode);
+			IClientUtils_GetAppId.place();
+			IClientUtils_GetOfflineMode.place();
+			g_pLog->debug("IClientUtils->vft at %p\n", vft->vtable);
+		}
+		#pragma GCC diagnostic pop
+
+		placed.store(true, std::memory_order_release);
 	}
 
-	// The interface objects are members of the local user (and of the engine
-	// for IClientUtils), located by offset instead of being captured from the
-	// IClient*::RunIPCFrame dispatchers (upstream 8de3384).
-	CUser* const user = g_pSteamEngine->getUser();
-	IClientUtils* const utils = g_pSteamEngine->getUtils();
-	if (!user || !utils)
-	{
-		return;
-	}
-
-	g_pClientAppManager = user->getAppManager();
-	g_pClientApps = user->getClientApps();
-	g_pClientUtils = utils;
-
-	// The interfaces are packed SDK classes (alignment 1); their first word is
-	// the vtable pointer either way (upstream 2710ef9).
-	#pragma GCC diagnostic push
-	#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
-	{
-		auto vft = std::make_shared<lm_vmt_t>();
-		LM_VmtNew(*reinterpret_cast<lm_address_t**>(g_pClientAppManager), vft.get());
-		IClientAppManager_BCanRemotePlayTogether.setup(vft, VFTIndexes::IClientAppManager::BCanRemotePlayTogether, hkClientAppManager_BCanRemotePlayTogether);
-		IClientAppManager_BIsDlcEnabled.setup(vft, VFTIndexes::IClientAppManager::BIsDlcEnabled, hkClientAppManager_BIsDlcEnabled);
-		IClientAppManager_GetAppUpdateInfo.setup(vft, VFTIndexes::IClientAppManager::GetUpdateInfo, hkClientAppManager_GetUpdateInfo);
-		IClientAppManager_GetAppStateInfo.setup(vft, VFTIndexes::IClientAppManager::GetAppStateInfo, hkClientAppManager_GetAppStateInfo);
-		IClientAppManager_LaunchApp.setup(vft, VFTIndexes::IClientAppManager::LaunchApp, hkClientAppManager_LaunchApp);
-		IClientAppManager_IsAppDlcInstalled.setup(vft, VFTIndexes::IClientAppManager::IsAppDlcInstalled, hkClientAppManager_IsAppDlcInstalled);
-		IClientAppManager_BCanRemotePlayTogether.place();
-		IClientAppManager_BIsDlcEnabled.place();
-		IClientAppManager_GetAppUpdateInfo.place();
-		IClientAppManager_GetAppStateInfo.place();
-		IClientAppManager_LaunchApp.place();
-		IClientAppManager_IsAppDlcInstalled.place();
-		g_pLog->debug("IClientAppManager->vft at %p\n", vft->vtable);
-	}
-	{
-		auto vft = std::make_shared<lm_vmt_t>();
-		LM_VmtNew(*reinterpret_cast<lm_address_t**>(g_pClientApps), vft.get());
-		IClientApps_GetDLCDataByIndex.setup(vft, VFTIndexes::IClientApps::GetDLCDataByIndex, hkClientApps_GetDLCDataByIndex);
-		IClientApps_GetDLCCount.setup(vft, VFTIndexes::IClientApps::GetDLCCount, hkClientApps_GetDLCCount);
-		IClientApps_GetAppData.setup(vft, VFTIndexes::IClientApps::GetAppData, hkClientApps_GetAppData);
-		IClientApps_GetDLCDataByIndex.place();
-		IClientApps_GetDLCCount.place();
-		IClientApps_GetAppData.place();
-		g_pLog->debug("IClientApps->vft at %p\n", vft->vtable);
-	}
-	{
-		IClientUser* const clientUser = user->getClientUser();
-		auto vft = std::make_shared<lm_vmt_t>();
-		LM_VmtNew(*reinterpret_cast<lm_address_t**>(clientUser), vft.get());
-		IClientUser_BLoggedOn.setup(vft, VFTIndexes::IClientUser::BLoggedOn, &hkClientUser_BLoggedOn);
-		IClientUser_BUpdateAppOwnershipTicket.setup(vft, VFTIndexes::IClientUser::BUpdateAppOwnershipTicket, hkClientUser_BUpdateAppOwnershipTicket);
-		IClientUser_GetAppOwnershipTicketExtendedData.setup(vft, VFTIndexes::IClientUser::GetAppOwnershipTicketExtendedData, hkClientUser_GetAppOwnershipTicketExtendedData);
-		IClientUser_IsUserSubscribedAppInTicket.setup(vft, VFTIndexes::IClientUser::IsUserSubscribedAppInTicket, &hkClientUser_IsUserSubscribedAppInTicket);
-		IClientUser_GetEncryptedAppTicket.setup(vft, VFTIndexes::IClientUser::GetEncryptedAppTicket, hkClientUser_GetEncryptedAppTicket);
-		IClientUser_GetLegacyCDKey.setup(vft, VFTIndexes::IClientUser::GetLegacyCDKey, hkClientUser_GetLegacyCDKey);
-		IClientUser_BLoggedOn.place();
-		IClientUser_BUpdateAppOwnershipTicket.place();
-		IClientUser_GetAppOwnershipTicketExtendedData.place();
-		IClientUser_IsUserSubscribedAppInTicket.place();
-		IClientUser_GetEncryptedAppTicket.place();
-		IClientUser_GetLegacyCDKey.place();
-		g_pLog->debug("IClientUser->vft at %p\n", vft->vtable);
-	}
-	{
-		auto vft = std::make_shared<lm_vmt_t>();
-		LM_VmtNew(*reinterpret_cast<lm_address_t**>(utils), vft.get());
-		IClientUtils_GetAppId.setup(vft, VFTIndexes::IClientUtils::GetAppId, hkClientUtils_GetAppId);
-		IClientUtils_GetOfflineMode.setup(vft, VFTIndexes::IClientUtils::GetOfflineMode, hkClientUtils_GetOfflineMode);
-		IClientUtils_GetAppId.place();
-		IClientUtils_GetOfflineMode.place();
-		g_pLog->debug("IClientUtils->vft at %p\n", vft->vtable);
-	}
-	#pragma GCC diagnostic pop
-
-	placed.store(true, std::memory_order_release);
+	// Upstream's SLSsteam::initialized point: CUser and its interfaces exist.
+	// Fired once, by the thread that placed the hooks, outside the lock.
+	Lua::fireCallback(Lua::Callbacks::SLSsteam_Initialized);
 }
 
 bool Hooks::setup()

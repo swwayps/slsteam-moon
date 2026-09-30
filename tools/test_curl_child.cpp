@@ -1,4 +1,4 @@
-// Child-process hygiene of Curl::getString. The executable's own pipe, pipe2
+// Child-process hygiene of Curl::downloadString. The executable's own pipe, pipe2
 // and execve definitions take precedence over libc's for the linked curl.cpp,
 // so no curl binary is needed. Build and run: make test-curl-child
 #include "curl.hpp"
@@ -91,10 +91,16 @@ int main()
 {
 	std::string out;
 	execMode = Exec::Echo;
-	check(Curl::getString("http://127.0.0.1:9/", out) == 0, "the stand-in curl ran");
+	check(Curl::downloadString("http://127.0.0.1:9/", out) == 0, "the stand-in curl ran");
 	check(out.rfind("curl\n", 0) == 0, "argv[0] is the program name");
 	check(out.find("\n--silent\n") != std::string::npos, "--silent is passed as an option");
 	check(out.find("\nenv:PATH=/usr/bin:/bin\n") != std::string::npos, "the child PATH is a plain list");
+	check(out.find("\n--max-time\n15\n") != std::string::npos, "the default timeout bounds the whole transfer");
+	check(Curl::downloadString("http://127.0.0.1:9/", {"Accept: text/plain"}, out, 3) == 0
+	          && out.find("\n-H\nAccept: text/plain\n") != std::string::npos
+	          && out.find("\n--max-time\n3\n") != std::string::npos
+	          && out.find("\nhttp://127.0.0.1:9/\n") != std::string::npos,
+	      "headers and the timeout reach curl as separate arguments");
 
 	parentPid = getpid();
 	const int fd = mkstemp(marker);
@@ -102,13 +108,13 @@ int main()
 	unlink(marker);
 	std::atexit(createMarker);
 	execMode = Exec::Missing;
-	check(Curl::getString("http://127.0.0.1:9/", out) != 0, "a missing curl is an error");
+	check(Curl::downloadString("http://127.0.0.1:9/", out) != 0, "a missing curl is an error");
 	check(access(marker, F_OK) != 0, "the child leaves without the parent's exit handlers");
 	unlink(marker);
 
 	spawnOnPipe = true;
 	const auto started = std::chrono::steady_clock::now();
-	(void)Curl::getString("http://127.0.0.1:9/", out);
+	(void)Curl::downloadString("http://127.0.0.1:9/", out);
 	const auto elapsed = std::chrono::steady_clock::now() - started;
 	spawnOnPipe = false;
 	check(elapsed < std::chrono::seconds(2),

@@ -56,7 +56,7 @@ endif
 .PHONY: test-manifestdonor test-manifestfetch
 .PHONY: test-reconcilepin-scan
 .PHONY: test-depotkey-recv-policy
-.PHONY: test-private-apps test-config-settings test-curl-child test-legacy-cdkey test-utils-number test-launch-options
+.PHONY: test-private-apps test-config-settings test-plugin-config test-curl-child test-legacy-cdkey test-utils-number test-launch-options
 
 test-manifestdonor:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror \
@@ -622,6 +622,18 @@ test-appinfo-transaction: obj/feats/appinfo_vdf_test.o obj/log.o obj/config.o \
 		lib/libyaml-cpp.a lib/libprotobuf.a -lcrypto -lpthread -ldl \
 		-o /tmp/test_appinfo_transaction
 	/tmp/test_appinfo_transaction
+
+test-plugin-config: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
+		obj/update.o obj/api.o obj/feats/depotkey.o obj/feats/manifestid.o \
+		obj/feats/librarydates.o obj/ownerwork.o \
+		obj/sdk/protobufs/steammessages_clientserver_appinfo.pb.o \
+		obj/sdk/protobufs/steammessages_base.pb.o
+	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
+		-I include -isysteminclude tools/test_plugin_config.cpp \
+		$(filter obj/%.o,$^) \
+		lib/libyaml-cpp.a lib/libprotobuf.a -lcrypto -lpthread -ldl \
+		-o /tmp/test_plugin_config
+	/tmp/test_plugin_config
 
 # Live integration harness for the native CM product-info client (talks
 # to real Valve CMs — NOT a unit test).  Links cmclient + its deps.

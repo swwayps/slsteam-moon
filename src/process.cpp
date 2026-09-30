@@ -66,7 +66,7 @@ bool IExecutableFile::load(const std::string& filePath, const LogLevel logErrorL
 
 bool IExecutableFile::hasSteamDRM()
 {
-	if (!(g_config.smartTickets.get() & CConfig::k_ESmartTicketsSteamDRM))
+	if (!(g_config.smartTickets.copy() & CConfig::k_ESmartTicketsSteamDRM))
 	{
 		return false;
 	}
@@ -101,7 +101,7 @@ bool IExecutableFile::hasSteamDRM()
 
 bool IExecutableFile::hasDenuvo()
 {
-	if (!(g_config.smartTickets.get() & CConfig::k_ESmartTicketsDenuvo))
+	if (!(g_config.smartTickets.copy() & CConfig::k_ESmartTicketsDenuvo))
 	{
 		return false;
 	}
@@ -159,7 +159,7 @@ bool IExecutableFile::hasDenuvo()
 			const auto bytes = readSection(sec);
 			const double entropy = Utils::calculateEntropy(bytes);
 
-			if (g_config.extendedLogging.get())
+			if (g_config.extendedLogging.copy())
 			{
 				if (g_pLog) g_pLog->debug("%s entropy is %f\n", sec.name.c_str(), entropy);
 			}
@@ -333,7 +333,7 @@ bool CPortableExecutableFile::parseSections()
 		const uint32_t size = *reinterpret_cast<uint32_t*>(&sectHdr[0x10]);
 		const uint32_t ptr = *reinterpret_cast<uint32_t*>(&sectHdr[0x14]);
 
-		if (g_config.extendedLogging.get())
+		if (g_config.extendedLogging.copy())
 		{
 			if (g_pLog) g_pLog->debug("Section header %s at 0x%x with size 0x%x\n", name, ptr, size);
 		}
@@ -428,7 +428,7 @@ bool CELFExecutableFile::parseElf32Headers(const Elf32_Ehdr& hdr)
 
 		const char* name = &strSec[shdr.sh_name];
 
-		if (g_config.extendedLogging.get())
+		if (g_config.extendedLogging.copy())
 		{
 			if (g_pLog) g_pLog->debug("Section header name %s, address 0x%x, offset 0x%x\n", name, shdr.sh_addr, shdr.sh_offset);
 		}
@@ -523,7 +523,7 @@ bool CELFExecutableFile::parseElf64Headers(const Elf64_Ehdr& hdr)
 
 		const char* name = &strSec[shdr.sh_name];
 
-		if (g_config.extendedLogging.get())
+		if (g_config.extendedLogging.copy())
 		{
 			if (g_pLog) g_pLog->debug("Section header name %s, address 0x%llx, offset 0x%llx\n", name, shdr.sh_addr, shdr.sh_offset);
 		}
@@ -829,7 +829,7 @@ bool Process_t::init(const pid_t pid, const HSteamPipe pipeHandle)
 		return false;
 	}
 
-	if (!g_config.smartTickets.get())
+	if (!g_config.smartTickets.copy())
 	{
 		return true;
 	}

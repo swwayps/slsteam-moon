@@ -252,6 +252,11 @@ bool CConfig::createFile()
 
 static void onFileChange()
 {
+	// The config watcher, the plugin watcher and the API's reloadlua all
+	// reload through here; the before/after bookkeeping must not interleave.
+	static std::mutex reloadMutex;
+	const std::lock_guard reloadLock(reloadMutex);
+
 	// This runs on the inotify watcher pthread. Everything below is local
 	// bookkeeping EXCEPT the package-0 injection and the license broadcast,
 	// which enter Steam-owned code — those are handed to the owner IPC thread
@@ -322,6 +327,23 @@ static void onFileChange()
 	// the stplug-in/luaappids union enters this complete desired-state snapshot.
 	HotReload::publish(afterManaged, true);
 	g_pLog->notify("Config reloaded!");
+}
+
+void CConfig::reload()
+{
+	onFileChange();
+}
+
+YAML::Node CConfig::readTree()
+{
+	YAML::Node node;
+	std::string raw;
+	std::string repaired;
+	if (readFileText(getPath(), raw))
+	{
+		(void)ConfLoad::parseWithRepair(raw, node, repaired);
+	}
+	return node;
 }
 
 bool CConfig::init()
@@ -467,6 +489,11 @@ bool CConfig::loadSettings()
 		}
 	}
 
+	if (const auto loading = pluginConfigLoading.load())
+	{
+		loading(node);
+	}
+
 	__loadErrors = std::string("");
 	// Configuration-authored DLC scope is a replace-only snapshot. Revoke the
 	// previous one before parsing so a removed or malformed block cannot retain
@@ -493,6 +520,7 @@ bool CConfig::loadSettings()
 	warnHashMissmatch = getSetting<bool>(node, "WarnHashMissmatch", false);
 	notifyInit = getSetting<bool>(node, "NotifyInit", true);
 	api = getSetting<bool>(node, "API", true);
+	plugins = getSetting<bool>(node, "Plugins", false);
 	fakeName = getSetting<std::string>(node, "FakeName", "");
 	fakeEmail = getSetting<std::string>(node, "FakeEmail", "");
 	fakeWalletBalance = getSetting<int32_t>(node, "FakeWalletBalance", 0);
@@ -859,7 +887,27 @@ bool CConfig::loadSettings()
 		g_pLog->notify("%s\n", errors.c_str());
 	}
 
+	if (const auto loaded = pluginConfigLoaded.load())
+	{
+		loaded();
+	}
+
 	return true;
+}
+
+void CConfig::setAdditionalApps(const std::unordered_set<uint32_t>& appIds,
+                                __attribute__((unused)) bool firstLoad)
+{
+	// Upstream semantics (an in-memory replacement the next reload resets),
+	// except that managed apps cannot be dropped: HotReload has published
+	// them into package ownership.
+	auto active = appIds;
+	for (const uint32_t appId : managedAppIds.get())
+	{
+		active.insert(appId);
+	}
+	g_pLog->info("Plugin set %zu additional apps (%zu active)\n", appIds.size(), active.size());
+	addedAppIds.set(active);
 }
 
 bool CConfig::isAddedAppId(uint32_t appId)

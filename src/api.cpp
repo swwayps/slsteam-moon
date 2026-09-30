@@ -27,6 +27,7 @@ namespace SLSAPI
 	const char* path = "";
 	std::fstream fstream;
 	CFileWatcher* watcher;
+	std::atomic<void(*)()> reloadPlugins {nullptr};
 
 	std::mutex cmdMutex;
 	std::vector<CompatOp_t> compatOps;
@@ -109,6 +110,23 @@ void SLSAPI::parseCmd(const std::string& cmd)
 	}
 
 	const std::string& name = split[0];
+
+	// Lua. Runs the plugins and a config reload here, on the watcher thread,
+	// without cmdMutex: Steam's IPC thread takes it on every frame.
+	if (name == "reloadlua")
+	{
+		if (const auto reload = reloadPlugins.load())
+		{
+			reload();
+			LOG_API("Ran reloadlua!\n");
+		}
+		else
+		{
+			LOG_API("reloadlua: the plugin runtime is not loaded\n");
+		}
+		return;
+	}
+
 	AppId_t appId = 0;
 	const std::lock_guard guard(cmdMutex);
 

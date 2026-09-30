@@ -19,7 +19,9 @@
 // Upstream's level flags, accepted by LOG_CUSTOM below. The local logger keeps
 // its own threshold (LogLevel); these only select which local level a line
 // goes to.
-enum ELogLevel : uint32_t
+typedef uint32_t LogLevelFlags_t;
+
+enum ELogLevel : LogLevelFlags_t
 {
 	k_ELogLevelTrace = 1 << 0,
 	k_ELogLevelOnce = 1 << 1,

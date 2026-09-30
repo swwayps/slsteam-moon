@@ -11,6 +11,7 @@
 #include "yaml-cpp/yaml.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cstdint>
 #include <cstdio>
 #include <pthread.h>
@@ -130,6 +131,9 @@ public:
 	MTVariable<bool> warnHashMissmatch;
 	MTVariable<bool> notifyInit;
 	MTVariable<bool> api;
+	// Run Lua plugins from <config dir>/plugins (off by default: they run
+	// arbitrary code inside Steam).
+	MTVariable<bool> plugins;
 	MTVariable<bool> disableCloud;
 	// When off, fully-installed managed apps that are NOT individually pinned
 	// freeze on their installed build instead of tracking the latest public
@@ -164,6 +168,16 @@ public:
 	//Using incomplete class to avoid runtime linking errors
 	CFileWatcher* watcher;
 
+	// The Lua plugin API's view of config.yaml. Only Lua code reads or writes
+	// it, under Lua::stateMutex.
+	YAML::Node rootNode;
+	// Set by the Lua runtime while plugins run. pluginConfigLoading gets every
+	// freshly parsed config before its settings are applied and may change it
+	// (SLSsteam::configLoading); pluginConfigLoaded runs after
+	// (SLSsteam::configLoaded).
+	std::atomic<void(*)(YAML::Node& node)> pluginConfigLoading {nullptr};
+	std::atomic<void(*)()> pluginConfigLoaded {nullptr};
+
 	~CConfig();
 
 	std::string getDir();
@@ -181,6 +195,12 @@ public:
 
 	void setError(const ELoadError err, const char* keyName);
 	bool loadSettings();
+	// The config watcher's reload: sources, removals, tickets and the hot-add
+	// publication, not only loadSettings().
+	void reload();
+	// config.yaml parsed (and repaired in memory) without applying or writing
+	// anything: the Lua plugin API's view before plugins first run.
+	YAML::Node readTree();
 
 	template<typename T>
 	T getSetting(YAML::Node& node, const char* name, T defVal)
@@ -290,6 +310,9 @@ public:
 
 	bool isAddedAppId(uint32_t appId);
 	bool addAdditionalAppId(uint32_t appId);
+	// Lua plugin API: replace the active app set in memory, as upstream. Managed
+	// apps (stplug-in, luaappids.yaml) stay active; the next reload resets it.
+	void setAdditionalApps(const std::unordered_set<uint32_t>& appIds, bool firstLoad = false);
 
 	// Legacy fallback for hooks that do not know the owning app.  Conflicting
 	// depot ownership is omitted from this index and returns zero.

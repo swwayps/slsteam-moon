@@ -20,5 +20,7 @@ public:
 		uint32_t* pSigSize
 	);
 
+	// Lua plugin API. False until the BLoggedOn VFT hook is placed.
+	bool loggedOn();
 	bool setLegacyCDKey(const AppId_t appId, const char* key);
 };

@@ -7,8 +7,13 @@
 
 #include "libmem/libmem.h"
 
+#include <iomanip>
 #include <map>
+#include <memory>
 #include <optional>
+#include <sstream>
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 std::vector<int16_t> MemHlp::patternToBytes(const char* pattern)
@@ -231,6 +236,60 @@ lm_address_t MemHlp::searchSignature(const char* name, const char* signature, lm
 lm_address_t MemHlp::searchSignature(const char* name, const char* signature, lm_module_t module)
 {
 	return searchSignature(name, signature, module, SigFollowMode::None);
+}
+
+lm_module_t* MemHlp::getModule(const std::string& name)
+{
+	// Only the Lua bindings call this, always under Lua::stateMutex.
+	static std::unordered_map<std::string, std::unique_ptr<lm_module_t>> modules;
+	if (!modules.contains(name))
+	{
+		lm_module_t mod {};
+		if (LM_FindModule(name.c_str(), &mod))
+		{
+			modules[name] = std::make_unique<lm_module_t>(mod);
+		}
+		else
+		{
+			LOG_ERROR("Module %s not found!\n", name.c_str());
+			modules[name] = nullptr;
+		}
+	}
+
+	return modules.at(name).get();
+}
+
+std::string MemHlp::hexdump(const void* address, const size_t size)
+{
+	constexpr unsigned int ROWS = 0x10;
+	std::ostringstream ss;
+	ss << std::setfill(' ') << std::hex;
+
+	for (unsigned int i = 0; i < ROWS; i++)
+	{
+		ss << std::setw(i == 0 ? 13 : 3) << i;
+	}
+
+	const auto base = reinterpret_cast<const unsigned char*>(address);
+	for (size_t i = 0; i < size; i += ROWS)
+	{
+		const size_t num = ROWS > size - i ? size - i : ROWS;
+		ss << "\n0x" << reinterpret_cast<uintptr_t>(base + i);
+
+		for (size_t j = 0; j < num; j++)
+		{
+			ss << " " << std::setfill('0') << std::setw(2) << static_cast<unsigned int>(base[i + j]);
+		}
+
+		ss << std::setfill(' ') << std::setw((ROWS - num) * 3 + 1) << " ";
+		for (size_t j = 0; j < num; j++)
+		{
+			const unsigned char byte = base[i + j];
+			ss << (Ascii::isPrint(byte) ? static_cast<char>(byte) : '.');
+		}
+	}
+
+	return ss.str();
 }
 
 lm_address_t MemHlp::getJmpTarget(lm_address_t address)

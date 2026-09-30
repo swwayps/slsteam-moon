@@ -1,6 +1,6 @@
-// TDD regression test for bounded Curl::getString requests.
+// TDD regression test for bounded Curl::downloadString requests.
 //
-// Curl::getString runs the system curl binary, so the stall is only exercised
+// Curl::downloadString runs the system curl binary, so the stall is only exercised
 // where one is installed; without it the call fails fast, which the checks
 // below also accept.
 
@@ -79,9 +79,9 @@ int main()
 	setenv("no_proxy", "127.0.0.1,localhost", 1);
 	std::string response;
 	const auto started = std::chrono::steady_clock::now();
-	const int result = Curl::getString(
+	const int result = Curl::downloadString(
 		("http://127.0.0.1:" + std::to_string(port) + "/stall").c_str(),
-		response);
+		response, 10);
 	const auto elapsed = std::chrono::steady_clock::now() - started;
 	// Wake the server if no request ever arrived (no curl binary installed).
 	shutdown(listener, SHUT_RDWR);

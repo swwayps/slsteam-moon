@@ -12,6 +12,7 @@
 #include "globals.hpp"
 #include "hooks.hpp"
 #include "log.hpp"
+#include "lua.hpp"
 #include "bootprof.hpp"
 #include "ownerwork.hpp"
 #include "patterns.hpp"
@@ -669,7 +670,12 @@ static void load()
 	}
 
 	SLSAPI::init();
-	Decompiler::cleanUp();
+	// Lua plugins resolve VFTables at runtime, so the decompiler's tables stay
+	// while plugins may run (upstream keeps them always).
+	if (!g_config.plugins.get())
+	{
+		Decompiler::cleanUp();
+	}
 
 	// Resolve SLSsteam.so's own install root via libmem so the
 	// runtime helpers (wrapper integration script + bundled tools)
@@ -735,6 +741,10 @@ static void load()
 	// complete package snapshot. The legacy config AdditionalApps list is not
 	// part of this runtime state.
 	HotReload::initialize();
+
+	// Opt-in Lua plugins start last, with every hook and the hot-add path in
+	// place. With Plugins: no this returns before touching anything.
+	Lua::init(true);
 
 	if (g_config.notifyInit.get())
 	{

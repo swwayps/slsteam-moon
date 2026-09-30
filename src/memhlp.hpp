@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <limits>
+#include <string>
 #include <string_view>
 #include <system_error>
 #include <vector>
@@ -175,6 +176,12 @@ namespace MemHlp
 	lm_address_t searchSignature(const char* name, const char* signature, lm_module_t module, SigFollowMode mode, const int16_t* extraData, size_t extraDataSize);
 	lm_address_t searchSignature(const char* name, const char* signature, lm_module_t module, SigFollowMode mode);
 	lm_address_t searchSignature(const char* name, const char* signature, lm_module_t module);
+
+	// Lua plugin API (memhlp.getModule, memhlp.hexdump). getModule caches by
+	// file name; a module that was not loaded at the first lookup stays
+	// missing, as upstream.
+	lm_module_t* getModule(const std::string& name);
+	std::string hexdump(const void* address, size_t size);
 
 	lm_address_t getJmpTarget(lm_address_t address);
 	lm_address_t findPrologue(lm_address_t address, lm_address_t lowerBound,

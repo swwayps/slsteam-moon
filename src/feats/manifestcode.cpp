@@ -13,6 +13,7 @@
 #include "../config.hpp"
 #include "../hooks.hpp"
 #include "../log.hpp"
+#include "../lua.hpp"
 
 #include "../sdk/steam.hpp"
 #include "../sdk/CNetPacket.hpp"
@@ -566,6 +567,7 @@ bool hkBBuildAndAsyncSendFrame(void* pConnection,
 			packet.setSize(cubData);
 			if (packet.isValid() && packet.isProtoBuf())
 			{
+				Lua::fireCallback(Lua::Callbacks::Network_SendPkt, &packet);
 				Apps::sendMsg(&packet);
 				FakeAppIds::sendMsg(&packet);
 				DepotKey::sendMsg(&packet);

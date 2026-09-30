@@ -60,8 +60,8 @@ void fakeSpecifyCompatTool(
 // The registry resolves these slots by name from IClientCompatMap at boot
 // (1 and 4 on the 2026-09 client, 4 and 7 before); the wrapper is tested
 // against the slot it is handed.
-VFTableInfo_t::VFTableInfo_t(const char* type, const char* function, unsigned int slot)
-	: typeName(type), functionName(function), address(0), index(slot) {}
+VFTableInfo_t::VFTableInfo_t(const char* type, const char* function, unsigned int slot, unsigned int subClass)
+	: typeName(type), functionName(function), address(0), index(slot), subClassIndex(subClass) {}
 namespace VFTIndexes::IClientCompat
 {
 VFTableInfo_t BIsCompatibilityToolEnabled{"16IClientCompatMap", "BIsCompatibilityToolEnabled", 3};

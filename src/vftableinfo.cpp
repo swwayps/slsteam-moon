@@ -7,9 +7,18 @@
 #include <sstream>
 
 
-VFTableInfo_t::VFTableInfo_t(const char* typeName, const char* functionName, const unsigned int index)
+VFTableInfo_t::VFTableInfo_t
+(
+	const char* typeName,
+	const char* functionName,
+	const unsigned int index,
+	const unsigned int subClassIndex
+)
 	:
-	typeName(typeName), functionName(functionName), index(index)
+	typeName(typeName),
+	functionName(functionName),
+	index(index),
+	subClassIndex(subClassIndex)
 {
 	VFTIndexes::functions().emplace_back(this);
 }
@@ -39,7 +48,19 @@ bool VFTableInfo_t::init()
 		index = tbl.at(functionName);
 	}
 
-	auto& vft = Decompiler::vftables[typeName];
+	//Create copy
+	auto vft = Decompiler::vftables[typeName];
+	if (subClassIndex != NO_INDEX)
+	{
+		if (subClassIndex >= vft.subclasses.size())
+		{
+			LOG_ERROR("SubClassIndex %u is out of range for %s!\n", subClassIndex, getPrintName().c_str());
+			return false;
+		}
+
+		vft = vft.subclasses[subClassIndex];
+	}
+
 	auto& funcs = vft.functions;
 
 	if (index >= funcs.size())
@@ -55,9 +76,11 @@ bool VFTableInfo_t::init()
 
 std::string VFTableInfo_t::getPrintName() const
 {
-	return typeName + "::" + functionName;
-}
+	std::ostringstream ss;
+	ss << typeName << "::" << functionName;
 
+	return ss.str();
+}
 
 namespace VFTIndexes
 {
@@ -359,6 +382,8 @@ void VFTIndexes::dump(const std::string& name, const std::map<std::string, unsig
 
 bool VFTIndexes::init()
 {
+	LOG_DEBUG("VFTIndexes::init()\n");
+
 	bool success = true;
 
 	for(const auto& fn : functions())
@@ -369,7 +394,7 @@ bool VFTIndexes::init()
 		}
 	}
 
-	if (g_config.dumpInterfaceMaps.get())
+	if (g_config.dumpInterfaceMaps.copy())
 	{
 		for (const auto& tbl : tableMap)
 		{

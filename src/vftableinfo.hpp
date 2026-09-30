@@ -16,8 +16,16 @@ struct VFTableInfo_t
 	std::string functionName;
 	lm_address_t address;
 	unsigned int index;
+	unsigned int subClassIndex;
 
-	VFTableInfo_t(const char* typeName, const char* functionName, const unsigned int index = NO_INDEX);
+	VFTableInfo_t
+	(
+		const char* typeName,
+		const char* functionName,
+		const unsigned int index = NO_INDEX,
+		const unsigned int subClassIndex = NO_INDEX
+	);
+
 	bool init();
 
 	std::string getPrintName() const;
