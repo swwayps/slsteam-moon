@@ -35,8 +35,8 @@
 
 #include "base64/base64.hpp"
 
+#include "../utils/curl_api.hpp"
 #include <curl/curl.h>
-#include <dlfcn.h>
 
 #include <cerrno>
 #include <chrono>
@@ -113,45 +113,6 @@ private:
 	Clock::time_point m_started;
 };
 
-// ---------------------------------------------------------------------------
-// libcurl via dlsym (same portable pattern as ManifestFetch / provision).
-// ---------------------------------------------------------------------------
-
-typedef CURL*    (*curl_easy_init_t)();
-typedef CURLcode (*curl_easy_setopt_t)(CURL*, CURLoption, ...);
-typedef CURLcode (*curl_easy_perform_t)(CURL*);
-typedef void     (*curl_easy_cleanup_t)(CURL*);
-typedef CURLcode (*curl_easy_getinfo_t)(CURL*, CURLINFO, ...);
-typedef CURLcode (*curl_easy_send_t)(CURL*, const void*, size_t, size_t*);
-typedef CURLcode (*curl_easy_recv_t)(CURL*, void*, size_t, size_t*);
-typedef const char* (*curl_easy_strerror_t)(CURLcode);
-
-curl_easy_init_t     p_init     = nullptr;
-curl_easy_setopt_t   p_setopt   = nullptr;
-curl_easy_perform_t  p_perform  = nullptr;
-curl_easy_cleanup_t  p_cleanup  = nullptr;
-curl_easy_getinfo_t  p_getinfo  = nullptr;
-curl_easy_send_t     p_send     = nullptr;
-curl_easy_recv_t     p_recv     = nullptr;
-curl_easy_strerror_t p_strerror = nullptr;
-
-bool loadCurl()
-{
-	if (p_init) return true;
-	void* h = dlopen("libcurl.so.4", RTLD_NOLOAD | RTLD_LAZY);
-	if (!h) h = dlopen("libcurl.so.4", RTLD_LAZY);
-	if (!h) h = RTLD_DEFAULT;
-	p_init     = (curl_easy_init_t)     dlsym(h, "curl_easy_init");
-	p_setopt   = (curl_easy_setopt_t)   dlsym(h, "curl_easy_setopt");
-	p_perform  = (curl_easy_perform_t)  dlsym(h, "curl_easy_perform");
-	p_cleanup  = (curl_easy_cleanup_t)  dlsym(h, "curl_easy_cleanup");
-	p_getinfo  = (curl_easy_getinfo_t)  dlsym(h, "curl_easy_getinfo");
-	p_send     = (curl_easy_send_t)     dlsym(h, "curl_easy_send");
-	p_recv     = (curl_easy_recv_t)     dlsym(h, "curl_easy_recv");
-	p_strerror = (curl_easy_strerror_t) dlsym(h, "curl_easy_strerror");
-	return p_init && p_setopt && p_perform && p_cleanup &&
-	       p_getinfo && p_send && p_recv;
-}
 
 std::size_t writeCb(const char* p, std::size_t sz, std::size_t n, std::string* dst)
 {
@@ -164,29 +125,29 @@ AppInfoProvision::NetworkFailure httpsGet(const std::string& url,
                                           std::string& body,
                                           const BatchBudget& budget)
 {
-	if (!loadCurl()) return AppInfoProvision::NetworkFailure::Provider;
+	if (!curlApi()) return AppInfoProvision::NetworkFailure::Provider;
 	const long timeoutMs = budget.remainingMilliseconds(8000);
 	if (timeoutMs == 0) return AppInfoProvision::NetworkFailure::Provider;
-	CURL* c = p_init();
+	CURL* c = curlApi()->easy_init();
 	if (!c) return AppInfoProvision::NetworkFailure::Provider;
 	body.clear();
-	p_setopt(c, CURLOPT_URL, url.c_str());
-	p_setopt(c, CURLOPT_FOLLOWLOCATION, 1L);
-	p_setopt(c, CURLOPT_WRITEFUNCTION, writeCb);
-	p_setopt(c, CURLOPT_WRITEDATA, &body);
-	p_setopt(c, CURLOPT_TIMEOUT_MS, timeoutMs);
-	p_setopt(c, CURLOPT_CONNECTTIMEOUT_MS, std::min(timeoutMs, 5000L));
-	p_setopt(c, CURLOPT_NOSIGNAL, 1L);
-	p_setopt(c, CURLOPT_USERAGENT, "SLSsteam-CmClient/0.1");
+	curlApi()->easy_setopt(c, CURLOPT_URL, url.c_str());
+	curlApi()->easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1L);
+	curlApi()->easy_setopt(c, CURLOPT_WRITEFUNCTION, writeCb);
+	curlApi()->easy_setopt(c, CURLOPT_WRITEDATA, &body);
+	curlApi()->easy_setopt(c, CURLOPT_TIMEOUT_MS, timeoutMs);
+	curlApi()->easy_setopt(c, CURLOPT_CONNECTTIMEOUT_MS, std::min(timeoutMs, 5000L));
+	curlApi()->easy_setopt(c, CURLOPT_NOSIGNAL, 1L);
+	curlApi()->easy_setopt(c, CURLOPT_USERAGENT, "SLSsteam-CmClient/0.1");
 	// Pin the system trust store (see cainfo.hpp): without it the libcurl
 	// Steam loads fails CA verification on SteamOS/Arch and this GET returns
 	// nothing -> "empty CM list". No-op when no bundle is found.
-	if (const char* f = ca::bundleFile()) p_setopt(c, CURLOPT_CAINFO, f);
-	if (const char* d = ca::bundleDir())  p_setopt(c, CURLOPT_CAPATH, d);
-	const CURLcode rc = p_perform(c);
+	if (const char* f = ca::bundleFile()) curlApi()->easy_setopt(c, CURLOPT_CAINFO, f);
+	if (const char* d = ca::bundleDir())  curlApi()->easy_setopt(c, CURLOPT_CAPATH, d);
+	const CURLcode rc = curlApi()->easy_perform(c);
 	long status = 0;
-	p_getinfo(c, CURLINFO_RESPONSE_CODE, &status);
-	p_cleanup(c);
+	curlApi()->easy_getinfo(c, CURLINFO_RESPONSE_CODE, &status);
+	curlApi()->easy_cleanup(c);
 	if (rc != CURLE_OK) return AppInfoProvision::classifyCurlFailure(rc);
 	if (status != 200) return AppInfoProvision::classifyHttpFailure(status);
 	return body.empty() ? AppInfoProvision::NetworkFailure::Provider
@@ -354,30 +315,30 @@ class TlsSocket
 public:
 	explicit TlsSocket(const BatchBudget& budget)
 	    : m_budget(budget), m_deadline(budget.deadline()) {}
-	~TlsSocket() { if (m_c) p_cleanup(m_c); }
+	~TlsSocket() { if (m_c) curlApi()->easy_cleanup(m_c); }
 
 	bool connect(const Endpoint& ep)
 	{
 		const long timeoutMs = m_budget.remainingMilliseconds(kTotalTimeoutMs);
 		if (timeoutMs == 0) return false;
-		m_c = p_init();
+		m_c = curlApi()->easy_init();
 		if (!m_c) return false;
 		// Use an https URL so curl performs the TLS handshake; the path
 		// is irrelevant in CONNECT_ONLY mode.
 		const std::string url = "https://" + ep.host + ":" +
 		                        std::to_string(ep.port) + "/";
-		p_setopt(m_c, CURLOPT_URL, url.c_str());
-		p_setopt(m_c, CURLOPT_CONNECT_ONLY, 1L);
+		curlApi()->easy_setopt(m_c, CURLOPT_URL, url.c_str());
+		curlApi()->easy_setopt(m_c, CURLOPT_CONNECT_ONLY, 1L);
 		// Speak plain HTTP/1.1 for the websocket upgrade — no h2.
-		p_setopt(m_c, CURLOPT_SSL_ENABLE_ALPN, 0L);
-		p_setopt(m_c, CURLOPT_CONNECTTIMEOUT_MS, std::min(timeoutMs, 6000L));
-		p_setopt(m_c, CURLOPT_TIMEOUT_MS, timeoutMs);
-		p_setopt(m_c, CURLOPT_NOSIGNAL, 1L);
+		curlApi()->easy_setopt(m_c, CURLOPT_SSL_ENABLE_ALPN, 0L);
+		curlApi()->easy_setopt(m_c, CURLOPT_CONNECTTIMEOUT_MS, std::min(timeoutMs, 6000L));
+		curlApi()->easy_setopt(m_c, CURLOPT_TIMEOUT_MS, timeoutMs);
+		curlApi()->easy_setopt(m_c, CURLOPT_NOSIGNAL, 1L);
 		// Pin the system trust store so the wss:// TLS handshake verifies on
 		// SteamOS/Arch (see cainfo.hpp); no-op when no bundle is found.
-		if (const char* f = ca::bundleFile()) p_setopt(m_c, CURLOPT_CAINFO, f);
-		if (const char* d = ca::bundleDir())  p_setopt(m_c, CURLOPT_CAPATH, d);
-		const CURLcode rc = p_perform(m_c);
+		if (const char* f = ca::bundleFile()) curlApi()->easy_setopt(m_c, CURLOPT_CAINFO, f);
+		if (const char* d = ca::bundleDir())  curlApi()->easy_setopt(m_c, CURLOPT_CAPATH, d);
+		const CURLcode rc = curlApi()->easy_perform(m_c);
 		return rc == CURLE_OK;
 	}
 
@@ -389,7 +350,7 @@ public:
 		{
 			if (expired()) return false;
 			size_t n = 0;
-			const CURLcode rc = p_send(m_c, data.data() + total,
+			const CURLcode rc = curlApi()->easy_send(m_c, data.data() + total,
 			                           data.size() - total, &n);
 			if (rc == CURLE_OK) { total += n; continue; }
 			if (rc == CURLE_AGAIN) { usleep(20 * 1000); continue; }
@@ -405,7 +366,7 @@ public:
 	{
 		char buf[16384];
 		size_t n = 0;
-		const CURLcode rc = p_recv(m_c, buf, sizeof(buf), &n);
+		const CURLcode rc = curlApi()->easy_recv(m_c, buf, sizeof(buf), &n);
 		if (rc == CURLE_OK) { m_rx.append(buf, n); return n > 0; }
 		if (rc == CURLE_AGAIN) { usleep(20 * 1000); return true; }
 		return false;
@@ -683,7 +644,7 @@ bool runSession(const Endpoint& ep, const std::vector<uint32_t>& appids,
 
 bool prepareForThreadedFetch()
 {
-	return loadCurl();
+	return curlApi() != nullptr;
 }
 
 FetchResult fetchProductInfoDetailed(
@@ -692,7 +653,7 @@ FetchResult fetchProductInfoDetailed(
     std::unordered_map<uint32_t, uint32_t>* changesOut)
 {
 	if (appids.empty()) return FetchResult::Failed;
-	if (!loadCurl())
+	if (!curlApi())
 	{
 		g_pLog->info("CmClient: libcurl unavailable, falling back\n");
 		return FetchResult::Failed;

@@ -8,6 +8,7 @@
 #include "boundedexecutor.hpp"
 #include "../sdk/IClientAppManager.hpp"
 
+#include "curl_api.hpp"
 #include <curl/curl.h>
 
 #include <algorithm>
@@ -197,64 +198,6 @@ std::size_t curlWriteCb(const char* p, std::size_t sz, std::size_t n, BodySink* 
 	return bytes;
 }
 
-#include <dlfcn.h>
-
-typedef CURL* (*curl_easy_init_t)();
-typedef CURLcode (*curl_easy_setopt_t)(CURL *curl, CURLoption option, ...);
-typedef CURLcode (*curl_easy_perform_t)(CURL *curl);
-typedef void (*curl_easy_cleanup_t)(CURL *curl);
-typedef CURLcode (*curl_easy_getinfo_t)(CURL *curl, CURLINFO info, ...);
-typedef const char* (*curl_easy_strerror_t)(CURLcode);
-typedef curl_slist* (*curl_slist_append_t)(curl_slist*, const char*);
-typedef void (*curl_slist_free_all_t)(curl_slist*);
-
-static curl_easy_init_t p_curl_easy_init = nullptr;
-static curl_easy_setopt_t p_curl_easy_setopt = nullptr;
-static curl_easy_perform_t p_curl_easy_perform = nullptr;
-static curl_easy_cleanup_t p_curl_easy_cleanup = nullptr;
-static curl_easy_getinfo_t p_curl_easy_getinfo = nullptr;
-static curl_easy_strerror_t p_curl_easy_strerror = nullptr;
-static curl_slist_append_t p_curl_slist_append = nullptr;
-static curl_slist_free_all_t p_curl_slist_free_all = nullptr;
-static std::mutex g_curlLoadMutex;
-
-static bool load_curl() {
-	std::lock_guard lock(g_curlLoadMutex);
-	if (p_curl_easy_init && p_curl_easy_setopt && p_curl_easy_perform
-	    && p_curl_easy_cleanup && p_curl_slist_append
-	    && p_curl_slist_free_all)
-	{
-		return true;
-	}
-
-	void* handle = dlopen("libcurl.so.4", RTLD_NOLOAD | RTLD_LAZY);
-	if (!handle) handle = dlopen("libcurl.so.4", RTLD_LAZY);
-	if (!handle) handle = RTLD_DEFAULT;
-
-	const auto init = (curl_easy_init_t)dlsym(handle, "curl_easy_init");
-	const auto setopt = (curl_easy_setopt_t)dlsym(handle, "curl_easy_setopt");
-	const auto perform = (curl_easy_perform_t)dlsym(handle, "curl_easy_perform");
-	const auto cleanup = (curl_easy_cleanup_t)dlsym(handle, "curl_easy_cleanup");
-	const auto getinfo = (curl_easy_getinfo_t)dlsym(handle, "curl_easy_getinfo");
-	const auto strerror = (curl_easy_strerror_t)dlsym(handle, "curl_easy_strerror");
-	const auto listAppend =
-		(curl_slist_append_t)dlsym(handle, "curl_slist_append");
-	const auto listFree =
-		(curl_slist_free_all_t)dlsym(handle, "curl_slist_free_all");
-	if (!init || !setopt || !perform || !cleanup || !getinfo || !strerror ||
-	    !listAppend || !listFree)
-		return false;
-
-	p_curl_easy_init = init;
-	p_curl_easy_setopt = setopt;
-	p_curl_easy_perform = perform;
-	p_curl_easy_cleanup = cleanup;
-	p_curl_easy_getinfo = getinfo;
-	p_curl_easy_strerror = strerror;
-	p_curl_slist_append = listAppend;
-	p_curl_slist_free_all = listFree;
-	return true;
-}
 
 struct TransferControl
 {
@@ -288,14 +231,14 @@ HttpResponse httpGet(const std::string& url, const JobBudget* budget = nullptr,
 		return r;
 	}
 
-	if (!load_curl())
+	if (!curlApi())
 	{
 		r.networkError = true;
 		r.diagnostic = "failed to load libcurl dynamically";
 		return r;
 	}
 
-	CURL* c = p_curl_easy_init();
+	CURL* c = curlApi()->easy_init();
 	if (!c)
 	{
 		r.networkError = true;
@@ -307,43 +250,43 @@ HttpResponse httpGet(const std::string& url, const JobBudget* budget = nullptr,
 	if (!hostHeader.empty())
 	{
 		const std::string host = "Host: " + std::string(hostHeader);
-		requestHeaders = p_curl_slist_append(nullptr, host.c_str());
+		requestHeaders = curlApi()->slist_append(nullptr, host.c_str());
 		if (!requestHeaders)
 		{
-			p_curl_easy_cleanup(c);
+			curlApi()->easy_cleanup(c);
 			r.networkError = true;
 			r.diagnostic = "failed to allocate curl Host header";
 			return r;
 		}
-		p_curl_easy_setopt(c, CURLOPT_HTTPHEADER, requestHeaders);
+		curlApi()->easy_setopt(c, CURLOPT_HTTPHEADER, requestHeaders);
 	}
-	p_curl_easy_setopt(c, CURLOPT_URL, url.c_str());
-	p_curl_easy_setopt(c, CURLOPT_FOLLOWLOCATION, method == "POST" ? 0L : 1L);
-	p_curl_easy_setopt(c, CURLOPT_WRITEFUNCTION, curlWriteCb);
-	p_curl_easy_setopt(c, CURLOPT_WRITEDATA, &sink);
-	p_curl_easy_setopt(c, CURLOPT_ACCEPT_ENCODING, "");
-	if (method == "HEAD") p_curl_easy_setopt(c, CURLOPT_NOBODY, 1L);
+	curlApi()->easy_setopt(c, CURLOPT_URL, url.c_str());
+	curlApi()->easy_setopt(c, CURLOPT_FOLLOWLOCATION, method == "POST" ? 0L : 1L);
+	curlApi()->easy_setopt(c, CURLOPT_WRITEFUNCTION, curlWriteCb);
+	curlApi()->easy_setopt(c, CURLOPT_WRITEDATA, &sink);
+	curlApi()->easy_setopt(c, CURLOPT_ACCEPT_ENCODING, "");
+	if (method == "HEAD") curlApi()->easy_setopt(c, CURLOPT_NOBODY, 1L);
 	if (method == "POST")
 	{
-		p_curl_easy_setopt(c, CURLOPT_POST, 1L);
-		p_curl_easy_setopt(c, CURLOPT_POSTFIELDS, postBody.data());
-		p_curl_easy_setopt(c, CURLOPT_POSTFIELDSIZE_LARGE,
+		curlApi()->easy_setopt(c, CURLOPT_POST, 1L);
+		curlApi()->easy_setopt(c, CURLOPT_POSTFIELDS, postBody.data());
+		curlApi()->easy_setopt(c, CURLOPT_POSTFIELDSIZE_LARGE,
 		                   static_cast<curl_off_t>(postBody.size()));
-		requestHeaders = p_curl_slist_append(requestHeaders, "Content-Type: text/plain");
-		if (requestHeaders) p_curl_easy_setopt(c, CURLOPT_HTTPHEADER, requestHeaders);
+		requestHeaders = curlApi()->slist_append(requestHeaders, "Content-Type: text/plain");
+		if (requestHeaders) curlApi()->easy_setopt(c, CURLOPT_HTTPHEADER, requestHeaders);
 	}
 	if (budget == nullptr)
 	{
-		p_curl_easy_setopt(c, CURLOPT_TIMEOUT_MS, timeoutMs);
-		p_curl_easy_setopt(c, CURLOPT_CONNECTTIMEOUT, 5L);
+		curlApi()->easy_setopt(c, CURLOPT_TIMEOUT_MS, timeoutMs);
+		curlApi()->easy_setopt(c, CURLOPT_CONNECTTIMEOUT, 5L);
 	}
 	else
 	{
 		long long remainingMs = budget->remaining().count();
 		if (remainingMs <= 0)
 		{
-			if (requestHeaders) p_curl_slist_free_all(requestHeaders);
-			p_curl_easy_cleanup(c);
+			if (requestHeaders) curlApi()->slist_free_all(requestHeaders);
+			curlApi()->easy_cleanup(c);
 			r.networkError = true;
 			r.diagnostic = "manifest job budget expired";
 			return r;
@@ -351,15 +294,15 @@ HttpResponse httpGet(const std::string& url, const JobBudget* budget = nullptr,
 		if (remainingMs > timeoutMs) remainingMs = timeoutMs;
 		const long timeoutMs = static_cast<long>(remainingMs < 1 ? 1 : remainingMs);
 		const long connectMs = timeoutMs < 5000 ? timeoutMs : 5000;
-		p_curl_easy_setopt(c, CURLOPT_TIMEOUT_MS, timeoutMs);
-		p_curl_easy_setopt(c, CURLOPT_CONNECTTIMEOUT_MS, connectMs);
+		curlApi()->easy_setopt(c, CURLOPT_TIMEOUT_MS, timeoutMs);
+		curlApi()->easy_setopt(c, CURLOPT_CONNECTTIMEOUT_MS, connectMs);
 	}
 	TransferControl control{budget, keepRunning};
 	if (budget || keepRunning)
 	{
-		p_curl_easy_setopt(c, CURLOPT_NOPROGRESS, 0L);
-		p_curl_easy_setopt(c, CURLOPT_XFERINFOFUNCTION, curlTransferProgress);
-		p_curl_easy_setopt(c, CURLOPT_XFERINFODATA, &control);
+		curlApi()->easy_setopt(c, CURLOPT_NOPROGRESS, 0L);
+		curlApi()->easy_setopt(c, CURLOPT_XFERINFOFUNCTION, curlTransferProgress);
+		curlApi()->easy_setopt(c, CURLOPT_XFERINFODATA, &control);
 	}
 	// MANDATORY for multi-threaded use: httpGet runs on a ManifestFetch
 	// worker thread.  Without CURLOPT_NOSIGNAL, libcurl built with a
@@ -368,26 +311,26 @@ HttpResponse httpGet(const std::string& url, const JobBudget* budget = nullptr,
 	// (e.g. Steam's main thread in poll()) is running, the longjmp targets
 	// the wrong stack and glibc's __longjmp_chk aborts the whole client.
 	// NOSIGNAL switches libcurl to signal-free timeouts.
-	p_curl_easy_setopt(c, CURLOPT_NOSIGNAL, 1L);
-	p_curl_easy_setopt(c, CURLOPT_USERAGENT, "SLSsteam-ManifestFetch/0.1");
+	curlApi()->easy_setopt(c, CURLOPT_NOSIGNAL, 1L);
+	curlApi()->easy_setopt(c, CURLOPT_USERAGENT, "SLSsteam-ManifestFetch/0.1");
 	// Pin the system trust store (see cainfo.hpp) so the https manifest
 	// providers verify on SteamOS/Arch; no-op when no bundle is found.
-	if (const char* f = ca::bundleFile()) p_curl_easy_setopt(c, CURLOPT_CAINFO, f);
-	if (const char* d = ca::bundleDir())  p_curl_easy_setopt(c, CURLOPT_CAPATH, d);
-	const CURLcode rc = p_curl_easy_perform(c);
+	if (const char* f = ca::bundleFile()) curlApi()->easy_setopt(c, CURLOPT_CAINFO, f);
+	if (const char* d = ca::bundleDir())  curlApi()->easy_setopt(c, CURLOPT_CAPATH, d);
+	const CURLcode rc = curlApi()->easy_perform(c);
 	if (rc != CURLE_OK)
 	{
 		r.networkError = true;
-		r.diagnostic = p_curl_easy_strerror ? p_curl_easy_strerror(rc) : "curl error";
+		r.diagnostic = curlApi()->easy_strerror(rc);
 	}
 	else
 	{
 		r.networkError = false;
 		r.diagnostic = "OK";
-		if (p_curl_easy_getinfo) p_curl_easy_getinfo(c, CURLINFO_RESPONSE_CODE, &r.status);
+		curlApi()->easy_getinfo(c, CURLINFO_RESPONSE_CODE, &r.status);
 	}
-	if (requestHeaders) p_curl_slist_free_all(requestHeaders);
-	p_curl_easy_cleanup(c);
+	if (requestHeaders) curlApi()->slist_free_all(requestHeaders);
+	curlApi()->easy_cleanup(c);
 	return r;
 }
 

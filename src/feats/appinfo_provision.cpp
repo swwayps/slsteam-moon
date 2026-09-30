@@ -48,6 +48,7 @@
 
 #include <openssl/sha.h>
 
+#include "../utils/curl_api.hpp"
 #include <curl/curl.h>
 #include <dlfcn.h>
 
@@ -183,40 +184,6 @@ void noteColdRetryOutcome(std::uint32_t appId, bool unresolved)
 
 
 
-// ---------------------------------------------------------------------------
-// libcurl loaded via dlsym to follow the project's portable pattern
-// (see utils/ManifestFetch.cpp).  Tied to libcurl.so.4 if available.
-// ---------------------------------------------------------------------------
-
-typedef CURL*       (*curl_easy_init_t)();
-typedef CURLcode    (*curl_easy_setopt_t)(CURL*, CURLoption, ...);
-typedef CURLcode    (*curl_easy_perform_t)(CURL*);
-typedef void        (*curl_easy_cleanup_t)(CURL*);
-typedef CURLcode    (*curl_easy_getinfo_t)(CURL*, CURLINFO, ...);
-typedef const char* (*curl_easy_strerror_t)(CURLcode);
-
-static curl_easy_init_t     p_curl_easy_init     = nullptr;
-static curl_easy_setopt_t   p_curl_easy_setopt   = nullptr;
-static curl_easy_perform_t  p_curl_easy_perform  = nullptr;
-static curl_easy_cleanup_t  p_curl_easy_cleanup  = nullptr;
-static curl_easy_getinfo_t  p_curl_easy_getinfo  = nullptr;
-static curl_easy_strerror_t p_curl_easy_strerror = nullptr;
-
-bool loadCurl()
-{
-	if (p_curl_easy_init) return true;
-	void* h = dlopen("libcurl.so.4", RTLD_NOLOAD | RTLD_LAZY);
-	if (!h) h = dlopen("libcurl.so.4", RTLD_LAZY);
-	if (!h) h = RTLD_DEFAULT;
-	p_curl_easy_init     = (curl_easy_init_t)     dlsym(h, "curl_easy_init");
-	p_curl_easy_setopt   = (curl_easy_setopt_t)   dlsym(h, "curl_easy_setopt");
-	p_curl_easy_perform  = (curl_easy_perform_t)  dlsym(h, "curl_easy_perform");
-	p_curl_easy_cleanup  = (curl_easy_cleanup_t)  dlsym(h, "curl_easy_cleanup");
-	p_curl_easy_getinfo  = (curl_easy_getinfo_t)  dlsym(h, "curl_easy_getinfo");
-	p_curl_easy_strerror = (curl_easy_strerror_t) dlsym(h, "curl_easy_strerror");
-	return p_curl_easy_init && p_curl_easy_setopt &&
-	       p_curl_easy_perform && p_curl_easy_cleanup;
-}
 
 std::size_t curlWriteCb(const char* p, std::size_t sz, std::size_t n, std::string* dst)
 {
@@ -227,47 +194,47 @@ std::size_t curlWriteCb(const char* p, std::size_t sz, std::size_t n, std::strin
 NetworkFailure httpGetJson(const std::string& url, std::string& body,
                            std::string& diag, long timeoutMs)
 {
-	if (!loadCurl()) { diag = "libcurl unavailable"; return NetworkFailure::Provider; }
+	if (!curlApi()) { diag = "libcurl unavailable"; return NetworkFailure::Provider; }
 	if (timeoutMs <= 0)
 	{
 		diag = "startup network budget exhausted";
 		return NetworkFailure::Transient;
 	}
-	CURL* c = p_curl_easy_init();
+	CURL* c = curlApi()->easy_init();
 	if (!c) { diag = "curl_easy_init failed"; return NetworkFailure::Provider; }
 
 	body.clear();
-	p_curl_easy_setopt(c, CURLOPT_URL, url.c_str());
-	p_curl_easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1L);
-	p_curl_easy_setopt(c, CURLOPT_WRITEFUNCTION, curlWriteCb);
-	p_curl_easy_setopt(c, CURLOPT_WRITEDATA, &body);
+	curlApi()->easy_setopt(c, CURLOPT_URL, url.c_str());
+	curlApi()->easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1L);
+	curlApi()->easy_setopt(c, CURLOPT_WRITEFUNCTION, curlWriteCb);
+	curlApi()->easy_setopt(c, CURLOPT_WRITEDATA, &body);
 	// Bounded timeouts.  AppInfoProvision runs in setup() on the startup
 	// path, so we must not stall Steam's launch for too long if
 	// steamcmd.net is slow or unreachable.  The fetch is now wrapped in a
 	// bounded retry (see provisionApp), and all provider attempts in this
 	// startup pass share one 15-second wall-clock budget. A slow mirror can
 	// therefore never multiply this timeout by app count or retry count.
-	p_curl_easy_setopt(c, CURLOPT_TIMEOUT_MS, timeoutMs);
-	p_curl_easy_setopt(c, CURLOPT_CONNECTTIMEOUT_MS,
+	curlApi()->easy_setopt(c, CURLOPT_TIMEOUT_MS, timeoutMs);
+	curlApi()->easy_setopt(c, CURLOPT_CONNECTTIMEOUT_MS,
 	                   std::min(timeoutMs, 8000L));
 	// Same multi-thread safety justification as ManifestFetch::httpGet.
-	p_curl_easy_setopt(c, CURLOPT_NOSIGNAL, 1L);
-	p_curl_easy_setopt(c, CURLOPT_USERAGENT, "SLSsteam-AppInfoProvision/0.1");
+	curlApi()->easy_setopt(c, CURLOPT_NOSIGNAL, 1L);
+	curlApi()->easy_setopt(c, CURLOPT_USERAGENT, "SLSsteam-AppInfoProvision/0.1");
 	// Pin the system trust store (see cainfo.hpp): the libcurl Steam loads
 	// otherwise fails CA verification on SteamOS/Arch with curl error 60
 	// ("Peer certificate cannot be authenticated"), the exact failure that
 	// sinks the steamcmd.net fallback. No-op when no bundle is found.
-	if (const char* f = ca::bundleFile()) p_curl_easy_setopt(c, CURLOPT_CAINFO, f);
-	if (const char* d = ca::bundleDir())  p_curl_easy_setopt(c, CURLOPT_CAPATH, d);
+	if (const char* f = ca::bundleFile()) curlApi()->easy_setopt(c, CURLOPT_CAINFO, f);
+	if (const char* d = ca::bundleDir())  curlApi()->easy_setopt(c, CURLOPT_CAPATH, d);
 
-	const CURLcode rc = p_curl_easy_perform(c);
+	const CURLcode rc = curlApi()->easy_perform(c);
 	long status = 0;
-	if (p_curl_easy_getinfo) p_curl_easy_getinfo(c, CURLINFO_RESPONSE_CODE, &status);
-	p_curl_easy_cleanup(c);
+	curlApi()->easy_getinfo(c, CURLINFO_RESPONSE_CODE, &status);
+	curlApi()->easy_cleanup(c);
 
 	if (rc != CURLE_OK)
 	{
-		diag = p_curl_easy_strerror ? p_curl_easy_strerror(rc) : "curl error";
+		diag = curlApi()->easy_strerror(rc);
 		return classifyCurlFailure(rc);
 	}
 	if (status != 200)
