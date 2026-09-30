@@ -34,7 +34,7 @@ public:
 
 	constexpr bool swap(uint32_t index, uint32_t index2)
 	{
-		if (index > size || index2 > size)
+		if (index >= size || index2 >= size)
 		{
 			return false;
 		}

@@ -66,6 +66,30 @@ int main()
 	check(storage[1].manifestId == 222,
 	      "ManifestIds still overrides a depot without a pin");
 
+	// DepotBlacklist removes by moving the last entry into the freed slot;
+	// that entry must be checked too. Planned: A (listed), B, C (listed).
+	constexpr uint32_t listedA = 1621693;
+	constexpr uint32_t keptB = 1621694;
+	constexpr uint32_t listedC = 1621695;
+	DepotInfo_t plan[3] {};
+	plan[0].depotId = listedA;
+	plan[1].depotId = keptB;
+	plan[2].depotId = listedC;
+	for (auto& entry : plan) entry.appId = app;
+	CUtlVector<DepotInfo_t> planned {};
+	planned.memory.base = plan;
+	planned.memory.alloc = 3;
+	planned.size = 3;
+	g_config.manifestPinsByApp.set({});
+	g_config.manifestIds.set({});
+	g_config.depotBlacklist.set({listedA, listedC});
+
+	Apps::buildDepotDependency(app, &planned, &shared);
+	check(planned.size == 1 && plan[0].depotId == keptB,
+	      "every blacklisted depot leaves the plan, including the one moved into a freed slot");
+
+	check(!planned.swap(0, planned.size), "swap refuses an index one past the end");
+
 	std::printf("%d failure(s)\n", failures);
 	return failures ? 1 : 0;
 }

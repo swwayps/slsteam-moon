@@ -261,15 +261,17 @@ void Apps::buildDepotDependency(uint32_t appId, CUtlVector<DepotInfo_t>* depots,
 	const auto depotBlacklist = g_config.depotBlacklist.get();
 	const auto manifestOverrides = g_config.manifestIds.get();
 
-	for (unsigned int i = 0; i < depots->size; i++)
+	for (unsigned int i = 0; i < depots->size;)
 	{
 		const auto depot = depots->at(i);
 
 		if (depotBlacklist.contains(depot->depotId))
 		{
 			LOG_DEBUG("Removing %u with %llu\n", depot->depotId, depot->manifestId);
+			// The last entry moves into slot i and is checked next.
 			depots->swap(i, depots->size - 1);
 			depots->size--;
+			continue;
 		}
 
 		if (manifestOverrides.contains(depot->depotId))
@@ -290,6 +292,7 @@ void Apps::buildDepotDependency(uint32_t appId, CUtlVector<DepotInfo_t>* depots,
 		}
 
 		LOG_DEBUG("Depot %u for %u -> %llu\n", depot->depotId, depot->appId, depot->manifestId);
+		i++;
 	}
 
 	for (unsigned int i = 0; i < sharedDepots->size; i++)
