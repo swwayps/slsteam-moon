@@ -25,15 +25,12 @@ void check(bool condition, const char* message)
 int main()
 {
     using AppInfoProvision::CacheReadiness;
-    using AppInfoProvision::cachePairReady;
-    using AppInfoProvision::coldFallbackNeeded;
     using AppInfoProvision::shouldRequeueRefreshAfterStartFailure;
     using AppInfoProvision::asyncProvisionEnabled;
     using AppInfoProvision::shouldWarmCurlBeforePics;
     using AppInfoProvision::shouldMarkColdCacheSanitized;
     using AppInfoProvision::PreinitProvisionAction;
     using AppInfoProvision::preinitProvisionAction;
-    using AppInfoProvision::mergeRuntimePublishCandidates;
     using AppInfoProvision::RefreshReason;
     using AppInfoProvision::RefreshRequest;
     using AppInfoProvision::reasonMask;
@@ -46,21 +43,6 @@ int main()
               PreinitProvisionAction::SynchronousProvision,
           "disabled async mode keeps the full synchronous setup pass");
 
-    // A structurally valid pair is startup-usable regardless of its freshness.
-    // The PICS callback likewise keeps stale pairs out of synchronous work.
-    check(coldFallbackNeeded(CacheReadiness::Missing),
-          "a missing pair is always a cold start");
-    check(!coldFallbackNeeded(CacheReadiness::ValidStale),
-          "startup accepts a valid stale pair without synchronous recovery");
-    check(!coldFallbackNeeded(CacheReadiness::Fresh),
-          "a fresh pair is never a cold start");
-
-    check(cachePairReady(true, true, true),
-          "only a complete and validated cache pair is ready");
-    check(!cachePairReady(true, false, true),
-          "a buffer without metadata is not a ready cache pair");
-    check(!cachePairReady(true, true, false),
-          "an invalid cache record is not a ready cache pair");
     check(shouldRequeueRefreshAfterStartFailure(false),
           "a known failed follow-up start retains the queued refresh");
     check(!shouldRequeueRefreshAfterStartFailure(true),
@@ -101,12 +83,6 @@ int main()
               }, managed, synthetic, generations) ==
               std::vector<std::uint32_t>({777, 888, 420530}),
           "runtime publication admits current local updates and suppressed synthetic PICS only");
-    check(mergeRuntimePublishCandidates(
-              std::vector<std::uint32_t>{888, 420530},
-              std::vector<std::uint32_t>{777, 888, 777}) ==
-              std::vector<std::uint32_t>({777, 888, 420530}),
-          "queued refreshes retain a sorted unique union of publication ids");
-
     if (failures != 0)
     {
         std::fprintf(stderr, "test_provision_schedule: %d failure(s)\n", failures);

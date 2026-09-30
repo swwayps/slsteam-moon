@@ -42,7 +42,8 @@ static int g_failures = 0;
 int main()
 {
 	using AppInfoProvision::CacheReadiness;
-	using AppInfoProvision::coldFallbackNeeded;
+	using AppInfoProvision::ColdStartMode;
+	using AppInfoProvision::selectColdStartApps;
 	using AppInfoProvision::cache::CacheUse;
 	using AppInfoProvision::cache::CacheMetadataView;
 	using AppInfoProvision::cache::CacheRecordFacts;
@@ -64,16 +65,25 @@ int main()
 	using AppInfoProvision::cache::shouldInvalidateDlcMetadata;
 	using AppInfoProvision::cache::wireSizeMatches;
 
-	CHECK(!coldFallbackNeeded(CacheReadiness::Busy),
-	      "busy runtime cache never becomes synchronous network work");
-	CHECK(!coldFallbackNeeded(CacheReadiness::Unverified),
-	      "unverified runtime cache defers to background validation");
-	CHECK(coldFallbackNeeded(CacheReadiness::Missing),
-	      "confirmed runtime miss remains recoverable");
-	CHECK(coldFallbackNeeded(CacheReadiness::Invalid),
-	      "confirmed invalid runtime pair remains recoverable");
-	CHECK(!coldFallbackNeeded(CacheReadiness::ValidStale),
-	      "validated stale cache remains usable at startup");
+	for (const auto mode : {ColdStartMode::StartupRequireUsablePair,
+	                        ColdStartMode::RuntimeMissingOnly})
+	{
+		const auto cold = selectColdStartApps(
+		    {{1, CacheReadiness::Busy}, {2, CacheReadiness::Unverified},
+		     {3, CacheReadiness::Missing}, {4, CacheReadiness::Invalid},
+		     {5, CacheReadiness::ValidStale}, {6, CacheReadiness::Fresh}},
+		    mode);
+		CHECK(!cold.contains(1),
+		      "busy runtime cache never becomes synchronous network work");
+		CHECK(!cold.contains(2),
+		      "unverified runtime cache defers to background validation");
+		CHECK(cold.contains(3), "confirmed runtime miss remains recoverable");
+		CHECK(cold.contains(4),
+		      "confirmed invalid runtime pair remains recoverable");
+		CHECK(!cold.contains(5),
+		      "validated stale cache remains usable at startup");
+		CHECK(!cold.contains(6), "a fresh pair is never a cold start");
+	}
 
 	CacheMetadataView metadata{};
 	CHECK(!parseCacheMetadata("", metadata),

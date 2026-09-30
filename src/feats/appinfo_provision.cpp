@@ -300,9 +300,6 @@ std::string expandUrl(const std::string& tmpl, uint32_t appId)
 // that PICS uses on the wire ("appinfo" { ... } with quoted keys/values
 // and braces).  We emit a strict subset of that here: every leaf is a
 // quoted string (Steam's appinfo schema is all-strings anyway).
-//
-// We also keep a fallback v39-binary writer in case the project ever
-// switches to that.  Currently unused.
 
 void emitEscaped(std::string& out, const std::string& s)
 {
@@ -1058,62 +1055,6 @@ bool persistBuffer(uint32_t appId, uint32_t changeNumber,
 // finding the literal "depots" key inside that app's binary KV blob,
 // which is enough to skip already-rich entries.
 // ---------------------------------------------------------------------------
-
-[[maybe_unused]]
-bool hasDepotsForApp(const std::string& appinfoVdfPath, uint32_t appId)
-{
-	std::ifstream ifs(appinfoVdfPath, std::ios::binary | std::ios::ate);
-	if (!ifs.is_open()) return false;
-	const std::streamsize sz = ifs.tellg();
-	if (sz <= 0 || sz > (1LL << 30)) return false;
-	std::string buf;
-	buf.resize(static_cast<std::size_t>(sz));
-	ifs.seekg(0);
-	ifs.read(buf.data(), sz);
-
-	// Linear scan for the appid little-endian followed by enough header
-	// bytes to be a real entry header.  The appinfo.vdf entry header
-	// layout is:
-	//   uint32 appid; uint32 size; uint32 info_state; uint64 last_updated;
-	//   uint64 token; bytes sha[20]; uint32 change#; bytes binsha[20]
-	// total = 72 bytes.
-	const auto* data = reinterpret_cast<const std::uint8_t*>(buf.data());
-	const std::size_t n = buf.size();
-	if (n < 76) return false;
-
-	for (std::size_t i = 0; i + 76 <= n; ++i)
-	{
-		uint32_t a;
-		std::memcpy(&a, data + i, sizeof(a));
-		if (a != appId) continue;
-		uint32_t entrySize;
-		std::memcpy(&entrySize, data + i + 4, sizeof(entrySize));
-		// sanity
-		if (entrySize < 64 || entrySize > 8u * 1024u * 1024u) continue;
-		const std::size_t kvStart = i + 72;
-		const std::size_t kvEnd   = i + 8 + entrySize;
-		if (kvEnd > n || kvEnd <= kvStart) continue;
-		const std::string_view kv(reinterpret_cast<const char*>(data) + kvStart,
-		                          kvEnd - kvStart);
-		// Binary v41 KV uses uint32 string-table indices, so "depots"
-		// won't appear as ASCII inside the body.  We instead look for
-		// "manifests" or any depot-like ASCII fragment that the wire
-		// reader writes raw.  Safer: the binary VDF *also* embeds
-		// string values verbatim, including manifest gids and section
-		// labels like "public", but those are noisy.  Use a simple
-		// heuristic: the entry must contain the literal "manifests"
-		// somewhere — every depot row carries it as a value.
-		if (kv.find("manifests") != std::string_view::npos)
-		{
-			return true;
-		}
-		// Even if the v41 binary blob is fully indexed, the original
-		// raw string table at the file end resolves them — but for our
-		// purposes "depot key not yet pinned" means we provision.
-		return false;
-	}
-	return false;
-}
 
 // ---------------------------------------------------------------------------
 // SHA-1 helper (libcrypto via dlsym, same pattern as appinfo_vdf.cpp).

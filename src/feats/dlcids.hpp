@@ -15,7 +15,7 @@
 // (Mirrors how GBE/GSE fork tools and SFF resolve DLC ids.)
 //
 // This header is pure (no Steam/SDK deps) so it can be unit-tested with
-// a stock g++, same pattern as feats/retry.hpp.  It parses the wire-text
+// a stock g++.  It parses the wire-text
 // VDF dialect that AppInfoProvision emits / persists to
 // `picsbuffer_<appid>.bin` (quoted keys and values, tab-separated).
 
