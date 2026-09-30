@@ -25,6 +25,7 @@
 //   /tmp/test_ownerqueue
 
 #include "../src/utils/ownerqueue.hpp"
+#include "../src/feats/hotreload_inputs.hpp"
 #include "../src/feats/hotreload_types.hpp"
 // Only the inline policy helpers are used from this header (no Steam deps).
 #include "../src/ownerwork.hpp"
@@ -296,6 +297,23 @@ static void test_bounded()
 	      "a newer snapshot still coalesces when the queue is at capacity");
 	CHECK(snapshotCapacity.push(Command::ensureCompat(5, 0, 0), kT0 + 2) == PushResult::Full,
 	      "a different command kind is rejected at snapshot capacity");
+}
+
+static void test_large_library_snapshot()
+{
+	std::printf("[5b] a large library's snapshot fits the default queue\n");
+	// Measured: 1024 managed apps gave 1220 package-0 apps and 6042 depots
+	// (config_discovery.hpp); the VM's 2518 apps give 5.6k depots.
+	PackageSnapshot large{ 1, {}, {}, true, {}, {} };
+	for (std::uint32_t id = 1; id <= 1220; ++id) large.appIds.push_back(id);
+	for (std::uint32_t id = 1; id <= 6042; ++id) large.depotIds.push_back(id);
+	Queue q;
+	CHECK(q.push(Command::syncPackage0(large), kT0) == PushResult::Queued,
+	      "a 6042-depot snapshot is queued for the owner thread, not run inline");
+	PackageSnapshot ceiling{ 2, {}, {}, true, {}, {} };
+	ceiling.depotIds.resize(HotReloadInputs::kMaxSnapshotDepotIds, 7);
+	CHECK(q.push(Command::syncPackage0(ceiling), kT0) == PushResult::Coalesced,
+	      "a snapshot at the builder's depot ceiling is still accepted");
 }
 
 static void test_shutdown_rejection()
@@ -733,6 +751,7 @@ int main()
 	test_package_snapshot_last_write_wins();
 	test_idempotent_enqueue();
 	test_bounded();
+	test_large_library_snapshot();
 	test_shutdown_rejection();
 	test_teardown_gate();
 	test_exception_containment();

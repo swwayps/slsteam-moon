@@ -96,6 +96,7 @@
 #include <utility>
 #include <vector>
 
+#include "../feats/hotreload_inputs.hpp"
 #include "../feats/hotreload_types.hpp"
 #include "../feats/hotreload_package.hpp"
 
@@ -108,8 +109,10 @@ namespace OwnerQueue
 
 	// Per-command id-list cap. A managed-state snapshot carries app, depot,
 	// added and appinfo-request id lists. Each list is checked independently
-	// so the bound never relies on overflowing size arithmetic.
-	inline constexpr std::size_t kMaxIdsPerCommand = 4096;
+	// so the bound never relies on overflowing size arithmetic. The cap is the
+	// largest list the snapshot builder can produce: anything lower sends a
+	// large library's every sync to the inline fallback, off the owner thread.
+	inline constexpr std::size_t kMaxIdsPerCommand = HotReloadInputs::kMaxSnapshotDepotIds;
 
 	// Monotonic microseconds. Used for enqueue timestamps, so the staleness
 	// escape hatch is immune to wall-clock jumps. Passed in explicitly
