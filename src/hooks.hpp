@@ -24,7 +24,6 @@ struct Pattern_t;
 struct VFTableInfo_t;
 
 struct CNetPacket;
-struct CRemoteClientPacket;
 enum EWebSocketOpCode : uint32_t;
 
 template<typename T>
@@ -139,7 +138,6 @@ namespace Hooks
 	typedef bool(*IClientUtils_GetOfflineMode_t)(void*);
 
 	typedef bool(*CWebSocketConnection_BBuildAndAsyncSendFrame_t)(void*, EWebSocketOpCode, uint8_t*, uint32_t);
-	typedef void*(*CRemoteClientManager_RecvPkt_t)(void*, CRemoteClientPacket*);
 
 	typedef bool(*CJobMgr_BRouteMsgToJob_t)(void*, void*, void*, void*);
 
@@ -151,7 +149,6 @@ namespace Hooks
 	extern DetourHook<CCMInterface_RecvPkt_t> CCMInterface_RecvPkt;
 
 	extern DetourHook<CWebSocketConnection_BBuildAndAsyncSendFrame_t> CWebSocketConnection_BBuildAndAsyncSendFrame;
-	extern DetourHook<CRemoteClientManager_RecvPkt_t> CRemoteClientManager_RecvPkt;
 	extern DetourHook<CJobMgr_BRouteMsgToJob_t> CJobMgr_BRouteMsgToJob;
 	extern DetourHook<CDepotDownloadMgr_BYldRequestDepotManifest_t> CDepotDownloadMgr_BYldRequestDepotManifest;
 

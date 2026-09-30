@@ -47,7 +47,6 @@ static_assert(kMaxBodySize >= Achievements::maxReplyBytes);
 static_assert(kMaxHdrSize >= Achievements::maxHeaderBytes);
 constexpr uint32_t kMaxPacketSize  = sizeof(MsgHdr) + kMaxHdrSize + kMaxBodySize;
 
-std::mutex g_RxLock;
 std::mutex g_TxLock;
 
 constexpr uint64_t kDonorJobBase = 0x7e51000000000000ULL;
@@ -336,30 +335,6 @@ bool resolveDonorResponse(uint64_t job, const CMsgProtoBufHeader& header,
 	return true;
 }
 
-void dispatchRecv(uint32_t eMsg,
-                  const uint8_t* pBody, uint32_t cbBody,
-                  const uint8_t* pHdr,  uint32_t cbHdr)
-{
-	if (eMsg == kEMsgServiceMethodResponse)
-	{
-		CMsgProtoBufHeader header;
-		if (header.ParseFromArray(pHdr, cbHdr) && header.has_jobid_target())
-		{
-			resolveDonorResponse(header.jobid_target(), header, pBody, cbBody);
-		}
-	}
-	if (eMsg != kEMsgServiceMethodResponse)
-	{
-		return;
-	}
-	CMsgProtoBufHeader hdr;
-	if (!hdr.ParseFromArray(pHdr, cbHdr) || !hdr.has_target_job_name())
-	{
-		return;
-	}
-	g_pLog->debug("WebSocket service method recv: %s\n", hdr.target_job_name().c_str());
-}
-
 } // namespace
 
 CodeRequest requestCode(uint32_t appId, uint32_t depotId, uint64_t gid)
@@ -587,31 +562,6 @@ bool hkBBuildAndAsyncSendFrame(void* pConnection,
 	return Hooks::CWebSocketConnection_BBuildAndAsyncSendFrame.tramp.fn(
 	    pConnection, eOpCode, pubData, cubData);
 }
-
-void* hkRecvPkt(void* pManager, CRemoteClientPacket* pPacket)
-{
-	// Guard against a client ABI change shifting CRemoteClientPacket: a mis-read
-	// m_pubData/m_cubData (implausible pointer or absurd length) must degrade to
-	// the original receive path, never feed a wild pointer/length to decodeFrame.
-	const auto rcpDataAddr = pPacket
-	    ? reinterpret_cast<uintptr_t>(pPacket->m_pubData) : 0u;
-	if (pPacket && rcpDataAddr >= 0x10000u && rcpDataAddr < 0xFFFFF000u
-	    && pPacket->m_cubData && pPacket->m_cubData <= (64u * 1024 * 1024))
-	{
-		std::lock_guard<std::mutex> lock(g_RxLock);
-		uint32_t eMsg = 0;
-		const uint8_t* pHdr  = nullptr;
-		const uint8_t* pBody = nullptr;
-		uint32_t cbHdr = 0, cbBody = 0;
-		if (decodeFrame(pPacket->m_pubData, pPacket->m_cubData,
-		                eMsg, pHdr, cbHdr, pBody, cbBody))
-		{
-			dispatchRecv(eMsg, pBody, cbBody, pHdr, cbHdr);
-		}
-	}
-	return Hooks::CRemoteClientManager_RecvPkt.tramp.fn(pManager, pPacket);
-}
-
 
 bool hkBRouteMsgToJob(void* pJobMgr, void* arg2, void* pMsg, void* pJob)
 {

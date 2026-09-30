@@ -22,7 +22,6 @@ namespace ManifestCode
 	                               uint8_t* pubData,
 	                               uint32_t cubData);
 
-	void* hkRecvPkt(void* pManager, CRemoteClientPacket* pPacket);
 
 	bool hkBRouteMsgToJob(void* pJobMgr, void* arg2, void* pMsg, void* pJob);
 

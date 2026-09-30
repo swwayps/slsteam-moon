@@ -1343,7 +1343,6 @@ namespace Hooks
 	DetourHook<CCMInterface_RecvPkt_t> CCMInterface_RecvPkt;
 
 	DetourHook<CWebSocketConnection_BBuildAndAsyncSendFrame_t> CWebSocketConnection_BBuildAndAsyncSendFrame;
-	DetourHook<CRemoteClientManager_RecvPkt_t> CRemoteClientManager_RecvPkt;
 	DetourHook<CJobMgr_BRouteMsgToJob_t> CJobMgr_BRouteMsgToJob;
 	DetourHook<CDepotDownloadMgr_BYldRequestDepotManifest_t> CDepotDownloadMgr_BYldRequestDepotManifest;
 
@@ -1498,7 +1497,6 @@ bool Hooks::setup()
 		&& CCMInterface_RecvPkt.setup(VFTIndexes::CCMInterface::RecvPkt, &hkCMInterface_RecvPkt)
 
 		&& CWebSocketConnection_BBuildAndAsyncSendFrame.setup(Patterns::CWebSocketConnection::BBuildAndAsyncSendFrame, &ManifestCode::hkBBuildAndAsyncSendFrame)
-		&& CRemoteClientManager_RecvPkt.setup(Patterns::CRemoteClientManager::RecvPkt, &ManifestCode::hkRecvPkt)
 		&& CJobMgr_BRouteMsgToJob.setup(Patterns::CJobMgr::BRouteMsgToJob, &ManifestCode::hkBRouteMsgToJob)
 		&& CDepotDownloadMgr_BYldRequestDepotManifest.setup(Patterns::CDepotDownloadMgr::BYldRequestDepotManifest, &ManifestCode::hkCDepotDownloadMgr_BYldRequestDepotManifest)
 
@@ -1658,7 +1656,6 @@ void Hooks::place()
 
 	CCMInterface_RecvPkt.place();
 
-	CRemoteClientManager_RecvPkt.place();
 	CJobMgr_BRouteMsgToJob.place();
 	CDepotDownloadMgr_BYldRequestDepotManifest.place();
 	CSteamEngine_ProcessIPCFrame.place();
@@ -1736,7 +1733,6 @@ void Hooks::remove()
 	CCMInterface_RecvPkt.remove();
 
 	CWebSocketConnection_BBuildAndAsyncSendFrame.remove();
-	CRemoteClientManager_RecvPkt.remove();
 	CJobMgr_BRouteMsgToJob.remove();
 	CDepotDownloadMgr_BYldRequestDepotManifest.remove();
 	CSteamEngine_ProcessIPCFrame.remove();

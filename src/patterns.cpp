@@ -1242,25 +1242,6 @@ namespace Patterns
 		};
 	}
 
-	namespace CRemoteClientManager
-	{
-		Pattern_t RecvPkt
-		{
-			"CRemoteClientManager::RecvPkt",
-			"55 89 E5 57 56 E8 ? ? ? ? 81 C6 ? ? ? ? 53 83 EC 1C "
-			// [esi+disp32]: PIC-relative global slot whose displacement drifts
-			// between Steam client builds (0x8B0 -> 0x8B4 on 1781041600; the
-			// whole low word moved on a later beta).  Wildcard both low
-			// displacement bytes so the match survives the shift; the two high
-			// bytes stay 00 00 (the slot is well under 0x10000) and the rest of
-			// the body keeps the match unique.
-			"8B 86 ? ? 00 00 8B 00 85 C0 0F 85 ? ? ? ? "
-			"C7 45 E4 00 00 00 00 83 EC 08 89 F3 6A 01 FF 75 0C "
-			"E8 ? ? ? ? 89 C7 83 C4 10 85 C0 0F 84 ? ? ? ? 83 EC 0C 50",
-			SigFollowMode::None
-		};
-	}
-
 	namespace CJobMgr
 	{
 		Pattern_t BRouteMsgToJob
