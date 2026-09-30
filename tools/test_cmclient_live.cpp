@@ -30,8 +30,9 @@ int main(int argc, char** argv)
 
 	std::printf("requesting %zu apps...\n", apps.size());
 	std::unordered_map<uint32_t, std::string> out;
-	const bool ok = CmClient::fetchProductInfo(apps, out);
-	std::printf("fetchProductInfo -> %s, %zu buffers\n",
+	const bool ok = CmClient::fetchProductInfoDetailed(apps, out) ==
+	                CmClient::FetchResult::Success;
+	std::printf("fetchProductInfoDetailed -> %s, %zu buffers\n",
 	            ok ? "true" : "false", out.size());
 	for (uint32_t a : apps)
 	{

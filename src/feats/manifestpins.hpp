@@ -25,33 +25,6 @@ namespace ManifestPins
 	// appid -> its pins
 	using PinMap = std::unordered_map<uint32_t, AppPins>;
 
-	// Union every app's depot->gid into one index.  A depot can be present in
-	// more than one app after malformed or overlapping configuration.  Keep a
-	// shared gid when it is identical, but remove conflicting ownership from
-	// the fallback index instead of letting iteration order choose a winner.
-	inline std::unordered_map<uint32_t, uint64_t> flattenDepots(const PinMap& pins)
-	{
-		std::unordered_map<uint32_t, uint64_t> flat;
-		std::unordered_set<uint32_t> ambiguous;
-		for (const auto& [appId, app] : pins)
-		{
-			if (!appId) continue;
-			for (const auto& [depotId, gid] : app.depots)
-			{
-				if (!depotId || !gid) continue;
-				if (ambiguous.contains(depotId)) continue;
-
-				auto [it, inserted] = flat.emplace(depotId, gid);
-				if (!inserted && it->second != gid)
-				{
-					flat.erase(it);
-					ambiguous.insert(depotId);
-				}
-			}
-		}
-		return flat;
-	}
-
 	inline std::unordered_set<uint32_t> lockedAppSet(const PinMap& pins)
 	{
 		std::unordered_set<uint32_t> locked;
@@ -116,26 +89,10 @@ namespace ManifestPins
 		             : getPinForUniqueOwner(pins, depotId);
 	}
 
-	// Legacy/global lookup retained for hooks that do not have app context.
-	// flattenDepots omits conflicting entries, so this fallback is safe.
-	inline uint64_t getPin(const std::unordered_map<uint32_t, uint64_t>& flat,
-	                       uint32_t depotId)
-	{
-		if (!depotId) return 0ULL;
-		const auto it = flat.find(depotId);
-		return it == flat.end() ? 0ULL : it->second;
-	}
-
 	inline bool isLocked(const std::unordered_set<uint32_t>& locked,
 	                     uint32_t appId)
 	{
 		return locked.count(appId) != 0;
-	}
-
-	inline void purgeApps(PinMap& pins,
-	                      const std::unordered_set<uint32_t>& dropApps)
-	{
-		for (uint32_t appId : dropApps) pins.erase(appId);
 	}
 
 	inline void purgeOrphans(PinMap& pins,

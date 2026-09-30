@@ -305,28 +305,4 @@ namespace ManifestStore
 		return ManifestStoreIO::newestValidManifestGids(store);
 	}
 
-	void purgeDepots(const std::vector<uint32_t>& depotIds)
-	{
-		const std::string store = dir();
-		if (store.empty()) return;
-
-		std::error_code ec;
-		if (!fs::is_directory(store, ec)) return;
-
-		for (uint32_t depotId : depotIds)
-		{
-			const std::string prefix = std::to_string(depotId) + "_";
-			for (const auto& entry : fs::directory_iterator(store, ec))
-			{
-				if (ec) break;
-				const auto name = entry.path().filename().string();
-				if (gidFromName(name, prefix))
-				{
-					fs::remove(entry.path(), ec);
-					g_pLog->debug("ManifestStore: purged %s\n", name.c_str());
-				}
-			}
-			fs::remove(ManifestStoreIO::preferredPath(store, depotId), ec);
-		}
-	}
 }

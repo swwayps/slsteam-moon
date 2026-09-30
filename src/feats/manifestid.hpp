@@ -146,9 +146,6 @@ namespace ManifestId
 	// Persist a (depotId, gid) pair to the catalog.  Idempotent.
 	bool savePin(uint32_t depotId, const std::string& gid);
 
-	// Remove catalog entries for depots that no longer have any script owner.
-	// Shared depots are never passed here by the relation index.
-	void retireDepots(const std::vector<uint32_t>& depotIds);
 
 	// Return manifest depots that are referenced only by `appId`.  These are
 	// the only depot-scoped catalog files safe to quarantine during removal.

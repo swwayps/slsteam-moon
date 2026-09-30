@@ -85,7 +85,4 @@ namespace ManifestStore
 	// Install-time selection continues to use bestArchivedGid() unchanged.
 	ArchivedGidIndex archivedGidIndex();
 
-	// Delete every archived manifest for the given depots (LuaTools
-	// remove-game / AdditionalApps pruning).
-	void purgeDepots(const std::vector<uint32_t>& depotIds);
 }

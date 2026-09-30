@@ -211,6 +211,4 @@ namespace OwnerWork
 	// queue. See OwnerQueue::PlacementGate for why this gate exists.
 	bool shutdownIfPlaced();
 
-	// Current pending depth (diagnostics/tests).
-	std::size_t pendingDepth();
 }

@@ -1,8 +1,6 @@
 #include "apps.hpp"
 #include "stats_policy.hpp"
 
-#include "stats_policy.hpp"
-
 #include "../sdk/CNetPacket.hpp"
 #include "../sdk/CProtoBufMsgBase.hpp"
 #include "../sdk/CSteamEngine.hpp"

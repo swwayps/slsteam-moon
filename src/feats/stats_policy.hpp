@@ -62,23 +62,6 @@ public:
 		entry.native = entry.native || native;
 		entry.local = !entry.native && success && package == 0 && owns && !expired;
 	}
-	void observePackage(uint32_t package, uint32_t app)
-	{
-		std::lock_guard lock(m_mutex);
-		if (!package || !app) return;
-		if (!m_account)
-			m_pendingPackageApps.insert(app);
-		else
-			m_nativePackageApps.insert(app);
-	}
-	void observePackage(Context expected, uint32_t package, uint32_t app)
-	{
-		std::lock_guard lock(m_mutex);
-		if (!package || !app || !expected.account ||
-		    expected.account != m_account || expected.epoch != m_epoch)
-			return;
-		m_nativePackageApps.insert(app);
-	}
 	void replacePackageApps(Context expected,
 	                        const std::vector<uint32_t>& apps)
 	{
@@ -135,8 +118,6 @@ void observe(Context context, uint32_t app, bool success, const AppOwnershipInfo
 // Passive evidence from Steam's original CheckAppOwnership result. Missing or
 // invalidated evidence returns false, preserving the managed install path.
 bool hasNativeLicense(uint32_t app);
-void observeNativePackage(uint32_t package, uint32_t app);
-void observeNativePackage(Context expected, uint32_t package, uint32_t app);
 void replaceNativePackageApps(Context expected,
 	                          const std::vector<uint32_t>& apps);
 // refresh=true is ONLY for a Steam-owned request thread. Background consumers

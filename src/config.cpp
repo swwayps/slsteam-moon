@@ -869,7 +869,6 @@ bool CConfig::loadSettings()
 		ManifestPins::purgeOrphans(pinMap, addedAppIds.get());
 
 		manifestPinsByApp.set(pinMap);
-		manifestPins.set(ManifestPins::flattenDepots(pinMap));
 		lockedApps.set(ManifestPins::lockedAppSet(pinMap));
 	}
 
@@ -907,11 +906,6 @@ bool CConfig::isAddedAppId(uint32_t appId)
 	return addedAppIds.contains(appId);
 }
 
-uint64_t CConfig::getManifestPin(uint32_t depotId)
-{
-	return ManifestPins::getPin(manifestPins.get(), depotId);
-}
-
 uint64_t CConfig::getManifestPin(uint32_t appId, uint32_t depotId)
 {
 	return ManifestPins::getPinForContext(manifestPinsByApp.get(), appId, depotId);
@@ -935,15 +929,6 @@ CConfig::getAppPinnedDepots(uint32_t appId)
 	const auto it = pinMap.find(appId);
 	if (it == pinMap.end()) return {};
 	return it->second.depots;
-}
-
-void CConfig::purgePinsForApps(const std::unordered_set<uint32_t>& appIds)
-{
-	auto pinMap = manifestPinsByApp.get();
-	ManifestPins::purgeApps(pinMap, appIds);
-	manifestPinsByApp.set(pinMap);
-	manifestPins.set(ManifestPins::flattenDepots(pinMap));
-	lockedApps.set(ManifestPins::lockedAppSet(pinMap));
 }
 
 bool CConfig::shouldExcludeAppId(uint32_t appId, bool ignoreAdditionalApps)

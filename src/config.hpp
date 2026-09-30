@@ -108,11 +108,8 @@ public:
 	MTVariable<std::unordered_map<uint32_t, uint32_t>> subscriptionTimestamps;
 	LibraryDates::Store libraryDates;
 
-	// Manifest pinning.  manifestPins is the flattened, unambiguous
-	// depot->gid redirect index used only by legacy hooks without app context;
-	// lockedApps drives shouldDisableUpdates; manifestPinsByApp is the
-	// structured source kept for app-scoped lookup and purge.
-	MTVariable<std::unordered_map<uint32_t, uint64_t>> manifestPins;
+	// Manifest pinning.  lockedApps drives shouldDisableUpdates;
+	// manifestPinsByApp is the structured source for app-scoped lookup.
 	MTVariable<std::unordered_set<uint32_t>> lockedApps;
 	MTVariable<ManifestPins::PinMap> manifestPinsByApp;
 
@@ -312,9 +309,6 @@ public:
 	// apps (stplug-in, luaappids.yaml) stay active; the next reload resets it.
 	void setAdditionalApps(const std::unordered_set<uint32_t>& appIds, bool firstLoad = false);
 
-	// Legacy fallback for hooks that do not know the owning app.  Conflicting
-	// depot ownership is omitted from this index and returns zero.
-	uint64_t getManifestPin(uint32_t depotId);
 	// Authoritative lookup for consumers that have the owning app context.
 	uint64_t getManifestPin(uint32_t appId, uint32_t depotId);
 	// Planner lookup: use DepotEntry's app context, with a fallback only when
@@ -325,7 +319,6 @@ public:
 	// an app's installed depots already match its pins (pin-aware update
 	// suppression: allow the one downgrade, then freeze).
 	std::unordered_map<uint32_t, uint64_t> getAppPinnedDepots(uint32_t appId);
-	void purgePinsForApps(const std::unordered_set<uint32_t>& appIds);
 
 	bool shouldExcludeAppId(uint32_t appId, bool ignoreAdditionalApps = false);
 	CSteamId getDenuvoGameOwner(const AppId_t appId);

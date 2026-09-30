@@ -27,17 +27,6 @@ bool StatsPolicy::hasNativeLicense(uint32_t app)
 	return state.hasNativeLicense(state.account(), app);
 }
 
-void StatsPolicy::observeNativePackage(uint32_t package, uint32_t app)
-{
-	state.observePackage(package, app);
-}
-
-void StatsPolicy::observeNativePackage(Context expected, uint32_t package,
-                                       uint32_t app)
-{
-	state.observePackage(expected, package, app);
-}
-
 void StatsPolicy::replaceNativePackageApps(
 	Context expected, const std::vector<uint32_t>& apps)
 {

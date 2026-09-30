@@ -53,8 +53,6 @@ namespace HotReload
 		std::uint32_t baseAppId,
 		std::uint64_t expectedManagedGeneration) noexcept;
 
-	// Process-lifetime lock-free membership store used by GetOrAddAppData.
-	HotReloadState::Store& store() noexcept;
 
 	// Stop accepting watcher publications before Steam hooks are removed.
 	void shutdown() noexcept;

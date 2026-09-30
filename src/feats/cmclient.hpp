@@ -46,24 +46,15 @@ enum class FetchResult
 // TLS dependency tree can crash the 32-bit client.
 bool prepareForThreadedFetch();
 
-// Detailed form used by startup provisioning so a directory/DNS failure can
+// Fetch PICS product-info wire buffers for `appids`: `out[appid]` receives
+// the wire buffer for every app the CM returned one for, `changesOut` (when
+// set) its change_number. A partial result is still Success, so the caller
+// falls back only for the rest. NetworkUnavailable lets startup provisioning
 // open its fleet-wide network circuit instead of entering per-app fallbacks.
 FetchResult fetchProductInfoDetailed(
     const std::vector<uint32_t>& appids,
     std::unordered_map<uint32_t, std::string>& out,
     std::unordered_map<uint32_t, uint32_t>* changesOut = nullptr);
 
-// Fetch PICS product-info wire buffers for `appids`.  On success fills
-// `out[appid] = wire_text_vdf_buffer` for every app the CM returned a
-// non-empty buffer for, and returns true.  On any error returns false
-// (the caller should fall back to another provider).  Best-effort: a
-// partial result (some apps present, some missing) still returns true so
-// the caller can use what it got and fall back for the rest.
-//
-// When `changesOut` is non-null it also receives each returned app's
-// `change_number` (used as part of the appinfo.vdf idempotency key).
-bool fetchProductInfo(const std::vector<uint32_t>& appids,
-                      std::unordered_map<uint32_t, std::string>& out,
-                      std::unordered_map<uint32_t, uint32_t>* changesOut = nullptr);
 
 } // namespace CmClient

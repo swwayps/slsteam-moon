@@ -20,7 +20,6 @@
 #include "depotquarantine_store.hpp"
 #include "appinfostate.hpp"
 #include "hotreload_package.hpp"
-#include "hotreload_capabilities.hpp"
 #include "license_refresh_policy.hpp"
 #include "libraryremoval.hpp"
 #include "stats_policy.hpp"
@@ -1119,17 +1118,6 @@ namespace PackagePatch
 
 		if (refreshResult != RuntimeRefreshResult::Busy)
 			requestLiveAppInfo(snapshot.generation, applied.appInfoRequestIds);
-	}
-
-	bool runtimeRefreshReady()
-	{
-		HotReloadCapabilities::Matrix capabilities;
-		capabilities.markLicenseChanged =
-			g_pMarkLicenseAsChanged != nullptr;
-		capabilities.processLicenseUpdates =
-			g_pProcessPendingLicenseUpdates != nullptr;
-		capabilities.unresolvedAppGuard = AppInfoState::ready();
-		return capabilities.canProcessUnresolvedAdd();
 	}
 
 	bool runtimeRefreshPending() noexcept

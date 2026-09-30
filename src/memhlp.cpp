@@ -216,28 +216,6 @@ MemHlp::SignatureSearchResult MemHlp::searchSignatureDetailed(
 	return result;
 }
 
-lm_address_t MemHlp::searchSignature(
-	const char* name,
-	const char* signature,
-	lm_module_t module,
-	SigFollowMode mode,
-	const int16_t* extraData,
-	size_t extraDataSize
-)
-{
-	return searchSignatureDetailed(name, signature, module, mode, extraData, extraDataSize).target;
-}
-
-lm_address_t MemHlp::searchSignature(const char* name, const char* signature, lm_module_t module, SigFollowMode mode)
-{
-	return MemHlp::searchSignature(name, signature, module, mode, nullptr, 0);
-}
-
-lm_address_t MemHlp::searchSignature(const char* name, const char* signature, lm_module_t module)
-{
-	return searchSignature(name, signature, module, SigFollowMode::None);
-}
-
 lm_module_t* MemHlp::getModule(const std::string& name)
 {
 	// Only the Lua bindings call this, always under Lua::stateMutex.

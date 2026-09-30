@@ -25,17 +25,9 @@ int main()
 	pins[285900].locked = false;
 	pins[285900].depots[285904] = 123456789012345ULL;
 
-	// 1) flatten: every depot present, gids intact (uint64 precision).
-	{
-		auto flat = flattenDepots(pins);
-		CHECK(flat.size() == 3, "flatten: 3 depots across 2 apps");
-		CHECK(flat[1054491] == 4091695229428697509ULL, "flatten: gid1 exact");
-		CHECK(flat[1054492] == 6006800166866532891ULL, "flatten: gid2 exact");
-		CHECK(flat[285904] == 123456789012345ULL, "flatten: dlc gid exact");
-	}
 
 	// 2) app-scoped lookup: the same depot id must never inherit another
-	// app's gid.  The flattened fallback is only safe for unambiguous depots.
+	// app's gid.
 	{
 		CHECK(getPin(pins, 1054490, 1054491) == 4091695229428697509ULL,
 		      "scoped: owning app gets its depot gid");
@@ -58,11 +50,6 @@ int main()
 		CHECK(getPinForUniqueOwner(unique, 701) == 0,
 		      "planner: multiple owners disable depot-only fallback");
 
-		PinMap collision = pins;
-		collision[285900].depots[1054491] = 777ULL;
-		auto flat = flattenDepots(collision);
-		CHECK(flat.count(1054491) == 0,
-		      "flatten: conflicting depot ownership is omitted from fallback");
 	}
 
 	// 3) lockedAppSet: only the locked app.
@@ -88,17 +75,8 @@ int main()
 		      "locked: zero depot entry is inert");
 		CHECK(lockedAppSet(malformed).count(4) == 1,
 		      "locked: valid entry remains locked");
-		auto flat = flattenDepots(malformed);
-		CHECK(flat.size() == 1 && flat[40] == 400,
-		      "flatten: invalid entries omitted and valid sibling kept");
 	}
 
-	// 3) getPin: hit returns gid, miss returns 0.
-	{
-		auto flat = flattenDepots(pins);
-		CHECK(getPin(flat, 1054491) == 4091695229428697509ULL, "getPin: hit");
-		CHECK(getPin(flat, 999999) == 0, "getPin: miss -> 0");
-	}
 
 	// 4) isLocked: hit / miss.
 	{
@@ -108,14 +86,6 @@ int main()
 		CHECK(!isLocked(locked, 1), "isLocked: unknown app false");
 	}
 
-	// 5) purgeApps: drops only listed apps.
-	{
-		PinMap p = pins;
-		purgeApps(p, {1054490});
-		CHECK(p.count(1054490) == 0, "purgeApps: target removed");
-		CHECK(p.count(285900) == 1, "purgeApps: other kept");
-		CHECK(flattenDepots(p).size() == 1, "purgeApps: index shrinks");
-	}
 
 	// 6) purgeOrphans: keeps only apps still present in AdditionalApps.
 	{
@@ -128,10 +98,8 @@ int main()
 	// 7) empty inputs: no crash, empty results.
 	{
 		PinMap empty;
-		CHECK(flattenDepots(empty).empty(), "empty: flatten empty");
 		CHECK(lockedAppSet(empty).empty(), "empty: locked empty");
 		purgeOrphans(empty, {1});      // no-op
-		purgeApps(empty, {1});         // no-op
 		CHECK(empty.empty(), "empty: purges are no-ops");
 	}
 

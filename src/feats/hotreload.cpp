@@ -290,11 +290,6 @@ bool publishLocked(
 
 namespace HotReload
 {
-HotReloadState::Store& store() noexcept
-{
-	return membershipStore();
-}
-
 void initialize() noexcept
 {
 	try

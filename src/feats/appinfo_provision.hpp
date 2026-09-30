@@ -237,14 +237,10 @@ bool readValidatedDlcMetadataCache(
 	std::uint64_t expectedGeneration,
 	DlcMetadata::CacheRecord& record);
 
-// Fetch and persist a synthetic PICS buffer for `appId` if needed.
-// `appinfoVdfPath` is the path to Steam's appcache/appinfo.vdf and is
-// used to skip apps that already have a usable entry.  Returns true if
-// a new buffer was written (or already cached).
-bool provisionApp(uint32_t appId, const std::string& appinfoVdfPath);
-
-// Run `provisionApp` only for managed ids sourced from stplug-in or
-// luaappids.yaml. Installed compatibility ids never enter provider calls.
+// Fetch and persist a synthetic PICS buffer, where needed, for the managed
+// ids sourced from stplug-in or luaappids.yaml. `appinfoVdfPath` is Steam's
+// appcache/appinfo.vdf, used to skip apps that already have a usable entry.
+// Installed compatibility ids never enter provider calls.
 // Returns the number of buffers newly written (0 means everything was
 // already provisioned or none needed).  `allowConfigWrite` is true only for
 // the preinit pass, before Steam can concurrently rewrite config.vdf.

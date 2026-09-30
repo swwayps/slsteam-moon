@@ -47,11 +47,6 @@ namespace PackagePatch
 	// pair execute as one serialized Steam-owned work unit.
 	void synchronizePackage0(const PackageSnapshot& snapshot);
 
-	// Full runtime-add capability: mark/process locators plus the scoped
-	// unresolved-app guard.  A metadata-complete snapshot can still be
-	// processed when the guard is unavailable; synchronizePackage0 decides that
-	// per transition.
-	bool runtimeRefreshReady();
 
 	// Lock-free owner-frame hint for a generation whose mark/process work was
 	// deferred or lost a non-blocking execution claim.

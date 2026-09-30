@@ -731,11 +731,6 @@ bool ready() noexcept
 	return g_lifecycle.managed();
 }
 
-bool catastrophic() noexcept
-{
-	return g_lifecycle.catastrophic();
-}
-
 bool resolvedDirtyHint() noexcept
 {
 	Store* const store = g_store.load(std::memory_order_acquire);

@@ -732,12 +732,4 @@ FetchResult fetchProductInfoDetailed(
 	return FetchResult::Failed;
 }
 
-bool fetchProductInfo(const std::vector<uint32_t>& appids,
-                      std::unordered_map<uint32_t, std::string>& out,
-                      std::unordered_map<uint32_t, uint32_t>* changesOut)
-{
-	return fetchProductInfoDetailed(appids, out, changesOut) ==
-	       FetchResult::Success;
-}
-
 } // namespace CmClient

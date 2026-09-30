@@ -12,7 +12,6 @@ struct servernetadr_t;
 
 namespace FakeAppIds
 {
-	extern std::unordered_map<HSteamPipe, AppId_t> fakeAppIdMap;
 	extern std::unordered_map<uint32_t, AppId_t> fakeAppIdMapServer;
 	extern std::unordered_map<uint64_t, AppId_t> fakeAppIdMapPings;
 

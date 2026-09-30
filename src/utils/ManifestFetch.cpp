@@ -720,11 +720,6 @@ int getTimeoutSec()
 	return 12;
 }
 
-const char* defaultTimeoutKey()
-{
-	return "ManifestFetch.timeout_sec";
-}
-
 void submitManifestBlob(uint64_t manifestGid, uint32_t appId, uint32_t depotId,
                         bool bypassArchiveMiss)
 {

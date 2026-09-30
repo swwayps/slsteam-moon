@@ -19,20 +19,6 @@ int32_t IClientApps::getAppData(uint32_t appId, const char* name, const char* pC
 	);
 }
 
-uint32_t IClientApps::getAppDataSection(uint32_t appId, EAppInfoSection section, const char* pChOut, uint32_t outSize)
-{
-	return MemHlp::callVFunc<uint32_t(*)(void*, uint32_t, uint32_t, const char*, uint32_t, uint8_t)>
-	(
-		 VFTIndexes::IClientApps::GetAppDataSection.index,
-		 this,
-		 appId,
-		 section,
-		 pChOut,
-		 outSize,
-		 1
-	);
-}
-
 bool IClientApps::requestAppInfoUpdate(const std::vector<uint32_t>& appIds)
 {
 	if (appIds.empty() ||

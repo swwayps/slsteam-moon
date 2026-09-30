@@ -565,7 +565,6 @@ inline void* guard(
 bool setup(HotReloadState::Store& store) noexcept;
 void remove() noexcept;
 bool ready() noexcept;
-bool catastrophic() noexcept;
 bool resolvedDirtyHint() noexcept;
 bool takeResolvedDirty() noexcept;
 

@@ -30,13 +30,10 @@ int main()
 	check(!store.hasNativeLicense(7, 123),
 	      "license invalidation clears native ownership evidence");
 	StatsPolicy::Store packageStore;
-	packageStore.observePackage(25, 123);
+	packageStore.replacePackageApps(packageStore.context(), {123});
 	packageStore.setAccount(7);
 	check(packageStore.hasNativeLicense(7, 123),
-	      "real package loaded before account discovery becomes native evidence");
-	packageStore.observePackage(0, 456);
-	check(!packageStore.hasNativeLicense(7, 456),
-	      "package zero never becomes native evidence");
+	      "a package snapshot taken before account discovery becomes native evidence");
 	packageStore.setAccount(8);
 	check(!packageStore.hasNativeLicense(8, 123),
 	      "package evidence cannot cross accounts");
@@ -50,11 +47,11 @@ int main()
 	      "pre-account package snapshots retain only the latest license set");
 	auto stalePackageContext = packageStore.context();
 	packageStore.setAccount(9);
-	packageStore.observePackage(stalePackageContext, 25, 456);
+	packageStore.replacePackageApps(stalePackageContext, {456});
 	check(!packageStore.hasNativeLicense(9, 456),
 	      "stale package publication cannot cross account epochs");
 	auto currentPackageContext = packageStore.context();
-	packageStore.observePackage(currentPackageContext, 25, 456);
+	packageStore.replacePackageApps(currentPackageContext, {123, 456});
 	check(packageStore.hasNativeLicense(9, 456),
 	      "current package publication records native ownership");
 	packageStore.replacePackageApps(currentPackageContext, {456, 789});

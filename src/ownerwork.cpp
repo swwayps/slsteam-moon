@@ -428,8 +428,4 @@ namespace OwnerWork
 		return OwnerQueue::applyTeardown(placementGate(), queue());
 	}
 
-	std::size_t pendingDepth()
-	{
-		return queue().depth();
-	}
 }

@@ -237,13 +237,6 @@ void retireDepotsLocked(const std::vector<uint32_t>& depotIds)
 }
 } // namespace
 
-void retireDepots(const std::vector<uint32_t>& depotIds)
-{
-	if (depotIds.empty()) return;
-	std::lock_guard<std::mutex> lk(g_catalogMu);
-	retireDepotsLocked(depotIds);
-}
-
 // ---------------------------------------------------------------------------
 // Importer
 // ---------------------------------------------------------------------------

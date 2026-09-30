@@ -173,9 +173,6 @@ namespace MemHlp
 		const int16_t* extraData,
 		size_t extraDataSize
 	);
-	lm_address_t searchSignature(const char* name, const char* signature, lm_module_t module, SigFollowMode mode, const int16_t* extraData, size_t extraDataSize);
-	lm_address_t searchSignature(const char* name, const char* signature, lm_module_t module, SigFollowMode mode);
-	lm_address_t searchSignature(const char* name, const char* signature, lm_module_t module);
 
 	// Lua plugin API (memhlp.getModule, memhlp.hexdump). getModule caches by
 	// file name; a module that was not loaded at the first lookup stays

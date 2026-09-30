@@ -211,7 +211,7 @@ NetworkFailure httpGetJson(const std::string& url, std::string& body,
 	// Bounded timeouts.  AppInfoProvision runs in setup() on the startup
 	// path, so we must not stall Steam's launch for too long if
 	// steamcmd.net is slow or unreachable.  The fetch is now wrapped in a
-	// bounded retry (see provisionApp), and all provider attempts in this
+	// bounded retry (see provisionAppDetailed), and all provider attempts in this
 	// startup pass share one 15-second wall-clock budget. A slow mirror can
 	// therefore never multiply this timeout by app count or retry count.
 	curlApi()->easy_setopt(c, CURLOPT_TIMEOUT_MS, timeoutMs);
@@ -944,7 +944,7 @@ void persistPendingProtonMappings(bool waitForLock)
 }
 
 // Return the full identity of `appId`'s on-disk provisioned buffer, and
-// whether it exists and is non-empty.  Used by provisionApp's short-lived
+// whether it exists and is non-empty.  Used by provisionAppDetailed's short-lived
 // cache to skip the network fetch during the setup() re-exec storm of a
 // single boot and to key the expensive validation memo safely across atomic
 // replacements.
@@ -2489,13 +2489,6 @@ bool noteTerminalProvisionResult(uint32_t appId, SourceResult result,
 	return true;
 }
 
-void clearTerminalProvisionResult(uint32_t appId)
-{
-	std::lock_guard<std::mutex> lock(g_cachePublicationMu);
-	g_terminalProvisionResults.erase(appId);
-	ProvisionTerminal::Store(getCacheDir()).erase(appId);
-}
-
 TerminalObservation observeTerminal(uint32_t appId,
 	uint32_t observedChangeNumber)
 {
@@ -2815,14 +2808,6 @@ ProvisionOutcome provisionAppDetailed(uint32_t appId,
 	return ProvisionOutcome::Updated;
 }
 
-bool provisionApp(uint32_t appId, const std::string& appinfoVdfPath)
-{
-	ProvisionPassState pass;
-	ProvisionPassContext context;
-	return isProvisioned(provisionAppDetailed(
-		appId, appinfoVdfPath, pass, context));
-}
-
 std::vector<std::uint32_t> publishRuntimeAppInfo(
 	const std::string& appinfoVdfPath,
 	const std::vector<RefreshRequest>& requested);
@@ -2859,7 +2844,7 @@ int provisionAppsPass(const std::string& appinfoVdfPath,
 	// PRIMARY source: one batched anonymous-CM product-info request to
 	// Valve for the whole fleet (≈0.3s for dozens of apps; replaces the
 	// per-app steamcmd.net round-trips).  Best-effort: any miss falls
-	// through to the steamcmd.net HTTP chain inside provisionApp.  Skip
+	// through to the steamcmd.net HTTP chain inside provisionAppDetailed.  Skip
 	// only those apps whose buffer is still fresh on disk (the cache TTL
 	// would short-circuit them anyway), so a warm relaunch makes no CM
 	// request at all.  Disable entirely via SLSSTEAM_DISABLE_CM=1.
@@ -3024,25 +3009,6 @@ int provisionAppsPass(const std::string& appinfoVdfPath,
 		origin, summary.requested, summary.fetched, summary.updated,
 		summary.ready + summary.fallback, summary.terminal, summary.failed);
 
-	return provisioned;
-}
-
-int provisionApps(const std::string& appinfoVdfPath,
-                  const std::unordered_set<uint32_t>& added,
-                  bool onlyMissing)
-{
-	if (added.empty()) return 0;
-
-	ProvisionPassCoordinator coordinator(g_provisionPassMu);
-	const auto addedSnapshot = coordinator.snapshot([&] { return added; });
-	if (addedSnapshot.empty()) return 0;
-
-	ProvisionPassContext context;
-	const int provisioned = provisionAppsPass(
-		appinfoVdfPath, addedSnapshot, onlyMissing, context, nullptr, "scoped");
-	coordinator.commit([&] {
-		persistPendingProtonMappings(false);
-	});
 	return provisioned;
 }
 
