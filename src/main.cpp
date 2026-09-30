@@ -423,16 +423,6 @@ static void setup()
 	}
 
 
-	// Upstream appends the system lib dirs for processes Steam starts; the
-	// loader read LD_LIBRARY_PATH at startup, so this process is unaffected.
-	{
-		const char* cur = getenv("LD_LIBRARY_PATH");
-		std::string ldLibPath = cur ? cur : "";
-		ldLibPath.append(":/usr/lib:/usr/lib32");
-		setenv("LD_LIBRARY_PATH", ldLibPath.c_str(), true);
-	}
-
-
 	setupSuccess = true;
 }
 
