@@ -10,7 +10,6 @@
 #include "protobufs/steammessages_clientserver_appinfo.pb.h"
 #include "protobufs/steammessages_clientserver_friends.pb.h"
 #include "protobufs/steammessages_clientserver_userstats.pb.h"
-#include "protobufs/steammessages_player.steamclient.pb.h"
 
 #include <cstdint>
 
@@ -35,10 +34,5 @@ public:
 	constexpr EMsg getProtoBufType() const
 	{
 		return static_cast<EMsg>(type & ~PROTOBUF_TYPE_MASK);
-	}
-	
-	template<typename T> constexpr T* getBody() const
-	{
-		return reinterpret_cast<T*>(__pBody);
 	}
 }; //0x2C

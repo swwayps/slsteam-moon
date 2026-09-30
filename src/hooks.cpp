@@ -11,8 +11,6 @@
 #include "process.hpp"
 #include "vftableinfo.hpp"
 
-#include "sdk/CAPIJob.hpp"
-#include "sdk/CClientUnifiedServiceTransport.hpp"
 #include "sdk/CNetPacket.hpp"
 #include "sdk/CProtoBufMsgBase.hpp"
 #include "sdk/CSteamEngine.hpp"
@@ -307,67 +305,6 @@ static void hkTraceIPC(const char* iface, const char* fn)
 
 	LOG_TRACE("Calling tramp\n");
 	Hooks::TraceIPC.tramp.fn(iface, fn);
-}
-
-static uint32_t hkAPIJob_SendAndRecv(CAPIJob* pAPIJob, CProtoBufMsgBase* send, uint32_t a2, uint32_t timeOut, CProtoBufMsgBase* recv, EMsg targetType)
-{
-	uint32_t ret = Achievements::sendAndRecvGetUserStats(pAPIJob, send, timeOut, recv, targetType);
-
-	if (!ret)
-	{
-		LOG_TRACE("Calling tramp\n");
-		ret = Hooks::CAPIJob_SendAndRecv.tramp.fn(pAPIJob, send, a2, timeOut, recv, targetType);
-	}
-
-	LOG_DEBUG
-	(
-		"%s(%p, %s, %u, %u, %s, %u) -> %u\n",
-
-		Hooks::CAPIJob_SendAndRecv.name.c_str(),
-		reinterpret_cast<void*>(pAPIJob),
-		MemHlp::getTypeName(send),
-		a2,
-		timeOut,
-		MemHlp::getTypeName(recv),
-		targetType,
-		ret
-	);
-
-	return ret;
-}
-
-static uint32_t hkClientUnifiedServiceTransport_SendAndRecvMsg(CClientUnifiedServiceTransport* pUnifiedServiceTransport, const char* name, void* send, void* recv, void* arg4)
-{
-	uint32_t ret = Achievements::sendAndRecvGetPlayerStats
-	(
-		pUnifiedServiceTransport,
-		name,
-		reinterpret_cast<CPlayer_GetUserStats_Request*>(send),
-		reinterpret_cast<CPlayer_GetUserStats_Response*>(recv)
-	);
-
-	if (ret == k_EResultNoResult)
-	{
-		LOG_TRACE("Calling tramp\n");
-		ret = Hooks::CClientUnifiedServiceMethod_SendAndRecvMsg.tramp.fn(pUnifiedServiceTransport, name, send, recv, arg4);
-	}
-
-	Apps::sendAndRecvLastPlayedTimes(name, reinterpret_cast<CPlayer_GetLastPlayedTimes_Response*>(recv));
-
-	LOG_DEBUG
-	(
-		"%s(%p, %s, %s, %s, %p) -> %u\n",
-
-		Hooks::CClientUnifiedServiceMethod_SendAndRecvMsg.name.c_str(),
-		reinterpret_cast<void*>(pUnifiedServiceTransport),
-		name,
-		MemHlp::getTypeName(send),
-		MemHlp::getTypeName(recv),
-		arg4,
-		ret
-	);
-
-	return ret;
 }
 
 std::unordered_map<int, LuaHook*> LuaHook::hooks;
@@ -1402,9 +1339,6 @@ namespace Hooks
 
 	DetourHook<TraceIPC_t> TraceIPC;
 
-
-	DetourHook<CAPIJob_SendAndRecv_t> CAPIJob_SendAndRecv;
-	DetourHook<CClientUnifiedServiceMethod_SendAndRecvMsg_t> CClientUnifiedServiceMethod_SendAndRecvMsg;
 
 	DetourHook<CCMInterface_RecvPkt_t> CCMInterface_RecvPkt;
 

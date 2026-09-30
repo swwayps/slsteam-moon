@@ -1,7 +1,6 @@
 #pragma once
 
 #include "sdk/types.hpp"
-#include "sdk/protobufs/enums_clientserver.pb.h"
 
 #include "libmem/libmem.h"
 
@@ -10,9 +9,6 @@
 #include <string>
 #include <unordered_map>
 
-class CAPIJob;
-class CClientUnifiedServiceTransport;
-class CProtoBufMsgBase;
 class CUtlBuffer;
 
 template<typename T>
@@ -114,8 +110,6 @@ namespace Hooks
 	typedef void(*TraceIPC_t)(const char*, const char*);
 
 
-	typedef uint32_t(*CAPIJob_SendAndRecv_t)(CAPIJob*, CProtoBufMsgBase*, uint32_t, uint32_t, CProtoBufMsgBase*, EMsg);
-	typedef uint32_t(*CClientUnifiedServiceMethod_SendAndRecvMsg_t)(CClientUnifiedServiceTransport*, const char*, void*, void*, void*);
 
 	typedef void(*CCMInterface_RecvPkt_t)(void*, CNetPacket*);
 
@@ -153,8 +147,6 @@ namespace Hooks
 
 	extern DetourHook<TraceIPC_t> TraceIPC;
 
-	extern DetourHook<CAPIJob_SendAndRecv_t> CAPIJob_SendAndRecv;
-	extern DetourHook<CClientUnifiedServiceMethod_SendAndRecvMsg_t> CClientUnifiedServiceMethod_SendAndRecvMsg;
 
 	extern DetourHook<CCMInterface_RecvPkt_t> CCMInterface_RecvPkt;
 

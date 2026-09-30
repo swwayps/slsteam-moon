@@ -94,16 +94,6 @@ namespace VFTIndexes
 		};
 	};
 
-	namespace CClientUnifiedServiceTransport
-	{
-		VFTableInfo_t SendAndRecvMsg
-		{
-			"30CClientUnifiedServiceTransport",
-			"SendAndRecv",
-			5
-		};
-	}
-
 	namespace CGameInfoDialog
 	{
 		VFTableInfo_t ServerResponded

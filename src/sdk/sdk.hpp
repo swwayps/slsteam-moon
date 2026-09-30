@@ -1,5 +1,3 @@
-#include "CAPIJob.hpp"
-#include "CClientUnifiedServiceTransport.hpp"
 #include "CNetPacket.hpp"
 #include "CProtoBufMsgBase.hpp"
 #include "CSteamEngine.hpp"

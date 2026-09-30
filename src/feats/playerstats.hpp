@@ -16,7 +16,7 @@
 //   CPlayer_GetUserStats_Response { bytes sha_schema=1; uint32 crc_stats=2;
 //                                   bytes schema=3; repeated Stats stats=4; }
 //
-// The player proto isn't compiled into the fork, so these do raw wire
+// SLSsteam does not use the generated player proto, so these do raw wire
 // editing. Pure (no Steam/SDK deps) and unit-testable with a stock g++,
 // same pattern as feats/dlcids.hpp.
 

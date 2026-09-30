@@ -10,7 +10,6 @@
 #include <vector>
 
 class CNetPacket;
-class CPlayer_GetLastPlayedTimes_Response;
 class CSteamId;
 
 template<typename T> class CUtlVector;
@@ -47,7 +46,6 @@ namespace Apps
 	bool shouldDisableCloud(uint32_t appId);
 	bool shouldDisableUpdates(uint32_t appId);
 
-	void sendAndRecvLastPlayedTimes(const char* name, CPlayer_GetLastPlayedTimes_Response* recv);
 	void sendGamesPlayed(CNetPacket* packet);
 	void sendPICSInfoRequest(CNetPacket* packet);
 	void sendMsg(CNetPacket* packet);

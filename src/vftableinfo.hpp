@@ -38,11 +38,6 @@ namespace VFTIndexes
 		extern VFTableInfo_t RecvPkt;
 	}
 
-	namespace CClientUnifiedServiceTransport
-	{
-		extern VFTableInfo_t SendAndRecvMsg;
-	}
-
 	namespace CGameInfoDialog
 	{
 		extern VFTableInfo_t ServerResponded;

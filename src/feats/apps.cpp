@@ -611,27 +611,6 @@ bool Apps::shouldDisableUpdates(uint32_t appId)
 	return atPinned;
 }
 
-void Apps::sendAndRecvLastPlayedTimes(const char* name, CPlayer_GetLastPlayedTimes_Response* recv)
-{
-	if (strcmp(name, "Player.ClientGetLastPlayedTimes#1") != 0)
-	{
-		return;
-	}
-
-	const auto apps = g_config.addedAppIds.get();
-	for (int i = recv->games_size() - 1; i >= 0; i--)
-	{
-		auto game = recv->mutable_games(i);
-		if (!apps.contains(game->appid()))
-		{
-			continue;
-		}
-
-		LOG_DEBUG("Removed serverside PlayTime for %u\n", game->appid());
-		recv->mutable_games()->DeleteSubrange(i, 1);
-	}
-}
-
 void Apps::sendGamesPlayed(CNetPacket* pkt)
 {
 	auto msg = pkt->deserializeBody<CMsgClientGamesPlayed>();
