@@ -1,6 +1,7 @@
 #include "curl.hpp"
 #include "log.hpp"
 
+#include <cerrno>
 #include <cstdlib>
 #include <fcntl.h>
 #include <sstream>
@@ -90,18 +91,32 @@ int Curl::downloadString(const char* url, const std::vector<std::string>& header
 
 	LOG_DEBUG("Child PID %i\n", pid);
 
+	// A signal handled on this thread interrupts read() and waitpid() with
+	// EINTR; that is not the end of the transfer.
 	std::ostringstream bufSS;
 	char buf[8192];
-	int numRead;
-	while((numRead = read(pipefd[0], buf, sizeof(buf))) > 0)
+	ssize_t numRead;
+	bool readFailed = false;
+	while((numRead = read(pipefd[0], buf, sizeof(buf))) != 0)
 	{
-		bufSS << std::string(buf, numRead);
+		if (numRead < 0)
+		{
+			if (errno == EINTR) continue;
+			readFailed = true;
+			break;
+		}
+		bufSS.write(buf, numRead);
 	}
 
 	close(pipefd[0]);
 
 	int status;
-	if (waitpid(pid, &status, 0) == -1)
+	pid_t waited;
+	do
+	{
+		waited = waitpid(pid, &status, 0);
+	} while (waited == -1 && errno == EINTR);
+	if (waited == -1 || readFailed)
 	{
 		return 1;
 	}

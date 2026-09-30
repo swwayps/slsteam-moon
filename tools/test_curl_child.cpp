@@ -8,8 +8,11 @@
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
+#include <csignal>
+#include <ctime>
 #include <string>
 #include <sys/syscall.h>
+#include <sys/time.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -20,7 +23,7 @@ LogLevel CLog::getMinLevel() { return LogLevel::Warn; }
 
 namespace
 {
-enum class Exec { Echo, Missing };
+enum class Exec { Echo, Missing, Pauses };
 Exec execMode = Exec::Echo;
 bool spawnOnPipe = false;
 char marker[] = "/tmp/test_curl_child_XXXXXX";
@@ -72,13 +75,33 @@ extern "C" int pipe2(int fds[2], int flags)
 	return rc;
 }
 
-// Echo mode prints argv and envp to the pipe instead of running curl.
+void pauseMs(long ms)
+{
+	timespec left { ms / 1000, (ms % 1000) * 1000000 };
+	while (nanosleep(&left, &left) == -1 && errno == EINTR) {}
+}
+
+// Echo mode prints argv and envp to the pipe instead of running curl. Pauses
+// mode writes its output in two parts and closes the pipe before it exits,
+// pausing in between, so the parent waits in read() and then in waitpid().
 extern "C" int execve(const char*, char* const argv[], char* const envp[])
 {
 	if (execMode == Exec::Missing)
 	{
 		errno = ENOENT;
 		return -1;
+	}
+	if (execMode == Exec::Pauses)
+	{
+		const std::string first = "first|";
+		const std::string second = "second";
+		if (write(STDOUT_FILENO, first.data(), first.size()) < 0) _exit(2);
+		pauseMs(300);
+		if (write(STDOUT_FILENO, second.data(), second.size()) < 0) _exit(2);
+		// Nothing was exec'd, so the close-on-exec pipe end is still open here.
+		for (int fd = 1; fd < 1024; fd++) close(fd);
+		pauseMs(300);
+		_exit(0);
 	}
 	std::string lines;
 	for (int i = 0; argv[i]; i++) lines.append(argv[i]).append("\n");
@@ -120,6 +143,21 @@ int main()
 	check(elapsed < std::chrono::seconds(2),
 	      "a program started meanwhile does not keep the pipe open");
 	while (wait(nullptr) > 0) {}
+
+	// A signal handler installed without SA_RESTART makes blocking calls in
+	// this thread return EINTR; Steam's own handlers can do the same.
+	struct sigaction onAlarm {};
+	onAlarm.sa_handler = [](int) {};
+	sigemptyset(&onAlarm.sa_mask);
+	sigaction(SIGALRM, &onAlarm, nullptr);
+	const itimerval every20ms { { 0, 20000 }, { 0, 20000 } };
+	setitimer(ITIMER_REAL, &every20ms, nullptr);
+	execMode = Exec::Pauses;
+	const int interrupted = Curl::downloadString("http://127.0.0.1:9/", out);
+	const itimerval off {};
+	setitimer(ITIMER_REAL, &off, nullptr);
+	check(interrupted == 0 && out == "first|second",
+	      "signals during the transfer neither cut the output nor fail it");
 
 	return failures ? 1 : 0;
 }
