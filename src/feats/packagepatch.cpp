@@ -487,10 +487,12 @@ namespace
 		}
 		if (pending.empty()) return;
 
+		// Unaccepted requests are retried on every owner frame; say so once
+		// per generation.
 		bool accepted = false;
 		if (g_pClientApps == nullptr)
 		{
-			g_pLog->info(
+			g_pLog->infoOnce(
 				"PackagePatch: live appinfo request generation %llu deferred "
 				"(client apps unavailable)\n",
 				static_cast<unsigned long long>(generation));
@@ -505,7 +507,7 @@ namespace
 		}
 		else
 		{
-			g_pLog->info(
+			g_pLog->infoOnce(
 				"PackagePatch: live appinfo request generation %llu not accepted "
 				"(client offline or updater unavailable)\n",
 				static_cast<unsigned long long>(generation));
@@ -571,7 +573,11 @@ namespace
 		CUser* const user = getLocalUser();
 		if (user == nullptr)
 		{
-			logDeferredOnce(generation, "the local user is not ready");
+			// Normal at boot: LoadPackage(0) runs before the user exists, and
+			// the owner frame retries once it does.
+			g_pLog->debugOnce(
+				"PackagePatch: runtime refresh generation %llu waits for the local user\n",
+				static_cast<unsigned long long>(generation));
 			return RuntimeRefreshResult::Deferred;
 		}
 
@@ -1083,6 +1089,16 @@ namespace PackagePatch
 		}
 		if (!applied.available)
 		{
+			// The first snapshot is published during setup, before Steam loads
+			// package 0; LoadPackage(0) applies it. Only a loaded package that
+			// cannot take the snapshot is worth a warning.
+			if (g_pPackage0.load(std::memory_order_acquire) == nullptr)
+			{
+				g_pLog->debug(
+					"PackagePatch: runtime package generation %llu waits for LoadPackage(0)\n",
+					static_cast<unsigned long long>(snapshot.generation));
+				return;
+			}
 			logDeferredOnce(snapshot.generation, "package 0 is not ready");
 			return;
 		}
