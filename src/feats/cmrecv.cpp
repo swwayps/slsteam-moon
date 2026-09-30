@@ -71,6 +71,12 @@ void CmRecv::dispatchNetPacket(CNetPacket* pkt)
 			break;
 		}
 
+		// Replies to rewritten achievements requests: keep the schema, drop the
+		// owner's progress, or fail closed.
+		case k_EMsgServiceMethodResponse:
+		case k_EMsgClientGetUserStatsResponse:
+			Achievements::recvReply(pkt);
+			break;
 		case k_EMsgClientGetAppOwnershipTicketResponse:
 		{
 			auto body = pkt->deserializeBody<CMsgClientGetAppOwnershipTicketResponse>();

@@ -1,5 +1,5 @@
 // Source-contract coverage for the CM receive hook, which carries the
-// Family Share choke.
+// Family Share choke and the achievements reply rewrite.
 #include <cctype>
 #include <fstream>
 #include <iostream>
@@ -48,6 +48,17 @@ int main()
 {
 	const std::string hooks = withoutWhitespace(readFile("src/hooks.cpp"));
 	const std::string patterns = withoutWhitespace(readFile("src/patterns.cpp"));
+	const std::string cmrecv = withoutWhitespace(readFile("src/feats/cmrecv.cpp"));
+	const std::string manifestcode = withoutWhitespace(readFile("src/feats/manifestcode.cpp"));
+	// Achievement owner replies are CM responses, so they are rewritten on this
+	// hook; no other receive path may carry a second copy of that rewrite.
+	expect(
+		cmrecv.find("casek_EMsgServiceMethodResponse:casek_EMsgClientGetUserStatsResponse:"
+		            "Achievements::recvReply(pkt);") != std::string::npos,
+		"achievement replies are rewritten on the CM receive hook");
+	expect(
+		manifestcode.find("rewriteResponse") == std::string::npos,
+		"no second achievements reply path remains");
 
 	// CCMInterface::RecvPkt is the only CM receive transport: it carries the
 	// Family Share choke and every CM message feature, so it must be part of

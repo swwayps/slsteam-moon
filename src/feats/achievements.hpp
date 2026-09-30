@@ -6,6 +6,7 @@
 #include <vector>
 
 class CMsgProtoBufHeader;
+class CNetPacket;
 
 namespace Achievements
 {
@@ -25,6 +26,9 @@ std::vector<uint8_t> rewriteRequest(bool modern, const uint8_t* data,
 	uint32_t size, const CMsgProtoBufHeader& header);
 std::optional<std::vector<uint8_t>> rewriteResponse(bool modern, const uint8_t* data,
 	uint32_t size, CMsgProtoBufHeader& header);
+// Apply rewriteResponse to an inbound CM packet (ServiceMethodResponse or
+// ClientGetUserStatsResponse). True when the packet now carries the rewrite.
+bool recvReply(CNetPacket* pkt);
 // Called by the CM-receive dispatch with the login/logoff/license eMsg and
 // the parsed header's steamid.
 void recvMessage(uint32_t type, bool hasSteamId, uint64_t steamId);

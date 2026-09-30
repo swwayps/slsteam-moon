@@ -3,10 +3,15 @@
 #include "../src/feats/achievements.hpp"
 #include "../src/feats/stats_policy.hpp"
 #include "../src/feats/playerstats.hpp"
+#include "../src/sdk/CNetPacket.hpp"
 #include "../src/sdk/CProtoBufMsgBase.hpp"
 #include "../src/sdk/CUser.hpp"
+#include "../src/sdk/steam.hpp"
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <memory>
+#include <string>
 
 namespace {
 constexpr uint32_t app = 12345;
@@ -57,6 +62,26 @@ std::optional<std::vector<uint8_t>> response(bool modern, uint64_t job, bool sch
 	}
 	return Achievements::rewriteResponse(modern, bytes.data(), bytes.size(), header);
 }
+// A Steam-shaped CM packet: CNetPacketBody{type, headerSize} + header + body.
+CNetPacket packet(uint32_t eMsg, const CMsgProtoBufHeader& header, const std::vector<uint8_t>& body) {
+	const std::string head = header.SerializeAsString();
+	const auto size = static_cast<uint32_t>(sizeof(CNetPacketBody) + head.size() + body.size());
+	auto* memory = static_cast<uint8_t*>(Steam::Plat_Alloc(static_cast<int>(size)));
+	auto* frame = reinterpret_cast<CNetPacketBody*>(memory);
+	frame->type = static_cast<ENetPacket>(eMsg | PROTOBUF_TYPE_MASK);
+	frame->headerSize = static_cast<uint32_t>(head.size());
+	std::memcpy(memory + sizeof(CNetPacketBody), head.data(), head.size());
+	if (!body.empty()) std::memcpy(memory + sizeof(CNetPacketBody) + head.size(), body.data(), body.size());
+	CNetPacket out{};
+	out.setBody(frame);
+	out.setSize(size);
+	return out;
+}
+std::vector<uint8_t> packetBody(const CNetPacket& pkt) {
+	const auto* frame = reinterpret_cast<const uint8_t*>(pkt.body());
+	const uint32_t offset = sizeof(CNetPacketBody) + pkt.body()->headerSize;
+	return {frame + offset, frame + pkt.sizeBytes()};
+}
 bool safeFailure(bool modern, const std::optional<std::vector<uint8_t>>& output) {
 	if (!output) return false;
 	if (modern) return output->empty();
@@ -76,6 +101,11 @@ bool CConfig::shouldExcludeAppId(uint32_t, bool) { return excluded; }
 CUser* getLocalUser() { return available ? &user : nullptr; }
 bool CUser::checkAppOwnership(uint32_t, AppOwnershipInfo_t* out) { *out = info; return success; }
 namespace PackagePatch { bool isInjectedAppId(uint32_t) { return injected; } }
+namespace Steam {
+Plat_Alloc_t Plat_Alloc = [](int size) -> void* { return std::malloc(static_cast<std::size_t>(size)); };
+Plat_Free_t Plat_Free = [](void* memory) { std::free(memory); };
+Plat_Realloc_t Plat_Realloc = nullptr;
+}
 
 int main() {
 	g_config.achievements.set(true); g_config.addedAppIds.set({app});
@@ -139,6 +169,44 @@ int main() {
 		const auto dup = nextJob++;
 		request(modern, dup); request(modern, dup);
 		check(safeFailure(modern, response(modern, dup)), "ambiguous duplicate job never publishes another user's progress");
+	}
+	{
+		// Owner replies arrive as CM packets; the rewrite must land in them.
+		license(0);
+		const auto job = nextJob++;
+		check(!request(true, job).empty(), "a modern request is rewritten for the packet check");
+		CMsgProtoBufHeader header;
+		header.set_steamid(self); header.set_jobid_target(job); header.set_eresult(1);
+		auto reply = packet(147, header, {0x10, 123, 0x22, 2, 8, 1, 0x1a, 1, 0x42});
+		check(Achievements::recvReply(&reply), "a modern owner reply packet is rewritten");
+		const auto body = packetBody(reply);
+		check(!PlayerStats::hasField(body.data(), body.size(), 4) &&
+		      !PlayerStats::hasField(body.data(), body.size(), 2) &&
+		      !PlayerStats::fieldBytes(body.data(), body.size(), 3).empty(),
+		      "the packet keeps the schema and loses the owner's progress");
+		const auto legacyJob = nextJob++;
+		check(!request(false, legacyJob).empty(), "a legacy request is rewritten for the packet check");
+		CMsgProtoBufHeader legacyHeader;
+		legacyHeader.set_steamid(self); legacyHeader.set_jobid_target(legacyJob); legacyHeader.set_eresult(1);
+		CMsgClientGetUserStatsResponse refused;
+		refused.set_game_id(app); refused.set_eresult(2);
+		const auto refusedBytes = refused.SerializeAsString();
+		auto legacy = packet(819, legacyHeader,
+			std::vector<uint8_t>(refusedBytes.begin(), refusedBytes.end()));
+		check(Achievements::recvReply(&legacy), "a legacy owner reply packet is rewritten");
+		CMsgProtoBufHeader legacyOut;
+		CMsgClientGetUserStatsResponse legacyBody;
+		const auto legacyBytes = packetBody(legacy);
+		check(legacy.deserializeHeader(legacyOut) && legacyOut.eresult() == 2 &&
+		      legacyBody.ParseFromArray(legacyBytes.data(), static_cast<int>(legacyBytes.size())) &&
+		      legacyBody.eresult() == 2 && !legacyBody.has_schema(),
+		      "a refused legacy reply fails closed in the packet");
+		CMsgProtoBufHeader unrelated;
+		unrelated.set_jobid_target(nextJob++); unrelated.set_eresult(1);
+		auto other = packet(147, unrelated, {0x1a, 1, 0x42});
+		const auto* before = other.body();
+		check(!Achievements::recvReply(&other) && other.body() == before,
+		      "an unrelated service reply packet is left untouched");
 	}
 	std::printf("%d failure(s)\n", failures);
 	return failures ? 1 : 0;

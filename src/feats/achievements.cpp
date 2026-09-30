@@ -2,9 +2,12 @@
 #include "stats_policy.hpp"
 #include "playerstats.hpp"
 #include "../config.hpp"
+#include "../log.hpp"
+#include "../sdk/CNetPacket.hpp"
 #include "../sdk/CProtoBufMsgBase.hpp"
 
 #include <cstdint>
+#include <cstring>
 #include <mutex>
 #include <unordered_map>
 
@@ -14,6 +17,18 @@ struct Pending { uint32_t app, account; uint64_t epoch; bool modern; };
 std::mutex pendingMutex;
 std::unordered_map<uint64_t, Pending> pending;
 bool validJob(uint64_t job) { return job != 0 && job != UINT64_MAX; }
+
+// Rewritten wire bytes in the shape CNetPacket::serialize expects.
+struct RawBody
+{
+	const std::vector<uint8_t>& bytes;
+	std::size_t ByteSizeLong() const { return bytes.size(); }
+	bool SerializeToArray(void* out, int size) const
+	{
+		if (size > 0) std::memcpy(out, bytes.data(), static_cast<std::size_t>(size));
+		return true;
+	}
+};
 }
 
 // At the serialized CM boundary the jobid is final, and CloudRedirect has
@@ -158,4 +173,24 @@ void Achievements::recvMessage(uint32_t type, bool hasSteamId, uint64_t steamId)
 	}
 	// Keep bounded outstanding jobs so their late replies are rejected rather
 	// than allowing the previously selected owner's progress through unchanged.
+}
+
+bool Achievements::recvReply(CNetPacket* pkt)
+{
+	if (!pkt || !pkt->isValid()) return false;
+	CMsgProtoBufHeader header;
+	if (!pkt->deserializeHeader(header) || !header.has_jobid_target()) return false;
+	CNetPacketBody* const before = pkt->body();
+	const uint32_t bytes = pkt->sizeBytes();
+	const uint32_t offset = sizeof(CNetPacketBody) + before->headerSize;
+	if (offset > bytes) return false;
+	const auto reply = rewriteResponse(
+		pkt->getProtoBufType() == k_EMsgServiceMethodResponse,
+		reinterpret_cast<const uint8_t*>(before) + offset, bytes - offset, header);
+	if (!reply) return false;
+	pkt->serialize(RawBody{*reply}, &header);
+	if (pkt->body() != before) return true;
+	g_pLog->warn("Achievements: owner reply rewrite of %zu bytes could not be applied\n",
+	             reply->size());
+	return false;
 }

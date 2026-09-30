@@ -100,7 +100,8 @@ test-achievement-scope: obj/sdk/protobufs/steammessages_clientserver_userstats.p
 	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem include -I src \
 		-ffunction-sections -fdata-sections \
 		tools/test_achievement_scope.cpp src/feats/achievements.cpp src/feats/stats_policy.cpp \
-		$^ lib/libprotobuf.a -Wl,--gc-sections -pthread -o /tmp/test_achievement_scope
+		src/sdk/CNetPacket.cpp $^ lib/libprotobuf.a -Wl,--gc-sections -pthread \
+		-o /tmp/test_achievement_scope
 	/tmp/test_achievement_scope
 
 test-fakeappid-presence: obj/sdk/protobufs/encrypted_app_ticket.pb.o \

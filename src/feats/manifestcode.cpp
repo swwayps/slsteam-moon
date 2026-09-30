@@ -46,7 +46,6 @@ constexpr uint32_t kMaxHdrSize     = 1024;
 static_assert(kMaxBodySize >= Achievements::maxReplyBytes);
 static_assert(kMaxHdrSize >= Achievements::maxHeaderBytes);
 constexpr uint32_t kMaxPacketSize  = sizeof(MsgHdr) + kMaxHdrSize + kMaxBodySize;
-constexpr int      kPacketPoolSize = 8;
 
 std::mutex g_RxLock;
 std::mutex g_TxLock;
@@ -94,16 +93,6 @@ void prunePassiveRequestsLocked()
 			++it;
 	}
 }
-
-uint8_t  g_RxBody[kMaxBodySize];
-uint32_t g_RxBodyLen = 0;
-uint8_t  g_RxHdr[kMaxHdrSize];
-uint32_t g_RxHdrLen  = 0;
-bool     g_PatchRx    = false;
-bool     g_PatchRxHdr = false;
-
-uint8_t  g_RxPool[kPacketPoolSize][kMaxPacketSize];
-int      g_RxPoolIdx = 0;
 
 // Outgoing-frame replacement (used to spoof a Player.GetUserStats request).
 // Guarded by g_TxLock; valid only for the duration of one send-hook call.
@@ -156,30 +145,6 @@ inline bool decodeFrame(const uint8_t* data, uint32_t size,
 	pBody  = data + off;
 	cbBody = size - off;
 	return true;
-}
-
-inline void patchRecvFrame(CRemoteClientPacket* p,
-                           const uint8_t* pNewHdr, uint32_t cbNewHdr,
-                           const uint8_t* pNewBody, uint32_t cbNewBody)
-{
-	const uint32_t newSize = sizeof(MsgHdr) + cbNewHdr + cbNewBody;
-	if (newSize > sizeof(g_RxPool[0])) return;
-
-	// Caller holds g_RxLock across dispatch and copy, including scratch flags.
-	uint8_t* buf = g_RxPool[g_RxPoolIdx];
-	const auto* orig = reinterpret_cast<const MsgHdr*>(p->m_pubData);
-	auto* out = reinterpret_cast<MsgHdr*>(buf);
-	out->eMsg         = orig->eMsg;
-	out->headerLength = cbNewHdr;
-	std::memcpy(buf + sizeof(MsgHdr), pNewHdr, cbNewHdr);
-	if (cbNewBody)
-	{
-		std::memcpy(buf + sizeof(MsgHdr) + cbNewHdr, pNewBody, cbNewBody);
-	}
-	p->m_pubData = buf;
-	p->m_cubData = newSize;
-
-	g_RxPoolIdx = (g_RxPoolIdx + 1) % kPacketPoolSize;
 }
 
 // Assemble a replacement outgoing frame (MsgHdr + header + new body) into
@@ -381,29 +346,6 @@ void dispatchRecv(uint32_t eMsg,
 		if (header.ParseFromArray(pHdr, cbHdr) && header.has_jobid_target())
 		{
 			resolveDonorResponse(header.jobid_target(), header, pBody, cbBody);
-		}
-	}
-	if (eMsg == k_EMsgClientGetUserStatsResponse || eMsg == kEMsgServiceMethodResponse)
-	{
-		CMsgProtoBufHeader header;
-		if (!header.ParseFromArray(pHdr, cbHdr)) return;
-		const auto body = Achievements::rewriteResponse(eMsg == kEMsgServiceMethodResponse,
-			pBody, cbBody, header);
-		if (body && body->size() <= sizeof(g_RxBody) &&
-		    header.ByteSizeLong() <= sizeof(g_RxHdr))
-		{
-			g_RxHdrLen = static_cast<uint32_t>(header.ByteSizeLong());
-			// Commit the rewritten header and body together. If the header
-			// fails to encode, leave both untouched so the original frame
-			// passes through — never emit the new body under the old header.
-			if (header.SerializeToArray(g_RxHdr, g_RxHdrLen))
-			{
-				if (!body->empty())
-					std::memcpy(g_RxBody, body->data(), body->size());
-				g_RxBodyLen = static_cast<uint32_t>(body->size());
-				g_PatchRxHdr = true;
-				g_PatchRx = true;
-			}
 		}
 	}
 	if (eMsg != kEMsgServiceMethodResponse)
@@ -661,22 +603,10 @@ void* hkRecvPkt(void* pManager, CRemoteClientPacket* pPacket)
 		const uint8_t* pHdr  = nullptr;
 		const uint8_t* pBody = nullptr;
 		uint32_t cbHdr = 0, cbBody = 0;
-		g_PatchRx    = false;
-		g_PatchRxHdr = false;
-
 		if (decodeFrame(pPacket->m_pubData, pPacket->m_cubData,
 		                eMsg, pHdr, cbHdr, pBody, cbBody))
 		{
 			dispatchRecv(eMsg, pBody, cbBody, pHdr, cbHdr);
-
-			if (g_PatchRxHdr || g_PatchRx)
-			{
-				patchRecvFrame(pPacket,
-				               g_PatchRxHdr ? g_RxHdr  : pHdr,
-				               g_PatchRxHdr ? g_RxHdrLen : cbHdr,
-				               g_PatchRx    ? g_RxBody : pBody,
-				               g_PatchRx    ? g_RxBodyLen : cbBody);
-			}
 		}
 	}
 	return Hooks::CRemoteClientManager_RecvPkt.tramp.fn(pManager, pPacket);
