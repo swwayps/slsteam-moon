@@ -27,6 +27,14 @@ RUN dpkg --add-architecture i386 && \
         pkg-config && \
     rm -rf /var/lib/apt/lists/*
 
+# LuaJIT headers for the Lua plugin runtime (<luajit-2.1/lua.hpp>); the static
+# library itself is vendored in lib/. A separate layer keeps the toolchain
+# layer above cached.
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        libluajit-5.1-dev:i386 && \
+    rm -rf /var/lib/apt/lists/*
+
 # 32-bit pkg-config search path (matches scripts/_build-host.sh).
 ENV PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig
 
