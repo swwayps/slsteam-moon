@@ -1,6 +1,8 @@
 #pragma once
 
+#include <charconv>
 #include <cstdint>
+#include <cstring>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -14,30 +16,26 @@ namespace Utils
 	template<typename T>
 	bool tryConvertToNumber(const char* str, T& out)
 	{
-		if constexpr (std::is_same_v<T, int32_t>)
-		{
-			if (!isNumber(str))
-			{
-				return false;
-			}
+		static_assert(std::is_integral_v<T>, "tryConvertToNumber parses integers");
 
-			out = std::stoi(str);
-			return true;
+		// Digits only (no sign, no blanks). from_chars reports a value that does
+		// not fit instead of throwing: std::stoul raised out_of_range past 2^32
+		// on i386, on the API watcher thread.
+		if (!isNumber(str))
+		{
+			return false;
 		}
 
-		else if constexpr (std::is_same_v<T, uint32_t>)
+		const char* end = str + std::strlen(str);
+		T value {};
+		const auto [ptr, ec] = std::from_chars(str, end, value);
+		if (ec != std::errc() || ptr != end)
 		{
-			if (!isNumber(str))
-			{
-				return false;
-			}
-
-			out = std::stoul(str);
-			return true;
+			return false;
 		}
 
-		//TODO: Add GCC error when compiling this path
-		return false;
+		out = value;
+		return true;
 	}
 
 	std::vector<std::string> strsplit(const char* str, const char* delimeter);

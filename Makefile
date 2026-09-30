@@ -59,7 +59,7 @@ endif
 .PHONY: test-manifestdonor test-manifestfetch
 .PHONY: test-reconcilepin-scan
 .PHONY: test-depotkey-recv-policy
-.PHONY: test-private-apps test-config-settings test-curl-child test-legacy-cdkey
+.PHONY: test-private-apps test-config-settings test-curl-child test-legacy-cdkey test-utils-number
 
 test-manifestdonor:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror \
@@ -372,6 +372,11 @@ test-memhlp-pic:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src -I include \
 		tools/test_memhlp_pic.cpp -o /tmp/test_memhlp_pic
 	/tmp/test_memhlp_pic
+
+test-utils-number:
+	$(CXX) -m32 -std=c++20 -Wall -Wextra -Wpedantic -I src \
+		tools/test_utils_number.cpp src/utils.cpp -o /tmp/test_utils_number
+	/tmp/test_utils_number
 
 test-utils-sha:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src \

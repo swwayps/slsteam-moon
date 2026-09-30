@@ -933,10 +933,10 @@ bool CConfig::shouldExcludeAppId(uint32_t appId, bool ignoreAdditionalApps)
 			char chParent[16] { };
 			const int len = g_pClientApps ? g_pClientApps->getAppData(appId, "parent", chParent, sizeof(chParent)) : 0;
 			//Do not blindly trust len, nor the str included. Some devs just like to mess with Valve or something (for example appId 221300)
-			if (len > 0 && Utils::isNumber(chParent))
+			uint32_t parentId = 0;
+			if (len > 0 && Utils::tryConvertToNumber(chParent, parentId))
 			{
 				//g_pLog->debug("AppId %i, parent %s (%i)\n", appId, chParent, len);
-				uint32_t parentId = std::stoul(chParent);
 
 				if (whitelist && !shouldExcludeAppId(parentId, true))
 				{
