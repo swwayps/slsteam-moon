@@ -543,8 +543,13 @@ namespace
 		}
 		if (action == Action::Defer)
 		{
-			logDeferredOnce(generation,
-				"app metadata is unresolved and the guard is unavailable");
+			// Without mark/process there is no live license path: the
+			// LicensesUpdated_t broadcast leaves hot-added apps and their DLC
+			// natively unowned (VM-verified), so the change waits for a restart.
+			const char* reason = !unresolvedStateSafe
+				? "app metadata is unresolved and the guard is unavailable"
+				: "mark/process capability is unavailable";
+			logDeferredOnce(generation, reason);
 			return RuntimeRefreshResult::Deferred;
 		}
 		if (t_processingRuntimeRefresh)
@@ -570,34 +575,21 @@ namespace
 			return RuntimeRefreshResult::Deferred;
 		}
 
-		if (action == Action::Broadcast)
 		{
-			// Degraded client: mark/process did not resolve after an update.
-			// One LicensesUpdated_t per generation is the best live nudge left;
-			// restart stays the complete recovery.
-			g_pLog->info(
-				"PackagePatch: mark/process capability unavailable; license broadcast for generation %llu\n",
-				static_cast<unsigned long long>(generation));
-			reconcileGenerationOnce(generation);
+			auto span = AffTrace::fnSpan(
+				AffTrace::Call::MarkLicenseChanged, AffTrace::Mode::NA);
+			(void)g_pMarkLicenseAsChanged(user, 0, true);
 		}
-		else
+		bool processed = false;
 		{
-			{
-				auto span = AffTrace::fnSpan(
-					AffTrace::Call::MarkLicenseChanged, AffTrace::Mode::NA);
-				(void)g_pMarkLicenseAsChanged(user, 0, true);
-			}
-			bool processed = false;
-			{
-				auto span = AffTrace::fnSpan(
-					AffTrace::Call::ProcessLicenseUpdates, AffTrace::Mode::NA);
-				processed = g_pProcessPendingLicenseUpdates(user);
-			}
-			if (!processed)
-			{
-				logDeferredOnce(generation, "Steam retained the pending update");
-				return RuntimeRefreshResult::Deferred;
-			}
+			auto span = AffTrace::fnSpan(
+				AffTrace::Call::ProcessLicenseUpdates, AffTrace::Mode::NA);
+			processed = g_pProcessPendingLicenseUpdates(user);
+		}
+		if (!processed)
+		{
+			logDeferredOnce(generation, "Steam retained the pending update");
+			return RuntimeRefreshResult::Deferred;
 		}
 
 		{
@@ -611,12 +603,9 @@ namespace
 			g_runtimeRefreshPendingHint.store(
 				g_runtimeRefreshPending, std::memory_order_release);
 		}
-		if (action == Action::Process)
-		{
-			g_pLog->info(
-				"PackagePatch: processed runtime package change generation %llu\n",
-				static_cast<unsigned long long>(generation));
-		}
+		g_pLog->info(
+			"PackagePatch: processed runtime package change generation %llu\n",
+			static_cast<unsigned long long>(generation));
 		return RuntimeRefreshResult::Complete;
 	}
 

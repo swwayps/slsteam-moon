@@ -44,8 +44,7 @@ namespace PackagePatch
 
 	// Reconcile package 0 to one complete managed-state snapshot.  The caller
 	// is the OwnerWork command runner, so vector mutation and the mark/process
-	// pair execute as one serialized Steam-owned work unit.  A client without
-	// mark/process falls back to one LicensesUpdated_t per generation.
+	// pair execute as one serialized Steam-owned work unit.
 	void synchronizePackage0(const PackageSnapshot& snapshot);
 
 	// Full runtime-add capability: mark/process locators plus the scoped
