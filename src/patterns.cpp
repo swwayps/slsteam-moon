@@ -734,8 +734,9 @@ namespace Patterns
 	Pattern_t TraceIPC
 	{
 		"TraceIPC",
-		"E8 ? ? ? ? 83 C4 10 85 FF 74 ? 8B 07 83 EC 04 FF B5 ? ? ? ? FF B5 ? ? ? ? 57 FF 10 83 C4 10 8D 45 ? 83 EC 04 89 F3 6A 04 50 FF 75",
-		SigFollowMode::Relative
+		"0F 45 F8 85 ED",
+		SigFollowMode::PrologueUpwards,
+		std::vector<int16_t> { 0x53, 0x56, 0x57, 0x55 }
 	};
 
 	namespace SteamUI
@@ -1235,10 +1236,9 @@ namespace Patterns
 		Pattern_t BBuildAndAsyncSendFrame
 		{
 			"CWebSocketConnection::BBuildAndAsyncSendFrame",
-			"55 89 E5 57 E8 ? ? ? ? 81 C7 ? ? ? ? 56 53 81 EC AC 00 00 00 "
-			"8B 45 10 8B 55 08 89 85 ? ? FF FF 89 95 ? ? FF FF "
-			"65 A1 14 00 00 00",
-			SigFollowMode::None
+			"89 C6 85 D2 78",
+			SigFollowMode::PrologueUpwards,
+			std::vector<int16_t> { 0xE8, 0x57, 0xE5, 0x89, 0x55 }
 		};
 	}
 
