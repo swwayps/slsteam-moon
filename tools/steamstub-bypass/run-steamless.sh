@@ -225,7 +225,8 @@ mkdir -p "$WINE_PREFIX"
 # follow the standard layout: <proton_root>/files/{lib,lib64}.
 if [[ "$WINE_BIN" == */Proton*/files/bin/wine ]]; then
     PROTON_FILES="$(dirname "$(dirname "$WINE_DIR")")"
-    LD_LIBRARY_PATH="$PROTON_FILES/lib64:$PROTON_FILES/lib:${LD_LIBRARY_PATH:-}"
+    # An empty entry would put the current directory in the search path.
+    LD_LIBRARY_PATH="$PROTON_FILES/lib64:$PROTON_FILES/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
     WINEDLLPATH="$PROTON_FILES/lib64/wine:$PROTON_FILES/lib/wine"
     export LD_LIBRARY_PATH WINEDLLPATH
     log "configured Proton library paths"
