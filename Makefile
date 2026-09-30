@@ -682,6 +682,12 @@ test-patternscan:
 		tools/test_patternscan.cpp -o /tmp/test_patternscan
 	/tmp/test_patternscan
 
+test-vftable-anchors:
+	$(CXX) -O2 -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem include -I src \
+		tools/test_vftable_anchors.cpp src/decompiler.cpp src/vftableinfo.cpp \
+		src/utils.cpp src/process.cpp lib/liblibmem.a -ldl -lpthread \
+		-o /tmp/test_vftable_anchors
+	/tmp/test_vftable_anchors "$(STEAMCLIENT)" "$(STEAMUI)"
 test-optional-locators:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src \
 		tools/test_optional_locators.cpp -o /tmp/test_optional_locators

@@ -5,7 +5,27 @@
 #include "log.hpp"
 
 #include <sstream>
+#include <unordered_map>
 
+namespace
+{
+// The anchor slot's function references the expected string (PIC-relative
+// string loads found by the decompiler's function walk).
+bool slotReferences(const std::vector<lm_address_t>& funcs, const VFTableInfo_t::Anchor& anchor)
+{
+	if (anchor.index >= funcs.size()) return false;
+	auto refs = std::unordered_map<lm_address_t, unsigned int>();
+	Decompiler::parseFunction(funcs[anchor.index], refs);
+	for (const auto& ref : refs)
+	{
+		const auto it = Decompiler::strings.find(ref.first);
+		if (it != Decompiler::strings.end() &&
+		    it->second.find(anchor.string) != std::string::npos)
+			return true;
+	}
+	return false;
+}
+}
 
 VFTableInfo_t::VFTableInfo_t
 (
@@ -23,12 +43,37 @@ VFTableInfo_t::VFTableInfo_t
 	VFTIndexes::functions().emplace_back(this);
 }
 
+VFTableInfo_t::VFTableInfo_t
+(
+	const char* typeName,
+	const char* functionName,
+	unsigned int index,
+	Anchor anchor,
+	bool optional
+)
+	:
+	typeName(typeName),
+	functionName(functionName),
+	index(index),
+	subClassIndex(NO_INDEX),
+	anchor(anchor),
+	optional(optional)
+{
+	VFTIndexes::functions().emplace_back(this);
+}
+
 bool VFTableInfo_t::init()
 {
+	const auto fail = [this]
+	{
+		address = 0;
+		return optional;
+	};
+
 	if (!Decompiler::vftables.contains(typeName))
 	{
 		LOG_ERROR("%s not found in Decompiler::vftables!\n", typeName.c_str());
-		return false;
+		return fail();
 	}
 
 	if (index == NO_INDEX)
@@ -42,7 +87,7 @@ bool VFTableInfo_t::init()
 		if (!tbl.contains(functionName))
 		{
 			LOG_ERROR("%s not found!\n", functionName.c_str());
-			return false;
+			return fail();
 		}
 
 		index = tbl.at(functionName);
@@ -55,7 +100,7 @@ bool VFTableInfo_t::init()
 		if (subClassIndex >= vft.subclasses.size())
 		{
 			LOG_ERROR("SubClassIndex %u is out of range for %s!\n", subClassIndex, getPrintName().c_str());
-			return false;
+			return fail();
 		}
 
 		vft = vft.subclasses[subClassIndex];
@@ -66,7 +111,15 @@ bool VFTableInfo_t::init()
 	if (index >= funcs.size())
 	{
 		LOG_ERROR("%s index bigger than vtable size!\n", getPrintName().c_str());
-		return false;
+		return fail();
+	}
+
+	if (anchor.string != nullptr && !slotReferences(funcs, anchor))
+	{
+		LOG_ERROR("%s: slot %u no longer references \"%s\"; the vtable layout changed%s\n",
+		          getPrintName().c_str(), anchor.index, anchor.string,
+		          optional ? ", feature disabled" : "");
+		return fail();
 	}
 
 	address = funcs.at(index);
@@ -90,7 +143,8 @@ namespace VFTIndexes
 		{
 			"12CCMInterface",
 			"RecvPkt",
-			3
+			3,
+			{3, "CCMInterface - received heartbeat response, connection still good"}
 		};
 	};
 
@@ -100,23 +154,31 @@ namespace VFTIndexes
 		{
 			"15CGameInfoDialog",
 			"ServerResponded",
-			5
+			5,
+			{5, "Pinged %s but got reply from %s?"},
+			true
 		};
 	}
 
 	namespace CSteamMatchmakingServers
 	{
+		// Neither function references a distinctive string; slot 8 does, and
+		// any shift that moves slot 0 or 7 moves it too.
 		VFTableInfo_t GetServerDetails
 		{
 			"24CSteamMatchMakingServers",
 			"GetServerDetails",
-			7
+			7,
+			{8, "Invalid server type"},
+			true
 		};
 		VFTableInfo_t RequestInternetServerList
 		{
 			"24CSteamMatchMakingServers",
 			"RequestInternetServerList",
-			0
+			0,
+			{8, "Invalid server type"},
+			true
 		};
 	}
 

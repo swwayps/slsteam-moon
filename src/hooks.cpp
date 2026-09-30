@@ -166,7 +166,8 @@ bool DetourHook<T>::setup(const VFTableInfo_t& info, T hookFn)
 	this->originalFn.address = info.address;
 	this->hookFn.fn = hookFn;
 
-	return true;
+	// A failed optional registry entry keeps address 0 (VFTableInfo_t::init).
+	return info.address != 0;
 }
 
 template<typename T>
@@ -1331,6 +1332,8 @@ static bool hkClientConfigStore_SetString(void* pClientConfigStore, uint32_t sto
 namespace Hooks
 {
 	static bool depotOverrideHookReady = false;
+	static bool serverBrowserHookReady = false;
+	static bool serverDialogHookReady = false;
 	static bool spawnGameHookReady = false;
 	static bool cloudToggleHookReady = false;
 	static bool compatLayerHookReady = false;
@@ -1500,17 +1503,30 @@ bool Hooks::setup()
 		&& CJobMgr_BRouteMsgToJob.setup(Patterns::CJobMgr::BRouteMsgToJob, &ManifestCode::hkBRouteMsgToJob)
 		&& CDepotDownloadMgr_BYldRequestDepotManifest.setup(Patterns::CDepotDownloadMgr::BYldRequestDepotManifest, &ManifestCode::hkCDepotDownloadMgr_BYldRequestDepotManifest)
 
-		&& CSteamMatchmakingServers_GetServerDetails.setup(VFTIndexes::CSteamMatchmakingServers::GetServerDetails, &hkSteamMatchmakingServers_GetServerDetails)
-		&& CSteamMatchmakingServers_RequestInternetServerList.setup(VFTIndexes::CSteamMatchmakingServers::RequestInternetServerList, &hkSteamMatchmakingServers_RequestInternetServerList)
-
 		&& CUser_CheckAppOwnership.setup(Patterns::CUser::CheckAppOwnership, &hkUser_CheckAppOwnership)
 		&& CUser_GetSubscribedApps.setup(Patterns::CUser::GetSubscribedApps, &hkUser_GetSubscribedApps)
 		&& CUser_PostCallbackToAppId.setup(Patterns::CUser::PostCallbackToAppId, &hkUser_PostCallbackToAppId)
 
 
 		&& CSteamEngine_ProcessIPCFrame.setup(Patterns::CSteamEngine::ProcessIPCFrame, &hkSteamEngine_ProcessIPCFrame)
-		&& CSteamEngine_SetAppIdForCurrentPipe.setup(Patterns::CSteamEngine::SetAppIdForCurrentPipe, &hkSteamEngine_SetAppIdForCurrentPipe)
-		&& CGameInfoDialog_ServerResponded.setup(VFTIndexes::CGameInfoDialog::ServerResponded, hkCGameInfoDialog_ServerResponded);
+		&& CSteamEngine_SetAppIdForCurrentPipe.setup(Patterns::CSteamEngine::SetAppIdForCurrentPipe, &hkSteamEngine_SetAppIdForCurrentPipe);
+
+	// The server-browser hooks sit on fixed vtable slots that are validated
+	// against a layout anchor (vftableinfo.cpp). A shifted layout disables
+	// FakeAppIds in the server browser instead of every hook.
+	serverBrowserHookReady =
+		CSteamMatchmakingServers_GetServerDetails.setup(VFTIndexes::CSteamMatchmakingServers::GetServerDetails, &hkSteamMatchmakingServers_GetServerDetails)
+		&& CSteamMatchmakingServers_RequestInternetServerList.setup(VFTIndexes::CSteamMatchmakingServers::RequestInternetServerList, &hkSteamMatchmakingServers_RequestInternetServerList);
+	if (!serverBrowserHookReady)
+	{
+		g_pLog->warn("Server browser hooks unavailable; FakeAppIds in the server browser disabled\n");
+	}
+	serverDialogHookReady = CGameInfoDialog_ServerResponded.setup(
+		VFTIndexes::CGameInfoDialog::ServerResponded, hkCGameInfoDialog_ServerResponded);
+	if (!serverDialogHookReady)
+	{
+		g_pLog->warn("Game info dialog hook unavailable; FakeAppIds in server details disabled\n");
+	}
 
 
 
@@ -1661,8 +1677,11 @@ void Hooks::place()
 	CSteamEngine_ProcessIPCFrame.place();
 	CSteamEngine_SetAppIdForCurrentPipe.place();
 
-	CSteamMatchmakingServers_GetServerDetails.place();
-	CSteamMatchmakingServers_RequestInternetServerList.place();
+	if (serverBrowserHookReady)
+	{
+		CSteamMatchmakingServers_GetServerDetails.place();
+		CSteamMatchmakingServers_RequestInternetServerList.place();
+	}
 
 	CUser_CheckAppOwnership.place();
 	CUser_GetSubscribedApps.place();
@@ -1689,7 +1708,10 @@ void Hooks::place()
 
 
 
-	CGameInfoDialog_ServerResponded.place();
+	if (serverDialogHookReady)
+	{
+		CGameInfoDialog_ServerResponded.place();
+	}
 
 	if (compatLayerHookReady)
 	{
@@ -1738,8 +1760,12 @@ void Hooks::remove()
 	CSteamEngine_ProcessIPCFrame.remove();
 	CSteamEngine_SetAppIdForCurrentPipe.remove();
 
-	CSteamMatchmakingServers_GetServerDetails.remove();
-	CSteamMatchmakingServers_RequestInternetServerList.remove();
+	if (serverBrowserHookReady)
+	{
+		CSteamMatchmakingServers_GetServerDetails.remove();
+		CSteamMatchmakingServers_RequestInternetServerList.remove();
+		serverBrowserHookReady = false;
+	}
 
 	CUser_CheckAppOwnership.remove();
 	CUser_GetSubscribedApps.remove();
@@ -1771,7 +1797,11 @@ void Hooks::remove()
 	IClientUser_GetLegacyCDKey.remove();
 	IClientUser_IsUserSubscribedAppInTicket.remove();
 
-	CGameInfoDialog_ServerResponded.remove();
+	if (serverDialogHookReady)
+	{
+		CGameInfoDialog_ServerResponded.remove();
+		serverDialogHookReady = false;
+	}
 	if (compatLayerHookReady)
 	{
 		IClientCompat_BIsCompatLayerEnabled.remove();

@@ -20,7 +20,9 @@ CConfig g_config;
 CConfig::~CConfig() = default;
 
 std::unordered_map<std::string, VFTable> Decompiler::vftables;
+std::unordered_map<lm_address_t, std::string> Decompiler::strings;
 std::map<std::string, unsigned int> Decompiler::parseInterfaceMapBase(const char*) { return {}; }
+void Decompiler::parseFunction(const lm_address_t, std::unordered_map<lm_address_t, unsigned int>&) {}
 unsigned int VFTable::analyze() { return 0; }
 
 namespace

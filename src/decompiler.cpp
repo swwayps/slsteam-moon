@@ -504,7 +504,9 @@ void Decompiler::__parseFunction
 
 			if (!getRelativeTarget(instr, branch))
 			{
-				LOG_WARN("Failed to follow %s %s at 0x%x!\n", instr.mnemonic, instr.op_str, instr.address);
+				// An indirect jump (switch table) ends this path; callers
+				// report what they then fail to find.
+				LOG_DEBUG("Failed to follow %s %s at 0x%x!\n", instr.mnemonic, instr.op_str, instr.address);
 				return;
 			}
 

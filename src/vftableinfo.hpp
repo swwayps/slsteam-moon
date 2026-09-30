@@ -12,11 +12,24 @@ struct VFTableInfo_t
 {
 	constexpr static unsigned int NO_INDEX = 0xFFFFFFFF;
 
+	// A fixed index is only bounds-checked, so a shifted vtable would hook the
+	// wrong function. The function at `index` in the same vtable must
+	// reference `string`, which proves the layout around the entry.
+	struct Anchor
+	{
+		unsigned int index;
+		const char* string;
+	};
+
 	std::string typeName;
 	std::string functionName;
 	lm_address_t address;
 	unsigned int index;
 	unsigned int subClassIndex;
+	Anchor anchor{NO_INDEX, nullptr};
+	// A failed optional entry keeps address 0 and does not fail the registry;
+	// its feature is disabled instead.
+	bool optional = false;
 
 	VFTableInfo_t
 	(
@@ -24,6 +37,14 @@ struct VFTableInfo_t
 		const char* functionName,
 		const unsigned int index = NO_INDEX,
 		const unsigned int subClassIndex = NO_INDEX
+	);
+	VFTableInfo_t
+	(
+		const char* typeName,
+		const char* functionName,
+		unsigned int index,
+		Anchor anchor,
+		bool optional = false
 	);
 
 	bool init();
