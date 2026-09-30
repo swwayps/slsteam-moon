@@ -26,7 +26,7 @@ makedepends=("gcc"
 #Disable stripping to not mess up disturb ticket-grabber
 options=(!strip)
 
-sha256sums=('b88e77753bfecb68e4dde6fc17ec5087c55315a8fcd7736baf5c5d6e36be7b28')
+sha256sums=('342d8d01e134481a8878dcd21c557d90758c79e4f555a4828cc68dd3cbc5b201')
 validpgpkeys=("63AB8F4BF8A62EEEB8D8C7584410F8CF7129B2D6")
 
 build() {
