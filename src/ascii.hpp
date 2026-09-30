@@ -16,12 +16,6 @@ constexpr bool isDigit(unsigned char value) noexcept
 	return value >= '0' && value <= '9';
 }
 
-constexpr bool isAlnum(unsigned char value) noexcept
-{
-	return isDigit(value) || (value >= 'A' && value <= 'Z') ||
-		(value >= 'a' && value <= 'z');
-}
-
 constexpr bool isHexDigit(unsigned char value) noexcept
 {
 	return isDigit(value) || (value >= 'A' && value <= 'F') ||

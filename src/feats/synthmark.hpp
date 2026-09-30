@@ -140,16 +140,6 @@ namespace SynthMark
 
 	namespace detail
 	{
-		inline bool parseUnsigned(const char* text, std::uint64_t& out)
-		{
-			if (text == nullptr || *text == '\0') return false;
-			const std::string value(text);
-			const auto first = value.data();
-			const auto last = first + value.size();
-			const auto parsed = std::from_chars(first, last, out, 10);
-			return parsed.ec == std::errc{} && parsed.ptr == last;
-		}
-
 		inline bool parseCacheAppId(const std::string& filename,
 		                           const char* prefix,
 		                           const char* suffix,
@@ -296,21 +286,6 @@ namespace SynthMark
 		return names;
 	}
 }
-
-	// Parse the optional environment overrides without reading the process
-	// environment here.  The hook can pass getenv() results, while tests and
-	// callers that need deterministic policy can pass explicit strings.
-	inline StripLimits parseStripLimits(const char* maxStripsText,
-	                                    const char* maxSecondsText)
-	{
-		StripLimits out;
-		std::uint64_t parsed = 0;
-		if (detail::parseUnsigned(maxStripsText, parsed))
-			out.maxStrips = parsed;
-		if (detail::parseUnsigned(maxSecondsText, parsed))
-			out.maxSeconds = parsed;
-		return out;
-	}
 
 	// Pure state transition for one candidate strip.  The caller owns the
 	// per-app state (and may protect it with a mutex); this helper only decides

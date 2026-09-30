@@ -74,10 +74,8 @@ int main()
 		expectTrue(writer.good(), "event writer did not open the output file");
 		expectTrue(writer.append(metadata, "module-loaded"),
 		           "event writer did not append an event");
-		expectTrue(writer.appendOnce("remote-storage", metadata, "hook-invoked"),
-		           "event writer did not append the first once-only event");
-		expectTrue(writer.appendOnce("remote-storage", metadata, "hook-invoked"),
-		           "event writer treated a duplicate once-only event as an error");
+		expectTrue(writer.append(metadata, "hook-invoked"),
+		           "event writer did not append a second event");
 	}
 
 	std::ifstream input(path);

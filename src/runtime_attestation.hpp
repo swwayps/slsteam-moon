@@ -170,22 +170,6 @@ namespace RuntimeAttestation
 			return appendLocked(encodeEvent(metadata, event, fields) + '\n');
 		}
 
-		bool appendOnce
-		(
-			std::string key,
-			const Metadata& metadata,
-			std::string_view event,
-			std::initializer_list<Field> fields = {}
-		)
-		{
-			std::lock_guard<std::mutex> lock(mutex_);
-			if (onceKeys_.contains(key))
-				return true;
-			if (!appendLocked(encodeEvent(metadata, event, fields) + '\n'))
-				return false;
-			onceKeys_.insert(std::move(key));
-			return true;
-		}
 
 	private:
 		bool appendLocked(const std::string& line)
@@ -212,7 +196,6 @@ namespace RuntimeAttestation
 
 		int fd_ = -1;
 		std::mutex mutex_;
-		std::unordered_set<std::string> onceKeys_;
 	};
 
 	inline std::unique_ptr<EventWriter> activeWriter;
@@ -269,20 +252,5 @@ namespace RuntimeAttestation
 		if (!activeWriter)
 			return false;
 		return activeWriter->append(currentMetadata(), event, fields);
-	}
-
-	inline bool emitOnce
-	(
-		std::string key,
-		std::string_view event,
-		std::initializer_list<Field> fields = {}
-	)
-	{
-		if (!activeWriter)
-			return false;
-		return activeWriter->appendOnce
-		(
-			std::move(key), currentMetadata(), event, fields
-		);
 	}
 }

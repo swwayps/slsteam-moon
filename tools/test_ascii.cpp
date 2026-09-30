@@ -22,8 +22,6 @@ int main()
 		const bool whitespace = ch == ' ' || ch == '\t' || ch == '\n' ||
 			ch == '\v' || ch == '\f' || ch == '\r';
 		const bool digit = ch >= '0' && ch <= '9';
-		const bool alpha = (ch >= 'A' && ch <= 'Z') ||
-			(ch >= 'a' && ch <= 'z');
 		const bool hexDigit = digit || (ch >= 'A' && ch <= 'F') ||
 			(ch >= 'a' && ch <= 'f');
 		const bool printable = ch >= ' ' && ch <= '~';
@@ -34,8 +32,6 @@ int main()
 			"ASCII whitespace classification is exact");
 		check(Ascii::isDigit(ch) == digit,
 			"ASCII digit classification is exact");
-		check(Ascii::isAlnum(ch) == (alpha || digit),
-			"ASCII alphanumeric classification is exact");
 		check(Ascii::isHexDigit(ch) == hexDigit,
 			"ASCII hexadecimal classification is exact");
 		check(Ascii::isPrint(ch) == printable,
