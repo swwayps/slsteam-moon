@@ -696,6 +696,44 @@ static uint32_t hkUser_GetSubscribedApps(void* pClientUser, uint32_t* pAppList, 
 	return count;
 }
 
+static uint32_t hkUser_SpawnGameId
+(
+	void* pUser,
+	const char* exe,
+	const char* cmd,
+	const char* workingDir,
+	GameId_t* pGameId,
+	const char* title,
+	int32_t a6,
+	int32_t a7,
+	int32_t a8,
+	int32_t a9,
+	void* a10
+)
+{
+	std::string newExe = exe ? exe : "";
+	std::string newCmd = cmd ? cmd : "";
+
+	Apps::spawnGame(pGameId, newExe, newCmd);
+
+	g_pLog->debug("Launching gameId %llu with cmd %s as %s\n", pGameId ? *pGameId : 0ULL, newExe.c_str(), newCmd.c_str());
+
+	return Hooks::CUser_SpawnGameId.tramp.fn
+	(
+		pUser,
+		exe ? newExe.c_str() : nullptr,
+		cmd ? newCmd.c_str() : nullptr,
+		workingDir,
+		pGameId,
+		title,
+		a6,
+		a7,
+		a8,
+		a9,
+		a10
+	);
+}
+
 static bool hkUserAppManager_BuildDepotDependency
 (
 	void* pClientAppManager,
@@ -844,6 +882,18 @@ static bool hkClientAppManager_GetUpdateInfo(void* pClientAppManager, uint32_t a
 	{
 		g_pLog->infoOnce("Disabled updates for %u\n", appId);
 		return false;
+	}
+
+	return success;
+}
+
+static bool hkClientAppManager_GetAppStateInfo(void* pClientAppManager, uint32_t appId, AppStateInfo_t* pInfo)
+{
+	const bool success = Hooks::IClientAppManager_GetAppStateInfo.originalFn.fn(pClientAppManager, appId, pInfo);
+
+	if (success && pInfo)
+	{
+		Apps::getAppStateInfo(appId, pInfo);
 	}
 
 	return success;
@@ -1316,6 +1366,7 @@ namespace Hooks
 {
 	static bool playerStatsHookReady = false;
 	static bool depotOverrideHookReady = false;
+	static bool spawnGameHookReady = false;
 	static bool cloudToggleHookReady = false;
 	static bool compatLayerHookReady = false;
 	static bool configStoreHookReady = false;
@@ -1345,6 +1396,7 @@ namespace Hooks
 	DetourHook<CUser_GetSubscribedApps_t> CUser_GetSubscribedApps;
 	DetourHook<CUserAppManager_BuildDepotDependency_t> CUserAppManager_BuildDepotDependency;
 	DetourHook<CUser_PostCallbackToAppId_t> CUser_PostCallbackToAppId;
+	DetourHook<CUser_SpawnGameId_t> CUser_SpawnGameId;
 
 	DetourHook<IClientFriends_GetFriendGamePlayed_t> IClientFriends_GetFriendGamePlayed;
 
@@ -1353,6 +1405,7 @@ namespace Hooks
 
 	VFTHook<IClientAppManager_BIsDlcEnabled_t> IClientAppManager_BIsDlcEnabled("IClientAppManager::BIsDlcEnabled");
 	VFTHook<IClientAppManager_GetAppUpdateInfo_t> IClientAppManager_GetAppUpdateInfo("IClientAppManager::GetAppUpdateInfo");
+	VFTHook<IClientAppManager_GetAppStateInfo_t> IClientAppManager_GetAppStateInfo;
 	VFTHook<IClientAppManager_LaunchApp_t> IClientAppManager_LaunchApp("IClientAppManager::LaunchApp");
 	VFTHook<IClientAppManager_IsAppDlcInstalled_t> IClientAppManager_IsAppDlcInstalled("IClientAppManager::IsAppDlcInstalled");
 
@@ -1417,11 +1470,13 @@ void Hooks::placeVFTHooks()
 		IClientAppManager_BCanRemotePlayTogether.setup(vft, VFTIndexes::IClientAppManager::BCanRemotePlayTogether, hkClientAppManager_BCanRemotePlayTogether);
 		IClientAppManager_BIsDlcEnabled.setup(vft, VFTIndexes::IClientAppManager::BIsDlcEnabled, hkClientAppManager_BIsDlcEnabled);
 		IClientAppManager_GetAppUpdateInfo.setup(vft, VFTIndexes::IClientAppManager::GetUpdateInfo, hkClientAppManager_GetUpdateInfo);
+		IClientAppManager_GetAppStateInfo.setup(vft, VFTIndexes::IClientAppManager::GetAppStateInfo, hkClientAppManager_GetAppStateInfo);
 		IClientAppManager_LaunchApp.setup(vft, VFTIndexes::IClientAppManager::LaunchApp, hkClientAppManager_LaunchApp);
 		IClientAppManager_IsAppDlcInstalled.setup(vft, VFTIndexes::IClientAppManager::IsAppDlcInstalled, hkClientAppManager_IsAppDlcInstalled);
 		IClientAppManager_BCanRemotePlayTogether.place();
 		IClientAppManager_BIsDlcEnabled.place();
 		IClientAppManager_GetAppUpdateInfo.place();
+		IClientAppManager_GetAppStateInfo.place();
 		IClientAppManager_LaunchApp.place();
 		IClientAppManager_IsAppDlcInstalled.place();
 		g_pLog->debug("IClientAppManager->vft at %p\n", vft->vtable);
@@ -1518,6 +1573,14 @@ bool Hooks::setup()
 	{
 		g_pLog->warn(
 			"BuildDepotDependency hook unavailable; DepotBlacklist and ManifestIds disabled\n");
+	}
+	// Only LaunchOptions rides CUser::SpawnGameId (upstream 1bbcbc8), so an
+	// unresolved locator disables that key instead of every hook.
+	spawnGameHookReady = CUser_SpawnGameId.setup(
+		Patterns::CUser::SpawnGameId, hkUser_SpawnGameId);
+	if (!spawnGameHookReady)
+	{
+		g_pLog->warn("SpawnGameId hook unavailable; LaunchOptions disabled\n");
 	}
 
 	// The cloud toggle is detoured on CUserRemoteStorage's own slot (upstream
@@ -1663,6 +1726,10 @@ void Hooks::place()
 		CUserAppManager_BuildDepotDependency.place();
 	}
 	CUser_PostCallbackToAppId.place();
+	if (spawnGameHookReady)
+	{
+		CUser_SpawnGameId.place();
+	}
 	if (cloudToggleHookReady)
 	{
 		IClientRemoteStorage_IsCloudEnabledForApp.place();
@@ -1744,6 +1811,11 @@ void Hooks::remove()
 		depotOverrideHookReady = false;
 	}
 	CUser_PostCallbackToAppId.remove();
+	if (spawnGameHookReady)
+	{
+		CUser_SpawnGameId.remove();
+		spawnGameHookReady = false;
+	}
 
 	if (friendGameHookReady)
 	{
@@ -1775,6 +1847,7 @@ void Hooks::remove()
 
 	IClientAppManager_BIsDlcEnabled.remove();
 	IClientAppManager_GetAppUpdateInfo.remove();
+	IClientAppManager_GetAppStateInfo.remove();
 	IClientAppManager_LaunchApp.remove();
 	IClientAppManager_IsAppDlcInstalled.remove();
 

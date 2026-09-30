@@ -19,7 +19,56 @@ constexpr uint64_t GAME_TYPE_SHORTCUT = 0x2000000ULL;
 constexpr ENetPacket INVALID_NETPACKET_TYPE = -1;
 constexpr ENetPacket PROTOBUF_TYPE_MASK = 0x80000000;
 
-enum EResult
+enum EAppOwnershipFlags : uint32_t
+{
+	k_EAppOwnershipFlagsNone = 0x0,
+	k_EAppOwnershipFlagsSubscribed = 0x1,
+	k_EAppOwnershipFlagsFree = 0x2,
+	k_EAppOwnershipFlagsRegionrestricted = 0x4,
+	k_EAppOwnershipFlagsLowViolence = 0x8,
+	k_EAppOwnershipFlagsInvalidPlatform = 0x10,
+	k_EAppOwnershipFlagsBorrowed = 0x20,
+	k_EAppOwnershipFlagsFreeWeekend = 0x40,
+	k_EAppOwnershipFlagsRetail = 0x80,
+	k_EAppOwnershipFlagsLocked = 0x100,
+	k_EAppOwnershipFlagsPending = 0x200,
+	k_EAppOwnershipFlagsExpired = 0x400,
+	k_EAppOwnershipFlagsPermanent = 0x800,
+	k_EAppOwnershipFlagsRecurring = 0x1000,
+	k_EAppOwnershipFlagsCanceled = 0x2000,
+	k_EAppOwnershipFlagsAutoGrant = 0x4000,
+	k_EAppOwnershipFlagsPendingGift = 0x8000,
+	//k_EAppOwnershipFlagsUnknown = 0x10000,
+	//k_EAppOwnershipFlagsUnknown = 0x20000,
+	k_EAppOwnershipFlagsSiteLicense = 0x40000,
+	k_EAppOwnershipFlagsLegacyFreeSub = 0x80000,
+	k_EAppOwnershipFlagsInvalidOSType = 0x100000,
+	k_EAppOwnershipFlagsTimedTrial = 0x200000
+};
+
+enum class ELicenseType : uint32_t
+{
+	None = 0x0,
+	SinglePurchase = 0x1,
+	SinglePurchaseLimitedUse = 0x2,
+	RecurringCharge = 0x3,
+	Recurringpaymentoption = 0x6,
+	LimiteduseDelayedActivation = 0x7
+};
+
+enum class EAppReleaseState : uint32_t
+{
+	Unknown = 0x0,
+	Unavailable = 0x1,
+	Prerelease = 0x2,
+	Preloadonly = 0x3,
+	Released = 0x4,
+	Disabled = 0x5
+};
+
+typedef uint32_t Result_t;
+
+enum EResult : Result_t
 {
 	k_EResultNoResult = 0x0,
 	k_EResultOK = 0x1,

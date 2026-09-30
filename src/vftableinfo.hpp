@@ -61,6 +61,7 @@ namespace VFTIndexes
 		extern VFTableInfo_t BCanRemotePlayTogether;
 		extern VFTableInfo_t BIsDlcEnabled;
 		extern VFTableInfo_t GetAppInstallState;
+		extern VFTableInfo_t GetAppStateInfo;
 		extern VFTableInfo_t GetLibraryFolderLabel;
 		extern VFTableInfo_t GetLibraryFolderPath;
 		extern VFTableInfo_t GetNumLibraryFolders;

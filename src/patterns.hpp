@@ -83,6 +83,7 @@ namespace Patterns
 		extern Pattern_t GetSubscribedApps;
 		extern Pattern_t PostCallback;
 		extern Pattern_t PostCallbackToAppId;
+		extern Pattern_t SpawnGameId;
 		extern Pattern_t UpdateAppOwnershipTicket;
 		extern Pattern_t MarkLicenseAsChanged;
 		extern Pattern_t ProcessPendingLicenseUpdates;

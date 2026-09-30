@@ -9,6 +9,7 @@
 #include "../sdk/CUser.hpp"
 #include "../sdk/CUtl.hpp"
 #include "../sdk/IClientApps.hpp"
+#include "../sdk/IClientUtils.hpp"
 #include "../sdk/IClientAppManager.hpp"
 #include "../sdk/IClientUser.hpp"
 
@@ -232,7 +233,7 @@ bool Apps::unlockApp(uint32_t appId, AppOwnershipInfo_t* info, const CSteamId& o
 	info->licensePending = false;
 	info->licenseLocked = false;
 
-	info->releaseState = k_EAppReleaseStateReleased;
+	info->releaseState = EAppReleaseState::Released;
 	info->ownsLicense = true;
 
 	info->lowViolence = false;
@@ -348,7 +349,7 @@ bool Apps::checkAppOwnership(uint32_t appId, AppOwnershipInfo_t* pInfo)
 		pInfo->purchaseTime = times.at(appId);
 	}
 	else if (pInfo->subId == 0 ||
-	         (pInfo->subId == -1 && !pInfo->ownsLicense))
+	         (pInfo->subId == UINT32_MAX && !pInfo->ownsLicense))
 	{
 		// Package 0 contributes its license date to every appended app. That
 		// date is unrelated to library inclusion and breaks "recently added".
@@ -359,6 +360,32 @@ bool Apps::checkAppOwnership(uint32_t appId, AppOwnershipInfo_t* pInfo)
 	unlockApp(appId, pInfo);
 
 	return true;
+}
+
+void Apps::getAppStateInfo(uint32_t appId, AppStateInfo_t* info)
+{
+	// Games read their borrowed state here (upstream 5882bed); the Steam
+	// client's own calls (app id 0) keep the real answer.
+	if (!info || !g_config.disableFamilyLock.get())
+	{
+		return;
+	}
+
+	if (g_config.shouldExcludeAppId(appId))
+	{
+		return;
+	}
+
+	if (!g_pClientUtils || !g_pClientUtils->getAppId())
+	{
+		return;
+	}
+
+	info->ownerAccountId = g_currentSteamId.accountId();
+	info->realOwner = 0;
+	info->ownershipFlags = static_cast<EAppOwnershipFlags>(info->ownershipFlags & ~k_EAppOwnershipFlagsBorrowed);
+
+	g_pLog->infoOnce("Spoof ownership from %u\n", appId);
 }
 
 std::string Apps::makeLegacyCDKey(uint32_t accountId, uint32_t appId)
@@ -456,6 +483,51 @@ void Apps::getSubscribedApps(uint32_t* appList, size_t size, uint32_t& count)
 	}
 
 	applistRequested = true;
+}
+
+void Apps::spawnGame(const GameId_t* gameId, std::string& cmd, std::string& cmdline)
+{
+	if (!gameId || (*gameId & GAME_TYPE_SHORTCUT))
+	{
+		return;
+	}
+
+	// LaunchOptions (upstream 1bbcbc8). Package 0 makes managed apps read as
+	// subscribed, so the "no own license" key uses the managed set instead.
+	const auto appId = static_cast<uint32_t>(*gameId);
+	const auto options = g_config.launchOptions.get();
+	std::string option;
+
+	if (options.contains(appId))
+	{
+		option = options.at(appId);
+	}
+	else if (options.contains(UINT32_MAX - 1) && g_config.isAddedAppId(appId)
+		&& !StatsPolicy::hasNativeLicense(appId))
+	{
+		option = options.at(UINT32_MAX - 1);
+	}
+	else if (options.contains(UINT32_MAX))
+	{
+		option = options.at(UINT32_MAX);
+	}
+
+	if (option.empty())
+	{
+		return;
+	}
+
+	static const auto CMD_ARG = std::string("%command%");
+	const size_t cmdPos = option.find(CMD_ARG);
+
+	//Find and replace
+	if (cmdPos != std::string::npos)
+	{
+		option.replace(cmdPos, CMD_ARG.size(), cmdline);
+	}
+
+	cmdline = option;
+	cmd = cmdline.substr(0, cmdline.find_first_of(' '));
 }
 
 bool Apps::shouldDisableCloud(uint32_t appId)

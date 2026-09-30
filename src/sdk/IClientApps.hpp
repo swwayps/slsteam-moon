@@ -34,6 +34,20 @@ enum EAppInfoSection
 	k_EAppInfoSectionAlbummetadata = 0x14
 };
 
+SDK_Struct AppStateInfo_t
+{
+    EAppReleaseState releaseState;			//0x0
+    EAppOwnershipFlags ownershipFlags;	//0x4
+    uint8_t __pad0x8[0x4];				//0x8
+    uint32_t ownerAccountId;			//0xC
+    uint8_t __pad0x10[0x4];				//0x10
+    int32_t subscriptionTime;			//0x14
+    uint8_t __pad0x18[0x4];				//0x18
+    uint32_t realOwner;					//0x1C
+    uint32_t subId;						//0x20
+    uint8_t __pad0x20[4];				//0x24
+};
+
 SDK_Class IClientApps
 {
 public:

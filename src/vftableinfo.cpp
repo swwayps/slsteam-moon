@@ -158,6 +158,11 @@ namespace VFTIndexes
 			"20IClientAppManagerMap",
 			"GetAppInstallState"
 		};
+		VFTableInfo_t GetAppStateInfo
+		{
+			"20IClientAppManagerMap",
+			"GetAppStateInfo"
+		};
 		VFTableInfo_t GetLibraryFolderLabel
 		{
 			"20IClientAppManagerMap",

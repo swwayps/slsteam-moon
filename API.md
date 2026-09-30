@@ -4,6 +4,8 @@ API commands are split by using | as a seperator. So for example to install spac
 
 Arguments written in square brackets \[\] are optional
 
+Several commands can be written at once, one per line
+
 Results are written to the log (`~/.SLSsteam.log`) at the Info level
 
 The current commands are:

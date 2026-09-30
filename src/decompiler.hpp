@@ -1,8 +1,9 @@
 #pragma once
 
+#include "process.hpp"
+
 #include <elf.h>
 #include <libmem/libmem.h>
-
 #include <map>
 #include <string>
 #include <unordered_map>
@@ -10,8 +11,9 @@
 #include <vector>
 
 
-typedef Elf32_Ehdr Elf_Ehdr;
-typedef Elf32_Shdr Elf_Shdr;
+typedef Elf64_Ehdr Elf_Ehdr;
+//typedef Elf32_Shdr Elf_Shdr;
+typedef SectionHdr_t Elf_Shdr;
 
 struct VFTable
 {

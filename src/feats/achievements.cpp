@@ -170,6 +170,7 @@ void Achievements::recvMessage(uint32_t type, bool hasSteamId, uint64_t steamId)
 	// than allowing the previously selected owner's progress through unchanged.
 }
 
+std::unordered_map<AppId_t, std::chrono::time_point<std::chrono::system_clock>> Achievements::fetchCooldowns = std::unordered_map<AppId_t, std::chrono::time_point<std::chrono::system_clock>>();
 std::unordered_map<AppId_t, uint64_t> Achievements::preferredOwners;
 std::unordered_map<AppId_t, std::unordered_set<uint64_t>> Achievements::ownerBlacklist;
 
@@ -189,6 +190,17 @@ std::unordered_set<uint64_t> Achievements::getReviewersForGame(const AppId_t app
 	if (!g_config.maxSchemaTries.get())
 	{
 		return list;
+	}
+
+	if (fetchCooldowns.contains(appId))
+	{
+		const auto now = std::chrono::system_clock::now();
+		if (now < fetchCooldowns.at(appId))
+		{
+			return list;
+		}
+
+		fetchCooldowns.erase(appId);
 	}
 
 	auto url = getReviewUrl(appId);
@@ -240,6 +252,16 @@ std::unordered_set<uint64_t> Achievements::getReviewersForGame(const AppId_t app
 	return list;
 }
 
+void Achievements::setCooldown(const AppId_t appId)
+{
+	if (fetchCooldowns.contains(appId))
+	{
+		return;
+	}
+
+	fetchCooldowns[appId] = std::chrono::system_clock::now() + std::chrono::minutes(COOLDOWN_MINUTES);
+	LOG_DEBUG("Set cooldown for %u for %u minutes\n", appId, COOLDOWN_MINUTES);
+}
 
 uint32_t Achievements::tryGetPlayerStats
 (
@@ -320,6 +342,7 @@ uint32_t Achievements::sendAndRecvGetPlayerStats
 		}
 	}
 
+	setCooldown(appId);
 	LOG_DEBUG("No schemas for %u found! Falling back to offline cache\n", appId);
 	return k_EResultNoConnection;
 }
@@ -402,6 +425,8 @@ uint32_t Achievements::sendAndRecvGetUserStats(CAPIJob* job, CProtoBufMsgBase* s
 
 	const auto recvBdy = recv->getBody<CMsgClientGetUserStatsResponse>();
 	recvBdy->set_eresult(k_EResultNoConnection);
+	setCooldown(appId);
+
 	LOG_DEBUG("No schemas for %u found! Falling back to offline cache\n", appId);
 	return 1;
 }

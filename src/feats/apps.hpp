@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../mtvar.hpp"
+#include "../sdk/types.hpp"
 
 #include <cstdint>
 #include <map>
@@ -15,6 +16,7 @@ class CSteamId;
 template<typename T> class CUtlVector;
 
 struct AppOwnershipInfo_t;
+struct AppStateInfo_t;
 struct DepotInfo_t;
 
 namespace Apps
@@ -28,10 +30,12 @@ namespace Apps
 
 	void buildDepotDependency(uint32_t appId, CUtlVector<DepotInfo_t>* depots, CUtlVector<DepotInfo_t>* sharedDepots);
 	bool checkAppOwnership(uint32_t appId, AppOwnershipInfo_t* info);
+	void getAppStateInfo(uint32_t appId, AppStateInfo_t* info);
 	void getLegacyCDKey(uint32_t appId);
 	// The generated key for an app without a configured one: 4 * 4 A-Z/0-9.
 	std::string makeLegacyCDKey(uint32_t accountId, uint32_t appId);
 	void getSubscribedApps(uint32_t* appList, uint32_t size, uint32_t& count);
+	void spawnGame(const GameId_t* gameId, std::string& cmd, std::string& cmdline);
 
 	// Publish the two independent sources behind the managed-DLC membership
 	// query. Appinfo refreshes replace only discoveries; config reloads replace

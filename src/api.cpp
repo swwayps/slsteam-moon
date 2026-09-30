@@ -81,12 +81,24 @@ void SLSAPI::onFileChange()
 		return;
 	}
 
-	char cmd[128];
-	fstream.getline(cmd, sizeof(cmd));
+	// One command per line (upstream 7186151). Bounded: the file is private,
+	// but a runaway writer must not make the watcher read without limit.
+	constexpr std::size_t kMaxContractBytes = 16 * 1024;
+	std::string content(kMaxContractBytes, '\0');
+	fstream.read(content.data(), static_cast<std::streamsize>(content.size()));
+	content.resize(static_cast<std::size_t>(fstream.gcount()));
 
-	LOG_DEBUG("API Running %s\n", cmd);
+	for (const auto& cmd : Utils::strsplit(content.c_str(), "\r\n"))
+	{
+		parseCmd(cmd);
+	}
+}
 
-	const auto split = Utils::strsplit(cmd, "|");
+void SLSAPI::parseCmd(const std::string& cmd)
+{
+	LOG_DEBUG("API Running %s\n", cmd.c_str());
+
+	const auto split = Utils::strsplit(cmd.c_str(), "|");
 	// Size first: an empty line (or one made only of separators) produces no
 	// fields at all, and split[0] on an empty vector is out of bounds. The old
 	// order read split[0] before checking, so a blank write to the command file
@@ -98,6 +110,7 @@ void SLSAPI::onFileChange()
 
 	const std::string& name = split[0];
 	AppId_t appId = 0;
+	const std::lock_guard guard(cmdMutex);
 
 	//Compatibility Manager
 	if (name == "getcompat" && split.size() > 1)
@@ -108,7 +121,6 @@ void SLSAPI::onFileChange()
 			return;
 		}
 
-		const std::lock_guard guard(cmdMutex);
 		compatOps.emplace_back(CompatOp_t { CompatOp_t::OpType::Get, appId, "" } );
 	}
 	else if (name == "setcompat" && split.size() > 1)
@@ -119,13 +131,11 @@ void SLSAPI::onFileChange()
 			return;
 		}
 
-		const std::lock_guard guard(cmdMutex);
 		compatOps.emplace_back(CompatOp_t { CompatOp_t::OpType::Set, appId, split.size() > 2 ? split[2] : "" } );
 	}
 	//Application Manager
 	else if (name == "dumplibraries")
 	{
-		const std::lock_guard guard(cmdMutex);
 		libraryOps.emplace_back(LibraryOp_t { LibraryOp_t::OpType::Dump, 0, 0 } );
 	}
 	else if (name == "install" && split.size() > 2)
@@ -143,7 +153,6 @@ void SLSAPI::onFileChange()
 			return;
 		}
 
-		const std::lock_guard guard(cmdMutex);
 		libraryOps.emplace_back(LibraryOp_t { LibraryOp_t::OpType::Install, appId, library } );
 	}
 	else if (name == "uninstall" && split.size() > 1)
@@ -154,7 +163,6 @@ void SLSAPI::onFileChange()
 			return;
 		}
 
-		const std::lock_guard guard(cmdMutex);
 		libraryOps.emplace_back(LibraryOp_t { LibraryOp_t::OpType::Uninstall, appId, 0 } );
 	}
 }
@@ -255,7 +263,7 @@ void SLSAPI::runCompatOps()
 			{
 				//Steam calls them with the same values
 				compat->specifyCompatTool(op->appId, op->tool.c_str(), "", 250);
-				LOG_DEBUG("Set compatibility tool for %u to %s\n", op->appId, op->tool.c_str());
+				LOG_API("Set compatibility tool for %u to %s\n", op->appId, op->tool.c_str());
 				break;
 			}
 		}
@@ -305,13 +313,13 @@ void SLSAPI::runInstallOps()
 			case LibraryOp_t::OpType::Install:
 			{
 				appManager->installApp(op->appId, op->libraryIndex);
-				LOG_DEBUG("Installed %u to %u\n", op->appId, op->libraryIndex);
+				LOG_API("Installed %u to %u\n", op->appId, op->libraryIndex);
 				break;
 			}
 			case LibraryOp_t::OpType::Uninstall:
 			{
 				appManager->uninstallApp(op->appId);
-				LOG_DEBUG("Uninstalled %u\n", op->appId);
+				LOG_API("Uninstalled %u\n", op->appId);
 				break;
 			}
 		}

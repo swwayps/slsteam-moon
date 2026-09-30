@@ -16,16 +16,6 @@ enum class ECallbackType : uint32_t
 	AppLicensesChanged_t = 0xf90be
 };
 
-enum EReleaseState
-{
-	k_EAppReleaseStateUnknown = 0x0,
-	k_EAppReleaseStateUnavailable = 0x1,
-	k_EAppReleaseStatePrerelease = 0x2,
-	k_EAppReleaseStatePreloadonly = 0x3,
-	k_EAppReleaseStateReleased = 0x4,
-	k_EAppReleaseStateDisabled = 0x5
-};
-
 SDK_Struct AppOwnershipTicketReceived_t
 {
 	EResult result;
@@ -46,10 +36,10 @@ SDK_Struct AppLicensesChanged_t
 }; //0x114
 
 SDK_Struct AppOwnershipInfo_t {
-    int32_t subId;
-    int32_t releaseState;
+    AppId_t subId;
+    EAppReleaseState releaseState;
     uint32_t owner;
-    int32_t masterSubscriptionAppId;
+    AppId_t masterSubscriptionAppId;
     uint32_t trialTime;
     uint32_t numLicenses;
     char region[4]; //Client copies this like a DWORD, so even though CountryCodes are only 2 bytes 4 seems to be correct

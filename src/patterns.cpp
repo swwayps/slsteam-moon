@@ -668,6 +668,8 @@ bool Patterns::init()
 	CUser::MarkLicenseAsChanged.optional = true;
 	CUser::ProcessPendingLicenseUpdates.optional = true;
 	CUser::NotifyLicensesUpdated.optional = true;
+	// LaunchOptions only; no match on the 2026-09 client yet.
+	CUser::SpawnGameId.optional = true;
 	CAppInfoCache::GetOrAddAppData.optional = true;
 	CAppInfoCache::ThreadedReadFromDisk.optional = true;
 	CAppInfoCache::SkipFlagReference.optional = true;
@@ -919,6 +921,13 @@ namespace Patterns
 			"84 C0 0F 45 F8 89 F8",
 			SigFollowMode::PrologueUpwards,
 			std::vector<uint8_t> { 0xE8, 0x53, 0x56, 0x57, 0x55 }
+		};
+		Pattern_t SpawnGameId
+		{
+			"CUser::SpawnGameId",
+			"89 D7 0F 11 42",
+			SigFollowMode::PrologueUpwards,
+			std::vector<int16_t> { 0x53, 0x56, 0x57, 0xE5, 0x89, 0x55, -1, -1, -1, -1, 0x5, -1, -1, -1, -1, 0xE8}
 		};
 		Pattern_t UpdateAppOwnershipTicket
 		{

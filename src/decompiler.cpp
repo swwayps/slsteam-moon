@@ -305,8 +305,8 @@ bool Decompiler::isPICThunk(const lm_inst_t& callInstr, std::string* targetRegis
 
 void Decompiler::collectStrings(const lm_module_t& mod, const Elf_Shdr& section)
 {
-	const lm_address_t start = mod.base + section.sh_addr;
-	const lm_address_t end = start + section.sh_size;
+	const lm_address_t start = mod.base + section.rva;
+	const lm_address_t end = start + section.size;
 
 	std::string strBuf;
 
@@ -330,8 +330,8 @@ void Decompiler::collectStrings(const lm_module_t& mod, const Elf_Shdr& section)
 
 bool Decompiler::collectVFTables(const lm_module_t& mod, const Elf_Shdr& section)
 {
-	const lm_address_t start = mod.base + section.sh_addr;
-	const lm_address_t end = start + section.sh_size;
+	const lm_address_t start = mod.base + section.rva;
+	const lm_address_t end = start + section.size;
 
 	auto typeInfos = std::unordered_map<lm_address_t, std::string>();
 
@@ -417,76 +417,17 @@ bool Decompiler::collectVFTables(const lm_module_t& mod, const Elf_Shdr& section
 
 bool Decompiler::parseHeader(const lm_module_t& mod)
 {
-	//We parse the ELF binary from disk because trying to do so from memory f's up
-	LOG_DEBUG("Decompiler::parseHeader(%s)\n", mod.name);
-
-	FILE* file = fopen(mod.path, "r");
-	if (!file)
+	auto file = CELFExecutableFile();
+	if (!file.load(mod.path))
 	{
-		LOG_ERROR("Failed to open file for parsing Elf headers!\n");
 		return false;
 	}
 
-	Elf_Ehdr hdr;
-	if (fread(&hdr, sizeof(hdr), 1, file) < 1)
+	for (const auto& shdr : file.sections)
 	{
-		LOG_ERROR("Failed to read Elf header!\n");
-		return false;
-	}
+		LOG_DEBUG("Section header name %s, address 0x%llx, offset 0x%llx\n", shdr.name.c_str(), shdr.rva, shdr.offset);
 
-	LOG_DEBUG("shsstrndx %u\n", hdr.e_shstrndx);
-
-	if (sizeof(Elf_Shdr) < hdr.e_shentsize)
-	{
-		LOG_ERROR("hdr.e_shentsize < sizeof(Elf_Shdr)!\n");
-		return false;
-	}
-
-	auto shdrs = std::vector<Elf_Shdr>();
-	shdrs.resize(hdr.e_shnum);
-
-	if (fseek(file, hdr.e_shoff, SEEK_SET) != 0)
-	{
-		LOG_ERROR("Failed to seek to section headers\n");
-		return false;
-	}
-
-	if (fread(shdrs.data(), sizeof(Elf_Shdr), shdrs.size(), file) < shdrs.size())
-	{
-		LOG_ERROR("Failed to read section headers\n");
-		return false;
-	}
-
-	const Elf_Shdr& strHdr = shdrs[hdr.e_shstrndx];
-	auto strSec = std::vector<char>();
-	strSec.resize(strHdr.sh_size);
-
-	if (fseek(file, strHdr.sh_offset, SEEK_SET) != 0)
-	{
-		LOG_ERROR("Failed to seek to strHdr.sh_addr!\n");
-		return false;
-	}
-	
-	if (fread(strSec.data(), sizeof(unsigned char), strSec.size(), file) < strSec.size())
-	{
-		LOG_ERROR("Failed to seek to strHdr.sh_addr!\n");
-		return false;
-	}
-
-	LOG_DEBUG("strHdr name %u address 0x%x\n", strHdr.sh_name, strHdr.sh_offset);
-
-	for (const auto& shdr : shdrs)
-	{
-		if (!shdr.sh_name)
-		{
-			LOG_DEBUG("Skipping nameless section\n");
-			continue;
-		}
-
-		const char* name = &strSec[shdr.sh_name];
-		LOG_DEBUG("Section header name %s, address 0x%x, offset 0x%x\n", name, shdr.sh_addr, shdr.sh_offset);
-
-		auto mapName = std::string(mod.name) + "::" + name;
+		auto mapName = std::string(mod.name) + "::" + shdr.name;
 		sections[mapName] = shdr;
 	}
 

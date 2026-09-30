@@ -481,7 +481,7 @@ bool CConfig::loadSettings()
 	disableFamilyLock = getSetting<bool>(node, "DisableFamilyShareLock", true);
 	disableParentalRestrictions = getSetting<bool>(node, "DisableParentalRestrictions", false);
 	useWhiteList = getSetting<bool>(node, "UseWhitelist", false);
-	smartTickets = getSetting<SmartTicketsFlags>(node, "SmartTickets", 1);
+	smartTickets = getSetting<SmartTicketsFlags_t>(node, "SmartTickets", 1);
 	maxSchemaTries = getSetting<uint32_t>(node, "MaxSchemaTries", 10);
 	// SafeMode (abort the load on an unknown steamclient.so hash) is force-
 	// disabled. Its hash whitelist cannot be kept current: it goes stale on
@@ -667,6 +667,7 @@ bool CConfig::loadSettings()
 	gameTitles = getMap<uint32_t, std::string>(node, "GameTitles");
 	subscriptionTimestamps = getMap<uint32_t, uint32_t>(node, "SubscriptionTimestamps");
 	steamIdOverride = getMap<AppId_t, uint64_t>(node, "SteamIdOverride");
+	launchOptions = getMap<AppId_t, std::string>(node, "LaunchOptions");
 
 	//Do not log the keys themself
 	for (const auto& key : cdKeys.get())

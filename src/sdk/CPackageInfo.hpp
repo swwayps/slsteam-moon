@@ -14,6 +14,7 @@
 #pragma once
 
 #include "CUtl.hpp"
+#include "types.hpp"
 
 #include <cstdint>
 
@@ -27,7 +28,6 @@ enum class EPackageStatus : uint32_t
 };
 
 enum class EBillingType : uint32_t {};
-enum class ELicenseType : uint32_t {};
 
 static_assert(sizeof(CUtlMemory<uint32_t>) == 12, "CUtlMemory layout drift");
 
