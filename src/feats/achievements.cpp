@@ -5,17 +5,30 @@
 #include "../log.hpp"
 #include "../sdk/CNetPacket.hpp"
 #include "../sdk/CProtoBufMsgBase.hpp"
+#include "../utils/atomic_file.hpp"
 
+#include <chrono>
 #include <cstdint>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <mutex>
 #include <unordered_map>
 
 namespace
 {
-struct Pending { uint32_t app, account; uint64_t epoch; bool modern; };
+struct Pending
+{
+	uint32_t app, account;
+	uint64_t epoch;
+	bool modern;
+	uint64_t owner;
+	Achievements::OwnerSource source;
+};
 std::mutex pendingMutex;
 std::unordered_map<uint64_t, Pending> pending;
+Achievements::OwnerDirectory owners;
 bool validJob(uint64_t job) { return job != 0 && job != UINT64_MAX; }
 
 // Rewritten wire bytes in the shape CNetPacket::serialize expects.
@@ -29,6 +42,112 @@ struct RawBody
 		return true;
 	}
 };
+
+uint64_t nowSecs()
+{
+	return static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::seconds>(
+		std::chrono::steady_clock::now().time_since_epoch()).count());
+}
+
+const char* sourceName(Achievements::OwnerSource source)
+{
+	switch (source)
+	{
+		case Achievements::OwnerSource::Override: return "override";
+		case Achievements::OwnerSource::Preferred: return "preferred";
+		case Achievements::OwnerSource::Fallback: return "fallback";
+		case Achievements::OwnerSource::Candidate: return "reviewer";
+		case Achievements::OwnerSource::None: break;
+	}
+	return "none";
+}
+
+const char* verdictName(Achievements::OwnerVerdict verdict)
+{
+	switch (verdict)
+	{
+		case Achievements::OwnerVerdict::Good: return "carried the schema";
+		case Achievements::OwnerVerdict::Bad: return "was refused";
+		case Achievements::OwnerVerdict::Unknown: break;
+	}
+	return "was inconclusive";
+}
+
+// What the owner's reply says about that owner, independent of the local
+// fail-closed checks: an explicit failure rules the owner out for this game.
+Achievements::OwnerVerdict ownerVerdict(bool modern, const uint8_t* data,
+	uint32_t size, const CMsgProtoBufHeader& header)
+{
+	int32_t result = 0;
+	bool schema = false;
+	if (modern)
+	{
+		if (!header.has_eresult()) return Achievements::OwnerVerdict::Unknown;
+		result = header.eresult();
+		schema = PlayerStats::detail::walk(data, size, [](const auto&) {}) &&
+			!PlayerStats::fieldBytes(data, size, 3).empty();
+	}
+	else
+	{
+		CMsgClientGetUserStatsResponse body;
+		if (!body.ParseFromArray(data, size) || !body.has_eresult())
+			return Achievements::OwnerVerdict::Unknown;
+		result = body.eresult();
+		schema = body.has_schema() && !body.schema().empty();
+	}
+	if (result == k_EResultOK && schema) return Achievements::OwnerVerdict::Good;
+	if (result == k_EResultFailure) return Achievements::OwnerVerdict::Bad;
+	return Achievements::OwnerVerdict::Unknown;
+}
+
+std::string ownersPath()
+{
+	return (std::filesystem::path(g_config.getDir()) / "cache" / "achievement_owners.txt")
+		.string();
+}
+constexpr std::uintmax_t kMaxOwnersFile = 1u << 20;
+}
+
+void Achievements::offerOwners(uint32_t app, const std::vector<uint64_t>& found)
+{
+	owners.offer(app, found);
+	requestOwnerSave();
+}
+
+void Achievements::loadOwners()
+{
+	try
+	{
+		const auto path = ownersPath();
+		std::error_code error;
+		const auto size = std::filesystem::file_size(path, error);
+		if (error || size > kMaxOwnersFile) return;
+		std::ifstream file(path, std::ios::binary);
+		owners.restore(std::string(std::istreambuf_iterator<char>(file),
+		                           std::istreambuf_iterator<char>()));
+	}
+	catch (...)
+	{
+		// A damaged file only costs what was learned before.
+	}
+}
+
+void Achievements::saveOwners()
+{
+	try
+	{
+		const auto path = ownersPath();
+		std::error_code ignored;
+		std::filesystem::create_directories(std::filesystem::path(path).parent_path(), ignored);
+		const std::string text = owners.serialize();
+		std::string error;
+		if (!AtomicFile::write(path, text.data(), text.size(), error))
+			g_pLog->warn("Achievements: learned owners not saved: %s\n", error.c_str());
+	}
+	catch (const std::exception& e)
+	{
+		g_pLog->warn("Achievements: learned owners not saved: %s\n", e.what());
+	}
 }
 
 // At the serialized CM boundary the jobid is final, and CloudRedirect has
@@ -74,8 +193,21 @@ std::vector<uint8_t> Achievements::rewriteRequest(bool modern,
 	if (!StatsPolicy::isSelf(target, account)) return {};
 	const uint64_t epoch = StatsPolicy::localEpoch(app, account, true);
 	if (!epoch) return {};
-	const uint64_t owner = resolveOwnerSteamId(app, g_config.achievementOwners.get(),
-	                                          g_config.achievementOwnerId.get());
+	const auto overrides = g_config.achievementOwners.get();
+	const auto overrideIt = overrides.find(app);
+	const uint32_t lookupCount = g_config.maxSchemaTries.get();
+	const auto choice = owners.choose(app,
+		overrideIt != overrides.end() ? overrideIt->second : 0,
+		g_config.achievementOwnerId.get(), 0x0110000100000000ULL | account,
+		lookupCount != 0, nowSecs());
+	if (choice.lookup)
+	{
+		// Steam's send thread only queues the lookup; this request goes out
+		// unchanged and a later one uses what the lookup found.
+		g_pLog->debug("Achievements: app=%u has no schema owner; looking up reviewers\n", app);
+		requestOwnerLookup(app, lookupCount);
+	}
+	const uint64_t owner = choice.owner;
 	if (!owner || StatsPolicy::isSelf(owner, account)) return {};
 	std::vector<uint8_t> out;
 	if (modern) out = PlayerStats::buildSpoofedRequest(owner, app);
@@ -87,16 +219,21 @@ std::vector<uint8_t> Achievements::rewriteRequest(bool modern,
 		out.resize(legacy.ByteSizeLong());
 		if (!legacy.SerializeToArray(out.data(), out.size())) return {};
 	}
-	std::lock_guard lock(pendingMutex);
-	// Retain unanswered jobs as bounded tombstones. Expiring by time would
-	// allow a late owner reply through with its achievement progress intact.
-	if (auto it = pending.find(header.jobid_source()); it != pending.end())
 	{
-		it->second.epoch = 0; // Ambiguous duplicate: any reply must fail safely.
-		return {};
+		std::lock_guard lock(pendingMutex);
+		// Retain unanswered jobs as bounded tombstones. Expiring by time would
+		// allow a late owner reply through with its achievement progress intact.
+		if (auto it = pending.find(header.jobid_source()); it != pending.end())
+		{
+			it->second.epoch = 0; // Ambiguous duplicate: any reply must fail safely.
+			return {};
+		}
+		if (pending.size() >= 4096 || out.size() > maxReplyBytes) return {};
+		pending.emplace(header.jobid_source(),
+			Pending{app, account, epoch, modern, owner, choice.source});
 	}
-	if (pending.size() >= 4096 || out.size() > maxReplyBytes) return {};
-	pending.emplace(header.jobid_source(), Pending{app, account, epoch, modern});
+	g_pLog->debug("Achievements: app=%u schema request via %s owner\n",
+	              app, sourceName(choice.source));
 	return out;
 }
 
@@ -111,6 +248,15 @@ std::optional<std::vector<uint8_t>> Achievements::rewriteResponse(bool modern,
 		if (it == pending.end() || it->second.modern != modern) return {};
 		request = it->second;
 		pending.erase(it);
+	}
+	// A tombstoned (duplicate) job cannot tell which owner answered.
+	if (request.epoch && size <= maxReplyBytes)
+	{
+		const auto verdict = ownerVerdict(modern, data, size, header);
+		if (owners.report(request.app, request.owner, request.source, verdict))
+			requestOwnerSave();
+		g_pLog->debug("Achievements: app=%u %s owner reply %s\n", request.app,
+		              sourceName(request.source), verdictName(verdict));
 	}
 	const auto failure = [&]() -> std::vector<uint8_t> {
 		if (header.ByteSizeLong() > maxHeaderBytes)

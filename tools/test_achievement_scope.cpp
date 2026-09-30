@@ -12,10 +12,13 @@
 #include <cstring>
 #include <memory>
 #include <string>
+#include <utility>
 
 namespace {
 constexpr uint32_t app = 12345;
-constexpr uint64_t self = 76561198000000001ULL, other = self + 1;
+constexpr uint64_t self = 76561198000000001ULL, other = self + 1, reviewer = self + 98;
+std::vector<std::pair<uint32_t, uint32_t>> lookups;
+int saves = 0;
 int failures = 0;
 bool injected = true, available = true, success = false, excluded = false;
 AppOwnershipInfo_t info{};
@@ -30,14 +33,14 @@ void license(int32_t package, bool owns = true, bool expired = false) {
 	info = {}; info.subId = package; info.ownsLicense = owns; info.licenseExpired = expired;
 	success = package >= 0;
 }
-std::vector<uint8_t> request(bool modern, uint64_t job, uint64_t target = self) {
+std::vector<uint8_t> request(bool modern, uint64_t job, uint64_t target = self, uint32_t game = app) {
 	CMsgProtoBufHeader header;
 	header.set_steamid(self); header.set_jobid_source(job);
 	std::vector<uint8_t> bytes;
-	if (modern) bytes = PlayerStats::buildSpoofedRequest(target, app);
+	if (modern) bytes = PlayerStats::buildSpoofedRequest(target, game);
 	else {
 		CMsgClientGetUserStats body;
-		body.set_game_id(app); body.set_steam_id_for_user(target);
+		body.set_game_id(game); body.set_steam_id_for_user(target);
 		body.set_crc_stats(123); body.set_schema_local_version(7);
 		auto raw = body.SerializeAsString(); bytes.assign(raw.begin(), raw.end());
 	}
@@ -46,21 +49,28 @@ std::vector<uint8_t> request(bool modern, uint64_t job, uint64_t target = self) 
 	check(before == bytes, "input buffer remains untouched");
 	return out;
 }
-std::optional<std::vector<uint8_t>> response(bool modern, uint64_t job, bool schema = true) {
+std::optional<std::vector<uint8_t>> response(bool modern, uint64_t job, bool schema = true,
+                                             int32_t result = 1, uint32_t game = app) {
 	CMsgProtoBufHeader header;
-	header.set_steamid(self); header.set_jobid_target(job); header.set_eresult(1);
+	header.set_steamid(self); header.set_jobid_target(job); header.set_eresult(result);
 	std::vector<uint8_t> bytes;
 	if (modern) {
 		bytes = {0x10, 123, 0x22, 2, 8, 1}; // crc + stats
 		if (schema) bytes.insert(bytes.end(), {0x1a, 1, 0x42});
 	} else {
 		CMsgClientGetUserStatsResponse body;
-		body.set_game_id(app); body.set_eresult(1); body.set_crc_stats(123);
+		body.set_game_id(game); body.set_eresult(result); body.set_crc_stats(123);
 		body.add_stats()->set_stat_id(1); body.add_achievement_blocks()->set_achievement_id(1);
 		if (schema) body.set_schema("schema");
 		auto raw = body.SerializeAsString(); bytes.assign(raw.begin(), raw.end());
 	}
 	return Achievements::rewriteResponse(modern, bytes.data(), bytes.size(), header);
+}
+uint64_t targetOf(bool modern, const std::vector<uint8_t>& body) {
+	if (body.empty()) return 0;
+	if (modern) return PlayerStats::parseRequestSteamId(body.data(), body.size()).value_or(0);
+	CMsgClientGetUserStats parsed;
+	return parsed.ParseFromArray(body.data(), body.size()) ? parsed.steam_id_for_user() : 0;
 }
 // A Steam-shaped CM packet: CNetPacketBody{type, headerSize} + header + body.
 CNetPacket packet(uint32_t eMsg, const CMsgProtoBufHeader& header, const std::vector<uint8_t>& body) {
@@ -101,6 +111,8 @@ bool CConfig::shouldExcludeAppId(uint32_t, bool) { return excluded; }
 CUser* getLocalUser() { return available ? &user : nullptr; }
 bool CUser::checkAppOwnership(uint32_t, AppOwnershipInfo_t* out) { *out = info; return success; }
 namespace PackagePatch { bool isInjectedAppId(uint32_t) { return injected; } }
+void Achievements::requestOwnerLookup(uint32_t game, uint32_t count) { lookups.emplace_back(game, count); }
+void Achievements::requestOwnerSave() { ++saves; }
 namespace Steam {
 Plat_Alloc_t Plat_Alloc = [](int size) -> void* { return std::malloc(static_cast<std::size_t>(size)); };
 Plat_Free_t Plat_Free = [](void* memory) { std::free(memory); };
@@ -169,6 +181,33 @@ int main() {
 		const auto dup = nextJob++;
 		request(modern, dup); request(modern, dup);
 		check(safeFailure(modern, response(modern, dup)), "ambiguous duplicate job never publishes another user's progress");
+	}
+	for (bool modern : {false, true}) {
+		const uint32_t game = modern ? 54322 : 54321;
+		g_config.addedAppIds.set({app, game}); g_config.maxSchemaTries.set(5);
+		license(0);
+		auto job = nextJob++;
+		check(targetOf(modern, request(modern, job, self, game)) == other,
+		      "the configured fallback owner is asked first");
+		saves = 0;
+		check(safeFailure(modern, response(modern, job, false, 2, game)) && saves == 1,
+		      "a refusing owner fails closed and is remembered");
+		lookups.clear();
+		check(request(modern, nextJob++, self, game).empty() && lookups.size() == 1 &&
+		      lookups[0] == std::make_pair(game, 5u),
+		      "a refused fallback passes through and starts one background lookup");
+		check(request(modern, nextJob++, self, game).empty() && lookups.size() == 1,
+		      "the lookup is not repeated while it runs");
+		Achievements::offerOwners(game, {reviewer});
+		check(saves == 2, "looked-up reviewers are saved");
+		job = nextJob++;
+		check(targetOf(modern, request(modern, job, self, game)) == reviewer,
+		      "the next request asks the first reviewer");
+		check(response(modern, job, true, 1, game).has_value() && saves == 3,
+		      "the reviewer's schema is delivered and the reviewer is remembered");
+		check(targetOf(modern, request(modern, nextJob++, self, game)) == reviewer,
+		      "the reviewer that answered is reused");
+		g_config.addedAppIds.set({app});
 	}
 	{
 		// Owner replies arrive as CM packets; the rewrite must land in them.

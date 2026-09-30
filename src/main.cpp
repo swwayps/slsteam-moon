@@ -21,6 +21,7 @@
 #include "utils.hpp"
 #include "utils/process_lock.hpp"
 
+#include "feats/achievements.hpp"
 #include "feats/appinfo_provision.hpp"
 #include "feats/provision_schedule.hpp"
 #include "feats/appinfo_vdf.hpp"
@@ -702,6 +703,7 @@ static void load()
 	{
 		BootProf::Span importProfile(g_pLog.get(), "lua_imports");
 		DepotKey::onStartup();
+		Achievements::loadOwners();
 		ManifestId::importLuaScripts();
 	}
 

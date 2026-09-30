@@ -101,11 +101,11 @@ SteamIdOverride:
 #SteamDRM = 0x1
 #Denuvo = 0x2
 SmartTickets: 0x1
-#Automatically grab Achievement schemas from Steams CDN which makes them always up to date
-#Slows down game's loading page the first time you click them
-#If you don't want this set it to 0 and use tools/schema-grabber instead to grab them outside of steam
-#to get the achievement schemas. Doing so will revert to the previous behaviour of falling back to
-#the offline cache (appcache/stats) when a GetUserStats request fails
+#How many recent reviewers of a game to try as its achievement-schema owner when
+#AchievementOwnerId cannot read that game's schema. They are looked up in the
+#background (one store request per game, at most every 10 minutes), so no page
+#waits for it; the next schema request uses them. What worked is kept in
+#cache/achievement_owners.txt for later sessions. 0 turns the lookup off.
 MaxSchemaTries: 10
 
 #Override commands right in CUser::SpawnGame. Use %command% as special string, just like in Steam itself
@@ -160,9 +160,9 @@ InjectAllAdvertisedDlc: no
 #AchievementOwnerId). Set to "no" to disable achievement schema spoofing.
 Achievements: yes
 
-#Fallback account (SteamID64) used to read achievement schemas when a game has
-#no per-game override in AchievementOwners. Only the public schema is read; the
-#account is never signed in to.
+#Account (SteamID64) asked for a game's achievement schema when AchievementOwners
+#has no entry for it. If it cannot read the schema, recent reviewers are tried
+#(see MaxSchemaTries). Only the public schema is read; no account is signed in to.
 AchievementOwnerId: 76561198028121353
 
 #Per-game override of the achievement-schema source account. Same shape as

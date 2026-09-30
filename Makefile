@@ -96,6 +96,11 @@ test-achievements:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror -isystem include -pthread tools/test_achievements.cpp -o /tmp/test_achievements
 	/tmp/test_achievements
 
+test-achievement-lookup:
+	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror -I src -pthread \
+		tools/test_achievement_lookup.cpp src/feats/achievement_lookup.cpp \
+		-o /tmp/test_achievement_lookup
+	/tmp/test_achievement_lookup
 test-achievement-scope: obj/sdk/protobufs/steammessages_clientserver_userstats.pb.o obj/sdk/protobufs/steammessages_base.pb.o
 	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem include -I src \
 		-ffunction-sections -fdata-sections \
