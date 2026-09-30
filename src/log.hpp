@@ -97,10 +97,7 @@ class CLog
 			return;
 		}
 
-		const size_t size = snprintf(nullptr, 0, msg, args...) + 1; //Allocate one more byte for zero termination
-		std::string formatted;
-		formatted.resize(size);
-		snprintf(formatted.data(), size, msg, args...);
+		const std::string formatted = format(msg, args...);
 
 		// NOTE: __log no longer raises desktop popups. Every log level here
 		// (warn/notify/info/...) writes ONLY to the file, so the raw
@@ -161,6 +158,26 @@ public:
 	CLog(const char* path);
 	~CLog();
 
+	// printf formatting. A message without arguments is text, so a '%' in it
+	// is never read as a conversion.
+	template<typename ...Args>
+	static std::string format(const char* msg, Args... args)
+	{
+		if constexpr (sizeof...(Args) == 0)
+		{
+			return msg;
+		}
+		else
+		{
+			const int size = snprintf(nullptr, 0, msg, args...);
+			if (size <= 0) return {};
+			std::string formatted(static_cast<size_t>(size) + 1, '\0');
+			snprintf(formatted.data(), formatted.size(), msg, args...);
+			formatted.resize(static_cast<size_t>(size));
+			return formatted;
+		}
+	}
+
 	template<typename ...Args>
 	constexpr void once(const char* msg, Args... args)
 	{
@@ -187,10 +204,7 @@ public:
 	void infoOnce(const char* msg, Args... args)
 	{
 		if (LogLevel::Info < getMinLevel()) return;
-		size_t size = snprintf(nullptr, 0, msg, args...) + 1;
-		std::string formatted;
-		formatted.resize(size);
-		snprintf(formatted.data(), size, msg, args...);
+		const std::string formatted = format(msg, args...);
 		if (seenBefore(LogLevel::Info, formatted)) return;
 		__log(LogLevel::Info, "%s", formatted.c_str());
 	}
@@ -199,10 +213,7 @@ public:
 	void debugOnce(const char* msg, Args... args)
 	{
 		if (LogLevel::Debug < getMinLevel()) return;
-		size_t size = snprintf(nullptr, 0, msg, args...) + 1;
-		std::string formatted;
-		formatted.resize(size);
-		snprintf(formatted.data(), size, msg, args...);
+		const std::string formatted = format(msg, args...);
 		if (seenBefore(LogLevel::Debug, formatted)) return;
 		__log(LogLevel::Debug, "%s", formatted.c_str());
 	}

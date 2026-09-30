@@ -682,6 +682,10 @@ test-patternscan:
 		tools/test_patternscan.cpp -o /tmp/test_patternscan
 	/tmp/test_patternscan
 
+test-log-format:
+	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror -Wformat-security -I src \
+		tools/test_log_format.cpp -o /tmp/test_log_format
+	/tmp/test_log_format
 test-vftable-anchors:
 	$(CXX) -O2 -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem include -I src \
 		tools/test_vftable_anchors.cpp src/decompiler.cpp src/vftableinfo.cpp \
