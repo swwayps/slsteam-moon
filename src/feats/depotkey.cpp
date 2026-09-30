@@ -156,11 +156,10 @@ std::string getKeyDir()
 {
 	std::stringstream ss;
 	ss << g_config.getDir().c_str() << "/cache";
+	// Runs on Steam's network and IPC paths: never throw into Steam.
 	const auto dir = ss.str();
-	if (!std::filesystem::exists(dir.c_str()))
-	{
-		std::filesystem::create_directory(dir.c_str());
-	}
+	std::error_code ec;
+	std::filesystem::create_directories(dir, ec);
 	return dir;
 }
 

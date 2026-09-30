@@ -217,22 +217,25 @@ std::unordered_set<uint32_t> CConfig::loadLuaAppIdsYaml()
 	return result;
 }
 
+// Runs inside the loader's preinit callback, where a throw terminates Steam:
+// only the error_code filesystem overloads are used here.
 bool CConfig::createFile()
 {
 	std::string path = getPath();
-	if (!std::filesystem::exists(path))
+	std::error_code ec;
+	if (!std::filesystem::exists(path, ec))
 	{
 		std::string dir = getDir();
-		if (!std::filesystem::exists(dir))
+		if (std::filesystem::create_directories(dir, ec))
 		{
-			if (!std::filesystem::create_directory(dir))
-			{
-				g_pLog->notify("Unable to create config directory at %s!\n", dir.c_str());
-				g_pLog->notifyUser(UserMsg::ConfigWriteFailed);
-				return false;
-			}
-
 			g_pLog->debug("Created config directory at %s\n", dir.c_str());
+		}
+		else if (ec)
+		{
+			g_pLog->notify("Unable to create config directory at %s: %s\n",
+			               dir.c_str(), ec.message().c_str());
+			g_pLog->notifyUser(UserMsg::ConfigWriteFailed);
+			return false;
 		}
 
 		auto config = std::ofstream(path);

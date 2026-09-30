@@ -33,13 +33,13 @@ std::string Ticket::getTicketDir()
 	std::ostringstream ss;
 	ss << g_config.getDir() << "/cache";
 
+	// Called from IPC hooks: a missing or unusable directory must not throw
+	// into Steam. The caller's open then fails and it treats that as a miss.
 	const auto dir = ss.str();
-	if (!std::filesystem::exists(dir.c_str()))
-	{
-		std::filesystem::create_directory(dir.c_str());
-	}
+	std::error_code ec;
+	std::filesystem::create_directories(dir, ec);
 
-	return ss.str();
+	return dir;
 }
 
 std::string Ticket::getTicketPath(uint32_t appId)
