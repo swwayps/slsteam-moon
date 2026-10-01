@@ -484,7 +484,9 @@ namespace SynthMark
 			std::error_code ec;
 			const bool regular = std::filesystem::is_regular_file(
 				std::filesystem::path(dir) / name, ec);
-			if (ec || regular) return true;
+			// A missing name reports ENOENT; any other error stays unknown.
+			if (regular || (ec && ec != std::errc::no_such_file_or_directory))
+				return true;
 		}
 		return false;
 	}

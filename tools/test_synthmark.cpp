@@ -421,6 +421,20 @@ int main()
 		      quarantineDir.string(), blockedTerminalApp, std::vector<uint32_t>{}),
 	      "remaining terminal sidecar makes cleanup incomplete");
 
+	// A typical removed app has no terminal state, synthetic marker or
+	// tickets. Moving the artifacts it does have completes the cleanup.
+	const uint32_t typicalApp = 328;
+	for (const char* name : {"picsbuffer_328.bin", "picsbuffer_328.yaml",
+	                         "dlcmetadata_328.yaml"})
+		touch(quarantineDir / name);
+	auto typical = SynthMark::quarantineAppArtifacts(
+		quarantineDir.string(), typicalApp, std::vector<uint32_t>{987655},
+		".typical");
+	CHECK(typical.size() == 3, "typical cleanup moves every present artifact");
+	CHECK(!SynthMark::hasAppArtifacts(
+		      quarantineDir.string(), typicalApp, std::vector<uint32_t>{987655}),
+	      "absent artifact kinds do not make cleanup incomplete");
+
 	std::error_code ec;
 	fs::remove_all(quarantineDir, ec);
 	fs::remove_all(dir, ec);
