@@ -741,11 +741,8 @@ static void load()
 	}
 	catch (const std::exception& e)
 	{
-		// A thrown std::exception here silently tore down every hook (unload()
-		// closes the owner queue) and left Steam unmodified.  Surface what() so
-		// a client-update behaviour break is diagnosable from the log instead of
-		// presenting as "injection silently did nothing".
-		if (g_pLog) g_pLog->warn("setup() aborted by exception: %s\n", e.what());
+		// Tear the hooks down and say why, so Steam runs unmodified visibly.
+		if (g_pLog) g_pLog->warn("load() aborted by exception: %s\n", e.what());
 		try
 		{
 			unload();
@@ -757,16 +754,13 @@ static void load()
 	}
 	catch (...)
 	{
-		// Never let an exception cross the rtld-audit callback boundary: the
-		// dynamic linker cannot unwind through la_objopen safely.
-		if (g_pLog) g_pLog->warn("setup() aborted by a non-std exception\n");
+		if (g_pLog) g_pLog->warn("%s", "load() aborted by a non-std exception\n");
 		try
 		{
 			unload();
 		}
 		catch (...)
 		{
-			// Cleanup is best effort after a failed load.
 		}
 		return;
 	}
@@ -1132,6 +1126,36 @@ static void decompileBeforeRelocation(const char* path)
 	}
 }
 
+// An exception must not cross an rtld-audit callback. A setup that threw is not
+// retried, and load() then leaves Steam unmodified.
+static bool setupAborted = false;
+static void setupGuarded()
+{
+	if (setupAborted) return;
+	try
+	{
+		setup();
+		return;
+	}
+	catch (const std::exception& e)
+	{
+		if (g_pLog) g_pLog->warn("setup() aborted by exception: %s\n", e.what());
+	}
+	catch (...)
+	{
+		if (g_pLog) g_pLog->warn("%s", "setup() aborted by a non-std exception\n");
+	}
+	setupAborted = true;
+	setupSuccess = false;
+	try
+	{
+		unload();
+	}
+	catch (...)
+	{
+	}
+}
+
 extern "C" unsigned int la_objopen(struct link_map* map,
                                    __attribute__((unused)) Lmid_t lmid,
                                    __attribute__((unused)) uintptr_t* cookie)
@@ -1142,7 +1166,7 @@ extern "C" unsigned int la_objopen(struct link_map* map,
 	{
 		if (!setupSuccess)
 		{
-			setup();
+			setupGuarded();
 		}
 		if (setupSuccess)
 		{
@@ -1164,5 +1188,5 @@ extern "C" unsigned int la_objopen(struct link_map* map,
 
 extern "C" void la_preinit(__attribute__((unused)) uintptr_t* cookie)
 {
-	setup();
+	setupGuarded();
 }
