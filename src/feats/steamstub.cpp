@@ -155,16 +155,19 @@ namespace
 			"/.local/share/Steam",
 		};
 
+		// Runs inside the LaunchApp hook: every filesystem query takes an
+		// error_code, and an unreadable library is skipped.
+		std::error_code ec;
 		std::vector<std::filesystem::path> libraryRoots;
 		for (const char* suffix : steamRoots)
 		{
 			auto root = std::filesystem::path(home) / (std::string(suffix).substr(1));
-			if (std::filesystem::exists(root))
+			if (std::filesystem::exists(root, ec))
 			{
 				libraryRoots.push_back(root / "steamapps");
 				// External libraries from libraryfolders.vdf
 				const auto libVdf = root / "steamapps" / "libraryfolders.vdf";
-				if (std::filesystem::exists(libVdf))
+				if (std::filesystem::exists(libVdf, ec))
 				{
 					std::ifstream f(libVdf);
 					std::string line;
@@ -187,7 +190,7 @@ namespace
 		for (const auto& libroot : libraryRoots)
 		{
 			const auto manifest = libroot / ("appmanifest_" + std::to_string(appId) + ".acf");
-			if (!std::filesystem::exists(manifest)) continue;
+			if (!std::filesystem::exists(manifest, ec)) continue;
 
 			std::ifstream f(manifest);
 			std::string line;
@@ -506,10 +509,11 @@ void setup(const char* installRoot)
 			/ ".local" / "share" / "SLSsteam" / "steamless-bin",
 	};
 
+	std::error_code ec;
 	bool haveScript = false;
 	for (const auto& cand : scriptCandidates)
 	{
-		if (std::filesystem::exists(cand))
+		if (std::filesystem::exists(cand, ec))
 		{
 			g_helperScript = cand.string();
 			haveScript = true;
@@ -519,7 +523,7 @@ void setup(const char* installRoot)
 	bool haveBinary = false;
 	for (const auto& cand : binCandidates)
 	{
-		if (std::filesystem::exists(cand / "Steamless.CLI.exe"))
+		if (std::filesystem::exists(cand / "Steamless.CLI.exe", ec))
 		{
 			g_steamlessHome = cand.string();
 			haveBinary = true;
@@ -624,7 +628,8 @@ void onLaunchApp(uint32_t appId)
 	if (!g_config.isAddedAppId(appId)) return;
 
 	const auto installDir = findInstallDir(appId);
-	if (installDir.empty() || !std::filesystem::exists(installDir))
+	std::error_code dirEc;
+	if (installDir.empty() || !std::filesystem::is_directory(installDir, dirEc))
 	{
 		g_pLog->debug("SteamStub: no install dir resolved for %u; skip\n", appId);
 		return;
@@ -656,16 +661,17 @@ void onLaunchApp(uint32_t appId)
 	// Walk a small recursion (most stub-wrapped exes live at the
 	// install dir root, but a few games tuck them in subdirs like
 	// Bin/ or Binaries/).  Cap depth to avoid runaway.
-	for (auto it = std::filesystem::recursive_directory_iterator(installDir);
-	     it != std::filesystem::recursive_directory_iterator();
-	     ++it)
+	std::error_code walkEc;
+	for (std::filesystem::recursive_directory_iterator it(installDir, walkEc), end;
+	     !walkEc && it != end; it.increment(walkEc))
 	{
 		if (it.depth() > 3)
 		{
 			it.disable_recursion_pending();
 			continue;
 		}
-		if (!it->is_regular_file()) continue;
+		std::error_code fileEc;
+		if (!it->is_regular_file(fileEc) || fileEc) continue;
 
 		const auto& p = it->path();
 		// Cheap extension filter before opening the file.
@@ -698,7 +704,8 @@ void onLaunchApp(uint32_t appId)
 		// the binary (and therefore re-applies the stub) forces a
 		// reprocess instead of being silently skipped.
 		const auto markerPath = pathStr + ".steamless_done";
-		if (std::filesystem::exists(markerPath))
+		std::error_code markerEc;
+		if (std::filesystem::exists(markerPath, markerEc))
 		{
 			std::error_code ec1, ec2;
 			const auto exeMtime    = std::filesystem::last_write_time(p, ec1);
