@@ -22,6 +22,7 @@
 #include "yaml-cpp/emittermanip.h"
 #include "yaml-cpp/yaml.h"
 
+#include <charconv>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -348,7 +349,12 @@ void importLuaScriptsFrom(const std::string& stplug)
 			auto end = std::sregex_iterator();
 			for (auto it = begin; it != end; ++it)
 			{
-				const uint32_t depotId = static_cast<uint32_t>(std::stoul((*it)[1].str()));
+				// The regex admits any digit run; skip an id that does not fit.
+				const std::string digits = (*it)[1].str();
+				uint32_t depotId = 0;
+				if (std::from_chars(digits.data(), digits.data() + digits.size(),
+				                    depotId).ec != std::errc())
+					continue;
 				const std::string keyHex = (*it)[2].str();
 				const std::string keyBin = hexToBytes(keyHex);
 				if (keyBin.size() != 32) continue;

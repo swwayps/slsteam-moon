@@ -12,6 +12,7 @@
 #include "yaml-cpp/emitter.h"
 #include "yaml-cpp/yaml.h"
 
+#include <charconv>
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
@@ -300,8 +301,12 @@ void importLuaScripts()
 			auto end = std::sregex_iterator();
 			for (auto it = begin; it != end; ++it)
 			{
-				const uint32_t depotId =
-					static_cast<uint32_t>(std::stoul((*it)[1].str()));
+				// The regex admits any digit run; skip an id that does not fit.
+				const std::string digits = (*it)[1].str();
+				uint32_t depotId = 0;
+				if (std::from_chars(digits.data(), digits.data() + digits.size(),
+				                    depotId).ec != std::errc())
+					continue;
 				const std::string gid = (*it)[2].str();
 				if (appId != 0) scriptDepots.push_back(depotId);
 				if (savePin(depotId, gid)) ++imported;
