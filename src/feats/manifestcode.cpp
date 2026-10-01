@@ -668,7 +668,8 @@ bool hkCDepotDownloadMgr_BYldRequestDepotManifest(void* pthis, uint32_t appId, u
 		for (const char* suffix : steamRoots)
 		{
 			const auto candidate = std::string(home) + suffix;
-			if (std::filesystem::exists(candidate + "/steam.sh"))
+			std::error_code rootEc;
+			if (std::filesystem::exists(candidate + "/steam.sh", rootEc))
 			{
 				steamRoot = candidate;
 				break;
@@ -680,25 +681,14 @@ bool hkCDepotDownloadMgr_BYldRequestDepotManifest(void* pthis, uint32_t appId, u
 	{
 		const std::string manifestPath = steamRoot + "/depotcache/" + std::to_string(depotId) + "_" + std::to_string(manifestId) + ".manifest";
 
-		if (!std::filesystem::exists(manifestPath) || std::filesystem::file_size(manifestPath) == 0)
+		// A missing file reports an error here, which counts as absent.
+		std::error_code sizeEc;
+		const auto manifestSize = std::filesystem::file_size(manifestPath, sizeEc);
+		if (sizeEc || manifestSize == 0)
 		{
 			g_pLog->info("BYldRequestDepotManifest: manifest file missing, fetching synchronously: %s\n", manifestPath.c_str());
-			// Block until the blob lands on disk (or times out).  We
-			// pre-stage the manifest so Steam's downloader finds it
-			// locally, then fall through to the original.
-			//
-			// NOTE (2026-06-04): this hook is a FALLBACK.  The real fix
-			// stages the manifest in the PICS recv handler for the gid
-			// Steam will actually request (the live public gid — we no
-			// longer pin during provisioning, see appinfo_provision.cpp),
-			// so for a correctly-provisioned app Steam finds the manifest
-			// already on disk during planning and SKIPS this function
-			// entirely (the dotAGE-proven path).  This block only runs if
-			// that pre-staging missed (e.g. the gid Steam requested
-			// differs from what we staged because steamcmd.net's public
-			// gid lagged Steam's), in which case we stage the exact gid
-			// Steam asked for and fall through to the original's
-			// request-code handshake (our BRouteMsgToJob hook answers it).
+			// Fallback for a gid the install plan did not stage: wait for the
+			// archive copy, then let Steam's own request run.
 			const bool ok = ManifestFetch::awaitManifestBlob(
 				manifestId, appId, depotId, ManifestFetch::getTimeoutSec(),
 				ManifestFetch::isAnyManagedDownloadActive(appId));
