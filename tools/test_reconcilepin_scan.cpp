@@ -25,6 +25,7 @@ static int g_failures = 0;
 		else         { std::printf("ok:   %s\n", msg); }                     \
 	} while (0)
 
+using ReconcilePin::detail::findBuilderCall;
 using ReconcilePin::detail::findBuilderCallRel32;
 
 // Encode an `E8 rel32` at buf[off] whose near-call target is `targetAbs`,
@@ -94,6 +95,28 @@ int main()
 		const long r = findBuilderCallRel32(b.data(), b.size(), BASE, EXP, WIN, execOk);
 		CHECK(r == static_cast<long>(EXP),
 		      "the exact RE'd offset wins over a nearby call");
+	}
+
+	// 7. Beta-client layout: the builder call moved to +0x186 and a second
+	//    executable call sits at +0x1B6. The resolved builder picks the call.
+	{
+		auto b = nop; b[EXP] = 0xFF;
+		putCall(b, 0x186, BASE, 0x18500);
+		putCall(b, 0x1B6, BASE, 0x18600);
+		CHECK(findBuilderCall(b.data(), b.size(), BASE, 0x18500, execOk) == 0x186,
+		      "the resolved builder disambiguates two calls in the window");
+		CHECK(findBuilderCall(b.data(), b.size(), BASE, 0, execOk) == -1,
+		      "without a resolved builder two calls stay ambiguous");
+	}
+
+	// 8. A call at the RE'd offset to another function is not the builder.
+	{
+		auto b = nop; putCall(b, EXP, BASE, 0x18000); putCall(b, EXP + 8, BASE, 0x18500);
+		CHECK(findBuilderCall(b.data(), b.size(), BASE, 0x18500, execOk) ==
+		          static_cast<long>(EXP + 8),
+		      "the RE'd offset is accepted only when it calls the builder");
+		CHECK(findBuilderCall(b.data(), b.size(), BASE, 0x18900, execOk) == -1,
+		      "no call to the resolved builder leaves the fix disabled");
 	}
 
 	if (g_failures == 0) std::printf("\nall reconcilepin-scan checks passed\n");

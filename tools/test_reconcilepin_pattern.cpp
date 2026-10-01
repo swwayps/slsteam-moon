@@ -1,6 +1,11 @@
-// Validate the derived ReconcilePin call site against a 32-bit steamclient.
-// Build with: g++ -std=c++20 tools/test_reconcilepin_pattern.cpp -o /tmp/test_reconcilepin_pattern
+// Validate the derived ReconcilePin call site against a 32-bit steamclient:
+// the production locator must find EvaluateConfigChanges' call to the
+// builder that CUserAppManager::BuildDepotDependency resolves to.
+// Build with: g++ -std=c++20 -I src tools/test_reconcilepin_pattern.cpp -o /tmp/test_reconcilepin_pattern
 
+#include "feats/reconcilepin.hpp"
+
+#include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
@@ -77,21 +82,36 @@ int main(int argc, char** argv)
 		          << evaluates.size() << '\n';
 		return 1;
 	}
-	const size_t call = evaluates.front() + 0x183;
-	if (call + 5 > image.size()
-	    || static_cast<uint8_t>(image[call]) != 0xe8)
+	// Patterns::CUserAppManager::BuildDepotDependency (SigFollowMode::Relative).
+	const auto builderSites = findMatches(image, parse(
+	    "E8 ? ? ? ? 88 45 A3 83 C4 ? 84 C0 74 ?"));
+	if (builderSites.size() != 1)
 	{
-		std::cerr << "target-vector builder call assumption drifted\n";
+		std::cerr << "expected one BuildDepotDependency site; found "
+		          << builderSites.size() << '\n';
 		return 1;
 	}
 	int32_t relative = 0;
-	std::memcpy(&relative, image.data() + call + 1, sizeof(relative));
-	const int64_t destination = static_cast<int64_t>(call + 5) + relative;
-	if (destination < 0 || static_cast<uint64_t>(destination) >= image.size())
+	std::memcpy(&relative, image.data() + builderSites.front() + 1, sizeof(relative));
+	const auto builder = static_cast<std::uintptr_t>(
+	    static_cast<int64_t>(builderSites.front() + 5) + relative);
+
+	// File offsets stand in for addresses: both sites lie in .text, so their
+	// rel32 targets compare in the same space.
+	const size_t entry = evaluates.front();
+	const size_t len = std::min(image.size() - entry,
+	    ReconcilePin::detail::kBuilderCallOff + ReconcilePin::detail::kBuilderCallWindow + 8);
+	const auto inImage = [&](std::uintptr_t target) { return target < image.size(); };
+	const long call = ReconcilePin::detail::findBuilderCall(
+	    reinterpret_cast<const uint8_t*>(image.data()) + entry, len, entry,
+	    builder, inImage);
+	if (call < 0)
 	{
-		std::cerr << "target-vector builder call resolves outside steamclient\n";
+		std::cerr << "no call to the builder near EvaluateConfigChanges+0x"
+		          << std::hex << ReconcilePin::detail::kBuilderCallOff << '\n';
 		return 1;
 	}
-	std::cout << "ReconcilePin target-vector call site is valid\n";
+	std::cout << "ReconcilePin target-vector call at EvaluateConfigChanges+0x"
+	          << std::hex << call << " -> builder 0x" << builder << '\n';
 	return 0;
 }

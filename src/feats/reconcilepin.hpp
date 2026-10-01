@@ -126,5 +126,21 @@ namespace ReconcilePin
 			}
 			return found;
 		}
+
+		// The builder is CUserAppManager::BuildDepotDependency. When that
+		// locator resolved (`builder` != 0) only a call to it qualifies: on the
+		// beta client a second executable call sits in the same window.
+		template <typename TargetExecutable>
+		inline long findBuilderCall(
+			const std::uint8_t* code, std::size_t len, std::uintptr_t codeAddr,
+			std::uintptr_t builder, TargetExecutable targetExecutable)
+		{
+			return findBuilderCallRel32(
+				code, len, codeAddr, kBuilderCallOff, kBuilderCallWindow,
+				[&](std::uintptr_t target) {
+					return builder != 0 ? target == builder
+					                    : targetExecutable(target);
+				});
+		}
 	}
 }

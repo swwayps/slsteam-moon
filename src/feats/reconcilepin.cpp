@@ -254,13 +254,14 @@ namespace
 		                     + ReconcilePin::detail::kBuilderCallWindow + 8;
 		// The RE'd call offset drifts when Steam recompiles the function (the
 		// beta client moved it), so locate the call instead of trusting a fixed
-		// offset. A validated near-call target and a uniqueness requirement keep
-		// this from ever hooking a wrong address; on ambiguity/absence it
-		// degrades to the ctx-vector patch alone, exactly as before.
-		const long callOff = ReconcilePin::detail::findBuilderCallRel32(
+		// offset. The call must reach the resolved builder (or, without that
+		// locator, be the only executable call nearby); on ambiguity/absence it
+		// degrades to the ctx-vector patch alone.
+		const lm_address_t builder =
+		    Patterns::CUserAppManager::BuildDepotDependency.address;
+		const long callOff = ReconcilePin::detail::findBuilderCall(
 		    fn, scanLen, reinterpret_cast<uintptr_t>(fn),
-		    ReconcilePin::detail::kBuilderCallOff,
-		    ReconcilePin::detail::kBuilderCallWindow,
+		    builder == LM_ADDRESS_BAD ? 0 : static_cast<uintptr_t>(builder),
 		    [](uintptr_t target) {
 			    return executableAddress(static_cast<lm_address_t>(target));
 		    });
