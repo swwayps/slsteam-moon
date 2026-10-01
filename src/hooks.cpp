@@ -927,9 +927,10 @@ static bool hkClientApps_GetDLCDataByIndex(void* pClientApps, uint32_t appId, in
 	}
 
 
+	// The name buffer is only filled on success.
 	g_pLog->debugOnce
 	(
-		"%s(%p, %u, %i, %p, %p, %s, %i) -> %i\n",
+		"%s(%p, %u, %i, %p, %p, %s, %zu) -> %i\n",
 
 		Hooks::IClientApps_GetDLCDataByIndex.name.c_str(),
 		pClientApps,
@@ -937,7 +938,7 @@ static bool hkClientApps_GetDLCDataByIndex(void* pClientApps, uint32_t appId, in
 		dlcIndex,
 		reinterpret_cast<void*>(pDlcId),
 		reinterpret_cast<void*>(pIsAvailable),
-		pChDlcName,
+		ret && pChDlcName ? pChDlcName : "",
 		dlcNameLen,
 		ret
 	);
