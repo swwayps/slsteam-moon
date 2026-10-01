@@ -29,6 +29,7 @@
 
 #include <atomic>
 #include <algorithm>
+#include <charconv>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -188,17 +189,30 @@ namespace
 	{
 		std::vector<uint32_t> out;
 		const auto dir = std::filesystem::path(g_config.getDir().c_str()) / "cache";
-		if (appFilter.empty() || !std::filesystem::is_directory(dir))
+		std::error_code dirEc;
+		if (appFilter.empty() || !std::filesystem::is_directory(dir, dirEc))
 		{
 			return out;
 		}
 
 		static const std::regex appIdRe("^appId:\\s*(\\d+)\\s*$");
 		static const std::regex depotIdRe("^depotId:\\s*(\\d+)\\s*$");
-
-		for (const auto& entry : std::filesystem::directory_iterator(dir))
+		// Runs on the LoadPackage boot path outside any handler: no throws.
+		const auto parseId = [](const std::ssub_match& digits, uint32_t& dest)
 		{
-			if (!entry.is_regular_file()) continue;
+			const std::string text = digits.str();
+			uint32_t value = 0;
+			if (std::from_chars(text.data(), text.data() + text.size(), value).ec ==
+			    std::errc())
+				dest = value;
+		};
+
+		for (std::filesystem::directory_iterator it(dir, dirEc), end;
+		     !dirEc && it != end; it.increment(dirEc))
+		{
+			const auto& entry = *it;
+			std::error_code fileEc;
+			if (!entry.is_regular_file(fileEc) || fileEc) continue;
 			const auto& p = entry.path();
 			const auto name = p.filename().string();
 			if (name.rfind("depotkey_", 0) != 0 || p.extension() != ".yaml")
@@ -217,11 +231,11 @@ namespace
 				std::smatch m;
 				if (std::regex_match(line, m, appIdRe))
 				{
-					fileAppId = static_cast<uint32_t>(std::stoul(m[1]));
+					parseId(m[1], fileAppId);
 				}
 				else if (std::regex_match(line, m, depotIdRe))
 				{
-					fileDepotId = static_cast<uint32_t>(std::stoul(m[1]));
+					parseId(m[1], fileDepotId);
 				}
 			}
 
