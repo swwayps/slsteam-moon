@@ -2,7 +2,7 @@
 //
 // Owner-IPC-thread execution site for watcher-originated Steam-owned work.
 //
-// SCOPE — this is HARDENING plus DIAGNOSTICS, not a cumulative-failure fix.
+// SCOPE — this is HARDENING, not a cumulative-failure fix.
 // A controlled VM run proved that the inotify config-watcher pthread executed
 // Steam-owned calls itself (the resolved `CUtlMemoryGrow` while appending to
 // package 0's live CUtlVector, and Steam's license calls) while the latched
@@ -49,8 +49,7 @@
 //     threads from the LD_AUDIT preinit path is a recorded anti-pattern);
 //   * runs the WHOLE pending set inline, in FIFO order, so total order is
 //     preserved;
-//   * reported in `~/.SLSsteam.log` and in the trace as `direct_stale`, so it
-//     is never silent;
+//   * reported as a warning in `~/.SLSsteam.log`, so it is never silent;
 //   * `SLSSTEAM_OWNER_QUEUE_MAX_STALE_MS=0` switches it off, i.e. explicitly
 //     chooses "accept eventual execution".
 #pragma once

@@ -47,7 +47,6 @@
 #include "feats/reconcilepin.hpp"
 #include "feats/steamstub.hpp"
 #include "feats/ticket.hpp"
-#include "afftrace.hpp"
 #include "ownerwork.hpp"
 #include "runtime_attestation.hpp"
 
@@ -475,12 +474,9 @@ static uint32_t hkSteamEngine_ProcessIPCFrame(
 				utils ? utils->getAppId() : 0);
 		}
 		FakeAppIds::runIPCFrame(false, interface);
-		{
-			AffTrace::FrameGuard frame;
-			OwnerWork::drainOnOwnerFrame();
-			ret = Hooks::CSteamEngine_ProcessIPCFrame.tramp.fn(
-				pSteamEngine, hPipe, pBufIn, pBufOut);
-		}
+		OwnerWork::drainOnOwnerFrame();
+		ret = Hooks::CSteamEngine_ProcessIPCFrame.tramp.fn(
+			pSteamEngine, hPipe, pBufIn, pBufOut);
 		FakeAppIds::runIPCFrame(true, interface);
 
 		if (pBufOut && pBufOut->hasBytes(1 + sizeof(CSteamId)) &&

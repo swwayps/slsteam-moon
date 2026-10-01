@@ -1,80 +1,7 @@
-# Diagnostics and thread-affinity switches
+# Owner-thread handoff and its switches
 
-Everything here is off or at its default unless you set it. None of it changes
-what SLSsteam does, only *where* work runs and whether a trace is written.
-
-## `SLSSTEAM_AFFTRACE` — thread-affinity trace (off by default)
-
-```bash
-SLSSTEAM_AFFTRACE=1 <steam wrapper>
-```
-
-Accepted true values: `1`, `y`, `yes`, `on`, `true` (case-insensitive).
-Anything else, including unset, leaves tracing off. When off, each hook-side
-call is a single relaxed atomic load and an early return, so the Steam IPC hot
-path is untouched in normal use and no file is created.
-
-When on, records go to `~/.SLSsteam.afftrace.log`, created `0600` and truncated
-at start. The file is hard-capped: `4096` event lines plus `48` per-hour summary
-lines. There is no rotation — once the cap is hit, writing stops.
-
-### What a line contains
-
-```
-seq=… t_mono_us=… kind=… src=… call=… mode=… tid=… owner_tid=… off_owner=…
-ipc_depth=… ipc_frames=… queue_depth=… dur_us=… frames_during=…
-```
-
-| Field | Meaning |
-|---|---|
-| `seq` | monotonic record sequence |
-| `t_mono_us` | `CLOCK_MONOTONIC` microseconds |
-| `kind` | `IPC_OWNER`, `IPC_ENTER`, `IPC_EXIT`, `WATCH_ENTER`, `WATCH_EXIT`, `STEAMCALL_ENTER`, `STEAMCALL_EXIT`, `STEAMFN_ENTER`, `STEAMFN_EXIT`, `QUEUE_PUSH`, `QUEUE_DRAIN`, `QUEUE_STALE`, `HOUR_ROLLUP` |
-| `src` | callback source label: `config`, `api`, `ipc`, `site`, `none` |
-| `call` | symbolic call label: `on_modify`, `package0_sync`, `compat_mapping`, `cutlmemory_grow`, `mark_license_changed`, `process_license_updates`, `notify_licenses_updated`, `run_ipc_frame`, `drain` |
-| `mode` | execution site: `queued`, `direct`, `direct_no_owner`, `direct_overflow`, `direct_disabled`, `direct_stale`, `n/a` |
-| `tid` / `owner_tid` | native thread id / latched owner IPC thread id |
-| `off_owner` | `1` when the record's thread is not the owner thread |
-| `ipc_depth` | owner IPC frames in flight |
-| `ipc_frames` | cumulative owner IPC frame count |
-| `queue_depth` | pending owner-thread commands |
-| `dur_us` | duration, on exit records |
-| `frames_during` | owner IPC frames entered during the call (drain / stale records: entries executed) |
-
-Per-hour summary lines carry counts only:
-
-```
-seq=… t_mono_us=… kind=HOUR_ROLLUP hour=… watch_cb=… steam_calls=…
-off_owner_calls=… overlaps=… ipc_frames=…
-```
-
-`overlaps` counts Steam-owned work units that ran with `off_owner=1` **and**
-(`ipc_depth >= 1` or `frames_during >= 1`) — an off-owner Steam call while an
-owner IPC frame was in flight or started during it. Comparing `overlaps` across
-`hour` values answers whether that grows with session length.
-
-### Frame accounting covers every dispatcher
-
-`ipc_depth` / `ipc_frames` are accounted around **every** RunInterface frame in
-`CSteamEngine::ProcessIPCFrame`, whatever the interface, not just
-`IClientUtils` calls. An earlier build only guarded `IClientUtils`, so a drain
-that happened inside another dispatcher's frame was recorded as `ipc_depth=0`
-and the overlap counters under-reported real owner activity.
-
-Counting is gated on the frame actually running on the latched owner thread, so
-a dispatcher that runs elsewhere cannot pollute the owner-frame counters — the
-numbers still mean "owner-thread frames".
-
-Per-frame IPC records are written only while a watcher-originated Steam-owned
-call is in flight, so enabling the trace does not log the client's normal IPC
-traffic.
-
-### Privacy
-
-Only the fields above are ever written. No account id, app id, package id,
-depot id, payload, file path, token, raw pointer, save name, hostname, or
-command argument is emitted, and none is passed to the trace in the first
-place. The file is user-only (`0600`) and lives in `$HOME`.
+Everything here is at its default unless you set it. None of it changes what
+SLSsteam does, only *where* work runs.
 
 ## Owner-thread handoff for watcher-originated Steam calls
 
@@ -103,14 +30,14 @@ latency costs nothing, while the watcher callback goes back to milliseconds.
 
 ### Fallbacks
 
-| Situation | What happens | Trace `mode` |
+| Situation | What happens | Log label |
 |---|---|---|
-| Normal | enqueued, executed on the owner's next IPC frame | `queued` |
-| Caller already *is* the owner thread | runs inline; that is the target thread | `direct` |
-| No owner latched yet (very early boot) | runs inline, as before | `direct_no_owner` |
-| Queue at capacity (32 pending) | runs inline, after anything already pending | `direct_overflow` |
-| Teardown in progress | not run | — |
-| Owner never drains | runs inline after the staleness threshold | `direct_stale` |
+| Normal | enqueued, executed on the owner's next IPC frame | `queued-owner-thread` |
+| Caller already *is* the owner thread | runs inline; that is the target thread | `owner-thread-inline` |
+| No owner latched yet (very early boot) | runs inline, as before | `direct-no-owner` |
+| Queue at capacity (32 pending) | runs inline, after anything already pending | `direct-queue-full` |
+| Teardown in progress | not run | `not-run-shutdown` |
+| Owner never drains | runs inline after the staleness threshold | warning (below) |
 
 Every fallback runs whatever is already pending **before** the batch it was
 given, inside one exclusive execution window, so the total order of Steam-owned
@@ -134,8 +61,7 @@ failure than "the call ran on the watcher thread, exactly as it always used to".
 * It is evaluated on the watcher thread's existing idle tick (the inotify wait
   is a bounded `poll`, 500 ms, so there is no extra thread) and once per submit.
 * It runs the **whole** pending set inline, in order.
-* It is reported as a `warn` in `~/.SLSsteam.log` and as a `QUEUE_STALE` /
-  `direct_stale` record in the trace, so it is never silent.
+* It is reported as a `warn` in `~/.SLSsteam.log`, so it is never silent.
 * `SLSSTEAM_OWNER_QUEUE_MAX_STALE_MS=0` turns it off, i.e. explicitly chooses
   "accept eventual execution on the owner thread, whenever that happens".
 
@@ -145,7 +71,8 @@ failure than "the call ran on the watcher thread, exactly as it always used to".
 are no longer supported. Running this work on the watcher thread could
 deadlock the owner IPC thread, and the handoff no longer blocks, so there is no
 deadline to set. If either is still present in a wrapper script it is ignored
-and a warning is logged.
+and a warning is logged. `SLSSTEAM_AFFTRACE` was removed with the
+thread-affinity trace and has no effect.
 
 ### What the log says
 
@@ -154,8 +81,8 @@ event took, e.g.
 
 ```
 OwnerWork: watcher-originated Steam calls hand off to the owner IPC thread (non-blocking; stale fallback on)
-Config watcher: hot-add detected, package 0 injection + license broadcast dispatched queued-owner-thread
-OwnerWork: drained 2 command(s) on the owner IPC thread
+HotReload: generation 3 dispatched queued-owner-thread (managed=12 added=1 removed=0 planner_apps=14 depots=31 metadata=complete)
+OwnerWork: drained 1 command(s) on the owner IPC thread
 ```
 
 ## Teardown and the pre-hook cleanup path
@@ -175,9 +102,7 @@ closes it, and repeats of either are no-ops.
 
 ## Scope
 
-This is defensive hardening plus diagnostics. A controlled VM run confirmed the
-off-owner execution site exists and can be moved, but it did not reproduce any
-client failure and did not observe the hypothesised overlap with an in-flight
-owner frame. Nothing here is a confirmed fix for any client-lifecycle problem;
-the trace exists so that question can be answered from a real session instead of
-a bespoke build.
+This is defensive hardening. A controlled VM run confirmed the off-owner
+execution site exists and can be moved, but it did not reproduce any client
+failure and did not observe the hypothesised overlap with an in-flight owner
+frame. Nothing here is a confirmed fix for any client-lifecycle problem.

@@ -4,7 +4,6 @@
 
 #include "packagepatch.hpp"
 
-#include "../afftrace.hpp"
 #include "../config.hpp"
 #include "../globals.hpp"
 #include "../log.hpp"
@@ -142,14 +141,7 @@ namespace
 			return;
 		}
 
-		bool notified = false;
-		{
-			// Exact Steam-owned call site (see afftrace.hpp).
-			auto span = AffTrace::fnSpan(AffTrace::Call::NotifyLicensesUpdated,
-			                             AffTrace::Mode::NA);
-			notified = user->notifyLicensesUpdated();
-		}
-		if (notified)
+		if (user->notifyLicensesUpdated())
 		{
 			g_licenseReconciled.store(true, std::memory_order_release);
 			g_pLog->info("PackagePatch: broadcast LicensesUpdated_t to reconcile package 0\n");
@@ -334,11 +326,7 @@ namespace
 		{
 			return false;
 		}
-		{
-			auto span = AffTrace::fnSpan(
-				AffTrace::Call::CutlMemoryGrow, AffTrace::Mode::NA);
-			g_pCUtlMemoryGrow(&vec.memory, static_cast<int>(growBy));
-		}
+		g_pCUtlMemoryGrow(&vec.memory, static_cast<int>(growBy));
 		if (!validLiveVector(vec) ||
 			vec.memory.alloc < plan.targetSize)
 		{
@@ -594,18 +582,8 @@ namespace
 			return RuntimeRefreshResult::Deferred;
 		}
 
-		{
-			auto span = AffTrace::fnSpan(
-				AffTrace::Call::MarkLicenseChanged, AffTrace::Mode::NA);
-			(void)g_pMarkLicenseAsChanged(user, 0, true);
-		}
-		bool processed = false;
-		{
-			auto span = AffTrace::fnSpan(
-				AffTrace::Call::ProcessLicenseUpdates, AffTrace::Mode::NA);
-			processed = g_pProcessPendingLicenseUpdates(user);
-		}
-		if (!processed)
+		(void)g_pMarkLicenseAsChanged(user, 0, true);
+		if (!g_pProcessPendingLicenseUpdates(user))
 		{
 			logDeferredOnce(generation, "Steam retained the pending update");
 			return RuntimeRefreshResult::Deferred;
@@ -656,13 +634,7 @@ namespace
 		const uint32_t toAdd = static_cast<uint32_t>(fresh.size());
 		if (toAdd > static_cast<uint32_t>(std::numeric_limits<int>::max()) ||
 		    toAdd > UINT32_MAX - oldSize) return 0;
-		{
-			// Exact Steam-owned call site (see afftrace.hpp): resolved
-			// CUtlMemoryGrow against a live Steam vector.
-			auto span = AffTrace::fnSpan(AffTrace::Call::CutlMemoryGrow,
-			                             AffTrace::Mode::NA);
-			g_pCUtlMemoryGrow(&vec.memory, static_cast<int>(toAdd));
-		}
+		g_pCUtlMemoryGrow(&vec.memory, static_cast<int>(toAdd));
 
 		const uint32_t available = vec.memory.alloc;
 		if (available < oldSize + toAdd)

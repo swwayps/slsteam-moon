@@ -1,5 +1,4 @@
 #include <dlfcn.h>
-#include "afftrace.hpp"
 #include "ascii.hpp"
 #include "sdk/steam.hpp"
 #include "api.hpp"
@@ -237,14 +236,6 @@ static void setup()
 	}
 
 	g_pLog->debug("SLSsteam loading in %s\n", proc.name);
-	// Thread-affinity diagnostics: opt-in only (SLSSTEAM_AFFTRACE=1), a no-op
-	// otherwise. Must come before the watchers and hooks so the very first
-	// callback and IPC frame are covered when it IS enabled.
-	if (AffTrace::init())
-	{
-		g_pLog->info("Affinity trace enabled -> %s (bounded, 0600, no identifiers)\n",
-		             AffTrace::defaultPath().c_str());
-	}
 	// Owner-IPC-thread handoff for watcher-originated Steam-owned work.
 	// Reads its env overrides; starts no thread, touches no Steam memory.
 	OwnerWork::init();

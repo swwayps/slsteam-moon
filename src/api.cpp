@@ -3,7 +3,6 @@
 #include "sdk/IClientAppManager.hpp"
 #include "sdk/IClientCompat.hpp"
 
-#include "afftrace.hpp"
 #include "config.hpp"
 #include "filewatcher.hpp"
 #include "runtimedir.hpp"
@@ -44,7 +43,6 @@ void SLSAPI::onFileChange()
 	// Runs on the API watcher pthread. Every command enters Steam-owned code,
 	// so it is queued for runIPCFrame() on Steam's IPC thread; parsing stays
 	// here.
-	auto watchSpan = AffTrace::watchSpan(AffTrace::Src::Api);
 
 	//Hot reload support :)
 	if (!isEnabled())

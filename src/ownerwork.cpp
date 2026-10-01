@@ -6,7 +6,6 @@
 
 #include "ownerwork.hpp"
 
-#include "afftrace.hpp"
 #include "log.hpp"
 #include "utils/ownerqueue.hpp"
 
@@ -59,38 +58,11 @@ namespace
 	// even reaching it.
 	thread_local bool t_draining = false;
 
-
-	AffTrace::Call traceCall(OwnerQueue::Kind kind)
-	{
-		switch (kind)
-		{
-			case OwnerQueue::Kind::SyncPackage0:     return AffTrace::Call::Package0Sync;
-			case OwnerQueue::Kind::EnsureCompat:     return AffTrace::Call::CompatMapping;
-		}
-		return AffTrace::Call::None;
-	}
-
-	// Execution-site label used in the trace. The submit-time Mode and the
-	// drain/flush sites are distinct, so this takes the trace mode directly.
-	AffTrace::Mode traceMode(OwnerWork::Mode mode)
-	{
-		switch (mode)
-		{
-			case OwnerWork::Mode::Queued:    return AffTrace::Mode::Queued;
-			case OwnerWork::Mode::OnOwner:   return AffTrace::Mode::Direct;
-			case OwnerWork::Mode::NoOwner:   return AffTrace::Mode::DirectNoOwner;
-			case OwnerWork::Mode::Overflow:  return AffTrace::Mode::DirectOverflow;
-			case OwnerWork::Mode::Abandoned: return AffTrace::Mode::NA;
-		}
-		return AffTrace::Mode::NA;
-	}
-
 	// Execute one command. This is the ONLY place the Steam-owned calls are
 	// reached from, whichever thread ends up running them, so the call set,
 	// inputs and order are identical in every mode.
-	void runCommand(const OwnerQueue::Command& cmd, AffTrace::Mode mode)
+	void runCommand(const OwnerQueue::Command& cmd)
 	{
-		auto span = AffTrace::callSpan(AffTrace::Src::Config, traceCall(cmd.kind()), mode);
 		switch (cmd.kind())
 		{
 			case OwnerQueue::Kind::SyncPackage0:
@@ -182,20 +154,13 @@ namespace
 		}
 	}
 
-	// Runner for a given execution site. Exceptions are contained by the queue
-	// itself (per command), so a throwing Steam call can never escape into an
-	// IPC frame or a watcher callback.
-	OwnerQueue::Queue::Runner runner(AffTrace::Mode mode)
-	{
-		return [mode](const OwnerQueue::Command& cmd) { runCommand(cmd, mode); };
-	}
-
 	// Mandatory inline fallback. Runs anything already pending FIRST, then this
 	// batch, inside one exclusive execution window, so the total order of
-	// Steam-owned calls is preserved even here.
+	// Steam-owned calls is preserved even here. The queue contains exceptions
+	// per command, so a throwing Steam call never escapes into the caller.
 	void runInline(const std::vector<OwnerQueue::Command>& batch, OwnerWork::Mode mode)
 	{
-		const std::size_t ran = queue().runPendingThen(batch, runner(traceMode(mode)));
+		const std::size_t ran = queue().runPendingThen(batch, runCommand);
 		if (ran > batch.size())
 		{
 			g_pLog->info("OwnerWork: ran %zu queued command(s) inline alongside the "
@@ -241,15 +206,7 @@ namespace
 			return OwnerWork::Mode::Overflow;
 		}
 
-		// Fire and forget: the owner drains on its next frame. Nothing below
-		// waits, so the watcher callback returns in microseconds.
-		const std::size_t depth = queue().depth();
-		for (const OwnerQueue::Command& cmd : batch)
-		{
-			AffTrace::queuePush(AffTrace::Src::Config, traceCall(cmd.kind()),
-			                    AffTrace::Mode::Queued,
-			                    static_cast<std::uint32_t>(depth));
-		}
+		// Fire and forget: the owner drains on its next frame.
 		return OwnerWork::Mode::Queued;
 	}
 }
@@ -314,7 +271,6 @@ namespace OwnerWork
 		const long self = cachedTid();
 		if (!g_ownerTid.compare_exchange_strong(expected, self))
 			return;
-		AffTrace::latchOwner();
 		g_pLog->debug("OwnerWork: latched owner IPC thread\n");
 	}
 
@@ -345,17 +301,14 @@ namespace OwnerWork
 
 		t_draining = true;
 		const std::size_t taken = depthHint == 0
-			? 0 : queue().drain(runner(AffTrace::Mode::Queued));
+			? 0 : queue().drain(runCommand);
 		if (AppInfoState::takeResolvedDirty() ||
 			PackagePatch::runtimeRefreshPending())
 			PackagePatch::reprocessCurrentState();
 		t_draining = false;
 
 		if (taken != 0)
-		{
-			AffTrace::queueDrain(taken, static_cast<std::uint32_t>(queue().depth()));
 			g_pLog->info("OwnerWork: drained %zu command(s) on the owner IPC thread\n", taken);
-		}
 	}
 
 	void idleTick()
@@ -370,12 +323,10 @@ namespace OwnerWork
 
 		const std::uint64_t now = OwnerQueue::monotonicUs();
 		const std::size_t flushed = queue().flushStale(
-			now, static_cast<std::uint64_t>(staleMs) * 1000ULL,
-			runner(AffTrace::Mode::DirectStale));
+			now, static_cast<std::uint64_t>(staleMs) * 1000ULL, runCommand);
 		if (flushed == 0)
 			return;
 
-		AffTrace::queueStale(flushed, static_cast<std::uint32_t>(queue().depth()));
 		g_pLog->warn("OwnerWork: owner IPC thread did not drain within %ums; ran %zu "
 		             "command(s) on this thread instead\n", staleMs, flushed);
 	}

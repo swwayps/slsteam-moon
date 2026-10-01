@@ -43,11 +43,10 @@ int main()
 	const auto latch = runInterface.find("OwnerWork::latchOwnerThread();");
 	expect(latch != npos && runInterface.rfind("interface == EIPCInterface::Utils", latch) != npos,
 	       "IClientUtils calls latch the owner thread");
-	const auto frameGuard = runInterface.find("AffTrace::FrameGuard frame;");
 	const auto drain = runInterface.find("OwnerWork::drainOnOwnerFrame();");
 	const auto dispatch = runInterface.find("Hooks::CSteamEngine_ProcessIPCFrame.tramp.fn(");
-	expect(frameGuard != npos && frameGuard < drain && drain < dispatch && dispatch != npos,
-	       "owner work drains inside the accounted frame, before Steam dispatches the call");
+	expect(drain != npos && dispatch != npos && drain < dispatch,
+	       "owner work drains before Steam dispatches the call");
 	const std::string place = between(hooks, "void Hooks::placeVFTHooks()", "\n}\n");
 	expect(place.find("std::atomic<bool> placed") != npos && place.find("std::lock_guard") != npos,
 	       "the vtable hooks are placed once, under a lock");

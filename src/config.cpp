@@ -1,7 +1,6 @@
 #include "config.hpp"
 #include "config_path.hpp"
 
-#include "afftrace.hpp"
 #include "confload.hpp"
 #include "config_default.hpp"
 
@@ -264,7 +263,6 @@ static void onFileChange()
 	// bookkeeping EXCEPT the package-0 sync and the compatibility mapping,
 	// which enter Steam-owned code — those are handed to the owner IPC thread
 	// (see ownerwork.hpp).
-	auto watchSpan = AffTrace::watchSpan(AffTrace::Src::Config);
 
 	// Snapshot the active and managed sets BEFORE reloading so source removal
 	// can be distinguished from removal of an active compatibility entry.
