@@ -14,9 +14,8 @@
 //
 // SEMANTICS ARE PRESERVED. The same calls run with the same inputs in the same
 // order; only the thread changes. Every path that cannot use the owner thread
-// (no owner latched yet, queue full, queue disabled, teardown in progress)
-// falls back to exactly today's behaviour rather than dropping or reordering
-// work.
+// (no owner latched yet, queue full, teardown in progress) falls back to
+// exactly today's behaviour rather than dropping or reordering work.
 //
 // FIRE-AND-FORGET, AND WHY THE BLOCKING WAIT WAS REMOVED
 // -----------------------------------------------------
@@ -58,7 +57,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <string>
 
 #include "feats/hotreload_types.hpp"
 
@@ -85,7 +83,6 @@ namespace OwnerWork
 		OnOwner,     // caller already WAS the owner thread; ran inline
 		NoOwner,     // no owner TID latched yet; ran inline
 		Overflow,    // queue rejected it; ran inline
-		Disabled,    // queue switched off by env; ran inline
 		Abandoned,   // teardown in progress; not run
 	};
 
@@ -121,34 +118,6 @@ namespace OwnerWork
 			return fallback;
 		}
 		return static_cast<unsigned int>(parsed);
-	}
-
-	// Parse the queue master switch. The queue is ON unless explicitly turned
-	// off, and only a recognised falsy word turns it off — an unrecognised
-	// value must not silently disable hardening, so it keeps the default and
-	// is reported as invalid.
-	inline bool parseQueueEnabled(const char* value, bool fallback = true,
-	                              bool* rejected = nullptr)
-	{
-		if (rejected != nullptr)
-			*rejected = false;
-		if (value == nullptr || value[0] == '\0')
-			return fallback;
-
-		std::string v(value);
-		for (char& c : v)
-			c = static_cast<char>((c >= 'A' && c <= 'Z') ? c - 'A' + 'a' : c);
-
-		if (v == "0" || v == "off" || v == "no" || v == "false" || v == "disable"
-		    || v == "disabled" || v == "n")
-			return false;
-		if (v == "1" || v == "on" || v == "yes" || v == "true" || v == "enable"
-		    || v == "enabled" || v == "y")
-			return true;
-
-		if (rejected != nullptr)
-			*rejected = true;
-		return fallback;
 	}
 
 	// Read the environment overrides and log the effective policy. Safe to

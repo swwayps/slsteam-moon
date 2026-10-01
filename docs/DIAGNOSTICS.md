@@ -109,7 +109,6 @@ latency costs nothing, while the watcher callback goes back to milliseconds.
 | Caller already *is* the owner thread | runs inline; that is the target thread | `direct` |
 | No owner latched yet (very early boot) | runs inline, as before | `direct_no_owner` |
 | Queue at capacity (32 pending) | runs inline, after anything already pending | `direct_overflow` |
-| Queue switched off | runs inline, as before | `direct_disabled` |
 | Teardown in progress | not run | — |
 | Owner never drains | runs inline after the staleness threshold | `direct_stale` |
 
@@ -140,23 +139,13 @@ failure than "the call ran on the watcher thread, exactly as it always used to".
 * `SLSSTEAM_OWNER_QUEUE_MAX_STALE_MS=0` turns it off, i.e. explicitly chooses
   "accept eventual execution on the owner thread, whenever that happens".
 
-### `SLSSTEAM_OWNER_QUEUE` — disable the handoff entirely
+### Removed settings
 
-```bash
-SLSSTEAM_OWNER_QUEUE=off <steam wrapper>
-```
-
-Accepted false values: `0`, `off`, `no`, `n`, `false`, `disable`, `disabled`
-(case-insensitive); the true spellings are also accepted. An unrecognised value
-keeps the queue **enabled** and logs a warning — a typo must not silently switch
-hardening off.
-
-With the queue off, every watcher-originated Steam call runs on the calling
-thread, which is exactly the pre-hardening behaviour.
-
-`SLSSTEAM_OWNER_QUEUE_DEADLINE_MS` is **obsolete**: the handoff no longer
-blocks, so there is no deadline to set. If it is still present in a wrapper
-script it is ignored and a warning is logged.
+`SLSSTEAM_OWNER_QUEUE` (the off switch) and `SLSSTEAM_OWNER_QUEUE_DEADLINE_MS`
+are no longer supported. Running this work on the watcher thread could
+deadlock the owner IPC thread, and the handoff no longer blocks, so there is no
+deadline to set. If either is still present in a wrapper script it is ignored
+and a warning is logged.
 
 ### What the log says
 

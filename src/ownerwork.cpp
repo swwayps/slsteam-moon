@@ -43,7 +43,6 @@ namespace
 
 	std::atomic<long>         g_ownerTid{ 0 };
 	std::atomic<unsigned int> g_maxStaleMs{ OwnerWork::kDefaultMaxStaleMs };
-	std::atomic<bool>         g_queueEnabled{ true };
 
 	// Cached native thread id. The drain point sits on Steam's IPC hot path,
 	// so it must not pay a gettid syscall per frame.
@@ -81,7 +80,6 @@ namespace
 			case OwnerWork::Mode::OnOwner:   return AffTrace::Mode::Direct;
 			case OwnerWork::Mode::NoOwner:   return AffTrace::Mode::DirectNoOwner;
 			case OwnerWork::Mode::Overflow:  return AffTrace::Mode::DirectOverflow;
-			case OwnerWork::Mode::Disabled:  return AffTrace::Mode::DirectDisabled;
 			case OwnerWork::Mode::Abandoned: return AffTrace::Mode::NA;
 		}
 		return AffTrace::Mode::NA;
@@ -217,14 +215,6 @@ namespace
 			return OwnerWork::Mode::Abandoned;
 		}
 
-		// Queue switched off: keep everything on the calling thread, which is
-		// exactly the pre-hardening behaviour.
-		if (!g_queueEnabled.load(std::memory_order_relaxed))
-		{
-			runInline(batch, OwnerWork::Mode::Disabled);
-			return OwnerWork::Mode::Disabled;
-		}
-
 		// Flush an overdue backlog before adding to it, so the escape hatch
 		// cannot be starved by a stream of new events and so ordering stays
 		// oldest-first.
@@ -274,7 +264,6 @@ namespace OwnerWork
 			case Mode::OnOwner:   return "owner-thread-inline";
 			case Mode::NoOwner:   return "direct-no-owner";
 			case Mode::Overflow:  return "direct-queue-full";
-			case Mode::Disabled:  return "direct-queue-disabled";
 			case Mode::Abandoned: return "not-run-shutdown";
 		}
 		return "unknown";
@@ -282,17 +271,15 @@ namespace OwnerWork
 
 	void init()
 	{
-		bool rejected = false;
-		const bool on = parseQueueEnabled(std::getenv("SLSSTEAM_OWNER_QUEUE"), true,
-		                                  &rejected);
-		if (rejected)
+		// Inline runs on the submitting thread can deadlock the owner IPC
+		// thread, so the old off switch is ignored.
+		if (std::getenv("SLSSTEAM_OWNER_QUEUE") != nullptr)
 		{
-			g_pLog->warn("OwnerWork: ignoring unrecognised SLSSTEAM_OWNER_QUEUE "
-			             "(expected on/off); queue stays enabled\n");
+			g_pLog->warn("OwnerWork: SLSSTEAM_OWNER_QUEUE is no longer supported and "
+			             "is ignored\n");
 		}
-		g_queueEnabled.store(on, std::memory_order_relaxed);
 
-		rejected = false;
+		bool rejected = false;
 		const unsigned int stale =
 			parseBoundedMs(std::getenv("SLSSTEAM_OWNER_QUEUE_MAX_STALE_MS"),
 			               kDefaultMaxStaleMs, kMaxMaxStaleMs, &rejected);
@@ -303,22 +290,15 @@ namespace OwnerWork
 		}
 		g_maxStaleMs.store(stale, std::memory_order_relaxed);
 
-		// The blocking handoff this replaced had its own knob. Measurements
-		// showed the wait always expired, so it is gone; say so instead of
-		// silently ignoring a setting someone may still have in a wrapper.
+		// The handoff no longer blocks, so a leftover deadline setting is
+		// reported rather than silently ignored.
 		if (std::getenv("SLSSTEAM_OWNER_QUEUE_DEADLINE_MS") != nullptr)
 		{
 			g_pLog->warn("OwnerWork: SLSSTEAM_OWNER_QUEUE_DEADLINE_MS is obsolete and "
 			             "ignored (the handoff no longer blocks); use "
-			             "SLSSTEAM_OWNER_QUEUE=off or SLSSTEAM_OWNER_QUEUE_MAX_STALE_MS\n");
+			             "SLSSTEAM_OWNER_QUEUE_MAX_STALE_MS\n");
 		}
 
-		if (!on)
-		{
-			g_pLog->info("OwnerWork: owner-thread handoff disabled; watcher-originated "
-			             "Steam calls run on the calling thread\n");
-			return;
-		}
 		g_pLog->info("OwnerWork: watcher-originated Steam calls hand off to the owner "
 		             "IPC thread (non-blocking; stale fallback %s)\n",
 		             stale == 0 ? "off" : "on");
@@ -380,8 +360,6 @@ namespace OwnerWork
 
 	void idleTick()
 	{
-		if (!g_queueEnabled.load(std::memory_order_relaxed))
-			return;
 		const unsigned int staleMs = g_maxStaleMs.load(std::memory_order_relaxed);
 		if (staleMs == 0)
 			return;  // explicitly configured to accept eventual execution

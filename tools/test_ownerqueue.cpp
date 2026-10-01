@@ -660,7 +660,6 @@ static void test_policy_parsing()
 {
 	std::printf("[15] handoff policy parsing (pure)\n");
 	using OwnerWork::parseBoundedMs;
-	using OwnerWork::parseQueueEnabled;
 	bool rejected = false;
 
 	CHECK(parseBoundedMs(nullptr, 30000, 600000, &rejected) == 30000 && !rejected,
@@ -681,16 +680,6 @@ static void test_policy_parsing()
 	      "trailing garbage is refused");
 	CHECK(parseBoundedMs("-5", 30000, 600000, &rejected) == 30000 && rejected,
 	      "negative input is refused");
-
-	CHECK(parseQueueEnabled(nullptr, true, &rejected) && !rejected,
-	      "queue is on by default");
-	CHECK(!parseQueueEnabled("0", true, &rejected) && !rejected, "0 disables the queue");
-	CHECK(!parseQueueEnabled("OFF", true, &rejected) && !rejected, "off disables it");
-	CHECK(!parseQueueEnabled("no", true, &rejected) && !rejected, "no disables it");
-	CHECK(parseQueueEnabled("1", true, &rejected) && !rejected, "1 keeps it on");
-	CHECK(parseQueueEnabled("true", true, &rejected) && !rejected, "true keeps it on");
-	CHECK(parseQueueEnabled("banana", true, &rejected) && rejected,
-	      "an unrecognised value must NOT silently disable hardening");
 
 	// The measured owner cadence must sit comfortably inside the default
 	// staleness window, otherwise the escape hatch would fire on a healthy
