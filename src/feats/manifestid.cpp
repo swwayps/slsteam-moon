@@ -69,12 +69,16 @@ void loadCatalogLocked()
 	g_catalogLoaded = true;
 
 	const auto dir = getCatalogDir();
-	if (!std::filesystem::is_directory(dir)) return;
+	std::error_code dirEc;
+	if (!std::filesystem::is_directory(dir, dirEc)) return;
 
 	static const std::regex fileRe("manifestid_(\\d+)\\.yaml");
-	for (const auto& entry : std::filesystem::directory_iterator(dir))
+	for (std::filesystem::directory_iterator it(dir, dirEc), end;
+	     !dirEc && it != end; it.increment(dirEc))
 	{
-		if (!entry.is_regular_file()) continue;
+		const auto& entry = *it;
+		std::error_code fileEc;
+		if (!entry.is_regular_file(fileEc) || fileEc) continue;
 		const auto name = entry.path().filename().string();
 		std::smatch m;
 		if (!std::regex_match(name, m, fileRe)) continue;
@@ -253,7 +257,8 @@ void importLuaScripts()
 	if (steamRoot.empty()) return;
 
 	const auto stplug = steamRoot + "/config/stplug-in";
-	if (!std::filesystem::exists(stplug.c_str())) return;
+	std::error_code dirEc;
+	if (!std::filesystem::is_directory(stplug, dirEc)) return;
 
 	// `setManifestid(<depotId>, "<gid>")`
 	// `setManifestid(<depotId>, "<gid>", <something>)`
@@ -267,9 +272,12 @@ void importLuaScripts()
 
 	int imported = 0;
 	const auto managedApps = g_config.managedAppIds.get();
-	for (const auto& entry : std::filesystem::directory_iterator(stplug))
+	for (std::filesystem::directory_iterator it(stplug, dirEc), end;
+	     !dirEc && it != end; it.increment(dirEc))
 	{
-		if (!entry.is_regular_file()) continue;
+		const auto& entry = *it;
+		std::error_code fileEc;
+		if (!entry.is_regular_file(fileEc) || fileEc) continue;
 		const auto& path = entry.path();
 		if (path.extension() != ".lua") continue;
 		const uint32_t appId = ConfigDiscovery::appIdFromScriptName(

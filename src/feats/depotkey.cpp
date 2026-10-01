@@ -310,7 +310,8 @@ bool luaImportReady(std::string& stplug)
 	if (steamRoot.empty()) return false;
 
 	stplug = steamRoot + "/config/stplug-in";
-	return std::filesystem::exists(stplug.c_str());
+	std::error_code ec;
+	return std::filesystem::is_directory(stplug, ec);
 }
 
 void importLuaScriptsFrom(const std::string& stplug)
@@ -321,9 +322,13 @@ void importLuaScriptsFrom(const std::string& stplug)
 
 	const auto managedApps = g_config.managedAppIds.get();
 	int imported = 0;
-	for (const auto& entry : std::filesystem::directory_iterator(stplug))
+	std::error_code dirEc;
+	for (std::filesystem::directory_iterator it(stplug, dirEc), end;
+	     !dirEc && it != end; it.increment(dirEc))
 	{
-		if (!entry.is_regular_file()) continue;
+		const auto& entry = *it;
+		std::error_code fileEc;
+		if (!entry.is_regular_file(fileEc) || fileEc) continue;
 		const auto& path = entry.path();
 		if (path.extension() != ".lua") continue;
 
@@ -397,23 +402,24 @@ void provisionManifests()
 
 	const auto src = steamRoot + "/config/depotcache";
 	const auto dst = steamRoot + "/depotcache";
-	if (!std::filesystem::exists(src.c_str())) return;
-	if (!std::filesystem::exists(dst.c_str()))
-	{
-		try { std::filesystem::create_directories(dst.c_str()); }
-		catch (...) { return; }
-	}
+	std::error_code dirEc;
+	if (!std::filesystem::is_directory(src, dirEc)) return;
+	std::filesystem::create_directories(dst, dirEc);
+	if (dirEc) return;
 
 	int copied = 0;
-	for (const auto& entry : std::filesystem::directory_iterator(src))
+	for (std::filesystem::directory_iterator it(src, dirEc), end;
+	     !dirEc && it != end; it.increment(dirEc))
 	{
-		if (!entry.is_regular_file()) continue;
+		const auto& entry = *it;
+		std::error_code fileEc;
+		if (!entry.is_regular_file(fileEc) || fileEc) continue;
 		const auto& path = entry.path();
 		if (path.extension() != ".manifest") continue;
 
 		const auto target = std::filesystem::path(dst) / path.filename();
 		std::error_code ec;
-		bool needsCopy = !std::filesystem::exists(target);
+		bool needsCopy = !std::filesystem::exists(target, ec);
 		if (!needsCopy)
 		{
 			auto srcSize = std::filesystem::file_size(path, ec);

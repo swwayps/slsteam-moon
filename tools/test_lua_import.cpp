@@ -65,6 +65,19 @@ int main()
 	check(ManifestId::getPinnedGid(124) == "456",
 	      "the pin line after the oversized one still imports");
 
+	// A script folder that cannot be iterated (here: a file in its place, which
+	// fails like an unreadable folder) is skipped, not thrown into setup().
+	std::filesystem::remove_all(steam + "/config/stplug-in");
+	std::ofstream(steam + "/config/stplug-in") << "not a folder\n";
+	bool unreadableThrew = false;
+	try
+	{
+		DepotKey::reloadLuaScripts();
+		ManifestId::importLuaScripts();
+	}
+	catch (...) { unreadableThrew = true; }
+	check(!unreadableThrew, "an unreadable script folder does not throw out of the importers");
+
 	std::filesystem::remove_all(root);
 	if (failures != 0)
 	{
