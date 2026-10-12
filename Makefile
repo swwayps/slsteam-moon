@@ -59,7 +59,7 @@ endif
 .PHONY: test-vftableinfo-registry test-owner-frame-wiring
 .PHONY: test-achievements test-achievement-scope test-stats-audit
 .PHONY: test-stats-provenance
-.PHONY: test-manifestdonor test-manifestfetch
+.PHONY: test-manifestdonor test-manifestdonor-runtime test-manifestfetch
 .PHONY: test-reconcilepin-scan
 .PHONY: test-depotkey-recv-policy
 .PHONY: test-private-apps test-config-settings test-config-tolerance test-config-create test-plugin-config test-curl-child test-legacy-cdkey test-utils-number test-launch-options
@@ -73,6 +73,18 @@ test-manifestfetch:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror \
 		tools/test_manifestfetch.cpp -o /tmp/test_manifestfetch
 	/tmp/test_manifestfetch
+test-manifestdonor-runtime: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
+		obj/api.o obj/feats/depotkey.o obj/feats/librarydates.o obj/ownerwork.o \
+		obj/feats/manifestdonor.o obj/sdk/protobufs/encrypted_app_ticket.pb.o \
+		obj/sdk/protobufs/steammessages_clientserver.pb.o \
+		obj/sdk/protobufs/steammessages_clientserver_appinfo.pb.o \
+		obj/sdk/protobufs/steammessages_base.pb.o
+	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
+		-I include -isysteminclude tools/test_manifestdonor_runtime.cpp \
+		$(filter obj/%.o,$^) \
+		lib/libyaml-cpp.a lib/libprotobuf.a -lcrypto -lpthread -ldl \
+		-o /tmp/test_manifestdonor_runtime
+	/tmp/test_manifestdonor_runtime
 
 test-stats-provenance:
 	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem include -I src \

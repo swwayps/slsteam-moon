@@ -13,12 +13,9 @@
 
 #include <algorithm>
 #include <atomic>
-#include <charconv>
 #include <chrono>
 #include <condition_variable>
 #include <cstdlib>
-#include <filesystem>
-#include <fstream>
 #include <future>
 #include <memory>
 #include <mutex>
@@ -340,43 +337,6 @@ namespace
 			              "not_owned=%zu)\n", alreadyCached, notOwned);
 	}
 
-	void processProbeFile()
-	{
-		static std::filesystem::file_time_type lastWrite{};
-		const auto path = std::filesystem::path(g_config.getDir()) / "manifest_probe.txt";
-		std::error_code ec;
-		const auto stamp = std::filesystem::last_write_time(path, ec);
-		if (ec || stamp == lastWrite) return;
-		lastWrite = stamp;
-		if (std::filesystem::file_size(path, ec) > 65536 || ec) return;
-		std::ifstream in(path);
-		std::string line;
-		for (unsigned int count = 0; count < 256 && std::getline(in, line); ++count)
-		{
-			const auto comment = line.find('#');
-			if (comment != std::string::npos) line.erase(comment);
-			const auto first = line.find_first_not_of(" \t\r");
-			if (first == line.npos) continue;
-			const auto last = line.find_last_not_of(" \t\r");
-			const std::string_view value(line.data() + first, last - first + 1);
-			uint32_t depot = 0;
-			const auto parsed = std::from_chars(value.data(), value.data() + value.size(), depot);
-			if (parsed.ec != std::errc{} || parsed.ptr != value.data() + value.size() ||
-			    !depot) continue;
-			Wanted seen;
-			{
-				std::lock_guard lock(g_ownedMutex);
-				const auto it = g_seenDepots.find(depot);
-				if (it == g_seenDepots.end()) continue;
-				seen = it->second;
-			}
-			const uint64_t code = requestCode(seen.appId, depot, seen.gid);
-			g_pLog->info("Manifest probe: depot=%u gid=%llu result=%s\n",
-			             depot, static_cast<unsigned long long>(seen.gid),
-			             code ? "success" : "failed");
-		}
-	}
-
 	void flushCapturedCodes()
 	{
 		{
@@ -484,7 +444,6 @@ namespace
 		auto nextCycle = Clock::now();
 		while (g_running)
 		{
-			processProbeFile();
 			flushCapturedCodes();
 			if (Clock::now() >= nextCycle)
 			{
@@ -643,7 +602,8 @@ void onLicenseList(const CMsgClientLicenseList* message)
 		"Donor: licenses=%zu resolved_packages=%zu unresolved_packages=%zu "
 		"resolved_depots=%zu\n",
 		licenseCount, resolvedPackages, licenseCount - resolvedPackages, depotCount);
-	startWorker();
+	if (g_config.donate.get().enabled)
+		startWorker();
 }
 
 void onLoggedOff()
