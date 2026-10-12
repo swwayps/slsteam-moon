@@ -505,7 +505,14 @@ namespace
 				if (!manifestOnDisk(dc, depotId, pin)
 				    && !ManifestStore::restoreToDepotcache(depotId, pin))
 				{
-					ManifestFetch::fetchManifestBlobSync(pin, appId, depotId);
+					// Bounded by the plan-wide budget shared with the builder,
+					// so leaf and planner calls cannot each wait the full 12 s.
+					const bool activeRequest =
+						ManifestFetch::isAnyManagedDownloadActive(appId);
+					ManifestFetch::submitManifestBlob(pin, appId, depotId, activeRequest);
+					(void)ManifestFetch::awaitManifestBlobFor(
+					    pin, appId, depotId, remainingPlanBudgetMs(depotId, pin),
+					    /*notifyOnTimeout=*/false, activeRequest);
 				}
 			}
 			g_pLog->debug("ManifestBind[%s]: depot=%u pin gid=%llu staged "

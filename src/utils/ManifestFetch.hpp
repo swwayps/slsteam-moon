@@ -305,8 +305,6 @@ namespace ManifestFetch
 	                          int timeoutMs, bool notifyOnTimeout,
 	                          bool activeRequest = false);
 
-	bool fetchManifestBlobSync(uint64_t manifestGid, uint32_t appId,
-	                           uint32_t depotId);
 
 	void resetSessionState();
 

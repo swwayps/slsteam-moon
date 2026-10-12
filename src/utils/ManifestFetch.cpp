@@ -784,11 +784,6 @@ bool awaitManifestBlobFor(uint64_t manifestGid, uint32_t appId,
 	return result;
 }
 
-bool fetchManifestBlobSync(uint64_t manifestGid, uint32_t appId,
-                           uint32_t depotId)
-{
-	return awaitManifestBlob(manifestGid, appId, depotId, getTimeoutSec());
-}
 
 void resetSessionState()
 {
