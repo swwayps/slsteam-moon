@@ -907,7 +907,7 @@ namespace Patterns
 		Pattern_t SpawnGameId
 		{
 			"CUser::SpawnGameId",
-			"89 D7 0F 11 42",
+			"80 FA 02 0F 44 85 ? ? ? ? 31 D2 3D 73 16 03 00 0F 84",
 			SigFollowMode::PrologueUpwards,
 			std::vector<int16_t> { 0x53, 0x56, 0x57, 0xE5, 0x89, 0x55, -1, -1, -1, -1, 0x5, -1, -1, -1, -1, 0xE8}
 		};

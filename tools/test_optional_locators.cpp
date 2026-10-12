@@ -11,6 +11,7 @@
 //   CSteamApp::OwnershipFlagsReference    LibraryRemoval cannot derive the
 //                                        ownership-flags field offset, so
 //                                        visual library removal turns off.
+//   CUser::SpawnGameId                   LaunchOptions turns off.
 //
 // Each signature is asserted to be present verbatim in src/patterns.cpp, so
 // this test can never pass against a stale private copy of the pattern, and to
@@ -129,6 +130,23 @@ std::size_t resolveUnique(
 	++failures;
 	return std::string::npos;
 }
+
+// MemHlp::findPrologue: walk up from `match` to the nearest byte run that
+// reads `reversed` backwards (-1 = any byte). Returns the run's first byte.
+std::size_t findPrologueAbove(const std::string& image, std::size_t match,
+                              const std::vector<int>& reversed)
+{
+	for (std::size_t up = 0; up < 0x10000 && up + reversed.size() <= match + 1; ++up)
+	{
+		bool found = true;
+		for (std::size_t j = 0; j < reversed.size() && found; ++j)
+			found = reversed[j] < 0
+			        || static_cast<std::uint8_t>(image[match - up - j]) == reversed[j];
+		if (found)
+			return match - up - reversed.size() + 1;
+	}
+	return std::string::npos;
+}
 } // namespace
 
 int main(int argc, char** argv)
@@ -185,6 +203,26 @@ int main(int argc, char** argv)
 			std::cout << "CSteamApp::OwnershipFlags offset = 0x" << std::hex
 			          << *offset << std::dec << '\n';
 		}
+	}
+
+	// The GameID decode and the app 202355 check near the top of the function.
+	// PrologueUpwards then walks up to the PIC-thunk prologue.
+	const std::size_t spawn = resolveUnique(
+		client, "CUser::SpawnGameId",
+		"80 FA 02 0F 44 85 ? ? ? ? 31 D2 3D 73 16 03 00 0F 84", source);
+	expect(source.find("std::vector<int16_t> { 0x53, 0x56, 0x57, 0xE5, 0x89, 0x55, "
+	                   "-1, -1, -1, -1, 0x5, -1, -1, -1, -1, 0xE8}") != std::string::npos,
+	       "CUser::SpawnGameId: prologue is not the one compiled in src/patterns.cpp");
+	if (spawn != std::string::npos)
+	{
+		const std::size_t start = findPrologueAbove(
+			client, spawn,
+			{0x53, 0x56, 0x57, 0xE5, 0x89, 0x55, -1, -1, -1, -1, 0x05, -1, -1, -1, -1, 0xE8});
+		expect(start != std::string::npos,
+		       "CUser::SpawnGameId: no function prologue above the match");
+		if (start != std::string::npos)
+			std::cout << "CUser::SpawnGameId starts 0x" << std::hex << spawn - start
+			          << std::dec << " bytes above the match\n";
 	}
 
 	if (failures != 0)
