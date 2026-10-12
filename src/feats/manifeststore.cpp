@@ -104,40 +104,6 @@ namespace ManifestStore
 		return std::string(home) + "/.config/SLSsteam/manifests";
 	}
 
-	void archiveDepot(uint32_t depotId)
-	{
-		const std::string root = steamRoot();
-		const std::string store = dir();
-		if (root.empty() || store.empty()) return;
-
-		const fs::path dc = root + "/depotcache";
-		const std::string prefix = std::to_string(depotId) + "_";
-
-		std::error_code ec;
-		if (!fs::is_directory(dc, ec)) return;
-
-		for (const auto& entry : fs::directory_iterator(dc, ec))
-		{
-			if (ec) break;
-			if (!entry.is_regular_file(ec)) continue;
-			const auto name = entry.path().filename().string();
-			if (!gidFromName(name, prefix)) continue;
-			if (!ManifestStoreIO::isValidManifest(entry.path())) continue;
-
-			const fs::path archived = fs::path(store) / name;
-			if (ManifestStoreIO::isValidManifest(archived)
-			    || ManifestStoreIO::atomicCopy(entry.path(), archived))
-			{
-				g_pLog->debug("ManifestStore: archived %s\n", name.c_str());
-			}
-		}
-	}
-
-	void archiveDepots(const std::vector<uint32_t>& depotIds)
-	{
-		for (uint32_t d : depotIds) archiveDepot(d);
-	}
-
 	bool archiveManifest(uint32_t depotId, uint64_t gid)
 	{
 		if (!depotId || !gid) return false;

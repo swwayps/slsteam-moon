@@ -26,7 +26,6 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 namespace ManifestStore
 {
@@ -35,12 +34,6 @@ namespace ManifestStore
 	// Absolute path of the persistent store dir (created on first write).
 	// Empty if $HOME is unset.
 	std::string dir();
-
-	// Copy every depotcache/<depotId>_*.manifest into the store (skipping
-	// ones already archived). Compatibility path for legacy installs; normal
-	// operation uses archiveManifest/publishDownloadedManifest and never scans.
-	void archiveDepot(uint32_t depotId);
-	void archiveDepots(const std::vector<uint32_t>& depotIds);
 
 	// Archive one exact depotcache file without scanning the directory.
 	bool archiveManifest(uint32_t depotId, uint64_t gid);

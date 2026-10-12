@@ -60,9 +60,8 @@ void CLog::notifyUser(UserMsg msg, const std::string& detail)
 	// wrong" when reading ~/.SLSsteam.log.
 	info("notifyUser: %s\n", body.c_str());
 
-	// Gate exactly like the old popup path: respect the global Notifications
-	// toggle and the per-thread suppression flag (the background pre-warm
-	// worker sets it so its re-stage failures never reach the screen).
+	// Respect the global Notifications toggle and the per-thread suppression
+	// flag.
 	if (!shouldNotify() || t_suppressNotify)
 	{
 		return;

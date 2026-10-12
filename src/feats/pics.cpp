@@ -5,10 +5,7 @@
 #include "appinfostate.hpp"
 #include "provision_cache.hpp"
 #include "appinfo_vdf.hpp"
-#include "depotkey.hpp"
 #include "hotreload.hpp"
-#include "manifeststore.hpp"
-#include "prewarm.hpp"
 #include "synthmark.hpp"
 #include "apps.hpp"
 
@@ -18,7 +15,6 @@
 #include "../sdk/CProtoBufMsgBase.hpp"
 #include "../thread_start.hpp"
 
-#include "../utils/ManifestFetch.hpp"
 #include "../utils/process_lock.hpp"
 
 #include "base64/base64.hpp"
@@ -206,28 +202,6 @@ bool persistAppBuffer(uint32_t appId, uint32_t changeNumber,
 	g_pLog->debug("PICS: cached app=%u change=%u buffer=%zu bytes -> %s\n",
 	              appId, changeNumber, buffer.size(), bufPath.c_str());
 	return true;
-}
-
-std::vector<std::pair<uint32_t, uint64_t>> extractDepotsAndGids(const std::string& buf)
-{
-	// Single definition shared with the background pre-warm worker
-	// (feats/prewarm.hpp) so the install path and the warm path mine the
-	// provisioned buffer identically.
-	return Prewarm::extractDepotsAndGids(buf);
-}
-
-// Read a previously-persisted product-info buffer from our cache.
-// Used to recover the depot/gid list for AdditionalApps whose live CM
-// product-info response carries an empty buffer (see the staging
-// fallback in recvProductInfoResponse). AppInfoProvision and
-// persistAppBuffer share this `picsbuffer_<appid>.bin` path; provider-
-// normalized pairs are marked in metadata and remain authoritative over
-// raw responses.
-std::string readCachedBuffer(uint32_t appId)
-{
-	std::string out;
-	if (!AppInfoProvision::readValidatedCacheBuffer(appId, out)) return {};
-	return out;
 }
 
 void cleanShaderHitCache(uint32_t appId)
@@ -451,25 +425,12 @@ void recvProductInfoResponse(CMsgClientPICSProductInfoResponse* resp)
 		resp->meta_data_only() ? 1 : 0
 	);
 
-	const bool legacyStaging = legacyManifestStagingEnabled(
-	    std::getenv("SLSSTEAM_LEGACY_MANIFEST_STAGING"));
-	g_pLog->infoOnce(
-	    "PICS: manifest staging mode=%s\n",
-	    legacyStaging ? "legacy synchronous + prewarm"
-	                  : "event-driven Steam install plan");
-
 	// Observe and queue only. Missing/invalid pairs are repaired by detached
 	// workers below; no provider, cache write, or filesystem scan may block
 	// Steam's product-info receive thread.
 	const std::string appinfoVdfPath = AppInfoVdf::findExistingPath();
 	std::vector<RawCacheItem> rawCacheItems;
 	std::unordered_set<uint32_t> rawCacheRepairs;
-
-	// Rollback-only collection for the old architecture. In normal operation
-	// PICS still persists and supplies product info, but performs no manifest
-	// directory scans, network fetches, or waits. BuildDepotDependency stages
-	// only the depots Steam selected for the real install plan.
-	std::vector<AppDepots> toStage;
 
 	const auto added = g_config.addedAppIds.get();
 	for (int i = 0; i < resp->apps_size(); ++i)
@@ -529,180 +490,8 @@ void recvProductInfoResponse(CMsgClientPICSProductInfoResponse* resp)
 				rawCacheRepairs.insert(app->appid());
 			}
 		}
-
-		if (!legacyStaging)
-		{
-			continue;
-		}
-
-		// Decide which buffer to mine for depots/gids.  For an
-		// AdditionalApp whose product info isn't in the local library,
-		// the live CM response carries an EMPTY buffer (no depots), so we
-		// fall back to the product-info buffer we provisioned to disk
-		// during setup() (picsbuffer_<appid>.bin).
-		const bool emptyLiveBuffer = app->buffer().size() == 0;
-		const std::string warmBuf =
-		    emptyLiveBuffer ? readCachedBuffer(app->appid()) : app->buffer();
-		if (warmBuf.empty())
-		{
-			g_pLog->debug("PICS: app=%u no buffer to stage (live=%zu, no cache)\n",
-			              app->appid(), app->buffer().size());
-			continue;
-		}
-
-		auto depots = extractDepotsAndGids(warmBuf);
-
-		// Archive every depot manifest the zip shipped (all platforms)
-		// into the purge-proof ManifestStore while they're still in
-		// depotcache — before Steam's post-commit purge removes the
-		// non-mounted ones (e.g. the windows depot of a native-linux
-		// title).  This is what lets a later offline Proton-switch restore
-		// + install the windows depot.  AdditionalApps only.
-		if (emptyLiveBuffer)
-		{
-			std::vector<uint32_t> depotIds;
-			depotIds.reserve(depots.size());
-			for (const auto& [depotId, gid] : depots) depotIds.push_back(depotId);
-			ManifestStore::archiveDepots(depotIds);
-		}
-
-		if (!emptyLiveBuffer)
-		{
-			// Library app: Steam drives its own manifest fetch.  A
-			// best-effort async prefetch is harmless but never on the
-			// critical path, so don't block the recv thread.
-			for (const auto& [depotId, gid] : depots)
-			{
-				// Only prefetch depots WE manage (LuaTools).  An owned
-				// library app's depots are Steam's job — touching them here
-				// is needless wudrm traffic for content we don't manage.
-				if (!DepotKey::manifestInManagedScope(
-				        app->appid(), depotId,
-				        g_config.getManifestPin(app->appid(), depotId) != 0))
-				{
-					continue;
-				}
-				g_pLog->info("PICS: prefetching manifest for app=%u depot=%u gid=%llu\n",
-				             app->appid(), depotId, static_cast<unsigned long long>(gid));
-				ManifestFetch::submitManifestBlob(gid, app->appid(), depotId);
-			}
-			continue;
-		}
-
-		// AdditionalApp: defer staging to the concurrent pass below.  The
-		// key filter (we only stage depots we hold a key for — staging a
-		// blob we can't decrypt just wastes a CDN round-trip) is applied
-		// there, in buildSyncStagePlan.
-		//
-		// Narrowed to lua-PINNED depots: the gids mined here come from the
-		// provisioned appinfo buffer, which is NOT the gid Steam ends up
-		// requesting for a non-pinned depot, so synchronously fetching on it
-		// is a guess (a 404 or a manifest Steam never reads).  A setManifestid
-		// pin is the only thing that states the gid the download will use.
-		// Every other managed depot is covered on demand by the
-		// ProcessDepotManifest leaf hook (feats/manifestbind.cpp), which fires
-		// with the gid Steam states outright — so it needs no speculative
-		// synchronous pre-seed here.
-		std::erase_if(depots, [&](const DepotGid& depot)
-		{
-			return g_config.getManifestPin(app->appid(), depot.first) == 0;
-		});
-		toStage.push_back({app->appid(), std::move(depots)});
 	}
 
-	if (legacyStaging)
-	{
-		// Legacy rollback: ensure every AdditionalApp depot manifest is staged
-		// before this handler returns. Ready targets do no work; misses use
-		// bounded concurrency.
-		//
-		// Why staging must finish before we return (confirmed in testing):
-		// clicking Install triggers a fresh PICS product-info request, and
-		// Steam cannot begin update *planning* until this response is
-		// processed (it's what tells Steam which depots/manifests exist), so
-		// this recv handler strictly precedes planning. During planning Steam
-		// decides whether to call CDepotDownloadMgr::BYldRequestDepotManifest:
-		//   - manifest NOT on disk at planning -> Steam calls BYld -> the
-		//     ORIGINAL BYld returns 'Access Denied' -> the attempt is canceled
-		//     with "No connection" (only the ~30s auto-retry, which left the
-		//     blob on disk, ever recovered);
-		//   - manifest ALREADY on disk at planning -> Steam SKIPS BYld and goes
-		//     straight to Downloading -> success.
-		// So the blobs must be on disk before we return. This runs on a genuine
-		// Steam worker thread (the CCMInterface::RecvPkt detour).
-		//
-		// We used to create one std::async thread for EVERY target, including
-		// manifests restoreToDepotcache had already made ready. Large depot
-		// graphs (311210 exposes 800+) exhausted the 32-bit Steam process during
-		// this callback. The corrected flow:
-		//   1. performs only a cheap exact on-disk check here;
-		//   2. gives already-staged targets no task and no await at all;
-		//   3. sends only missing targets to ManifestFetch's fixed worker pool,
-		//      where restore-from-store and network I/O happen off this thread.
-		// There is no manifest-count cap. We still await genuinely-missing
-		// targets because returning before they reach disk makes Steam plan BYld
-		// and fail the first install attempt.
-		const auto plan = buildSyncStagePlan(
-		    toStage,
-		    [](uint32_t depotId)
-		    {
-		        return !DepotKey::getCachedKey(depotId).key.empty();
-		    });
-
-		std::size_t alreadyStaged = 0;
-		const auto pending = buildPendingStagePlan(
-		    plan,
-		    [&](const StageTarget& target)
-		    {
-		        if (!ManifestStore::isInDepotcache(target.depotId, target.gid))
-		        {
-		            return false;
-		        }
-		        ++alreadyStaged;
-		        return true;
-		    });
-
-		if (!plan.empty())
-		{
-			g_pLog->info(
-			    "PICS: manifest plan targets=%zu already_on_disk=%zu pending=%zu\n",
-			    plan.size(), alreadyStaged, pending.size());
-		}
-
-		// Pass 1: queue only manifests not already present. The fixed executor
-		// restores from ManifestStore first and reaches the CDN only on a miss.
-		for (const auto& t : pending)
-		{
-			g_pLog->info(
-			    "PICS: staging manifest for app=%u depot=%u gid=%llu "
-			    "(bounded worker)\n",
-			    t.appId, t.depotId, static_cast<unsigned long long>(t.gid));
-			ManifestFetch::submitManifestBlob(t.gid, t.appId, t.depotId);
-		}
-
-		// Pass 2: block only for the missing subset (joins the queued work).
-		for (const auto& t : pending)
-		{
-			const bool staged = ManifestFetch::awaitManifestBlob(
-			    t.gid, t.appId, t.depotId, ManifestFetch::getTimeoutSec());
-			if (staged)
-			{
-				ManifestStore::archiveManifest(t.depotId, t.gid);
-				ManifestStore::markPreferredGid(t.depotId, t.gid);
-			}
-			g_pLog->info(
-			    "PICS: manifest staging for app=%u depot=%u gid=%llu -> %s\n",
-			    t.appId, t.depotId, static_cast<unsigned long long>(t.gid),
-			    staged ? "on disk"
-			           : "FAILED (will fall back to BYld retry)");
-		}
-
-		// Start the background manifest pre-warm worker now that we're on a
-		// real Steam worker thread (post-login PICS recv). ensureStarted() is
-		// idempotent, so calling it on every recv is cheap. This is rollback
-		// behavior only; event-driven staging never starts the worker.
-		Prewarm::ensureStarted();
-	}
 	const bool rawCacheWorkerAvailable =
 		enqueueRawCacheItems(std::move(rawCacheItems));
 

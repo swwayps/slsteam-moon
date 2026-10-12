@@ -11,8 +11,8 @@
 #include "../utils/atomic_file.hpp"
 #include "../utils/process_lock.hpp"
 
+#include "appinfo_text.hpp"
 #include "base64/base64.hpp"
-#include "prewarm.hpp"
 #include "provision_cache.hpp"
 #include "synthmark.hpp"
 #include "yaml-cpp/yaml.h"
@@ -826,7 +826,7 @@ bool loadCachedBuffer(const std::string& metaPath, uint32_t expectedAppId,
 		    .shaMatches = shaMatches,
 		    .parsed = out.buffer.find("\"appinfo\"") != std::string::npos,
 		    .hasUsableContent =
-		        !Prewarm::extractDepotsAndGids(out.buffer).empty(),
+		        !AppInfoText::extractDepotsAndGids(out.buffer).empty(),
 		};
 		if (!AppInfoProvision::cache::isCacheRecordValid(facts))
 		{
