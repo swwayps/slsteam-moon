@@ -52,6 +52,7 @@ namespace
 	std::unordered_set<uint32_t> g_licenses;
 	std::unordered_set<uint32_t> g_ownedDepots;
 	std::unordered_map<uint32_t, Wanted> g_seenDepots;
+	RefusalMemory g_refusals;
 	bool g_licenseReady = false;
 	std::atomic<uint64_t> g_generation{0};
 	std::atomic<bool> g_running{false};
@@ -240,7 +241,7 @@ namespace
 		Clock::time_point batchStarted{};
 		std::size_t pendingCount = 0;
 		uint32_t attempted = 0, submitted = 0, refused = 0;
-		std::size_t alreadyCached = 0, notOwned = 0;
+		std::size_t alreadyCached = 0, notOwned = 0, recentlyRefused = 0;
 		bool minted = false;
 		auto flushBatch = [&]
 		{
@@ -272,6 +273,14 @@ namespace
 			{
 				++notOwned;
 				continue;
+			}
+			{
+				std::lock_guard lock(g_ownedMutex);
+				if (g_refusals.recentlyRefused(wanted.depotId, wanted.gid, monotonicMs()))
+				{
+					++recentlyRefused;
+					continue;
+				}
 			}
 			const auto cached = ManifestFetch::archiveRequest(
 			    "HEAD", baseUrl(cfg) + "/m/" + std::to_string(wanted.depotId)
@@ -323,6 +332,8 @@ namespace
 			else
 			{
 				++refused;
+				std::lock_guard lock(g_ownedMutex);
+				g_refusals.noteRefused(wanted.depotId, wanted.gid, monotonicMs());
 			}
 		}
 		if (g_running && g_generation.load() == generation &&
@@ -330,11 +341,13 @@ namespace
 			flushBatch();
 		if (attempted)
 			g_pLog->info("Donor: cycle submitted=%u refused=%u archived=%zu "
-			             "not_owned=%zu session=%u\n", submitted, refused,
-			             alreadyCached, notOwned, g_mintedThisSession.load());
+			             "not_owned=%zu recently_refused=%zu session=%u\n",
+			             submitted, refused, alreadyCached, notOwned,
+			             recentlyRefused, g_mintedThisSession.load());
 		else
 			g_pLog->debug("Donor: cycle had no eligible entries (archived=%zu "
-			              "not_owned=%zu)\n", alreadyCached, notOwned);
+			              "not_owned=%zu recently_refused=%zu)\n",
+			              alreadyCached, notOwned, recentlyRefused);
 	}
 
 	void flushCapturedCodes()
@@ -614,6 +627,7 @@ void onLoggedOff()
 		g_licenses.clear();
 		g_ownedDepots.clear();
 		g_seenDepots.clear();
+		g_refusals.clear();
 		++g_generation;
 		g_sessionAlive->store(false, std::memory_order_release);
 		g_mintedThisSession = 0;

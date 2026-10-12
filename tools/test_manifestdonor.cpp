@@ -66,6 +66,27 @@ int main()
 	assert(ManifestDonor::shouldForceWantedRefresh(
 		30000 + 86400000LL, 30000, 86400000LL));
 
+	// A manifest Steam refused is skipped for a while, so a handful of refusals
+	// at the front of the shuffled list cannot use up every cycle.
+	{
+		using ManifestDonor::RefusalMemory;
+		RefusalMemory refusals;
+		refusals.noteRefused(1000, 7, 0);
+		assert(refusals.recentlyRefused(1000, 7, 1));
+		assert(refusals.recentlyRefused(1000, 7, RefusalMemory::kTtlMs - 1));
+		assert(!refusals.recentlyRefused(1000, 7, RefusalMemory::kTtlMs));
+		assert(!refusals.recentlyRefused(1000, 8, 1));
+		assert(!refusals.recentlyRefused(1001, 7, 1));
+		refusals.clear();
+		assert(!refusals.recentlyRefused(1000, 7, 1));
+		for (uint32_t depot = 1; depot <= RefusalMemory::kMaxEntries + 10; ++depot)
+			refusals.noteRefused(depot, 1, 0);
+		assert(refusals.size() <= RefusalMemory::kMaxEntries);
+		refusals.noteRefused(5, 5, RefusalMemory::kTtlMs);
+		assert(refusals.recentlyRefused(5, 5, RefusalMemory::kTtlMs + 1));
+		assert(refusals.size() <= RefusalMemory::kMaxEntries);
+	}
+
 	const std::unordered_map<uint32_t, ManifestDonor::PackageRecord> packages = {
 		{10, {{100, 101}, {1000, 1001}}},
 		{20, {{200}, {2000}}},

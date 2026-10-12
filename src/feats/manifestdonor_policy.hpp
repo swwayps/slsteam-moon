@@ -104,6 +104,47 @@ namespace ManifestDonor
 		uint64_t gid = 0;
 	};
 
+	// Manifests Steam recently refused a code for. The wanted list keeps its
+	// shuffled order between refreshes, so without this the same refusals at
+	// its front would use up every cycle's attempts.
+	class RefusalMemory
+	{
+	public:
+		static constexpr std::int64_t kTtlMs = 60LL * 60 * 1000;
+		static constexpr std::size_t kMaxEntries = 4096;
+
+		bool recentlyRefused(uint32_t depotId, uint64_t gid, std::int64_t nowMs) const
+		{
+			const auto it = m_refusedAtMs.find({depotId, gid});
+			return it != m_refusedAtMs.end() && nowMs - it->second < kTtlMs;
+		}
+		void noteRefused(uint32_t depotId, uint64_t gid, std::int64_t nowMs)
+		{
+			if (m_refusedAtMs.size() >= kMaxEntries)
+			{
+				std::erase_if(m_refusedAtMs, [nowMs](const auto& entry)
+				{
+					return nowMs - entry.second >= kTtlMs;
+				});
+				if (m_refusedAtMs.size() >= kMaxEntries) m_refusedAtMs.clear();
+			}
+			m_refusedAtMs[{depotId, gid}] = nowMs;
+		}
+		void clear() { m_refusedAtMs.clear(); }
+		std::size_t size() const { return m_refusedAtMs.size(); }
+
+	private:
+		struct KeyHash
+		{
+			std::size_t operator()(const std::pair<uint32_t, uint64_t>& key) const noexcept
+			{
+				return std::hash<uint64_t>{}(key.second ^ (uint64_t{key.first} << 32));
+			}
+		};
+		std::unordered_map<std::pair<uint32_t, uint64_t>, std::int64_t, KeyHash>
+			m_refusedAtMs;
+	};
+
 	inline bool parseWantedLine(std::string_view line, Wanted& out)
 	{
 		const auto first = line.find(':');
