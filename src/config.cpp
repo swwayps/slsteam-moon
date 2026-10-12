@@ -18,7 +18,6 @@
 #include "config_discovery.hpp"
 #include "feats/hotreload.hpp"
 #include "feats/manifestdonor_policy.hpp"
-#include "feats/manifestid.hpp"
 #include "feats/ticket.hpp"
 
 #include <cerrno>
@@ -308,11 +307,10 @@ static void onFileChange()
 		             appId, cacheForgotten ? "cleared" : "partial");
 	}
 
-	// Re-scan keys and manifest pins for every watcher event, not only when the
-	// app-id set changes: editing an existing <appid>.lua can change its
-	// depot/key/GID relations without changing managed-source membership.
+	// Re-scan keys for every watcher event, not only when the app-id set
+	// changes: editing an existing <appid>.lua can change its depot/key
+	// relations without changing managed-source membership.
 	DepotKey::reloadLuaScripts();
-	ManifestId::importLuaScripts();
 
 	// Restore ticket artifacts before publishing a newly active managed id.
 	// Compatibility-only entries remain outside HotReload's package snapshot.

@@ -25,7 +25,6 @@
 //   g++ -std=c++20 -I include tools/test_synthmark.cpp -o /tmp/test_synthmark && /tmp/test_synthmark
 
 #include "../src/feats/appinfo_provision.hpp"
-#include "../src/feats/manifestid.hpp"
 #include "../src/feats/synthmark.hpp"
 
 #include <cstdio>
@@ -221,42 +220,6 @@ int main()
 	          vdfText.find("cacheLock.heldByAnother()") != std::string::npos,
 	      "live splice skips on contention only, not on an untrustworthy lock");
 
-	// --- app/depot relation tracking ---------------------------------------
-
-	ManifestId::AppDepotIndex relations;
-	relations.add(321, 987654);
-	relations.add(321, 876543);
-	relations.add(322, 876543);
-	relations.add(321, 987654); // idempotent duplicate
-	CHECK((relations.depotsForApp(321) ==
-	       std::vector<uint32_t>{876543, 987654}),
-	      "relation index records and sorts an app's depots");
-	const auto released = relations.releaseApp(321);
-	CHECK((released == std::vector<uint32_t>{987654}),
-	      "relation release returns only depots unique to the removed app");
-	CHECK((relations.depotsForApp(322) == std::vector<uint32_t>{876543}),
-	      "shared depot relation remains owned by the other app");
-	CHECK(relations.releaseApp(321).empty(),
-	      "releasing an already forgotten app is a no-op");
-	relations.add(321, 987654);
-	CHECK((relations.depotsForApp(321) == std::vector<uint32_t>{987654}),
-	      "relation index accepts the app again after a hot-add");
-	const auto editedReleased = relations.replaceApp(
-		321, std::vector<uint32_t>{876543});
-	CHECK((editedReleased == std::vector<uint32_t>{987654}),
-	      "relation edit reports depots no longer owned");
-	CHECK((relations.depotsForApp(321) == std::vector<uint32_t>{876543}),
-	      "relation index reconciles depots removed by a script edit");
-
-	std::ifstream manifestSource("src/feats/manifestid.cpp");
-	const std::string manifestText(
-		(std::istreambuf_iterator<char>(manifestSource)),
-		std::istreambuf_iterator<char>());
-	CHECK(manifestText.find("if (g_importDone) return") == std::string::npos,
-	      "manifest importer can rescan after a hot-add");
-	CHECK(manifestText.find("retireDepots") != std::string::npos,
-	      "manifest importer retires pins removed by a script edit");
-
 	// --- reversible orphan quarantine --------------------------------------
 
 	const fs::path quarantineDir = fs::path(dir + "_quarantine");
@@ -276,9 +239,8 @@ int main()
 		"terminal_200.state",
 	};
 	for (const auto& name : orphanFiles) touch(quarantineDir / name);
-	// These caches are not app-scoped: manifestid_<n> uses a depot id,
-	// while ticket_<n> needs its own ownership relation.  The generic sweep
-	// must leave both for the future app-aware cleanup API.
+	// Not app-scoped for the sweep: manifestid_<n> (a depot id, left over from
+	// older builds) and ticket_<n> (needs its own ownership relation).
 	touch(quarantineDir / "manifestid_200.yaml");
 	touch(quarantineDir / "ticket_200.yaml");
 	touch(quarantineDir / "not-a-per-app-cache");
@@ -319,13 +281,11 @@ int main()
 		"picsbuffer_321.bin", "picsbuffer_321.yaml", "synthetic_321",
 		"terminal_321.state",
 		"ticket_321.yaml", "encryptedTicket_321.yaml",
-		"manifestid_987654.yaml",
 	};
 	for (const auto& name : forgottenFiles) touch(quarantineDir / name);
-	// The app id and a shared depot id are not safe manifest catalog names for
-	// this app. Only the relation index's unique depot is eligible here.
+	// Depot-named leftovers from older builds are not tied to one app.
 	touch(quarantineDir / "manifestid_321.yaml");
-	touch(quarantineDir / "manifestid_876543.yaml");
+	touch(quarantineDir / "manifestid_987654.yaml");
 	touch(quarantineDir / "picsbuffer_322.bin");
 	// A stale destination from an earlier same-second cleanup must not cause
 	// the live artifact to be skipped or overwrite the old quarantine.
@@ -338,10 +298,9 @@ int main()
 	}
 
 	auto forgotten = SynthMark::quarantineAppArtifacts(
-		quarantineDir.string(), forgottenApp, std::vector<uint32_t>{987654},
-		".forgotten-test");
+		quarantineDir.string(), forgottenApp, ".forgotten-test");
 	CHECK(forgotten.size() == forgottenFiles.size(),
-	      "explicit cleanup finds app and relation-scoped artifacts");
+	      "explicit cleanup finds every app-scoped artifact");
 	bool forgottenMoved = true;
 	for (const auto& record : forgotten)
 	{
@@ -358,8 +317,8 @@ int main()
 	CHECK(fs::exists(quarantineDir / "picsbuffer_322.bin"),
 	      "explicit cleanup leaves another app untouched");
 	CHECK(fs::exists(quarantineDir / "manifestid_321.yaml") &&
-	      fs::exists(quarantineDir / "manifestid_876543.yaml"),
-	      "app-id and shared depot manifest pins remain untouched");
+	      fs::exists(quarantineDir / "manifestid_987654.yaml"),
+	      "depot-named leftovers remain untouched");
 	bool forgottenRestored = true;
 	for (const auto& record : forgotten)
 		forgottenRestored = SynthMark::restoreQuarantined(record) && forgottenRestored;
@@ -369,7 +328,7 @@ int main()
 	// state and synthetic-PICS protection for a compatibility-active app so a
 	// later process can reload it without clobbering the live appinfo entry.
 	auto managedOnly = SynthMark::quarantineAppArtifacts(
-		quarantineDir.string(), forgottenApp, std::vector<uint32_t>{987654},
+		quarantineDir.string(), forgottenApp,
 		".managed-source", /*includeTicketArtifacts=*/false,
 		/*includeSyntheticMarker=*/false);
 	CHECK(managedOnly.size() == forgottenFiles.size() - 3,
@@ -397,10 +356,9 @@ int main()
 		touch(quarantineDir / ("picsbuffer_326.bin" + suffix));
 	}
 	auto blocked = SynthMark::quarantineAppArtifacts(
-		quarantineDir.string(), blockedApp, std::vector<uint32_t>{}, ".blocked");
+		quarantineDir.string(), blockedApp, ".blocked");
 	CHECK(blocked.empty(), "exhausted quarantine destinations report no move");
-	CHECK(SynthMark::hasAppArtifacts(
-		      quarantineDir.string(), blockedApp, std::vector<uint32_t>{}),
+	CHECK(SynthMark::hasAppArtifacts(quarantineDir.string(), blockedApp),
 	      "remaining app artifact is observable after partial quarantine");
 
 	const uint32_t blockedTerminalApp = 327;
@@ -413,12 +371,10 @@ int main()
 		touch(quarantineDir / ("terminal_327.state" + suffix));
 	}
 	auto blockedTerminal = SynthMark::quarantineAppArtifacts(
-		quarantineDir.string(), blockedTerminalApp, std::vector<uint32_t>{},
-		".blocked-terminal");
+		quarantineDir.string(), blockedTerminalApp, ".blocked-terminal");
 	CHECK(blockedTerminal.empty(),
 	      "blocked terminal sidecar reports no successful move");
-	CHECK(SynthMark::hasAppArtifacts(
-		      quarantineDir.string(), blockedTerminalApp, std::vector<uint32_t>{}),
+	CHECK(SynthMark::hasAppArtifacts(quarantineDir.string(), blockedTerminalApp),
 	      "remaining terminal sidecar makes cleanup incomplete");
 
 	// A typical removed app has no terminal state, synthetic marker or
@@ -428,11 +384,9 @@ int main()
 	                         "dlcmetadata_328.yaml"})
 		touch(quarantineDir / name);
 	auto typical = SynthMark::quarantineAppArtifacts(
-		quarantineDir.string(), typicalApp, std::vector<uint32_t>{987655},
-		".typical");
+		quarantineDir.string(), typicalApp, ".typical");
 	CHECK(typical.size() == 3, "typical cleanup moves every present artifact");
-	CHECK(!SynthMark::hasAppArtifacts(
-		      quarantineDir.string(), typicalApp, std::vector<uint32_t>{987655}),
+	CHECK(!SynthMark::hasAppArtifacts(quarantineDir.string(), typicalApp),
 	      "absent artifact kinds do not make cleanup incomplete");
 
 	std::error_code ec;

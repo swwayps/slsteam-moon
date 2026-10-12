@@ -602,7 +602,7 @@ obj/feats/appinfo_vdf_test.o: src/feats/appinfo_vdf.cpp $(deps_early)
 
 test-appinfo-transaction: obj/feats/appinfo_vdf_test.o obj/log.o obj/config.o \
 		obj/globals.o obj/filewatcher.o obj/api.o \
-		obj/feats/depotkey.o obj/feats/manifestid.o obj/feats/librarydates.o \
+		obj/feats/depotkey.o obj/feats/librarydates.o \
 		obj/ownerwork.o obj/sdk/protobufs/steammessages_clientserver_appinfo.pb.o \
 		obj/sdk/protobufs/steammessages_base.pb.o
 	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -DAPPINFO_VDF_TESTING \
@@ -614,7 +614,7 @@ test-appinfo-transaction: obj/feats/appinfo_vdf_test.o obj/log.o obj/config.o \
 	/tmp/test_appinfo_transaction
 
 test-config-tolerance: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
-		obj/api.o obj/feats/depotkey.o obj/feats/manifestid.o \
+		obj/api.o obj/feats/depotkey.o \
 		obj/feats/librarydates.o obj/ownerwork.o \
 		obj/sdk/protobufs/steammessages_clientserver_appinfo.pb.o \
 		obj/sdk/protobufs/steammessages_base.pb.o
@@ -626,7 +626,7 @@ test-config-tolerance: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
 	/tmp/test_config_tolerance
 
 test-steamstub-launch: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
-		obj/api.o obj/feats/depotkey.o obj/feats/manifestid.o \
+		obj/api.o obj/feats/depotkey.o \
 		obj/feats/librarydates.o obj/ownerwork.o obj/feats/steamstub.o \
 		obj/sdk/protobufs/steammessages_clientserver_appinfo.pb.o \
 		obj/sdk/protobufs/steammessages_base.pb.o
@@ -637,7 +637,7 @@ test-steamstub-launch: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
 		-o /tmp/test_steamstub_launch
 	/tmp/test_steamstub_launch
 test-lua-import: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
-		obj/api.o obj/feats/depotkey.o obj/feats/manifestid.o \
+		obj/api.o obj/feats/depotkey.o \
 		obj/feats/librarydates.o obj/ownerwork.o \
 		obj/sdk/protobufs/steammessages_clientserver_appinfo.pb.o \
 		obj/sdk/protobufs/steammessages_base.pb.o
@@ -648,7 +648,7 @@ test-lua-import: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
 		-o /tmp/test_lua_import
 	/tmp/test_lua_import
 test-ownerwork-policy: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
-		obj/api.o obj/feats/depotkey.o obj/feats/manifestid.o \
+		obj/api.o obj/feats/depotkey.o \
 		obj/feats/librarydates.o obj/ownerwork.o \
 		obj/sdk/protobufs/steammessages_clientserver_appinfo.pb.o \
 		obj/sdk/protobufs/steammessages_base.pb.o
@@ -659,7 +659,7 @@ test-ownerwork-policy: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
 		-o /tmp/test_ownerwork_policy
 	/tmp/test_ownerwork_policy
 test-config-create: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
-		obj/api.o obj/feats/depotkey.o obj/feats/manifestid.o \
+		obj/api.o obj/feats/depotkey.o \
 		obj/feats/librarydates.o obj/ownerwork.o \
 		obj/sdk/protobufs/steammessages_clientserver_appinfo.pb.o \
 		obj/sdk/protobufs/steammessages_base.pb.o
@@ -671,7 +671,7 @@ test-config-create: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
 	/tmp/test_config_create
 
 test-plugin-config: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
-		obj/api.o obj/feats/depotkey.o obj/feats/manifestid.o \
+		obj/api.o obj/feats/depotkey.o \
 		obj/feats/librarydates.o obj/ownerwork.o \
 		obj/sdk/protobufs/steammessages_clientserver_appinfo.pb.o \
 		obj/sdk/protobufs/steammessages_base.pb.o

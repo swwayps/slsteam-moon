@@ -2,7 +2,6 @@
 #include "manifestcode.hpp"
 
 #include "depotkey.hpp"
-#include "manifestid.hpp"
 #include "manifeststore.hpp"
 #include "manifestdonor.hpp"
 #include "achievements.hpp"
@@ -225,7 +224,7 @@ void handleSend_GetManifestRequestCode(const uint8_t* pBody, uint32_t cbBody,
 	}
 
 	const bool inScope = DepotKey::manifestInManagedScope(
-	    appId, depotId, !ManifestId::getPinnedGid(depotId).empty());
+	    appId, depotId, g_config.getManifestPinForPlanner(appId, depotId) != 0);
 	if (!inScope)
 	{
 		g_pLog->debug("ManifestCode send: app=%u depot=%u gid=%llu not in scope, skip\n",
@@ -647,7 +646,7 @@ bool hkCDepotDownloadMgr_BYldRequestDepotManifest(void* pthis, uint32_t appId, u
 	             appId, depotId, static_cast<unsigned long long>(manifestId), branch ? branch : "");
 
 	const bool inScope = DepotKey::manifestInManagedScope(
-	    appId, depotId, !ManifestId::getPinnedGid(depotId).empty());
+	    appId, depotId, g_config.getManifestPinForPlanner(appId, depotId) != 0);
 
 	if (!inScope)
 	{

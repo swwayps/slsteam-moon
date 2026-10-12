@@ -29,7 +29,6 @@
 #include "feats/cefport.hpp"
 #include "feats/depotkey.hpp"
 #include "feats/hotreload.hpp"
-#include "feats/manifestid.hpp"
 #include "feats/manifestdonor.hpp"
 #include "feats/manifestcode.hpp"
 #include "feats/steamstub.hpp"
@@ -362,7 +361,6 @@ static void setup()
 				// The kill-switch restores the former synchronous behavior for
 				// field rollback: refresh every managed app before the splice.
 				DepotKey::importLuaScripts();
-				ManifestId::importLuaScripts();
 				BootProf::Span provisionProfile(g_pLog.get(), "provision.sync_preinit");
 				AppInfoProvision::provisionAllAddedApps(candidate);
 			}
@@ -373,7 +371,6 @@ static void setup()
 				// is deliberately before the appinfo splice: writing the pair from
 				// PICS after Steam has loaded appinfo would require a second restart.
 				DepotKey::importLuaScripts();
-				ManifestId::importLuaScripts();
 				BootProf::Span provisionProfile(g_pLog.get(), "provision.cold_preinit");
 				const auto startupCandidates = g_config.managedAppIds.get();
 				AppInfoProvision::provisionColdStartApps(
@@ -685,7 +682,6 @@ static void load()
 		BootProf::Span importProfile(g_pLog.get(), "lua_imports");
 		DepotKey::onStartup();
 		Achievements::loadOwners();
-		ManifestId::importLuaScripts();
 	}
 
 	// Keep the broader local DLC set used by launch-time checks. Runtime

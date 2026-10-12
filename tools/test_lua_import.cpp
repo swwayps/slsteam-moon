@@ -1,9 +1,9 @@
-// Regression test for the Lua script importers (make test-lua-import). A depot
-// id that does not fit 32 bits is skipped instead of thrown out of setup() or
-// the config watcher thread, and the script's other lines still import.
+// Regression test for the Lua script key importer (make test-lua-import). A
+// depot id that does not fit 32 bits is skipped instead of thrown out of
+// setup() or the config watcher thread, and the script's other lines still
+// import.
 #include "../src/config.hpp"
 #include "../src/feats/depotkey.hpp"
-#include "../src/feats/manifestid.hpp"
 #include "../src/log.hpp"
 #include <cstdio>
 #include <cstdlib>
@@ -54,29 +54,19 @@ int main()
 	bool depotKeyThrew = false;
 	try { DepotKey::reloadLuaScripts(); }
 	catch (...) { depotKeyThrew = true; }
-	bool manifestIdThrew = false;
-	try { ManifestId::importLuaScripts(); }
-	catch (...) { manifestIdThrew = true; }
 
 	check(!depotKeyThrew, "an oversized depot id does not throw out of the key importer");
-	check(!manifestIdThrew, "an oversized depot id does not throw out of the pin importer");
 	check(DepotKey::getCachedKey(124).key.size() == 32,
 	      "the key line after the oversized one still imports");
-	check(ManifestId::getPinnedGid(124) == "456",
-	      "the pin line after the oversized one still imports");
 
 	// A script folder that cannot be iterated (here: a file in its place, which
 	// fails like an unreadable folder) is skipped, not thrown into setup().
 	std::filesystem::remove_all(steam + "/config/stplug-in");
 	std::ofstream(steam + "/config/stplug-in") << "not a folder\n";
 	bool unreadableThrew = false;
-	try
-	{
-		DepotKey::reloadLuaScripts();
-		ManifestId::importLuaScripts();
-	}
+	try { DepotKey::reloadLuaScripts(); }
 	catch (...) { unreadableThrew = true; }
-	check(!unreadableThrew, "an unreadable script folder does not throw out of the importers");
+	check(!unreadableThrew, "an unreadable script folder does not throw out of the importer");
 
 	std::filesystem::remove_all(root);
 	if (failures != 0)

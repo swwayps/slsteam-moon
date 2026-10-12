@@ -1,6 +1,6 @@
 // Compile inside the build container so we link against the matching i386 libs:
 //   podman run --rm -v $PWD:/build:Z -w /build localhost/slssteam-builder bash -c \
-//     'g++ -std=c++20 -m32 -Iinclude tools/test_inject.cpp obj/feats/appinfo_vdf.o obj/log.o obj/config.o obj/utils.o obj/globals.o obj/filewatcher.o obj/update.o obj/api.o obj/feats/depotkey.o obj/feats/manifestid.o lib/libyaml-cpp.a -lcrypto -lpthread -ldl -o /tmp/test_inject'
+//     'g++ -std=c++20 -m32 -Iinclude tools/test_inject.cpp obj/feats/appinfo_vdf.o obj/log.o obj/config.o obj/utils.o obj/globals.o obj/filewatcher.o obj/update.o obj/api.o obj/feats/depotkey.o lib/libyaml-cpp.a -lcrypto -lpthread -ldl -o /tmp/test_inject'
 // Then run on this box (the i386 libcrypto must be installed: libcrypto.so.3:i386):
 //   /tmp/test_inject /tmp/appinfo.vdf /tmp/picsbuffer_638510.bin
 

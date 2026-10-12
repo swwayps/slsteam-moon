@@ -102,12 +102,12 @@ int main()
 	      "config watcher invalidates native appinfo state on removal");
 	CHECK(configText.find("Ticket::forgetApp") != std::string::npos,
 	      "config watcher invalidates ticket state on removal");
-	const auto manifestImport = configText.find("ManifestId::importLuaScripts();");
+	const auto keyImport = configText.find("DepotKey::reloadLuaScripts();");
 	const auto hotAddDetection = configText.find("HotReload::publish(afterManaged, true);");
-	CHECK(manifestImport != std::string::npos &&
+	CHECK(keyImport != std::string::npos &&
 	      hotAddDetection != std::string::npos &&
-	      manifestImport < hotAddDetection,
-	      "config watcher refreshes manifest pins before publishing hot changes");
+	      keyImport < hotAddDetection,
+	      "config watcher refreshes depot keys before publishing hot changes");
 
 	if (g_failures == 0) { std::printf("\nALL PASS\n"); return 0; }
 	std::printf("\n%d CHECK(S) FAILED\n", g_failures);

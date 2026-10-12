@@ -454,31 +454,12 @@ void recvProductInfoResponse(CMsgClientPICSProductInfoResponse* resp)
 
 		if (app->buffer().size() > 0)
 		{
-			// IMPORTANT: do NOT rewrite app->buffer() here.
-			//
-			// We used to pin manifest GIDs by editing the product-info
-			// text buffer (ManifestId::applyToWireBuffer) and then
-			// re-stamping app->sha().  Steam, however, validates the
-			// product-info buffer against the SHA-1 it received in the
-			// PICS *changelist* (the authoritative hash from the prior
-			// request stage), not against the sha field in this
-			// response.  Any edit to the buffer therefore fails Steam's
-			// integrity check:
-			//
-			//     appinfo_log: "Corrupt data in text buffer for app N"
-			//     "UpdatesJob: apps still needs updates, run again"
-			//
-			// which makes Steam re-request product info forever and
-			// hangs the client at "Loading user data" on a cold cache
-			// (reproduced; the loop only ever hit the AddedApps whose
-			// depots had manifest pins, i.e. the ones we rewrote).
-			//
-			// Manifest-GID pinning is handled at the download layer
-			// instead — ManifestCode's GetManifestRequestCode /
-			// BYldRequestDepotManifest hooks redirect the actual
-			// manifest request to the pinned gid — so dropping the
-			// product-info rewrite loses nothing. Copy the exact unmodified response
-			// for off-thread persistence only when it repairs a confirmed miss.
+			// Never edit app->buffer(): Steam checks it against the SHA-1 from
+			// the PICS changelist, so an edited buffer is "corrupt data" and
+			// Steam re-requests product info forever ("Loading user data").
+			// Manifest pins apply when Steam plans the install (manifestbind).
+			// Copy the unmodified response for off-thread persistence only when
+			// it repairs a confirmed miss.
 			const auto probe = AppInfoProvision::probeCache(
 				app->appid(), AppInfoProvision::CacheProbeMode::NonBlockingMemoOnly);
 			if (rawResponseCanRepairCache(true, probe.readiness))

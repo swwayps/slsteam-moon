@@ -15,7 +15,6 @@
 #include "dlcids.hpp"
 #include "dlc_metadata.hpp"
 #include "hotreload.hpp"
-#include "manifestid.hpp"
 #include "manifeststore.hpp"
 #include "manifeststore_io.hpp"
 #include "manifestsynth.hpp"
@@ -3976,13 +3975,12 @@ bool forgetAppImpl(uint32_t appId, bool preserveTicketArtifacts)
 				preserveTicketArtifacts && isSynthesizedAppLocked(appId));
 		pendingMappingRemoved = removePendingProtonMappingLocked(appId);
 
-		const auto relatedDepots = ManifestId::getExclusiveDepotsForApp(appId);
 		const std::string suffix =
 			".forgotten." +
 			std::to_string(static_cast<long long>(std::time(nullptr))) + "." +
 			std::to_string(static_cast<long long>(::getpid()));
 		const auto records = SynthMark::quarantineAppArtifacts(
-			cacheDir, appId, relatedDepots, suffix,
+			cacheDir, appId, suffix,
 			/*includeTicketArtifacts=*/!preserveTicketArtifacts,
 			/*includeSyntheticMarker=*/!preserveSyntheticMarker);
 		for (const auto& record : records)
@@ -3992,16 +3990,9 @@ bool forgetAppImpl(uint32_t appId, bool preserveTicketArtifacts)
 			                record.quarantined.string().c_str());
 		}
 		complete = !SynthMark::hasAppArtifacts(
-			cacheDir, appId, relatedDepots,
+			cacheDir, appId,
 			/*includeTicketArtifacts=*/!preserveTicketArtifacts,
 			/*includeSyntheticMarker=*/!preserveSyntheticMarker);
-		if (complete)
-		{
-			// Drop this app's relation only after every source artifact has been
-			// moved. A partial quarantine remains retryable with the same depot
-			// ownership information, while shared depots stay in the catalog.
-			ManifestId::forgetApp(appId);
-		}
 		if (!complete)
 		{
 			g_pLog->warn("AppInfoProvision: app=%u cleanup left one or more cache "

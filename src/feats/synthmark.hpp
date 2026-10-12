@@ -174,9 +174,7 @@ namespace SynthMark
 
 		inline bool cacheAppId(const std::string& filename, std::uint32_t& appId)
 		{
-			// Only these names encode an appid.  manifestid_<n>.yaml is
-			// depot-scoped, so it cannot be classified from managed appids
-			// without an explicit app-to-depot relation.
+			// Only these names encode an appid.
 			return parseCacheAppId(filename, "synthetic_", "", appId) ||
 			       parseCacheAppId(filename, "picsbuffer_", ".bin", appId) ||
 			       parseCacheAppId(filename, "picsbuffer_", ".yaml", appId) ||
@@ -256,7 +254,6 @@ namespace SynthMark
 
 	inline std::vector<std::string> appArtifactNames(
 	    std::uint32_t appId,
-	    const std::vector<std::uint32_t>& relatedDepotIds,
 	    bool includeTicketArtifacts = true,
 	    bool includeSyntheticMarker = true)
 	{
@@ -277,11 +274,6 @@ namespace SynthMark
 		{
 			add("ticket_" + id + ".yaml");
 			add("encryptedTicket_" + id + ".yaml");
-		}
-		for (const std::uint32_t depotId : relatedDepotIds)
-		{
-			if (depotId != 0)
-				add("manifestid_" + std::to_string(depotId) + ".yaml");
 		}
 		return names;
 	}
@@ -426,13 +418,9 @@ namespace SynthMark
 	}
 
 	// Quarantine all artifacts whose names are explicitly tied to one app.
-	// ManifestId catalogs are depot-scoped; only the caller's relation index
-	// may supply the depot ids that belong to this app. This prevents an app
-	// id that happens to be a different depot from being quarantined blindly.
 	inline std::vector<QuarantineRecord> quarantineAppArtifacts(
 		const std::string& dir,
 		std::uint32_t appId,
-		const std::vector<std::uint32_t>& relatedDepotIds,
 		const std::string& suffix,
 		bool includeTicketArtifacts = true,
 		bool includeSyntheticMarker = true)
@@ -440,8 +428,7 @@ namespace SynthMark
 		std::vector<QuarantineRecord> out;
 		if (appId == 0 || suffix.empty()) return out;
 		for (const auto& name : detail::appArtifactNames(
-				appId, relatedDepotIds, includeTicketArtifacts,
-				includeSyntheticMarker))
+				appId, includeTicketArtifacts, includeSyntheticMarker))
 		{
 			const auto original = std::filesystem::path(dir) / name;
 			std::error_code ec;
@@ -456,30 +443,17 @@ namespace SynthMark
 		return out;
 	}
 
-	// Compatibility overload for callers that only need app-scoped state.
-	inline std::vector<QuarantineRecord> quarantineAppArtifacts(
-		const std::string& dir,
-		std::uint32_t appId,
-		const std::string& suffix)
-	{
-		return quarantineAppArtifacts(dir, appId,
-		                             std::vector<std::uint32_t>{}, suffix);
-	}
-
-	// True when an original app-scoped or relation-scoped artifact still exists
-	// after a quarantine attempt. Callers use this to turn a partial move into
-	// an observable failure instead of silently claiming that cleanup completed.
+	// True when an original app-scoped artifact still exists after a
+	// quarantine attempt, so a partial move is reported as incomplete.
 	inline bool hasAppArtifacts(
 		const std::string& dir,
 		std::uint32_t appId,
-		const std::vector<std::uint32_t>& relatedDepotIds,
 		bool includeTicketArtifacts = true,
 		bool includeSyntheticMarker = true)
 	{
 		if (appId == 0) return false;
 		for (const auto& name : detail::appArtifactNames(
-				appId, relatedDepotIds, includeTicketArtifacts,
-				includeSyntheticMarker))
+				appId, includeTicketArtifacts, includeSyntheticMarker))
 		{
 			std::error_code ec;
 			const bool regular = std::filesystem::is_regular_file(
@@ -489,11 +463,6 @@ namespace SynthMark
 				return true;
 		}
 		return false;
-	}
-
-	inline bool hasAppArtifacts(const std::string& dir, std::uint32_t appId)
-	{
-		return hasAppArtifacts(dir, appId, std::vector<std::uint32_t>{});
 	}
 
 	inline bool restoreQuarantined(const QuarantineRecord& record)
