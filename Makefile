@@ -19,7 +19,10 @@ STEAMCLIENT ?= $(HOME)/.local/share/Steam/ubuntu12_32/steamclient.so
 STEAMUI ?= $(HOME)/.local/share/Steam/ubuntu12_32/steamui.so
 
 libs := $(wildcard lib/*.a)
-srcs := $(shell find src/ -type f -iname "*.cpp")
+# Generated, but nothing includes them.
+unused_protos := src/sdk/protobufs/steammessages_player.steamclient.pb.cpp \
+	src/sdk/protobufs/steammessages_unified_base.steamclient.pb.cpp
+srcs := $(filter-out $(unused_protos),$(shell find src/ -type f -iname "*.cpp"))
 objs := $(srcs:src/%.cpp=obj/%.o)
 deps := $(objs:%.o=%.d)
 
