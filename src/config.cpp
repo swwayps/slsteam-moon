@@ -509,12 +509,12 @@ bool CConfig::loadSettings()
 	maxSchemaTries = getSetting<uint32_t>(node, "MaxSchemaTries", 10);
 	notifications = getSetting<bool>(node, "Notifications", true);
 	notifyInit = getSetting<bool>(node, "NotifyInit", true);
-	api = getSetting<bool>(node, "API", true);
+	api = getSetting<bool>(node, "API", false);
 	plugins = getSetting<bool>(node, "Plugins", false);
 	fakeName = getSetting<std::string>(node, "FakeName", "");
 	fakeEmail = getSetting<std::string>(node, "FakeEmail", "");
 	fakeWalletBalance = getSetting<int32_t>(node, "FakeWalletBalance", 0);
-	disableCloud = getSetting<bool>(node, "DisableCloud", true);
+	disableCloud = getSetting<bool>(node, "DisableCloud", false);
 	autoUpdateApps = getSetting<bool>(node, "AutoUpdateApps", true);
 	DonateSettings donateSettings;
 	const YAML::Node donateNode = node["Donate"];

@@ -1,6 +1,8 @@
-// Regression test for removed config keys (make test-config-tolerance). Users
-// and lumen keep writing keys this build no longer reads; the real loader must
-// ignore them without an error notice and still apply every other setting.
+// Regression test for config keys the file and the build disagree on (make
+// test-config-tolerance). Users and lumen keep writing keys this build no
+// longer reads; the real loader must ignore them without an error notice and
+// still apply every other setting. A file that lacks a key (older, trimmed or
+// unparsable) must get the shipped template's value for it.
 
 #include "../src/config.hpp"
 #include "../src/config_default.hpp"
@@ -12,6 +14,7 @@
 #include <fstream>
 #include <string>
 #include <unistd.h>
+#include <utility>
 #include <vector>
 
 namespace
@@ -74,6 +77,57 @@ int main()
 	}
 	check(!HasSafeMode<CConfig> && !HasWarnHashMissmatch<CConfig>,
 	      "SafeMode settings are gone from CConfig");
+
+	const auto settings = []
+	{
+		const auto donate = g_config.donate.get();
+		const auto n = [](auto value) { return std::to_string(value); };
+		return std::vector<std::pair<std::string, std::string>>{
+			{"DisableFamilyShareLock", n(g_config.disableFamilyLock.get())},
+			{"DisableParentalRestrictions", n(g_config.disableParentalRestrictions.get())},
+			{"UseWhitelist", n(g_config.useWhiteList.get())},
+			{"SmartTickets", n(g_config.smartTickets.get())},
+			{"MaxSchemaTries", n(g_config.maxSchemaTries.get())},
+			{"Notifications", n(g_config.notifications.get())},
+			{"NotifyInit", n(g_config.notifyInit.get())},
+			{"API", n(g_config.api.get())},
+			{"Plugins", n(g_config.plugins.get())},
+			{"DisableCloud", n(g_config.disableCloud.get())},
+			{"AutoUpdateApps", n(g_config.autoUpdateApps.get())},
+			{"Donate.Enabled", n(donate.enabled)},
+			{"Donate.Url", donate.url},
+			{"Donate.IntervalSecs", n(donate.intervalSecs)},
+			{"Donate.WantedRefreshSecs", n(donate.wantedRefreshSecs)},
+			{"Donate.MaxMintsPerCycle", n(donate.maxMintsPerCycle)},
+			{"Donate.MinMintIntervalMs", n(donate.minMintIntervalMs)},
+			{"Donate.MaxMintsPerSession", n(donate.maxMintsPerSession)},
+			{"InjectAllAdvertisedDlc", n(g_config.injectAllAdvertisedDlc.get())},
+			{"Achievements", n(g_config.achievements.get())},
+			{"AchievementOwnerId", n(g_config.achievementOwnerId.get())},
+			{"PatternCache", n(g_config.patternCache.get())},
+			{"AsyncProvision", n(g_config.asyncProvision.get())},
+			{"MaxManagedApps", n(g_config.maxManagedApps.get())},
+			{"DisableUpdates", n(g_config.disableUpdates.get())},
+			{"FakeName", g_config.fakeName.get()},
+			{"FakeEmail", g_config.fakeEmail.get()},
+			{"FakeWalletBalance", n(g_config.fakeWalletBalance.get())},
+			{"LogLevel", n(g_config.logLevel.get())},
+			{"DumpClientInterfaces", n(g_config.dumpInterfaceMaps.get())},
+			{"ExtendedLogging", n(g_config.extendedLogging.get())},
+		};
+	};
+	std::ofstream(configHome + "/SLSsteam/config.yaml", std::ios::trunc) << defaultConfig;
+	check(g_config.loadSettings(), "the shipped config loads");
+	const auto shipped = settings();
+	std::ofstream(configHome + "/SLSsteam/config.yaml", std::ios::trunc) << "{}\n";
+	check(g_config.loadSettings(), "a config without settings loads");
+	const auto missing = settings();
+	for (std::size_t i = 0; i < shipped.size(); ++i)
+	{
+		check(missing[i].second == shipped[i].second,
+		      "a missing " + shipped[i].first + " gets the template value " +
+		      shipped[i].second + " (got " + missing[i].second + ")");
+	}
 
 	std::filesystem::remove_all(root);
 	if (failures != 0)
