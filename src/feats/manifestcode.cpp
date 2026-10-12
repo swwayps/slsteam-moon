@@ -513,19 +513,11 @@ bool hkBBuildAndAsyncSendFrame(void* pConnection,
 					    header.has_steamid() && header.steamid() &&
 					    header.has_client_sessionid() && header.client_sessionid())
 					{
-						std::unique_lock donorLock(g_DonorLock);
-						// A re-entrant send on the donor worker thread
-						// (t_DonorSendDepth != 0) must never wait on
-						// g_DonorActiveSends: the outstanding donor send it would
-						// wait for is this same thread, so waiting self-deadlocks.
-						// Mirror resetSession()'s depth guard and skip both the
-						// wait and the context capture in that case.
-						g_DonorSendCv.wait(donorLock, [&]
-						{
-							return t_DonorSendDepth != 0 ||
-							       g_DonorActiveSends == 0 || g_DonorResetting ||
-							       contextGeneration != g_DonorContextGeneration;
-						});
+						// Never block Steam's send thread: requestCode() copies
+						// the context under this lock before it sends, so a
+						// newer capture cannot disturb a send in flight. A
+						// re-entrant send from the donor's own call is skipped.
+						std::lock_guard donorLock(g_DonorLock);
 						if (t_DonorSendDepth == 0 &&
 						    pConnection && contextGeneration && !g_DonorResetting &&
 						    contextGeneration == g_DonorContextGeneration)
