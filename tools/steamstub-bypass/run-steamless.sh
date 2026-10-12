@@ -243,10 +243,15 @@ export WINEARCH="${WINEARCH:-win64}"
 # default so the .NET runtime still loads.
 export WINEDLLOVERRIDES="${WINEDLLOVERRIDES:-mshtml=}"
 
-# Different Steam runtime ships overlapping wineservers. Kill any
-# stragglers before kicking off our own — version mismatch otherwise
-# crashes immediately.
-pkill -9 -f wineserver 2>/dev/null || true
+# A wineserver from another Wine build left on this prefix refuses ours, so
+# stop whatever serves this prefix. Other prefixes belong to running games.
+"$WINESERVER" -k 2>/dev/null || true
+for pid in $(pgrep -x wineserver 2>/dev/null); do
+    if tr '\0' '\n' < "/proc/$pid/environ" 2>/dev/null \
+        | grep -qxF "WINEPREFIX=$WINEPREFIX"; then
+        kill -9 "$pid" 2>/dev/null || true
+    fi
+done
 
 # ── 6. lazy prefix init (~30s on first run) ─────────────────────────────
 if [ ! -f "$WINEPREFIX/system.reg" ]; then

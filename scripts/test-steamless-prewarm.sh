@@ -135,5 +135,34 @@ else
         || bad "missing timeout diagnostic was not reported"
 fi
 
+# Only the helper's own prefix may lose its wineserver: another one belongs to
+# a running game. Real pkill/pgrep here, and two processes named wineserver.
+alive() {
+    local state
+    state="$(ps -o stat= -p "$1" 2>/dev/null)"
+    [ -n "$state" ] && [ "${state#Z}" = "$state" ]
+}
+scoped_root="$(mktemp -d)"
+make_harness "$scoped_root"
+rm -f "$scoped_root/bin/pkill"
+mkdir -p "$scoped_root/procs"
+cp "$(command -v sleep)" "$scoped_root/procs/wineserver"
+WINEPREFIX="$scoped_root/prefix" "$scoped_root/procs/wineserver" 60 &
+ours=$!
+WINEPREFIX="$scoped_root/other" "$scoped_root/procs/wineserver" 60 &
+theirs=$!
+sleep 0.3
+run_prewarm "$scoped_root" >/dev/null 2>&1
+sleep 0.3
+alive "$theirs" \
+    && ok "a wineserver of another prefix keeps running" \
+    || bad "the helper killed a wineserver of another prefix"
+alive "$ours" \
+    && bad "a wineserver left on the helper's prefix kept running" \
+    || ok "the wineserver on the helper's prefix is stopped"
+kill -9 "$ours" "$theirs" 2>/dev/null
+wait "$ours" "$theirs" 2>/dev/null
+rm -rf "$scoped_root"
+
 echo "== test-steamless-prewarm: $PASS passed, $FAIL failed =="
 [ "$FAIL" -eq 0 ]
