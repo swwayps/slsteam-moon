@@ -6,6 +6,7 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <mutex>
 #include <optional>
 #include <signal.h>
 #include <string>
@@ -22,6 +23,33 @@ namespace ManifestFetch
 	{
 		return (state & (0x100u | 0x400u)) != 0;
 	}
+
+	// Remembers one answer for a short window. Concurrent askers wait for the
+	// running scan instead of starting their own.
+	class DownloadActivityCache
+	{
+	public:
+		static constexpr std::int64_t kWindowMs = 1000;
+
+		template <typename Scan>
+		bool get(std::int64_t nowMs, Scan&& scan)
+		{
+			std::lock_guard lock(m_mutex);
+			if (!m_valid || nowMs - m_checkedAtMs >= kWindowMs)
+			{
+				m_active = scan();
+				m_checkedAtMs = nowMs;
+				m_valid = true;
+			}
+			return m_active;
+		}
+
+	private:
+		std::mutex m_mutex;
+		bool m_valid = false;
+		bool m_active = false;
+		std::int64_t m_checkedAtMs = 0;
+	};
 
 	// Availability signal fed to the provider circuit from a luastools archive
 	// fetch. `success` means the host answered (so we are online), independent

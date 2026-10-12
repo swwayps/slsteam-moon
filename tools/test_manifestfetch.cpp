@@ -151,6 +151,24 @@ int main()
 		      "a 429 archive response is a rate limit");
 	}
 
+	// The planner asks "is any managed download running" once per depot; the
+	// fleet scan behind it runs once per short window.
+	{
+		using ManifestFetch::DownloadActivityCache;
+		DownloadActivityCache cache;
+		int scans = 0;
+		bool answer = false;
+		const auto scan = [&] { ++scans; return answer; };
+		CHECK(!cache.get(0, scan) && scans == 1, "the first question scans");
+		answer = true;
+		CHECK(!cache.get(DownloadActivityCache::kWindowMs - 1, scan) && scans == 1,
+		      "a question inside the window reuses the last scan");
+		CHECK(cache.get(DownloadActivityCache::kWindowMs, scan) && scans == 2,
+		      "the first question after the window scans again");
+		CHECK(cache.get(DownloadActivityCache::kWindowMs + 5, scan) && scans == 2,
+		      "the new answer is reused inside the next window");
+	}
+
 	if (g_failures == 0) { std::printf("\nALL PASS\n"); return 0; }
 	std::printf("\n%d CHECK(S) FAILED\n", g_failures);
 	return 1;

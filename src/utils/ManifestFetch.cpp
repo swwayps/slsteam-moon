@@ -513,21 +513,25 @@ bool fetchManifestBlob(uint64_t gid, uint32_t appId, uint32_t depotId,
 
 bool isAnyManagedDownloadActive(uint32_t appIdHint)
 {
-	auto apps = g_config.managedAppIds.get();
-	if (appIdHint) apps.insert(appIdHint);
-	if (apps.empty()) return false;
 	const std::string steamRoot = findSteamRootForBlob();
-	for (const uint32_t appId : apps)
+	const auto downloading = [&steamRoot](uint32_t appId)
 	{
-		if (g_pClientAppManager)
-		{
-			const auto state = static_cast<uint32_t>(
-				g_pClientAppManager->getAppInstallState(appId));
-			if (appStateIsDownloading(state)) return true;
-		}
-		if (appStateIsDownloading(appManifestState(steamRoot, appId))) return true;
-	}
-	return false;
+		if (g_pClientAppManager &&
+		    appStateIsDownloading(static_cast<uint32_t>(
+			    g_pClientAppManager->getAppInstallState(appId))))
+			return true;
+		return appStateIsDownloading(appManifestState(steamRoot, appId));
+	};
+	if (appIdHint && downloading(appIdHint)) return true;
+	// Asked once per depot while Steam plans; the fleet scan reads one
+	// appmanifest per managed app, so it runs once per window.
+	static DownloadActivityCache fleet;
+	return fleet.get(steadyNowMs(), [&]
+	{
+		for (const uint32_t appId : g_config.managedAppIds.get())
+			if (downloading(appId)) return true;
+		return false;
+	});
 }
 
 namespace
