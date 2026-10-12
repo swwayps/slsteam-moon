@@ -360,11 +360,9 @@ static void test_shutdown_rejection()
 	      "snapshot work is abandoned at shutdown");
 }
 
-// Problem 1 regression. main.cpp's load() runs once per audited module open,
-// and its "the other module isn't mapped yet" retry goes
-// load() -> unload() -> Hooks::remove() BEFORE anything is hooked. If that
-// closes the queue, every watcher hot-add for the rest of the session is
-// abandoned: no package-0 sync, no compatibility mapping, whole session.
+// Problem 1 regression: a Hooks::remove() before any hook was placed must not
+// close the queue, or every watcher hot-add for the rest of the session is
+// abandoned (no package-0 sync, no compatibility mapping).
 static void test_teardown_gate()
 {
 	std::printf("[7] teardown gate: pre-hook remove() must NOT close the queue\n");

@@ -85,20 +85,15 @@ HotReload: generation 3 dispatched queued-owner-thread (managed=12 added=1 remov
 OwnerWork: drained 1 command(s) on the owner IPC thread
 ```
 
-## Teardown and the pre-hook cleanup path
+## Teardown before any hook is placed
 
-`Hooks::remove()` is not only the teardown path. `main.cpp`'s `load()` runs once
-per audited module open, and its "the other module isn't mapped yet" retry goes
-`load()` → `unload()` → `Hooks::remove()` **before anything is hooked** —
-`LM_FindModule("steamui.so")` fails on the first `steamclient.so` `la_objopen`.
-
-Closing the work queue from there would abandon every watcher-originated Steam
-call for the whole session: no package-0 injection and no license broadcast for
-as long as the client runs. So the queue is closed only when a hook-placement
-pass was actually entered, and that decision is a single gate
-(`OwnerQueue::PlacementGate`) with a regression test pinning both directions:
-a pre-hook `Hooks::remove()` leaves the queue accepting work, a real teardown
-closes it, and repeats of either are no-ops.
+`load()` runs once per audited module open. On the first `steamclient.so`
+`la_objopen` `steamui.so` is not mapped yet, so `load()` just returns and the
+next open retries; nothing is torn down there. A teardown that does happen
+before any hook is placed (for example a failed `Hooks::setup()`) leaves the
+work queue open: closing it would abandon every watcher-originated Steam call
+for the rest of the session. The queue closes only once a hook-placement pass
+was entered (`OwnerQueue::PlacementGate`, covered by `test-ownerqueue`).
 
 ## Scope
 

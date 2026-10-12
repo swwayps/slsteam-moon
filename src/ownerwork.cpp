@@ -31,9 +31,8 @@ namespace
 		return instance;
 	}
 
-	// Tracks whether the hook-placement pass was entered, so a teardown from
-	// the benign pre-hook load()-retry path does not close the queue for the
-	// rest of the session.
+	// Tracks whether the hook-placement pass was entered, so a teardown before
+	// any hook went in does not close the queue for the rest of the session.
 	OwnerQueue::PlacementGate& placementGate()
 	{
 		static OwnerQueue::PlacementGate gate;

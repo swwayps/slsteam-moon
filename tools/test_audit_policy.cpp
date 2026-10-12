@@ -149,6 +149,17 @@ int main()
 	          && rawLogReopen != std::string::npos,
 	      "raw audit log reopens after Steam closes inherited descriptors");
 
+	// steamclient.so opens before steamui.so, so load() runs once with steamui
+	// still unmapped and must just wait for the next la_objopen. Tearing down
+	// there stopped the manifest donor for the whole session.
+	const auto steamUiWait =
+		mainText.find("if (!LM_FindModule(\"steamui.so\", &g_modSteamUI))");
+	const auto steamUiWaitEnd = mainText.find("return;", steamUiWait);
+	check(steamUiWait != std::string::npos && steamUiWaitEnd != std::string::npos
+	          && mainText.substr(steamUiWait, steamUiWaitEnd - steamUiWait)
+	                 .find("unload()") == std::string::npos,
+	      "load() waits for steamui.so without tearing anything down");
+
 	const auto policyReady = mainText.find("g_auditPolicyReady.store(true");
 	check(policyReady != std::string::npos && setupLock != std::string::npos
 	          && policyReady < setupLock,

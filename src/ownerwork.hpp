@@ -169,9 +169,8 @@ namespace OwnerWork
 	// the configured threshold. Never blocks on the owner.
 	void idleTick();
 
-	// Called at the START of the hook-placement pass. Everything before it is
-	// pre-hook setup, where a teardown is the benign load()-retry no-op rather
-	// than a real shutdown.
+	// Called at the START of the hook-placement pass; a teardown before it does
+	// not close the queue.
 	void notePlacement();
 
 	// Teardown: refuse further work and abandon anything pending, but ONLY if

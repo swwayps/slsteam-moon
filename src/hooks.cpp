@@ -1651,22 +1651,8 @@ bool Hooks::setup()
 
 void Hooks::place()
 {
-	// Mark the placement pass as ENTERED before the first hook goes in.
-	//
-	// Hooks::remove() is NOT only the teardown path: main.cpp's load() runs
-	// once per audited module open, and its "the other module isn't mapped yet"
-	// retry routes through unload() -> Hooks::remove() before anything is
-	// hooked (LM_FindModule("steamui.so") fails on the first steamclient.so
-	// la_objopen). That was a harmless no-op before the owner-thread work queue
-	// existed. Closing the queue from there refuses every watcher-originated
-	// Steam call for the WHOLE SESSION — the work is abandoned, not merely
-	// executed elsewhere: no package-0 sync and no compatibility mapping for
-	// as long as the client runs.
-	//
-	// Marking here (rather than at the end of place()) means a teardown that
-	// interrupts a partial placement still counts as a real teardown, which is
-	// the safe direction: closing the queue when hooks may be live is correct,
-	// leaving it open when none are is correct too.
+	// Marked before the first hook goes in, so Hooks::remove() closes the
+	// owner work queue whenever hooks may be live (OwnerQueue::PlacementGate).
 	OwnerWork::notePlacement();
 	TraceIPC.place();
 
@@ -1729,10 +1715,8 @@ void Hooks::remove()
 	// accepted and anything pending is abandoned, so unhooking can never race
 	// a fresh watcher-originated Steam-owned call in.
 	//
-	// Only on a real teardown, though — see the placement note in
-	// Hooks::place(). shutdownIfPlaced() is idempotent, so a repeated teardown
-	// is a no-op and the benign pre-hook cleanup path leaves the queue
-	// accepting work.
+	// Only once hooks were placed; shutdownIfPlaced() is idempotent, and a
+	// teardown before placement leaves the queue accepting work.
 	if (OwnerWork::shutdownIfPlaced())
 	{
 		g_pLog->info("Hooks::remove: owner-thread work queue closed\n");

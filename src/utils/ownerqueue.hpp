@@ -242,21 +242,11 @@ namespace OwnerQueue
 		return (nowUs - oldestUs) >= maxStaleUs;
 	}
 
-	// Placement gate: tells a REAL teardown apart from the benign pre-hook
-	// cleanup path.
-	//
-	// main.cpp's load() runs once per audited module open. Its "the other
-	// module isn't mapped yet" retry calls unload() -> Hooks::remove() before
-	// anything has been hooked, which used to be a harmless no-op. Once
-	// Hooks::remove() also closes this queue, that no-op would refuse every
-	// watcher-originated Steam call for the WHOLE SESSION (work abandoned, not
-	// merely executed elsewhere): no package-0 sync, no compatibility
-	// mapping, for as long as the client runs.
-	//
-	// So the queue is closed only when a placement pass has actually been
-	// entered. `notePlacement()` is called at the START of that pass, before
-	// the first hook goes in, so a teardown interrupting a partial placement
-	// still counts as real.
+	// Placement gate: Hooks::remove() closes the queue only once a placement
+	// pass was entered. Closing it on a teardown before any hook went in would
+	// refuse every watcher-originated Steam call (package-0 sync, compatibility
+	// mapping) for the rest of the session. `notePlacement()` runs at the START
+	// of the pass, so a teardown interrupting a partial placement still counts.
 	class PlacementGate
 	{
 	public:

@@ -454,9 +454,9 @@ static void load()
 		unload();
 		return;
 	}
+	// steamui.so maps after steamclient.so; the next la_objopen retries.
 	if (!LM_FindModule("steamui.so", &g_modSteamUI))
 	{
-		unload();
 		return;
 	}
 
