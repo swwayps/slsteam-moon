@@ -203,6 +203,8 @@ FakeEmail: ""
 #Changes your wallet's balance clientsidedly. 0 to turn off
 FakeWalletBalance: 0
 
+#The log is ~/.SLSsteam.log. Once it reaches 8 MiB it is moved to
+#~/.SLSsteam.log.1 when Steam starts; the 3 newest old logs are kept.
 #Log levels:
 #Once = 0
 #Debug = 1

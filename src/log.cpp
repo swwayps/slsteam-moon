@@ -1,4 +1,5 @@
 #include "log.hpp"
+#include "log_rotate.hpp"
 
 #include "config.hpp"
 
@@ -10,9 +11,9 @@ using std::chrono::duration_cast;
 
 CLog::CLog(const char* path) : path(path)
 {
-	// Append (not truncate) so a complete record survives even if the
-	// logger is constructed more than once in a session.  This is also
-	// a diagnostic safety net: truncation was hiding the init phase.
+	// Rotate by size at Steam start, then append, so a logger constructed
+	// again in the same session keeps one record.
+	LogRotate::rotate(this->path);
 	ofstream = std::ofstream(path, std::ios::out | std::ios::app);
 	if (!ofstream.is_open())
 	{

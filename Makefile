@@ -717,6 +717,11 @@ test-patternscan:
 		tools/test_patternscan.cpp -o /tmp/test_patternscan
 	/tmp/test_patternscan
 
+test-log-rotate:
+	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror -I src \
+		tools/test_log_rotate.cpp -o /tmp/test_log_rotate
+	/tmp/test_log_rotate
+
 test-log-format:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror -I src \
 		tools/test_log_format.cpp -o /tmp/test_log_format
