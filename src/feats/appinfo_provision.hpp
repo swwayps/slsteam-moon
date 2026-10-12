@@ -127,7 +127,6 @@ inline bool memoizeValidatedPublication(
 // intended for startup and watcher/worker contexts; PICS callbacks use only
 // the already-populated memo through observeTerminal().
 void primeTerminalMemo(std::uint32_t appId, std::string_view fingerprint);
-void primeTerminalMemo(std::uint32_t appId);
 
 inline bool requestNeedsFetch(const RefreshRequest& request,
 	CacheReadiness readiness,

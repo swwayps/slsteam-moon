@@ -2357,9 +2357,10 @@ bool terminalMemoryAppliesLocked(uint32_t appId,
 }
 
 bool terminalProvisionResultKnown(uint32_t appId,
-	uint32_t observedChangeNumber, ProvisionOutcome* outcome)
+	uint32_t observedChangeNumber, ProvisionOutcome* outcome,
+	const ManifestStore::ArchivedGidIndex& archivedGids)
 {
-	const std::string fingerprint = localContentFingerprint(appId);
+	const std::string fingerprint = localContentFingerprint(appId, archivedGids);
 	// This disk-aware path is reserved for startup and detached workers. The
 	// PICS callback uses observeTerminal(), which is memo-only. Keep the lock
 	// order publication -> file so a sidecar read cannot race a publication or
@@ -2455,11 +2456,6 @@ void primeTerminalMemo(uint32_t appId, std::string_view fingerprint)
 		return;
 	g_terminalProvisionResults[appId] = {
 		loaded.record, cachePublicationGenerationLocked(appId)};
-}
-
-void primeTerminalMemo(uint32_t appId)
-{
-	primeTerminalMemo(appId, localContentFingerprint(appId));
 }
 
 CachePublicationToken snapshotCachePublication(uint32_t appId)
@@ -2789,6 +2785,10 @@ int provisionAppsPass(const std::string& appinfoVdfPath,
 	// would short-circuit them anyway), so a warm relaunch makes no CM
 	// request at all.  Disable entirely via SLSSTEAM_DISABLE_CM=1.
 	ProvisionPassState pass;
+	// One walk of the manifest store per pass: every app's terminal check
+	// fingerprints its depots against it.
+	const ManifestStore::ArchivedGidIndex archivedGids = onlyMissing
+		? ManifestStore::ArchivedGidIndex{} : ManifestStore::archivedGidIndex();
 	const bool cmDisabled = [] {
 		const char* v = std::getenv("SLSSTEAM_DISABLE_CM");
 		return v && *v && std::string(v) != "0";
@@ -2798,10 +2798,11 @@ int provisionAppsPass(const std::string& appinfoVdfPath,
 		std::vector<uint32_t> toFetch;
 		for (uint32_t appId : added)
 		{
-			if (!onlyMissing) primeTerminalMemo(appId);
+			if (!onlyMissing)
+				primeTerminalMemo(appId, localContentFingerprint(appId, archivedGids));
 			const bool terminalKnown = onlyMissing
 				? observeTerminal(appId, 0).applies
-				: terminalProvisionResultKnown(appId, 0, nullptr);
+				: terminalProvisionResultKnown(appId, 0, nullptr, archivedGids);
 			if (terminalKnown)
 				continue;
 			if (onlyMissing)
@@ -2856,7 +2857,8 @@ int provisionAppsPass(const std::string& appinfoVdfPath,
 			change != context.cmChanges.end()) observedChange = change->second;
 		const bool terminalKnown = onlyMissing
 			? observeTerminal(appId, observedChange).applies
-			: terminalProvisionResultKnown(appId, observedChange, &outcome);
+			: terminalProvisionResultKnown(
+				appId, observedChange, &outcome, archivedGids);
 		if (!terminalKnown)
 			outcome = provisionAppDetailed(appId, appinfoVdfPath, pass, context);
 		if (fallbackApps && outcome == ProvisionOutcome::FallbackCache)
@@ -3010,6 +3012,13 @@ ProvisionPassSummary provisionRequestedApps(
 	fetch.reserve(accepted.size());
 	cachedPublish.reserve(accepted.size());
 	std::size_t busy = 0;
+	// Built on first use: a batch of cache hits never walks the store.
+	std::optional<ManifestStore::ArchivedGidIndex> archivedGids;
+	const auto archived = [&]() -> const ManifestStore::ArchivedGidIndex&
+	{
+		if (!archivedGids) archivedGids = ManifestStore::archivedGidIndex();
+		return *archivedGids;
+	};
 	for (const RefreshRequest& request : accepted)
 	{
 		const CacheProbe probe = probeCache(
@@ -3023,7 +3032,7 @@ ProvisionPassSummary provisionRequestedApps(
 			continue;
 		}
 		if (terminalProvisionResultKnown(
-			request.appId, request.minimumChangeNumber, nullptr))
+			request.appId, request.minimumChangeNumber, nullptr, archived()))
 		{
 			++summary.terminal;
 			continue;
@@ -3074,7 +3083,8 @@ ProvisionPassSummary provisionRequestedApps(
 		const auto change = context.cmChanges.find(request.appId);
 		const uint32_t observed = change == context.cmChanges.end()
 			? request.minimumChangeNumber : change->second;
-		if (!terminalProvisionResultKnown(request.appId, observed, &outcome))
+		if (!terminalProvisionResultKnown(
+			request.appId, observed, &outcome, archived()))
 			outcome = provisionAppDetailed(
 				request.appId, appinfoVdfPath, pass, context,
 				request.forceRefresh);
