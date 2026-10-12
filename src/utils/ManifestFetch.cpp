@@ -262,6 +262,11 @@ HttpResponse httpGet(const std::string& url, const JobBudget* budget = nullptr,
 	}
 	curlApi()->easy_setopt(c, CURLOPT_URL, url.c_str());
 	curlApi()->easy_setopt(c, CURLOPT_FOLLOWLOCATION, method == "POST" ? 0L : 1L);
+	// A redirect never downgrades an https request to plain http.
+	curlApi()->easy_setopt(c, CURLOPT_REDIR_PROTOCOLS,
+	                       url.rfind("https://", 0) == 0
+	                           ? static_cast<long>(CURLPROTO_HTTPS)
+	                           : static_cast<long>(CURLPROTO_HTTP | CURLPROTO_HTTPS));
 	curlApi()->easy_setopt(c, CURLOPT_WRITEFUNCTION, curlWriteCb);
 	curlApi()->easy_setopt(c, CURLOPT_WRITEDATA, &sink);
 	curlApi()->easy_setopt(c, CURLOPT_ACCEPT_ENCODING, "");
