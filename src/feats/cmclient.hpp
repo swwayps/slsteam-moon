@@ -49,7 +49,8 @@ bool prepareForThreadedFetch();
 // Fetch PICS product-info wire buffers for `appids`: `out[appid]` receives
 // the wire buffer for every app the CM returned one for, `changesOut` (when
 // set) its change_number. A partial result is still Success, so the caller
-// falls back only for the rest. NetworkUnavailable lets startup provisioning
+// falls back only for the rest; that includes a batch no CM finished, which
+// keeps every app that arrived. NetworkUnavailable lets startup provisioning
 // open its fleet-wide network circuit instead of entering per-app fallbacks.
 FetchResult fetchProductInfoDetailed(
     const std::vector<uint32_t>& appids,

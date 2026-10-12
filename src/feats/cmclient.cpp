@@ -38,6 +38,7 @@
 #include "../utils/curl_api.hpp"
 #include <curl/curl.h>
 
+#include <algorithm>
 #include <cerrno>
 #include <chrono>
 #include <cstdint>
@@ -607,7 +608,10 @@ bool pumpUntil(TlsSocket& sock, Session& session,
 	}
 }
 
-bool runSession(const Endpoint& ep, const std::vector<uint32_t>& appids,
+// Logs on and asks for every app in `pending` in one request; the CM streams
+// the answer. Apps already in `out` stay there if the session drops. True once
+// the CM has answered the whole request, which then empties `pending`.
+bool runSession(const Endpoint& ep, std::vector<uint32_t>& pending,
                 std::unordered_map<uint32_t, std::string>& out,
                 std::unordered_map<uint32_t, uint32_t>* changes,
                 const BatchBudget& budget)
@@ -628,16 +632,15 @@ bool runSession(const Endpoint& ep, const std::vector<uint32_t>& appids,
 		return false;
 	if (!gotLogon) return false;
 
-	// Batched PICS product-info request (echo assigned session identity).
-	const std::string picsBody = CmWire::buildPicsRequest(appids);
 	if (!sock.sendAll(wsFrame(buildCmPacket(EMSG_PICS_PRODUCT_INFO_REQUEST,
-	                                        picsBody, session))))
+	                                        CmWire::buildPicsRequest(pending),
+	                                        session))))
 		return false;
 	if (!pumpUntil(sock, session, out, changes, gotLogon, picsDone,
 	               [&] { return picsDone; }))
 		return false;
-
-	return !out.empty();
+	pending.clear();
+	return true;
 }
 
 } // namespace
@@ -671,6 +674,14 @@ FetchResult fetchProductInfoDetailed(
 		    : FetchResult::Failed;
 	}
 
+	// Apps not answered yet. A later CM is asked only for these, and what
+	// arrived stays in `out` when no CM serves the rest.
+	std::vector<uint32_t> pending = appids;
+	const auto dropReceived = [&] {
+		pending.erase(std::remove_if(pending.begin(), pending.end(),
+		                             [&](uint32_t id) { return out.count(id) != 0; }),
+		              pending.end());
+	};
 	// Try a few CMs before giving up; a single edge may refuse/drop.
 	// If they ALL fail, the cached list may be stale — drop it and refetch
 	// a fresh one once before conceding to the steamcmd fallback.
@@ -680,12 +691,12 @@ FetchResult fetchProductInfoDetailed(
 		for (size_t i = 0; i < maxTries; ++i)
 		{
 			if (budget.expired()) break;
-			out.clear();
-			if (changesOut) changesOut->clear();
+			dropReceived();
+			if (pending.empty()) break;
 			const auto& ep = cms[i];
 			g_pLog->info("CmClient: trying CM %s:%d (%zu apps)\n",
-			             ep.host.c_str(), ep.port, appids.size());
-			if (runSession(ep, appids, out, changesOut, budget))
+			             ep.host.c_str(), ep.port, pending.size());
+			if (runSession(ep, pending, out, changesOut, budget))
 			{
 				g_pLog->info("CmClient: fetched %zu/%zu apps via %s\n",
 				             out.size(), appids.size(), ep.host.c_str());
@@ -696,7 +707,7 @@ FetchResult fetchProductInfoDetailed(
 		// on-disk cache and refetch a fresh list for one more round.
 		if (round == 0)
 		{
-			if (budget.expired()) break;
+			if (budget.expired() || pending.empty()) break;
 			std::error_code ec;
 			std::filesystem::remove(cmListCachePath(), ec);
 			std::vector<Endpoint> fresh;
@@ -712,10 +723,10 @@ FetchResult fetchProductInfoDetailed(
 			}
 			if (fresh.empty())
 			{
-				if (freshFailure == AppInfoProvision::NetworkFailure::Connectivity)
+				dropReceived();
+				if (freshFailure == AppInfoProvision::NetworkFailure::Connectivity &&
+				    pending.size() == appids.size())
 				{
-					out.clear();
-					if (changesOut) changesOut->clear();
 					g_pLog->info("CmClient: CM directory unavailable; network appears offline\n");
 					return FetchResult::NetworkUnavailable;
 				}
@@ -726,8 +737,13 @@ FetchResult fetchProductInfoDetailed(
 			cms.swap(fresh);
 		}
 	}
-	out.clear();
-	if (changesOut) changesOut->clear();
+	dropReceived();
+	if (pending.size() < appids.size())
+	{
+		g_pLog->info("CmClient: fetched %zu/%zu apps; %zu unanswered fall back\n",
+		             out.size(), appids.size(), pending.size());
+		return FetchResult::Success;
+	}
 	g_pLog->info("CmClient: all CM attempts failed, falling back\n");
 	return FetchResult::Failed;
 }
