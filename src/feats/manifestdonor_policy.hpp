@@ -150,8 +150,10 @@ namespace ManifestDonor
 		const auto first = line.find(':');
 		if (first == line.npos) return false;
 		const auto second = line.find(':', first + 1);
-		if (second == line.npos || line.find(':', second + 1) != line.npos)
+		if (second == line.npos)
 			return false;
+		// Fields after the gid are ignored, so the server can add some.
+		const auto third = line.find(':', second + 1);
 		auto parse = [](std::string_view s, uint64_t& value)
 		{
 			if (s.empty()) return false;
@@ -161,7 +163,8 @@ namespace ManifestDonor
 		uint64_t app = 0, depot = 0, gid = 0;
 		if (!parse(line.substr(0, first), app) ||
 		    !parse(line.substr(first + 1, second - first - 1), depot) ||
-		    !parse(line.substr(second + 1), gid) ||
+		    !parse(line.substr(second + 1, third == line.npos ? line.npos
+		                                                   : third - second - 1), gid) ||
 		    app > UINT32_MAX || depot == 0 || depot > UINT32_MAX || gid == 0)
 			return false;
 		out = {static_cast<uint32_t>(app), static_cast<uint32_t>(depot), gid};

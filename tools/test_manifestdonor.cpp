@@ -22,8 +22,13 @@ int main()
 	assert(ManifestDonor::parseWantedLine("4294967295:4294967295:18446744073709551615", wanted));
 	assert(wanted.appId == UINT32_MAX && wanted.depotId == UINT32_MAX &&
 	       wanted.gid == UINT64_MAX);
+	// Fields after the gid are ignored, so the server can add some.
+	assert(ManifestDonor::parseWantedLine("7:123:456:extra", wanted));
+	assert(wanted.appId == 7 && wanted.depotId == 123 && wanted.gid == 456);
+	assert(ManifestDonor::parseWantedLine("7:123:456:", wanted));
+	assert(wanted.gid == 456);
 	for (const auto* invalid : {
-		"", "123", "1:2", "1:2:3:4", "1:0:3", "1:2:0", "-1:2:3",
+		"", "123", "1:2", "1:0:3", "1:2:0", "-1:2:3", "1:2::4",
 		"1:2:3junk", " 1:2:3", "1:2:3 ", "4294967296:2:3",
 		"1:4294967296:3", "1:2:18446744073709551616"
 	})
