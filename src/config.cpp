@@ -542,6 +542,8 @@ bool CConfig::loadSettings()
 	donate.set(donateSettings);
 	injectAllAdvertisedDlc = getSetting<bool>(node, "InjectAllAdvertisedDlc", false);
 	achievements = getSetting<bool>(node, "Achievements", true);
+	// The template ships 0; configs written before it carried the key keep the
+	// account they have been using.
 	achievementOwnerId = getSetting<uint64_t>(node, "AchievementOwnerId", 76561198028121353ULL);
 	disableUpdates = getSetting<bool>(node, "DisableUpdates", true);
 	dumpInterfaceMaps = getSetting<bool>(node, "DumpClientInterfaces", false);

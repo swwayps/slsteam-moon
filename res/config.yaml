@@ -100,10 +100,11 @@ SteamIdOverride:
 #Denuvo = 0x2
 SmartTickets: 0x1
 #How many recent reviewers of a game to try as its achievement-schema owner when
-#AchievementOwnerId cannot read that game's schema. They are looked up in the
-#background (one store request per game, at most every 10 minutes), so no page
-#waits for it; the next schema request uses them. What worked is kept in
-#cache/achievement_owners.txt for later sessions. 0 turns the lookup off.
+#no AchievementOwnerId is set or it cannot read that game's schema. They are
+#looked up in the background (one store request per game, at most every 10
+#minutes), so no page waits for it; the next schema request uses them. What
+#worked is kept in cache/achievement_owners.txt for later sessions. 0 turns the
+#lookup off.
 MaxSchemaTries: 10
 
 #Override commands right in CUser::SpawnGame. Use %command% as special string, just like in Steam itself
@@ -155,13 +156,14 @@ InjectAllAdvertisedDlc: no
 
 #Show achievements for unowned games. Steam only returns a game's achievement
 #schema to an account that owns it, so the schema is sourced from an owner (see
-#AchievementOwnerId). Set to "no" to disable achievement schema spoofing.
+#MaxSchemaTries). Set to "no" to disable achievement schema spoofing.
 Achievements: yes
 
 #Account (SteamID64) asked for a game's achievement schema when AchievementOwners
-#has no entry for it. If it cannot read the schema, recent reviewers are tried
-#(see MaxSchemaTries). Only the public schema is read; no account is signed in to.
-AchievementOwnerId: 76561198028121353
+#has no entry for it. 0 = none. Without one, or when it cannot read the schema,
+#recent reviewers are tried (see MaxSchemaTries). Only the public schema is read;
+#no account is signed in to.
+AchievementOwnerId: 0
 
 #Per-game override of the achievement-schema source account. Same shape as
 #FakeAppIds:

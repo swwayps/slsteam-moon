@@ -124,10 +124,28 @@ int main()
 	const auto missing = settings();
 	for (std::size_t i = 0; i < shipped.size(); ++i)
 	{
+		if (shipped[i].first == "AchievementOwnerId")
+			continue; // checked below
 		check(missing[i].second == shipped[i].second,
 		      "a missing " + shipped[i].first + " gets the template value " +
 		      shipped[i].second + " (got " + missing[i].second + ")");
 	}
+
+	// New installs name no achievements owner (reviewers are looked up). Configs
+	// from before the template carried the key keep the account they used.
+	const auto ownerOf = [](const auto& values)
+	{
+		for (const auto& [key, value] : values)
+			if (key == "AchievementOwnerId") return value;
+		return std::string("<absent>");
+	};
+	check(ownerOf(shipped) == "0", "the template names no achievements owner");
+	check(ownerOf(missing) == "76561198028121353",
+	      "a config without AchievementOwnerId keeps the account it used");
+	std::ofstream(configHome + "/SLSsteam/config.yaml", std::ios::trunc)
+		<< "AchievementOwnerId: 76561198000000001\n";
+	check(g_config.loadSettings() && g_config.achievementOwnerId.get() == 76561198000000001ULL,
+	      "an explicit AchievementOwnerId applies");
 
 	std::filesystem::remove_all(root);
 	if (failures != 0)

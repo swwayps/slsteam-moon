@@ -68,8 +68,8 @@ inline std::vector<uint64_t> parseReviewers(std::string_view page, std::size_t m
 // Per-game schema owner. Never blocks: when no owner is left, choose() asks
 // the caller for one background lookup, whose result arrives through offer().
 // Order: AchievementOwners override, the owner that answered last, looked-up
-// reviewers (a lookup only happens once the fallback failed), then the
-// AchievementOwnerId fallback. serialize()/restore() carry what was learned
+// reviewers, then the AchievementOwnerId fallback; a lookup starts when there
+// is no usable fallback. serialize()/restore() carry what was learned
 // across restarts, so the first request of a session can use it.
 class OwnerDirectory
 {
