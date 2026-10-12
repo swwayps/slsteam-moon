@@ -16,6 +16,9 @@ namespace ManifestCode
 	};
 	CodeRequest requestCode(uint32_t appId, uint32_t depotId, uint64_t gid);
 	void discardRequest(uint64_t jobId);
+	// Drops the donor's captured send context and pending requests.
+	void resetDonorContext();
+	// resetDonorContext() plus the manifest fetch session (logoff, unload).
 	void resetSession();
 	bool hkBBuildAndAsyncSendFrame(void* pConnection,
 	                               EWebSocketOpCode eOpCode,

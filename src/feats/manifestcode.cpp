@@ -440,7 +440,7 @@ void discardRequest(uint64_t jobId)
 	g_DonorPending.erase(it);
 }
 
-void resetSession()
+void resetDonorContext()
 {
 	{
 		std::unique_lock lock(g_DonorLock);
@@ -455,8 +455,6 @@ void resetSession()
 		if (t_DonorSendDepth != 0)
 		{
 			g_DonorDeferredReset = true;
-			lock.unlock();
-			ManifestFetch::resetSessionState();
 			return;
 		}
 		g_DonorSendCv.wait(lock, [] { return g_DonorActiveSends == 0; });
@@ -464,6 +462,11 @@ void resetSession()
 		g_DonorResetting = false;
 	}
 	g_DonorSendCv.notify_all();
+}
+
+void resetSession()
+{
+	resetDonorContext();
 	ManifestFetch::resetSessionState();
 }
 

@@ -63,6 +63,12 @@ void CmRecv::dispatchNetPacket(CNetPacket* pkt)
 			break;
 		}
 
+		// A logon answer means a new connection: drop the send context the
+		// donor captured on the previous one.
+		case kEMsgClientLogOnResponse:
+			ManifestCode::resetDonorContext();
+			break;
+
 		case k_EMsgClientGetDepotDecryptionKeyResponse:
 		{
 			auto body = pkt->deserializeBody<CMsgClientGetDepotDecryptionKeyResponse>();
