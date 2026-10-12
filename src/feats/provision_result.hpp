@@ -110,4 +110,14 @@ inline bool shouldTryProviderFallback(SourceResult result)
 	return result == SourceResult::InvalidResponse;
 }
 
+// A content verdict is a property of the app under anonymous access, the same
+// for the CM and the steamcmd mirror. A malformed answer or a failed local
+// write is not, so those stay retryable.
+inline bool recordsTerminalVerdict(SourceResult result)
+{
+	return result == SourceResult::IncompleteContent ||
+	       result == SourceResult::NoUsableContent ||
+	       result == SourceResult::VirtualDlc;
+}
+
 } // namespace AppInfoProvision

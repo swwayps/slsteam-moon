@@ -445,6 +445,17 @@ int main()
 		      "cache buffer without a concrete manifest is rejected");
 	}
 
+	{
+		// The DLC snapshot replaces package 0's extra ids: an app that never got
+		// a pair (bogus or delisted id) is skipped, any pair file that exists but
+		// cannot be read still stops the snapshot.
+		using AppInfoProvision::cache::dlcSnapshotSkipsApp;
+		CHECK(dlcSnapshotSkipsApp(false, false),
+		      "DLC snapshot skips an app with no cache pair");
+		CHECK(!dlcSnapshotSkipsApp(true, false) && !dlcSnapshotSkipsApp(false, true) &&
+		      !dlcSnapshotSkipsApp(true, true),
+		      "DLC snapshot stops on an unreadable pair that exists");
+	}
 	if (g_failures == 0) std::printf("\nall provision-cache checks passed\n");
 	else                 std::printf("\n%d provision-cache check(s) FAILED\n", g_failures);
 	return g_failures == 0 ? 0 : 1;

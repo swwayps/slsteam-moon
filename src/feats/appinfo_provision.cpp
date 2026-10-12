@@ -2544,17 +2544,7 @@ ProvisionOutcome provisionAppDetailed(uint32_t appId,
 				            : cmResult == SourceResult::IncompleteContent
 				                ? "no depot data available anonymously"
 				                : "local cache write failed");
-				// A content verdict is a property of the app, not of this
-				// attempt: repeating it costs a CM round-trip and returns the
-				// same answer. IncompleteContent (token-locked/delisted: no
-				// depot data at all) is equally stable — the steamcmd mirror
-				// reads the same anonymous product-info — so persist it too and
-				// stop re-fetching it every boot. A local write failure is NOT
-				// terminal in that sense — the next pass may well succeed — so
-				// it stays retryable.
-				if (cmResult == SourceResult::NoUsableContent ||
-				    cmResult == SourceResult::VirtualDlc ||
-				    cmResult == SourceResult::IncompleteContent)
+				if (recordsTerminalVerdict(cmResult))
 					noteTerminalProvisionResult(appId, cmResult, cn, publication);
 				if (cmResult == SourceResult::VirtualDlc)
 					return ProvisionOutcome::NotApplicable;
@@ -2664,8 +2654,7 @@ ProvisionOutcome provisionAppDetailed(uint32_t appId,
 		else if (renderResult == SourceResult::VirtualDlc)
 			reason = "DLC has no usable content depots";
 		g_pLog->info("AppInfoProvision: app=%u render stopped (%s)\n", appId, reason);
-		if (renderResult == SourceResult::VirtualDlc ||
-		    renderResult == SourceResult::NoUsableContent)
+		if (recordsTerminalVerdict(renderResult))
 			noteTerminalProvisionResult(
 				appId, renderResult, changeNumber, publication);
 		if (renderResult == SourceResult::VirtualDlc)
@@ -3875,10 +3864,13 @@ DlcInjectionIds collectDlcAppIdsForAddedApps(bool* complete)
 		std::string wire;
 		if (!readValidatedCacheBufferLocked(appId, wire, validationDiag))
 		{
-			// Deliberately fail closed for the whole snapshot: the collected set
-			// REPLACES package 0's extra ids, so publishing it without this app
-			// would revoke DLC that is already injected. But one app blocking DLC
-			// for the entire fleet has to be visible, not a debug line.
+			std::error_code bufferEc, metaEc;
+			if (cache::dlcSnapshotSkipsApp(
+				    std::filesystem::exists(getBufferPath(appId), bufferEc) || bufferEc,
+				    std::filesystem::exists(getMetaPath(appId), metaEc) || metaEc))
+				continue;
+			// A pair that exists but fails validation stops the whole snapshot,
+			// and that has to be visible, not a debug line.
 			if (g_pLog)
 				g_pLog->info(
 				    "AppInfoProvision: DLC snapshot rejected cache pair for app=%u "

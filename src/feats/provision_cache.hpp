@@ -357,6 +357,14 @@ inline bool shouldInvalidateDlcMetadata(bool basePublicationSucceeded)
 	return basePublicationSucceeded;
 }
 
+// The DLC snapshot replaces package 0's extra ids, so a pair that exists but
+// cannot be read stops it. An app with no pair at all (a bogus or delisted id,
+// or one not fetched yet) has no DLC in it and is skipped.
+inline bool dlcSnapshotSkipsApp(bool bufferExists, bool metadataExists)
+{
+	return !bufferExists && !metadataExists;
+}
+
 struct CacheRecordFacts
 {
 	unsigned int requestedAppId = 0;

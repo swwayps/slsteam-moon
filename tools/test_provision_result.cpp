@@ -26,6 +26,7 @@ int main()
 	using AppInfoProvision::noticeForOutcome;
 	using AppInfoProvision::runtimePublicationAllowed;
 	using AppInfoProvision::shouldTryProviderFallback;
+	using AppInfoProvision::recordsTerminalVerdict;
 
 	CHECK(classifyContentResult(false, true) == SourceResult::Success,
 	      "usable content succeeds regardless of original source shape");
@@ -51,6 +52,16 @@ int main()
 	      "virtual DLC is terminal without a provider retry");
 	CHECK(!shouldTryProviderFallback(SourceResult::LocalFailure),
 	      "local persistence failure is terminal");
+	// The CM and the steamcmd mirror read the same anonymous product info, so
+	// both branches keep the same verdicts.
+	CHECK(recordsTerminalVerdict(SourceResult::IncompleteContent) &&
+	          recordsTerminalVerdict(SourceResult::NoUsableContent) &&
+	          recordsTerminalVerdict(SourceResult::VirtualDlc),
+	      "content verdicts are kept so the app is not fetched again");
+	CHECK(!recordsTerminalVerdict(SourceResult::Success) &&
+	          !recordsTerminalVerdict(SourceResult::InvalidResponse) &&
+	          !recordsTerminalVerdict(SourceResult::LocalFailure),
+	      "a malformed answer or a failed local write stays retryable");
 
 	CHECK(isProvisioned(ProvisionOutcome::Updated),
 	      "freshly updated appinfo counts as provisioned");
