@@ -46,7 +46,6 @@ static_assert(kMaxBodySize >= Achievements::maxReplyBytes);
 static_assert(kMaxHdrSize >= Achievements::maxHeaderBytes);
 constexpr uint32_t kMaxPacketSize  = sizeof(MsgHdr) + kMaxHdrSize + kMaxBodySize;
 
-std::mutex g_TxLock;
 
 constexpr uint64_t kDonorJobBase = 0x7e51000000000000ULL;
 struct DonorPending { std::promise<uint64_t> result; };
@@ -91,12 +90,6 @@ void prunePassiveRequestsLocked()
 			++it;
 	}
 }
-
-// Outgoing-frame replacement (used to spoof a Player.GetUserStats request).
-// Guarded by g_TxLock; valid only for the duration of one send-hook call.
-uint8_t  g_TxFrame[kMaxPacketSize];
-uint32_t g_TxFrameLen = 0;
-bool     g_PatchTx    = false;
 
 constexpr uint32_t fnvHash(const char* s)
 {
@@ -145,28 +138,26 @@ inline bool decodeFrame(const uint8_t* data, uint32_t size,
 	return true;
 }
 
-// Assemble a replacement outgoing frame (MsgHdr + header + new body) into
-// g_TxFrame and flag it for the send hook. `rawEMsg` must keep the proto
-// flag. Caller holds g_TxLock.
-inline void buildReplacementFrame(uint32_t rawEMsg,
+// Assemble a replacement outgoing frame (MsgHdr + header + new body) for the
+// send hook to pass on instead of Steam's. `rawEMsg` must keep the proto flag.
+inline void buildReplacementFrame(std::vector<uint8_t>& frame, uint32_t rawEMsg,
                                   const uint8_t* pHdr, uint32_t cbHdr,
                                   const uint8_t* pNewBody, uint32_t cbNewBody)
 {
 	const uint32_t newSize = sizeof(MsgHdr) + cbHdr + cbNewBody;
-	if (newSize > sizeof(g_TxFrame))
+	if (newSize > kMaxPacketSize)
 	{
 		return;
 	}
-	auto* out = reinterpret_cast<MsgHdr*>(g_TxFrame);
+	frame.resize(newSize);
+	auto* out = reinterpret_cast<MsgHdr*>(frame.data());
 	out->eMsg         = rawEMsg;
 	out->headerLength = cbHdr;
-	std::memcpy(g_TxFrame + sizeof(MsgHdr), pHdr, cbHdr);
+	std::memcpy(frame.data() + sizeof(MsgHdr), pHdr, cbHdr);
 	if (cbNewBody)
 	{
-		std::memcpy(g_TxFrame + sizeof(MsgHdr) + cbHdr, pNewBody, cbNewBody);
+		std::memcpy(frame.data() + sizeof(MsgHdr) + cbHdr, pNewBody, cbNewBody);
 	}
-	g_TxFrameLen = newSize;
-	g_PatchTx    = true;
 }
 
 // Outgoing Player.GetUserStats#1 (eMsg 151): the modern library page fetches
@@ -176,14 +167,14 @@ inline void buildReplacementFrame(uint32_t rawEMsg,
 // real owner of the game so the server returns a populated schema.
 void handleSend_PlayerGetUserStats(const uint8_t* pBody, uint32_t cbBody,
                                    const uint8_t* pHdr, uint32_t cbHdr,
-                                   uint32_t eMsg)
+                                   uint32_t eMsg, std::vector<uint8_t>& replacement)
 {
 	if (cbHdr > kMaxHdrSize) return;
 	CMsgProtoBufHeader hdr;
 	if (!hdr.ParseFromArray(pHdr, cbHdr)) return;
 	const auto newBody = Achievements::rewriteRequest(true, pBody, cbBody, hdr);
 	if (newBody.empty()) return;
-	buildReplacementFrame(eMsg | kMsgHdrProtoFlag, pHdr, cbHdr,
+	buildReplacementFrame(replacement, eMsg | kMsgHdrProtoFlag, pHdr, cbHdr,
 	                      newBody.data(), static_cast<uint32_t>(newBody.size()));
 }
 
@@ -252,9 +243,11 @@ void handleSend_GetManifestRequestCode(const uint8_t* pBody, uint32_t cbBody,
 		ManifestFetch::isAnyManagedDownloadActive(appId));
 }
 
+// Fills `replacement` when the frame has to go out rewritten.
 void dispatchSend(uint32_t eMsg,
                   const uint8_t* pBody, uint32_t cbBody,
-                  const uint8_t* pHdr,  uint32_t cbHdr)
+                  const uint8_t* pHdr,  uint32_t cbHdr,
+                  std::vector<uint8_t>& replacement)
 {
 	if (eMsg == k_EMsgClientGetUserStats)
 	{
@@ -262,7 +255,7 @@ void dispatchSend(uint32_t eMsg,
 		CMsgProtoBufHeader hdr;
 		if (!hdr.ParseFromArray(pHdr, cbHdr)) return;
 		const auto body = Achievements::rewriteRequest(false, pBody, cbBody, hdr);
-		if (!body.empty()) buildReplacementFrame(eMsg | kMsgHdrProtoFlag,
+		if (!body.empty()) buildReplacementFrame(replacement, eMsg | kMsgHdrProtoFlag,
 			pHdr, cbHdr, body.data(), static_cast<uint32_t>(body.size()));
 		return;
 	}
@@ -284,7 +277,7 @@ void dispatchSend(uint32_t eMsg,
 		handleSend_GetManifestRequestCode(pBody, cbBody, pHdr, cbHdr);
 		return;
 	case kHashPlayerGetUserStats:
-		handleSend_PlayerGetUserStats(pBody, cbBody, pHdr, cbHdr, eMsg);
+		handleSend_PlayerGetUserStats(pBody, cbBody, pHdr, cbHdr, eMsg, replacement);
 		return;
 	default:
 		return;
@@ -534,14 +527,14 @@ bool hkBBuildAndAsyncSendFrame(void* pConnection,
 						}
 					}
 				}
-				std::lock_guard<std::mutex> lk(g_TxLock);
-				g_PatchTx = false;
-				dispatchSend(eMsg, pBody, cbBody, pHdr, cbHdr);
-				if (g_PatchTx)
+				std::vector<uint8_t> replacement;
+				dispatchSend(eMsg, pBody, cbBody, pHdr, cbHdr, replacement);
+				if (!replacement.empty())
 				{
 					const bool success =
 						Hooks::CWebSocketConnection_BBuildAndAsyncSendFrame.tramp.fn(
-							pConnection, eOpCode, g_TxFrame, g_TxFrameLen);
+							pConnection, eOpCode, replacement.data(),
+							static_cast<uint32_t>(replacement.size()));
 					packet.free();
 					return success;
 				}
