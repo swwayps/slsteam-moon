@@ -2460,11 +2460,16 @@ void primeTerminalMemo(uint32_t appId, std::string_view fingerprint)
 
 CachePublicationToken snapshotCachePublication(uint32_t appId)
 {
+	// No pass mutex: the PICS callbacks call this on Steam's CM thread. Read
+	// the generation first. A config removal publishes the managed set before
+	// forgetApp() bumps the generation, so a token that holds the new
+	// generation also reads the app as unmanaged.
 	CachePublicationToken token;
-	std::lock_guard<std::mutex> passLock(g_provisionPassMu);
-	token.managed = g_config.managedAppIds.get().count(appId) != 0;
-	std::lock_guard<std::mutex> publicationLock(g_cachePublicationMu);
-	token.generation = cachePublicationGenerationLocked(appId);
+	{
+		std::lock_guard<std::mutex> publicationLock(g_cachePublicationMu);
+		token.generation = cachePublicationGenerationLocked(appId);
+	}
+	token.managed = g_config.managedAppIds.contains(appId);
 	return token;
 }
 
