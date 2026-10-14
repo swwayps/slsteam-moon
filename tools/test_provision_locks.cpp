@@ -3,6 +3,7 @@
 // across fleet-wide disk work.
 // Build: make test-provision-locks (links the whole object set).
 #include "../src/feats/appinfo_provision.hpp"
+#include "../src/feats/hotreload.hpp"
 #include "../src/log.hpp"
 
 #include <atomic>
@@ -50,12 +51,25 @@ int main()
 	const std::string logPath = std::string(home) + "/test.log";
 	g_pLog = std::unique_ptr<CLog>(new CLog(logPath.c_str()));
 
+	HotReload::initialize();
+	HotReload::publish({42}, true);
+
 	// A provisioning pass is running.
 	AppInfoProvision::provisioningPassMutex().lock();
 	CHECK(returnsPromptly([] { (void)AppInfoProvision::snapshotCachePublication(42); }),
 	      "a publication snapshot does not wait for a provisioning pass");
 	CHECK(returnsPromptly([] { (void)AppInfoProvision::observeTerminal(42, 1); }),
 	      "a terminal lookup does not wait for a provisioning pass");
+	AppInfoProvision::provisioningPassMutex().unlock();
+
+	// A HotReload publication holds its coordinator while it waits here.
+	AppInfoProvision::cachePublicationMutex().lock();
+	std::thread([] { HotReload::publish({42, 43}, true); }).detach();
+	std::this_thread::sleep_for(std::chrono::milliseconds(500));
+	CHECK(returnsPromptly([] { (void)HotReload::takeMissingCacheRepairRequests(); }),
+	      "cache repair scheduling does not wait for a HotReload publication");
+	CHECK(returnsPromptly([] { HotReload::repairMissingDlcMetadata("/nonexistent/appinfo.vdf"); }),
+	      "DLC metadata repair scheduling does not wait for a HotReload publication");
 
 	if (g_failures == 0) std::printf("\nall provision lock checks passed\n");
 	else std::printf("\n%d provision lock check(s) FAILED\n", g_failures);

@@ -458,8 +458,10 @@ void repairMissingDlcMetadata(const std::string& appinfoVdfPath) noexcept
 		CoordinatorState& state = coordinator();
 		std::vector<AppInfoProvision::RefreshRequest> requests;
 		{
-			std::lock_guard<std::mutex> coordinatorLock(state.mutex);
-			if (!state.initialized) return;
+			// Steam's CM thread: a busy coordinator is skipped, later PICS
+			// traffic tries again.
+			std::unique_lock<std::mutex> coordinatorLock(state.mutex, std::try_to_lock);
+			if (!coordinatorLock.owns_lock() || !state.initialized) return;
 			const auto now = std::chrono::steady_clock::now();
 			const auto nowMs = static_cast<std::uint64_t>(
 				std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -538,8 +540,9 @@ takeMissingCacheRepairRequests() noexcept
 	try
 	{
 		CoordinatorState& state = coordinator();
-		std::lock_guard<std::mutex> coordinatorLock(state.mutex);
-		if (!state.initialized || state.cacheRepairBaseIds.empty()) return {};
+		std::unique_lock<std::mutex> coordinatorLock(state.mutex, std::try_to_lock);
+		if (!coordinatorLock.owns_lock() || !state.initialized ||
+			state.cacheRepairBaseIds.empty()) return {};
 
 		const auto now = std::chrono::steady_clock::now();
 		if (now < state.cacheRepairAfter) return {};

@@ -38,12 +38,14 @@ namespace HotReload
 
 	// Called from a real post-login PICS worker callback. Schedules a bounded,
 	// cooldown-limited repair for durable child metadata missing from older
-	// caches; it never starts work from LD_AUDIT preinit.
+	// caches; it never starts work from LD_AUDIT preinit, and does nothing while
+	// a publication holds the coordinator.
 	void repairMissingDlcMetadata(
 		const std::string& appinfoVdfPath) noexcept;
 
 	// Called only from a real PICS callback. Returns at most one cold-start
-	// cache recovery request and applies a retry cooldown without doing I/O.
+	// cache recovery request and applies a retry cooldown without doing I/O;
+	// nothing while a publication holds the coordinator.
 	std::vector<AppInfoProvision::RefreshRequest>
 	takeMissingCacheRepairRequests() noexcept;
 
