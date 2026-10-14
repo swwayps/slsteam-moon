@@ -18,6 +18,8 @@
 #include "../sdk/protobufs/steammessages_clientserver_2.pb.h"
 #include "../sdk/protobufs/steammessages_clientserver_appinfo.pb.h"
 
+#include <exception>
+
 
 namespace
 {
@@ -26,12 +28,9 @@ namespace
 	constexpr uint32_t kEMsgClientLogOnResponse = 751;
 	constexpr uint32_t kEMsgClientLoggedOff     = 757;
 	constexpr uint32_t kEMsgClientLicenseList   = 780;
-}
 
-void CmRecv::dispatchNetPacket(CNetPacket* pkt)
+void dispatch(CNetPacket* pkt, uint32_t eMsg)
 {
-	if (!pkt) return;
-	const uint32_t eMsg = pkt->getProtoBufType();
 
 	// Login-state invalidation for 751/757/780 (Achievements first, then
 	// per-type handling).
@@ -149,5 +148,29 @@ void CmRecv::dispatchNetPacket(CNetPacket* pkt)
 
 		default:
 			break;
+	}
+}
+
+} // namespace
+
+// Runs inside Steam's CM receive hook, so nothing may unwind into Steam: a
+// handler that throws is logged and Steam gets the packet as it is.
+void CmRecv::dispatchNetPacket(CNetPacket* pkt)
+{
+	if (!pkt) return;
+	const uint32_t eMsg = pkt->getProtoBufType();
+	try
+	{
+		dispatch(pkt, eMsg);
+	}
+	catch (const std::exception& e)
+	{
+		if (g_pLog)
+			g_pLog->infoOnce("CmRecv: handler for message %u failed: %s\n", eMsg, e.what());
+	}
+	catch (...)
+	{
+		if (g_pLog)
+			g_pLog->infoOnce("CmRecv: handler for message %u failed\n", eMsg);
 	}
 }

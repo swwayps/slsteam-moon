@@ -1,0 +1,85 @@
+// Steam's CM receive hook hands every packet to CmRecv::dispatchNetPacket, so
+// nothing a message handler throws may unwind into Steam.
+// Build: make test-cmrecv-exceptions (links the whole object set).
+#include "../src/feats/cmrecv.hpp"
+#include "../src/log.hpp"
+#include "../src/sdk/CNetPacket.hpp"
+#include "../src/sdk/protobufs/steammessages_clientserver_appinfo.pb.h"
+
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <memory>
+#include <new>
+#include <string>
+#include <vector>
+
+static int g_failures = 0;
+#define CHECK(cond, msg)                                               \
+	do {                                                               \
+		if (!(cond)) { std::printf("FAIL: %s\n", msg); ++g_failures; } \
+		else         { std::printf("ok:   %s\n", msg); }               \
+	} while (0)
+
+// Once armed, the next allocation on this thread fails.
+static thread_local bool t_failNextAllocation = false;
+static thread_local bool t_allocationFailed = false;
+
+void* operator new(std::size_t size)
+{
+	if (t_failNextAllocation)
+	{
+		t_failNextAllocation = false;
+		t_allocationFailed = true;
+		throw std::bad_alloc();
+	}
+	if (void* p = std::malloc(size ? size : 1)) return p;
+	throw std::bad_alloc();
+}
+void operator delete(void* p) noexcept { std::free(p); }
+void operator delete(void* p, std::size_t) noexcept { std::free(p); }
+
+int main()
+{
+	setvbuf(stdout, nullptr, _IONBF, 0);
+	char home[] = "/tmp/test_cmrecv_exceptions_XXXXXX";
+	if (!mkdtemp(home)) return 2;
+	setenv("HOME", home, 1);
+	setenv("XDG_CONFIG_HOME", home, 1);
+	const std::string logPath = std::string(home) + "/test.log";
+	g_pLog = std::unique_ptr<CLog>(new CLog(logPath.c_str()));
+
+	// An empty product-info response, as the CM receive hook sees it.
+	const std::string header = CMsgProtoBufHeader().SerializeAsString();
+	const std::string message = CMsgClientPICSProductInfoResponse().SerializeAsString();
+	std::vector<std::uint8_t> storage(sizeof(CNetPacketBody) + header.size() + message.size());
+	auto* body = reinterpret_cast<CNetPacketBody*>(storage.data());
+	body->type = CNetPacket::PROTOBUF_TYPE_MASK | k_EMsgClientPICSProductInfoResponse;
+	body->headerSize = header.size();
+	std::memcpy(storage.data() + sizeof(CNetPacketBody), header.data(), header.size());
+	std::memcpy(storage.data() + sizeof(CNetPacketBody) + header.size(),
+	            message.data(), message.size());
+	CNetPacket packet{};
+	packet.setBody(body);
+	packet.setSize(storage.size());
+
+	// The handler runs out of memory.
+	bool escaped = false;
+	t_failNextAllocation = true;
+	try
+	{
+		CmRecv::dispatchNetPacket(&packet);
+	}
+	catch (...)
+	{
+		escaped = true;
+	}
+	t_failNextAllocation = false;
+	CHECK(t_allocationFailed && !escaped,
+	      "a handler that throws does not unwind into Steam's receive hook");
+
+	if (g_failures == 0) std::printf("\nall cmrecv exception checks passed\n");
+	else std::printf("\n%d cmrecv exception check(s) FAILED\n", g_failures);
+	return g_failures == 0 ? 0 : 1;
+}
