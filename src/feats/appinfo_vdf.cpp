@@ -1027,7 +1027,10 @@ std::string findExistingPath()
 	for (const char* suffix : suffixes)
 	{
 		const std::string candidate = std::string(home) + suffix;
-		if (std::filesystem::exists(candidate)) return candidate;
+		// The PICS callbacks call this on Steam's CM thread; a path that
+		// cannot be resolved (a symlink loop, no permission) is skipped.
+		std::error_code ec;
+		if (std::filesystem::exists(candidate, ec)) return candidate;
 	}
 	return {};
 }

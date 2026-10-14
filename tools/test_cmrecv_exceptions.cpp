@@ -1,6 +1,7 @@
 // Steam's CM receive hook hands every packet to CmRecv::dispatchNetPacket, so
 // nothing a message handler throws may unwind into Steam.
 // Build: make test-cmrecv-exceptions (links the whole object set).
+#include "../src/feats/appinfo_vdf.hpp"
 #include "../src/feats/cmrecv.hpp"
 #include "../src/log.hpp"
 #include "../src/sdk/CNetPacket.hpp"
@@ -10,9 +11,13 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
 #include <memory>
 #include <new>
 #include <string>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <vector>
 
 static int g_failures = 0;
@@ -78,6 +83,28 @@ int main()
 	t_failNextAllocation = false;
 	CHECK(t_allocationFailed && !escaped,
 	      "a handler that throws does not unwind into Steam's receive hook");
+
+	// The appinfo.vdf lookup skips a candidate it cannot resolve: here
+	// ~/.steam/steam points at itself.
+	const std::string dotSteam = std::string(home) + "/.steam";
+	if (mkdir(dotSteam.c_str(), 0700) != 0 ||
+	    symlink("steam", (dotSteam + "/steam").c_str()) != 0)
+		return 2;
+	const std::string appcache = std::string(home) + "/.local/share/Steam/appcache";
+	std::filesystem::create_directories(appcache);
+	std::ofstream(appcache + "/appinfo.vdf") << "x";
+	std::string found;
+	bool threw = false;
+	try
+	{
+		found = AppInfoVdf::findExistingPath();
+	}
+	catch (...)
+	{
+		threw = true;
+	}
+	CHECK(!threw && found == appcache + "/appinfo.vdf",
+	      "the appinfo.vdf lookup skips a path it cannot resolve");
 
 	if (g_failures == 0) std::printf("\nall cmrecv exception checks passed\n");
 	else std::printf("\n%d cmrecv exception check(s) FAILED\n", g_failures);
