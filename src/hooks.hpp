@@ -43,7 +43,8 @@ public:
 
 	Hook(const char* name);
 
-	virtual void place() = 0;
+	// False when the hook could not be placed.
+	virtual bool place() = 0;
 	virtual void remove() = 0;
 };
 
@@ -57,7 +58,7 @@ public:
 	DetourHook(const char* name);
 	DetourHook();
 
-	virtual void place();
+	virtual bool place();
 	virtual void remove();
 
 	bool setup(const char* name, lm_address_t fn, T hookFn);
@@ -76,7 +77,7 @@ public:
 	VFTHook(const char* name);
 	VFTHook();
 
-	virtual void place();
+	virtual bool place();
 	virtual void remove();
 
 	void setup(std::shared_ptr<lm_vmt_t> vft, const VFTableInfo_t& info, T hookFn);
@@ -210,7 +211,8 @@ namespace Hooks
 
 	extern DetourHook<CGameInfoDialog_ServerResponded_t> CGameInfoDialog_ServerResponded;
 	bool setup();
-	void place();
+	// False when a required hook could not be placed.
+	bool place();
 	void remove();
 	// Installs the interface vtable hooks once the local user exists; called
 	// from ProcessIPCFrame on the IPC thread.

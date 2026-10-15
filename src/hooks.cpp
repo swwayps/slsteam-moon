@@ -170,10 +170,13 @@ bool DetourHook<T>::setup(const VFTableInfo_t& info, T hookFn)
 }
 
 template<typename T>
-void DetourHook<T>::place()
+bool DetourHook<T>::place()
 {
 	this->size = LM_HookCode(this->originalFn.address, this->hookFn.address, &this->tramp.address);
-	MemHlp::fixPICThunkCall(this->name.c_str(), this->originalFn.address, this->tramp.address);
+	if (this->size)
+		MemHlp::fixPICThunkCall(this->name.c_str(), this->originalFn.address, this->tramp.address);
+	else
+		g_pLog->warn("Unable to place the %s hook\n", this->name.c_str());
 
 	if (RuntimeAttestation::enabled())
 	{
@@ -224,6 +227,8 @@ void DetourHook<T>::place()
 		);
 	}
 
+	if (!this->size)
+		return false;
 	g_pLog->debug
 	(
 		"Detour hooked %s (%p) with hook at 0x%x and tramp at 0x%x\n",
@@ -232,6 +237,7 @@ void DetourHook<T>::place()
 		this->hookFn.address,
 		this->tramp.address
 	);
+	return true;
 }
 
 template<typename T>
@@ -249,10 +255,14 @@ void DetourHook<T>::remove()
 }
 
 template<typename T>
-void VFTHook<T>::place()
+bool VFTHook<T>::place()
 {
-	LM_VmtHook(this->vft.get(), this->index, this->hookFn.address);
-	this->hooked = true;
+	this->hooked = LM_VmtHook(this->vft.get(), this->index, this->hookFn.address);
+	if (!this->hooked)
+	{
+		g_pLog->warn("Unable to place the %s hook\n", this->name.c_str());
+		return false;
+	}
 
 	LOG_DEBUG
 	(
@@ -261,6 +271,7 @@ void VFTHook<T>::place()
 		this->originalFn.address,
 		this->hookFn.address
 	);
+	return true;
 }
 
 template<typename T>
@@ -1630,7 +1641,10 @@ bool Hooks::setup()
 		g_pLog->warn("GetFriendGamePlayed hook unavailable; FakeAppIds lobbies keep the fake id\n");
 	}
 
-	Hooks::place();
+	// Nothing is placed after a required locator failed, and a required hook
+	// that cannot be placed fails the load, which then runs Steam unmodified.
+	if (!succeeded || !Hooks::place())
+		return false;
 
 	// AppInfoState keeps this non-owning Store* in its hot path.  The static
 	// lifetime is part of the manual-detour contract: it must outlive every
@@ -1645,23 +1659,23 @@ bool Hooks::setup()
 	DepotQuarantine::setup();
 	ReconcilePin::setup();
 	Parental::setup();
-
-	return succeeded;
+	return true;
 }
 
-void Hooks::place()
+bool Hooks::place()
 {
 	// Marked before the first hook goes in, so Hooks::remove() closes the
 	// owner work queue whenever hooks may be live (OwnerQueue::PlacementGate).
 	OwnerWork::notePlacement();
-	TraceIPC.place();
+	// An optional hook that fails only loses its feature; place() warns.
+	bool required = TraceIPC.place();
 
-	CCMInterface_RecvPkt.place();
+	required &= CCMInterface_RecvPkt.place();
 
-	CJobMgr_BRouteMsgToJob.place();
-	CDepotDownloadMgr_BYldRequestDepotManifest.place();
-	CSteamEngine_ProcessIPCFrame.place();
-	CSteamEngine_SetAppIdForCurrentPipe.place();
+	required &= CJobMgr_BRouteMsgToJob.place();
+	required &= CDepotDownloadMgr_BYldRequestDepotManifest.place();
+	required &= CSteamEngine_ProcessIPCFrame.place();
+	required &= CSteamEngine_SetAppIdForCurrentPipe.place();
 
 	if (serverBrowserHookReady)
 	{
@@ -1669,13 +1683,13 @@ void Hooks::place()
 		CSteamMatchmakingServers_RequestInternetServerList.place();
 	}
 
-	CUser_CheckAppOwnership.place();
-	CUser_GetSubscribedApps.place();
+	required &= CUser_CheckAppOwnership.place();
+	required &= CUser_GetSubscribedApps.place();
 	if (depotOverrideHookReady)
 	{
 		CUserAppManager_BuildDepotDependency.place();
 	}
-	CUser_PostCallbackToAppId.place();
+	required &= CUser_PostCallbackToAppId.place();
 	if (spawnGameHookReady)
 	{
 		CUser_SpawnGameId.place();
@@ -1690,7 +1704,7 @@ void Hooks::place()
 		IClientFriends_GetFriendGamePlayed.place();
 	}
 
-	CWebSocketConnection_BBuildAndAsyncSendFrame.place();
+	required &= CWebSocketConnection_BBuildAndAsyncSendFrame.place();
 
 
 
@@ -1707,6 +1721,7 @@ void Hooks::place()
 	{
 		IClientConfigStore_SetString.place();
 	}
+	return required;
 }
 
 void Hooks::remove()
