@@ -1,6 +1,8 @@
 // readValidatedCacheBuffer reuses a validation only for the same pair: a pair
-// replaced after it was validated is validated again.
+// replaced after it was validated is validated again. The startup Proton scan
+// still reads the platform of each validated pair.
 // Build: make test-cache-validation (links the whole object set).
+#include "../src/config.hpp"
 #include "../src/feats/appinfo_provision.hpp"
 #include "../src/log.hpp"
 
@@ -26,18 +28,22 @@ namespace
 
 constexpr uint32_t kApp = 42;
 
-std::string wireWithGid(const char* gid)
+std::string wireWithGid(const char* gid, const char* oslist = "linux")
 {
-	return std::string("\"appinfo\"\n{\n\t\"appid\"\t\"42\"\n\t\"depots\"\n\t{\n\t\t\"43\"\n\t\t{\n"
-	                   "\t\t\t\"manifests\"\n\t\t\t{\n\t\t\t\t\"public\"\n\t\t\t\t{\n\t\t\t\t\t\"gid\"\t\"") +
+	return std::string("\"appinfo\"\n{\n\t\"depots\"\n\t{\n\t\t\"43\"\n\t\t{\n"
+	                   "\t\t\t\"config\"\n\t\t\t{\n\t\t\t\t\"oslist\"\t\"") +
+	       oslist +
+	       "\"\n\t\t\t}\n\t\t\t\"manifests\"\n\t\t\t{\n\t\t\t\t\"public\"\n\t\t\t\t{\n"
+	       "\t\t\t\t\t\"gid\"\t\"" +
 	       gid + "\"\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n}\n";
 }
 
-std::string metadataFor(const std::string& wire)
+std::string metadataFor(const std::string& wire, uint32_t appId = kApp)
 {
 	std::uint8_t sha[20]{};
 	AppInfoProvision::sha1Bytes(wire.data(), wire.size(), sha);
-	return "appid: 42\nchange_number: 7\nwire_size: " + std::to_string(wire.size()) +
+	return "appid: " + std::to_string(appId) + "\nchange_number: 7\nwire_size: " +
+	       std::to_string(wire.size()) +
 	       "\nsha_b64: " + base64::to_base64(std::string(reinterpret_cast<char*>(sha), 20)) +
 	       "\nnormalized: true\nsynthetic: false\n";
 }
@@ -85,6 +91,18 @@ int main()
 	replaceFile(metadata, metadataFor(empty));
 	CHECK(!AppInfoProvision::readValidatedCacheBuffer(kApp, read),
 	      "a pair without a usable depot is rejected");
+
+	// 42 ships only a Windows depot, 44 a Linux one.
+	const std::string windows = wireWithGid("1234567890", "windows");
+	replaceFile(buffer, windows);
+	replaceFile(metadata, metadataFor(windows));
+	const std::string native = wireWithGid("1234567890", "linux");
+	replaceFile(cache + "/picsbuffer_44.bin", native);
+	replaceFile(cache + "/picsbuffer_44.yaml", metadataFor(native, 44));
+	g_config.managedAppIds.set({kApp, 44});
+	AppInfoProvision::flushPendingProtonMappings();
+	CHECK(AppInfoProvision::requiresProton(kApp) && !AppInfoProvision::requiresProton(44),
+	      "the startup scan marks only the Windows-only pair for Proton");
 
 	if (g_failures == 0) std::printf("\nall cache validation checks passed\n");
 	else std::printf("\n%d cache validation check(s) FAILED\n", g_failures);

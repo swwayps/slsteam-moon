@@ -604,7 +604,8 @@ void pruneUnsupportedDepots(YAML::Node& body, uint32_t appId,
 // Forward declaration: defined with the on-disk cache helpers below.
 const std::string& getCacheDir();
 bool readValidatedCacheBufferLocked(uint32_t appId, std::string& wireOut,
-                                    std::string& diag);
+                                    std::string& diag,
+                                    bool* requiresProton = nullptr);
 
 // Rebuild a missing `depots` block for a token-locked app from data we
 // already hold on disk.  Some titles (e.g. Risk of Rain 2, app 632360)
@@ -1414,13 +1415,10 @@ private:
 	const char* end_;
 };
 
-bool cachedWireRequiresProton(const std::string& wire) noexcept
+bool requiresProtonFromBody(const YAML::Node& body) noexcept
 {
 	try
 	{
-		if (wire.empty()) return false;
-		CmVdfReader reader(wire.data(), wire.data() + wire.size());
-		const YAML::Node body = reader.parseAppinfo();
 		const YAML::Node depots =
 			body && body.IsMap() ? body["depots"] : YAML::Node();
 		if (!depots || !depots.IsMap()) return false;
@@ -1449,6 +1447,19 @@ bool cachedWireRequiresProton(const std::string& wire) noexcept
 		if (body["common"] && body["common"]["oslist"])
 			commonOsList = body["common"]["oslist"].as<std::string>("");
 		return requiresProtonMapping(contentDepots, depotOs, commonOsList);
+	}
+	catch (...)
+	{
+		return false;
+	}
+}
+bool cachedWireRequiresProton(const std::string& wire) noexcept
+{
+	try
+	{
+		if (wire.empty()) return false;
+		CmVdfReader reader(wire.data(), wire.data() + wire.size());
+		return requiresProtonFromBody(reader.parseAppinfo());
 	}
 	catch (...)
 	{
@@ -1498,7 +1509,7 @@ bool cacheMetadataMarkerAllowsRead(
 }
 
 bool readValidatedCacheBufferLocked(uint32_t appId, std::string& wireOut,
-                                    std::string& diag)
+                                    std::string& diag, bool* requiresProton)
 {
 	try
 	{
@@ -1544,6 +1555,7 @@ bool readValidatedCacheBufferLocked(uint32_t appId, std::string& wireOut,
 			const auto found = g_cacheValidationMemo.find(identity);
 			if (found != g_cacheValidationMemo.end() && found->second.valid)
 			{
+				if (requiresProton) *requiresProton = cachedWireRequiresProton(wire);
 				wireOut = std::move(wire);
 				return true;
 			}
@@ -1577,6 +1589,7 @@ bool readValidatedCacheBufferLocked(uint32_t appId, std::string& wireOut,
 			std::lock_guard<std::mutex> validationLock(g_cacheValidationMu);
 			g_cacheValidationMemo.insert_or_assign(identity, CacheValidationResult{true, {}});
 		}
+		if (requiresProton) *requiresProton = requiresProtonFromBody(appNode);
 		wireOut = std::move(wire);
 		return true;
 	}
@@ -3330,9 +3343,12 @@ void flushPendingProtonMappings()
 	// whose platform fallback missed content depots without config.oslist.
 	for (const std::uint32_t appId : g_config.managedAppIds.get())
 	{
+		ProcessLock::FileLock cacheLock(cacheLockPath(), false);
 		std::string wire;
-		if (readValidatedCacheBuffer(appId, wire) &&
-			cachedWireRequiresProton(wire))
+		std::string diag;
+		bool proton = false;
+		if (cacheLock.acquired() &&
+			readValidatedCacheBufferLocked(appId, wire, diag, &proton) && proton)
 		{
 			g_needProton.insert(appId);
 		}
