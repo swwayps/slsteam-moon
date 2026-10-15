@@ -746,7 +746,7 @@ test-cmclient-live: build
 test-manifestpin-patterns:
 	$(CXX) -std=c++20 tools/test_manifestpin_patterns.cpp \
 		-o /tmp/test_manifestpin_patterns
-	/tmp/test_manifestpin_patterns "$(STEAMCLIENT)"
+	/tmp/test_manifestpin_patterns "$(STEAMCLIENT)" src/patterns.cpp
 
 # The two optional locators whose failure only degrades a feature, so a drift
 # after a client update would otherwise pass unnoticed.

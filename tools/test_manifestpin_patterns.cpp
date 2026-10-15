@@ -1,5 +1,7 @@
-// Validate the call-site assumptions used by the manifest-pin hooks against
-// the current 32-bit steamclient image.
+// Validate the manifest-pin builder locator against a 32-bit steamclient: the
+// caller-site signature compiled in src/patterns.cpp matches once, and the call
+// it follows reaches the builder Steam calls in flag pairs.
+// Run: make test-manifestpin-patterns [STEAMCLIENT=...]
 
 #include <cstdint>
 #include <cstring>
@@ -73,9 +75,9 @@ static bool hasPushLiteralBefore(const std::string& image, size_t call,
 
 int main(int argc, char** argv)
 {
-	if (argc != 2)
+	if (argc != 3)
 	{
-		std::cerr << "usage: test_manifestpin_patterns /path/to/steamclient.so\n";
+		std::cerr << "usage: test_manifestpin_patterns <steamclient.so> <src/patterns.cpp>\n";
 		return 2;
 	}
 	std::ifstream input(argv[1], std::ios::binary);
@@ -86,16 +88,26 @@ int main(int argc, char** argv)
 	}
 	const std::string image{std::istreambuf_iterator<char>(input),
 	                        std::istreambuf_iterator<char>()};
+	std::ifstream sourceInput(argv[2], std::ios::binary);
+	const std::string source{std::istreambuf_iterator<char>(sourceInput),
+	                         std::istreambuf_iterator<char>()};
 
-	const auto builders = findMatches(image, parse(
-	    "E8 ? ? ? ? 05 ? ? ? ? 55 89 E5 57 56 53 81 EC 8C 04 00 00 "
-	    "8B 55 10 8B 7D 0C 89 85 A0 FB FF FF 8B 45 08"));
-	if (builders.size() != 1)
+	// CDepotDownloadMgr::BuildDepotDependency, reached from its first caller.
+	constexpr const char* kBuilderCaller =
+	    "E8 ? ? ? ? 8B 46 08 8D 9F ? ? ? ? 83 C4 10 89 5D AC 8B 10 8B 52 4C 39 DA 0F 85";
+	if (source.find(kBuilderCaller) == std::string::npos)
 	{
-		std::cerr << "expected one BuildDepotDependency; found "
-		          << builders.size() << '\n';
+		std::cerr << "the builder signature is not the one compiled in src/patterns.cpp\n";
 		return 1;
 	}
+	const auto callers = findMatches(image, parse(kBuilderCaller));
+	if (callers.size() != 1)
+	{
+		std::cerr << "expected one BuildDepotDependency caller; found "
+		          << callers.size() << '\n';
+		return 1;
+	}
+	const std::vector<size_t> builders{callDestination(image, callers.front())};
 
 	size_t flag0 = 0;
 	size_t flag1 = 0;

@@ -718,10 +718,12 @@ using SigFollowMode = MemHlp::SigFollowMode;
 
 namespace Patterns
 {
+	// The settings field pushed for the account ID moves between builds
+	// (0x182, then 0x166), so its low bytes are masked.
 	Pattern_t ParentalSignatureCheck
 	{
 		"ParentalSignatureCheck",
-		"84 C0 75 27 8B 85 ? ? ? ? 8D 9D ? ? ? ? 83 EC 04 FF B0 82 01 00 00 8D 86 ? ? ? ? 50 53 E8 ? ? ? ?",
+		"84 C0 75 27 8B 85 ? ? ? ? 8D 9D ? ? ? ? 83 EC 04 FF B0 ? ? 00 00 8D 86 ? ? ? ? 50 53 E8 ? ? ? ?",
 		SigFollowMode::None
 	};
 	Pattern_t ParentalSettingsReceived
@@ -1161,13 +1163,13 @@ namespace Patterns
 		//     by-value gid the acquisition leaf gets (which the commit ignores).
 		//     PIC get_pc_thunk is the FIRST insn (like ProcessDepotManifest) ->
 		//     fixPICThunkCall repairs the relocated thunk in the tramp.
-		//     Verified: 1 match in .text (entry VA 0x11413e0 on build
-		//     cfe99f0cc8fee644e2a8e3d1a0794e49).
+		//     Reached through its first caller, the flag-0 call, because its
+		//     own frame changes between builds while that call site does not.
 		Pattern_t BuildDepotDependency
 		{
 			"CDepotDownloadMgr::BuildDepotDependency",
-			"E8 ? ? ? ? 05 ? ? ? ? 55 89 E5 57 56 53 81 EC 8C 04 00 00 8B 55 10 8B 7D 0C 89 85 A0 FB FF FF 8B 45 08",
-			SigFollowMode::None
+			"E8 ? ? ? ? 8B 46 08 8D 9F ? ? ? ? 83 C4 10 89 5D AC 8B 10 8B 52 4C 39 DA 0F 85",
+			SigFollowMode::Relative
 		};
 
 		// Structured chunk-completion callbacks. Steam reaches these before it

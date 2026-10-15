@@ -12,6 +12,7 @@
 //                                        ownership-flags field offset, so
 //                                        visual library removal turns off.
 //   CUser::SpawnGameId                   LaunchOptions turns off.
+//   ParentalSignatureCheck               DisableParentalRestrictions turns off.
 //
 // Each signature is asserted to be present verbatim in src/patterns.cpp, so
 // this test can never pass against a stale private copy of the pattern, and to
@@ -224,6 +225,15 @@ int main(int argc, char** argv)
 			std::cout << "CUser::SpawnGameId starts 0x" << std::hex << spawn - start
 			          << std::dec << " bytes above the match\n";
 	}
+
+	// The branch after Steam's parental settings signature check, which the
+	// unlock turns into a jmp. The settings field pushed for the account ID
+	// moves between builds (0x182, 0x166), so its low bytes are masked.
+	(void)resolveUnique(
+		client, "ParentalSignatureCheck",
+		"84 C0 75 27 8B 85 ? ? ? ? 8D 9D ? ? ? ? 83 EC 04 FF B0 ? ? 00 00 "
+		"8D 86 ? ? ? ? 50 53 E8 ? ? ? ?",
+		source);
 
 	if (failures != 0)
 	{
