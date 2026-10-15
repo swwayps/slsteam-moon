@@ -115,7 +115,9 @@ void CLog::notifyUser(UserMsg msg, const std::string& detail)
 	// Big Picture/Gamepad UI is active. Desktop keeps notify-send below as the
 	// visible path; the sidecar silently drains the duplicate event there.
 	(void)Notify::enqueueGamepadEventForUser("SLSsteam-moon", shown, timeoutMs);
-	const int rc = system(cmd.c_str());
+	// In the background, so a notification daemon that does not answer never
+	// holds the Steam thread that raised the popup.
+	const int rc = system((cmd + " &").c_str());
 	(void)rc; // best-effort popup; nothing actionable if notify-send is absent
 }
 
