@@ -1533,6 +1533,22 @@ bool readValidatedCacheBufferLocked(uint32_t appId, std::string& wireOut,
 			return false;
 		}
 
+		// Callers hold the cache lock, so a pair identity validated earlier in
+		// this process still names these bytes: skip the hash and the parse.
+		cache::CacheValidationKey identity{};
+		const bool identified = statBuffer(appId, identity) &&
+			identity.size == static_cast<long long>(wire.size());
+		if (identified)
+		{
+			std::lock_guard<std::mutex> validationLock(g_cacheValidationMu);
+			const auto found = g_cacheValidationMemo.find(identity);
+			if (found != g_cacheValidationMemo.end() && found->second.valid)
+			{
+				wireOut = std::move(wire);
+				return true;
+			}
+		}
+
 		std::uint8_t digestBytes[20]{};
 		sha1BytesInternal(wire.data(), wire.size(), digestBytes);
 		const std::string actualSha(
@@ -1555,6 +1571,11 @@ bool readValidatedCacheBufferLocked(uint32_t appId, std::string& wireOut,
 		{
 			diag = "metadata, SHA-1, or depot validation failed";
 			return false;
+		}
+		if (identified)
+		{
+			std::lock_guard<std::mutex> validationLock(g_cacheValidationMu);
+			g_cacheValidationMemo.insert_or_assign(identity, CacheValidationResult{true, {}});
 		}
 		wireOut = std::move(wire);
 		return true;
@@ -1610,18 +1631,21 @@ cache::CacheUse cacheUseForApp(uint32_t appId, bool refreshUnavailable)
 	}
 
 	CacheValidationResult result;
+	bool memoHit = false;
 	{
 		std::lock_guard<std::mutex> lk(g_cacheValidationMu);
 		auto it = g_cacheValidationMemo.find(key);
 		if (it != g_cacheValidationMemo.end())
 		{
 			result = it->second;
+			memoHit = true;
 		}
-		else
-		{
-			result.valid = hasValidatedCachedBuffer(appId, result.diag);
-			g_cacheValidationMemo.emplace(key, result);
-		}
+	}
+	if (!memoHit)
+	{
+		result.valid = hasValidatedCachedBuffer(appId, result.diag);
+		std::lock_guard<std::mutex> lk(g_cacheValidationMu);
+		g_cacheValidationMemo.emplace(key, result);
 	}
 	if (result.valid && !cacheMarkerAllowsRead(appId))
 	{
