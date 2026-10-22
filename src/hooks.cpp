@@ -425,6 +425,7 @@ static void hkCMInterface_RecvPkt(void* pCMInterface, CNetPacket* pNetPacket)
 	Hooks::CCMInterface_RecvPkt.tramp.fn(pCMInterface, pNetPacket);
 }
 
+__attribute__((hot))
 static uint32_t hkSteamEngine_ProcessIPCFrame(
 	void* pSteamEngine,
 	HSteamPipe hPipe,
