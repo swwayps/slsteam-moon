@@ -16,7 +16,7 @@
 //      client_sessionid from the ClientLogOnResponse (EMsg 751) header.
 //   6. Batched ClientPICSProductInfoRequest (EMsg 8903), loop reading
 //      responses (EMsg 8904) until response_pending == false, expanding
-//      any EMsg.Multi (1) envelopes (gzip-inflated via `gzip -dc`).
+//      any EMsg.Multi (1) envelopes (gzip-inflated with zlib).
 
 #define CMWIRE_PROTOBUF 1
 #include "cmwire.hpp"
@@ -46,6 +46,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
+#include <dlfcn.h>
 #include <filesystem>
 #include <fstream>
 #include <random>
@@ -271,38 +272,84 @@ std::vector<Endpoint> fetchCmList(AppInfoProvision::NetworkFailure& failure,
 }
 
 // ---------------------------------------------------------------------------
-// gzip inflate for CMsgMulti via `gzip -dc` (zlib has no -dev in the
-// builder; this mirrors ManifestFetch's `unzip` shell-out).  `expected`
-// is size_unzipped for a sanity bound.
+// gzip inflate for CMsgMulti with the zlib already in the process, resolved at
+// run time like libcurl (the builder has no zlib headers). No child process:
+// this runs on Steam threads, the preinit provisioning pass included.
+// `expected` is size_unzipped for a sanity bound.
 // ---------------------------------------------------------------------------
+
+// zlib's z_stream; its layout is part of zlib's stable ABI.
+struct ZStream
+{
+	const unsigned char* nextIn;
+	unsigned availIn;
+	unsigned long totalIn;
+	unsigned char* nextOut;
+	unsigned availOut;
+	unsigned long totalOut;
+	const char* msg;
+	void* state;
+	void* zalloc;
+	void* zfree;
+	void* opaque;
+	int dataType;
+	unsigned long adler;
+	unsigned long reserved;
+};
+
+struct ZlibApi
+{
+	int (*inflateInit2)(ZStream*, int, const char*, int);
+	int (*inflate)(ZStream*, int);
+	int (*inflateEnd)(ZStream*);
+};
+
+const ZlibApi* zlibApi()
+{
+	static const ZlibApi* const api = []() -> const ZlibApi* {
+		void* lib = dlopen("libz.so.1", RTLD_NOLOAD | RTLD_LAZY);
+		if (!lib) lib = dlopen("libz.so.1", RTLD_LAZY);
+		if (!lib) return nullptr;
+		static ZlibApi resolved {};
+		resolved.inflateInit2 = reinterpret_cast<decltype(resolved.inflateInit2)>(
+			dlsym(lib, "inflateInit2_"));
+		resolved.inflate = reinterpret_cast<decltype(resolved.inflate)>(dlsym(lib, "inflate"));
+		resolved.inflateEnd = reinterpret_cast<decltype(resolved.inflateEnd)>(
+			dlsym(lib, "inflateEnd"));
+		return resolved.inflateInit2 && resolved.inflate && resolved.inflateEnd
+			? &resolved : nullptr;
+	}();
+	return api;
+}
 
 bool gzipInflate(const std::string& in, uint32_t expected, std::string& out)
 {
-	char tmpIn[] = "/tmp/slsteam_cm_gz_XXXXXX";
-	int fd = mkstemp(tmpIn);
-	if (fd < 0) return false;
-	const ssize_t w = write(fd, in.data(), in.size());
-	close(fd);
-	if (w != static_cast<ssize_t>(in.size())) { unlink(tmpIn); return false; }
-
-	const std::string cmd = "gzip -dc " + std::string(tmpIn) + " 2>/dev/null";
-	FILE* pp = popen(cmd.c_str(), "r");
-	if (!pp) { unlink(tmpIn); return false; }
-	out.clear();
-	char buf[8192];
-	size_t got;
+	const ZlibApi* const z = zlibApi();
+	if (!z || in.empty()) return false;
 	// Cap the inflate so a malicious/oversized stream can't exhaust memory.
 	const size_t cap = expected ? (static_cast<size_t>(expected) + 64)
 	                            : (64u * 1024u * 1024u);
-	bool overflow = false;
-	while ((got = fread(buf, 1, sizeof(buf), pp)) > 0)
+	constexpr int kGzipWindow = 15 + 16;
+	constexpr int kOk = 0, kStreamEnd = 1, kNoFlush = 0;
+	ZStream stream {};
+	stream.nextIn = reinterpret_cast<const unsigned char*>(in.data());
+	stream.availIn = static_cast<unsigned>(in.size());
+	if (z->inflateInit2(&stream, kGzipWindow, "1.2.11", static_cast<int>(sizeof(ZStream))) != kOk)
+		return false;
+	out.clear();
+	char buf[16384];
+	int rc = kOk;
+	while (rc == kOk)
 	{
-		if (out.size() + got > cap) { overflow = true; break; }
+		stream.nextOut = reinterpret_cast<unsigned char*>(buf);
+		stream.availOut = sizeof(buf);
+		rc = z->inflate(&stream, kNoFlush);
+		const size_t got = sizeof(buf) - stream.availOut;
+		if (out.size() + got > cap) { rc = -1; break; }
 		out.append(buf, got);
 	}
-	const int rc = pclose(pp);
-	unlink(tmpIn);
-	if (overflow || rc != 0) { out.clear(); return false; }
+	z->inflateEnd(&stream);
+	if (rc != kStreamEnd) { out.clear(); return false; }
 	return !out.empty();
 }
 
@@ -647,6 +694,7 @@ bool runSession(const Endpoint& ep, std::vector<uint32_t>& pending,
 
 bool prepareForThreadedFetch()
 {
+	(void)zlibApi();
 	return curlApi() != nullptr;
 }
 

@@ -1,5 +1,6 @@
 // CmClient::fetchProductInfoDetailed against scripted CMs: a session that
 // drops keeps every app the CM already sent, and the next CM gets the rest.
+// Compressed answers are read in process, without a gzip program.
 // Build: make test-cmclient-session (links tools/fake_libcurl.cpp as libcurl).
 #include "fake_libcurl.hpp"
 
@@ -13,6 +14,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <dlfcn.h>
+#include <filesystem>
 #include <map>
 #include <memory>
 #include <numeric>
@@ -37,6 +40,51 @@ constexpr std::size_t kAppsPerResponse = 100;
 // The CM knows no product info for these ids.
 bool unknownApp(uint32_t id) { return id % 10 == 0; }
 
+// zlib's stable z_stream ABI; the builder has no zlib headers.
+struct ZStream
+{
+	const unsigned char* nextIn;
+	unsigned availIn;
+	unsigned long totalIn;
+	unsigned char* nextOut;
+	unsigned availOut;
+	unsigned long totalOut;
+	const char* msg;
+	void* state;
+	void* zalloc;
+	void* zfree;
+	void* opaque;
+	int dataType;
+	unsigned long adler;
+	unsigned long reserved;
+};
+
+std::string gzipped(const std::string& data)
+{
+	void* lib = dlopen("libz.so.1", RTLD_LAZY);
+	if (!lib) return {};
+	using Init = int (*)(ZStream*, int, int, int, int, int, const char*, int);
+	using Deflate = int (*)(ZStream*, int);
+	using End = int (*)(ZStream*);
+	const auto init = reinterpret_cast<Init>(dlsym(lib, "deflateInit2_"));
+	const auto deflate = reinterpret_cast<Deflate>(dlsym(lib, "deflate"));
+	const auto end = reinterpret_cast<End>(dlsym(lib, "deflateEnd"));
+	if (!init || !deflate || !end) return {};
+	ZStream stream{};
+	// Z_DEFAULT_COMPRESSION, Z_DEFLATED, gzip window, default memLevel and strategy.
+	if (init(&stream, -1, 8, 15 + 16, 8, 0, "1.2.11", static_cast<int>(sizeof(ZStream))) != 0)
+		return {};
+	std::string out(data.size() + 1024, '\0');
+	stream.nextIn = reinterpret_cast<const unsigned char*>(data.data());
+	stream.availIn = static_cast<unsigned>(data.size());
+	stream.nextOut = reinterpret_cast<unsigned char*>(out.data());
+	stream.availOut = static_cast<unsigned>(out.size());
+	const int rc = deflate(&stream, 4); // Z_FINISH
+	out.resize(out.size() - stream.availOut);
+	end(&stream);
+	return rc == 1 ? out : std::string{}; // Z_STREAM_END
+}
+
 struct Handle
 {
 	std::string url;
@@ -54,6 +102,7 @@ struct ScriptedEndpoint
 	bool refuse = false;
 	int responsesLeft = -1; // product-info messages before every later socket drops
 	bool withholdFinal = false; // drop instead of sending the last "not pending" flag
+	bool gzip = false; // send each answer gzip-compressed inside a Multi
 	std::vector<std::vector<uint32_t>> requests;
 	std::unordered_set<uint32_t> delivered; // apps sent with a buffer
 };
@@ -221,8 +270,23 @@ private:
 			}
 			const bool last = end == ids.size();
 			response.set_response_pending(!last || endpoint.withholdFinal);
-			queue(h, 8904, CMsgProtoBufHeader().SerializeAsString(),
-			      response.SerializeAsString());
+			if (endpoint.gzip)
+			{
+				const std::string inner = CmWire::packPacket(
+				    8904, CMsgProtoBufHeader().SerializeAsString(), response.SerializeAsString());
+				const auto size = static_cast<uint32_t>(inner.size());
+				std::string body(reinterpret_cast<const char*>(&size), 4);
+				body += inner;
+				CMsgMulti multi;
+				multi.set_size_unzipped(static_cast<uint32_t>(body.size()));
+				multi.set_message_body(gzipped(body));
+				queue(h, 1, CMsgProtoBufHeader().SerializeAsString(), multi.SerializeAsString());
+			}
+			else
+			{
+				queue(h, 8904, CMsgProtoBufHeader().SerializeAsString(),
+				      response.SerializeAsString());
+			}
 			if (last && endpoint.withholdFinal) h.dropped = true;
 		}
 	}
@@ -312,6 +376,20 @@ int main()
 		CHECK(f.result == FetchResult::Success && f.buffers.size() == 3 &&
 		          cms.endpoints["cm-b.test"].requests.empty(),
 		      "nothing is asked again once every app has arrived");
+	}
+	{
+		// Every answer is compressed and there is no gzip program to run.
+		const std::string noTools = std::string(configHome) + "/empty-path";
+		std::filesystem::create_directories(noTools);
+		const std::string path = std::getenv("PATH");
+		setenv("PATH", noTools.c_str(), 1);
+		ScriptedCms cms;
+		cms.endpoints["cm-a.test"].gzip = true;
+		cms.endpoints["cm-b.test"].gzip = true;
+		const Fetch f = fetch(cms, batch);
+		setenv("PATH", path.c_str(), 1);
+		CHECK(f.result == FetchResult::Success && f.buffers.size() == knownIn(batch),
+		      "compressed answers are read in process");
 	}
 	{
 		ScriptedCms cms;

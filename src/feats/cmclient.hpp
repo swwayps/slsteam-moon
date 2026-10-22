@@ -41,9 +41,9 @@ enum class FetchResult
 	Failed,
 };
 
-// Load libcurl while setup() is still on the safe preinit call stack. The
-// first CM fetch may run from a Steam worker callback, where loading libcurl's
-// TLS dependency tree can crash the 32-bit client.
+// Load libcurl and zlib while setup() is still on the safe preinit call stack.
+// The first CM fetch may run from a Steam worker callback, where loading
+// libcurl's TLS dependency tree can crash the 32-bit client.
 bool prepareForThreadedFetch();
 
 // Fetch PICS product-info wire buffers for `appids`: `out[appid]` receives
