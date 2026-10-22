@@ -117,6 +117,10 @@ namespace
 			: g_steamClientCatalog;
 		return selected ? &*selected : nullptr;
 	}
+	void dropCatalogFor(const Pattern_t& pattern)
+	{
+		(pattern.module == &g_modSteamUI ? g_steamUiCatalog : g_steamClientCatalog).reset();
+	}
 
 	const char* followModeName(MemHlp::SigFollowMode mode)
 	{
@@ -126,6 +130,85 @@ namespace
 			case MemHlp::SigFollowMode::PrologueUpwards: return "PrologueUpwards";
 			default: return "None";
 		}
+	}
+
+	// A cached or published entry names `targetRva` from a signature match at
+	// `matchRva`. Both must still hold in this module: the target is executable,
+	// the bytes at the match still match the compiled signature and they lead to
+	// the target. Returns why they do not, or nullptr.
+	const char* verifyCachedTarget(
+		const Pattern_t& pattern,
+		const lm_module_t& module,
+		std::uint64_t matchRva,
+		std::uint64_t targetRva,
+		lm_address_t& matchOut,
+		lm_address_t& targetOut
+	)
+	{
+		if (targetRva >= module.size
+		    || targetRva > static_cast<std::uint64_t>(LM_ADDRESS_BAD - module.base))
+			return "target RVA is outside the module";
+		const lm_address_t candidate = module.base
+			+ static_cast<lm_address_t>(targetRva);
+		lm_segment_t targetSegment {};
+		const bool targetInside = candidate >= module.base && candidate < module.end;
+		const bool targetExecutable = targetInside && LM_FindSegment(candidate, &targetSegment)
+			&& (targetSegment.prot & LM_PROT_XR) == LM_PROT_XR;
+		if (!targetExecutable)
+			return "target RVA is not executable";
+
+		const auto signatureBytes = PatternCache::signatureSize(pattern.pattern);
+		if (!signatureBytes || matchRva >= module.size
+		    || *signatureBytes > module.size - matchRva
+		    || matchRva > static_cast<std::uint64_t>(LM_ADDRESS_BAD - module.base))
+			return "match RVA is outside the module";
+		const lm_address_t match = module.base
+			+ static_cast<lm_address_t>(matchRva);
+		lm_segment_t matchSegment {};
+		if (!LM_FindSegment(match, &matchSegment)
+		    || (matchSegment.prot & LM_PROT_XR) != LM_PROT_XR
+		    || match < matchSegment.base
+		    || match >= matchSegment.end
+		    || matchSegment.end - match < *signatureBytes)
+			return "signature range is not executable";
+		if (!PatternCache::signatureMatches(
+			pattern.pattern,
+			std::span<const std::uint8_t>(
+				reinterpret_cast<const std::uint8_t*>(match), *signatureBytes
+			)))
+			return "signature bytes changed";
+
+		lm_address_t derivedTarget = match;
+		switch (pattern.followMode)
+		{
+			case MemHlp::SigFollowMode::Relative:
+				derivedTarget = MemHlp::getJmpTarget(match);
+				break;
+			case MemHlp::SigFollowMode::PrologueUpwards:
+				derivedTarget = MemHlp::findPrologue(
+					match,
+					MemHlp::prologueLowerBound(module.base, matchSegment.base),
+					pattern.prologue.empty() ? nullptr : pattern.prologue.data(),
+					pattern.prologue.size()
+				);
+				break;
+			case MemHlp::SigFollowMode::None:
+				break;
+		}
+		if (derivedTarget == LM_ADDRESS_BAD
+		    || derivedTarget < module.base || derivedTarget >= module.end)
+			return "followed target is outside the module";
+		const auto derivedTargetRva = static_cast<std::uint64_t>(
+			derivedTarget - module.base
+		);
+		if (!PatternCache::targetRvaMatches(
+			followModeName(pattern.followMode), matchRva, targetRva,
+			derivedTargetRva
+		))
+			return "target RVA does not match the matched signature";
+		matchOut = match;
+		targetOut = candidate;
+		return nullptr;
 	}
 
 	std::optional<lm_address_t> localCatalogAddress(
@@ -163,68 +246,11 @@ namespace
 			return reject("compiled resolver metadata mismatch");
 
 		const lm_module_t& module = pattern.module ? *pattern.module : g_modSteamClient;
-		if (entry->targetRva >= module.size
-		    || entry->targetRva > static_cast<std::uint64_t>(LM_ADDRESS_BAD - module.base))
-			return reject("target RVA is outside the module");
-		const lm_address_t candidate = module.base
-			+ static_cast<lm_address_t>(entry->targetRva);
-		lm_segment_t targetSegment {};
-		const bool targetInside = candidate >= module.base && candidate < module.end;
-		const bool targetExecutable = targetInside && LM_FindSegment(candidate, &targetSegment)
-			&& (targetSegment.prot & LM_PROT_XR) == LM_PROT_XR;
-		if (!targetExecutable)
-			return reject("target RVA is not executable");
-
-		const auto signatureBytes = PatternCache::signatureSize(entry->signature);
-		if (!signatureBytes || entry->matchRva >= module.size
-		    || *signatureBytes > module.size - entry->matchRva
-		    || entry->matchRva > static_cast<std::uint64_t>(LM_ADDRESS_BAD - module.base))
-			return reject("match RVA is outside the module");
-		const lm_address_t match = module.base
-			+ static_cast<lm_address_t>(entry->matchRva);
-		lm_segment_t matchSegment {};
-		if (!LM_FindSegment(match, &matchSegment)
-		    || (matchSegment.prot & LM_PROT_XR) != LM_PROT_XR
-		    || match < matchSegment.base
-		    || match >= matchSegment.end
-		    || matchSegment.end - match < *signatureBytes)
-			return reject("signature range is not executable");
-		if (!PatternCache::signatureMatches(
-			entry->signature,
-			std::span<const std::uint8_t>(
-				reinterpret_cast<const std::uint8_t*>(match), *signatureBytes
-			)))
-			return reject("signature bytes changed");
-
-		lm_address_t derivedTarget = match;
-		switch (pattern.followMode)
-		{
-			case MemHlp::SigFollowMode::Relative:
-				derivedTarget = MemHlp::getJmpTarget(match);
-				break;
-			case MemHlp::SigFollowMode::PrologueUpwards:
-				derivedTarget = MemHlp::findPrologue(
-					match,
-					MemHlp::prologueLowerBound(module.base, matchSegment.base),
-					pattern.prologue.empty() ? nullptr : pattern.prologue.data(),
-					pattern.prologue.size()
-				);
-				break;
-			case MemHlp::SigFollowMode::None:
-				break;
-		}
-		if (derivedTarget == LM_ADDRESS_BAD
-		    || derivedTarget < module.base || derivedTarget >= module.end)
-			return reject("followed target is outside the module");
-		const auto derivedTargetRva = static_cast<std::uint64_t>(
-			derivedTarget - module.base
-		);
-		if (!PatternCache::targetRvaMatches(
-			entry->followMode, entry->matchRva, entry->targetRva,
-			derivedTargetRva
-		))
-			return reject("target RVA does not match the matched signature");
-
+		lm_address_t match = LM_ADDRESS_BAD;
+		lm_address_t candidate = LM_ADDRESS_BAD;
+		if (const char* reason = verifyCachedTarget(
+			pattern, module, entry->matchRva, entry->targetRva, match, candidate))
+			return reject(reason);
 		if (matchAddressOut != nullptr)
 			*matchAddressOut = match;
 		return candidate;
@@ -259,20 +285,23 @@ namespace
 		}
 
 		const lm_module_t& module = pattern.module ? *pattern.module : g_modSteamClient;
-		const lm_address_t rva = static_cast<lm_address_t>(entry->targetRva);
-		if (rva >= module.size || module.base > LM_ADDRESS_BAD - rva)
-			return std::nullopt;
-		const lm_address_t candidate = module.base + rva;
-		const bool inside = candidate >= module.base && candidate < module.end;
-		lm_segment_t segment {};
-		const bool executable = inside && LM_FindSegment(candidate, &segment)
-		                     && (segment.prot & LM_PROT_XR) == LM_PROT_XR;
-		if (!inside || !executable)
+		lm_address_t match = LM_ADDRESS_BAD;
+		lm_address_t candidate = LM_ADDRESS_BAD;
+		const char* reason = entry->matchRva
+			? verifyCachedTarget(pattern, module, *entry->matchRva, entry->targetRva,
+			                     match, candidate)
+			: "it names no match RVA";
+		if (reason != nullptr)
 		{
-			g_pLog->warn("Pattern catalog RVA for '%s' is not executable; using embedded resolver\n",
-			             pattern.name.c_str());
+			// The rest of this catalog is not trusted either. The embedded
+			// resolver takes over, and its result becomes the local cache.
+			g_pLog->warn("Pattern catalog entry for '%s' rejected: %s; ignoring the catalog\n",
+			             pattern.name.c_str(), reason);
+			dropCatalogFor(pattern);
 			return std::nullopt;
 		}
+		if (matchAddressOut != nullptr)
+			*matchAddressOut = match;
 		return candidate;
 	}
 
