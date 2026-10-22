@@ -1350,6 +1350,7 @@ namespace Hooks
 	static bool compatLayerHookReady = false;
 	static bool configStoreHookReady = false;
 	static bool friendGameHookReady = false;
+	static bool traceIpcHookReady = false;
 
 	DetourHook<TraceIPC_t> TraceIPC;
 
@@ -1506,9 +1507,7 @@ bool Hooks::setup()
 	g_pLog->debug("Hooks::setup()\n");
 
 	bool succeeded =
-		TraceIPC.setup(Patterns::TraceIPC, &hkTraceIPC)
-
-		&& CCMInterface_RecvPkt.setup(VFTIndexes::CCMInterface::RecvPkt, &hkCMInterface_RecvPkt)
+		CCMInterface_RecvPkt.setup(VFTIndexes::CCMInterface::RecvPkt, &hkCMInterface_RecvPkt)
 
 		&& CWebSocketConnection_BBuildAndAsyncSendFrame.setup(Patterns::CWebSocketConnection::BBuildAndAsyncSendFrame, &ManifestCode::hkBBuildAndAsyncSendFrame)
 		&& CJobMgr_BRouteMsgToJob.setup(Patterns::CJobMgr::BRouteMsgToJob, &ManifestCode::hkBRouteMsgToJob)
@@ -1521,6 +1520,13 @@ bool Hooks::setup()
 
 		&& CSteamEngine_ProcessIPCFrame.setup(Patterns::CSteamEngine::ProcessIPCFrame, &hkSteamEngine_ProcessIPCFrame)
 		&& CSteamEngine_SetAppIdForCurrentPipe.setup(Patterns::CSteamEngine::SetAppIdForCurrentPipe, &hkSteamEngine_SetAppIdForCurrentPipe);
+
+	// TraceIPC only logs IPC calls under ExtendedLogging.
+	traceIpcHookReady = TraceIPC.setup(Patterns::TraceIPC, &hkTraceIPC);
+	if (!traceIpcHookReady)
+	{
+		g_pLog->warn("TraceIPC hook unavailable; ExtendedLogging IPC trace disabled\n");
+	}
 
 	// The server-browser hooks sit on fixed vtable slots that are validated
 	// against a layout anchor (vftableinfo.cpp). A shifted layout disables
@@ -1668,9 +1674,9 @@ bool Hooks::place()
 	// owner work queue whenever hooks may be live (OwnerQueue::PlacementGate).
 	OwnerWork::notePlacement();
 	// An optional hook that fails only loses its feature; place() warns.
-	bool required = TraceIPC.place();
-
-	required &= CCMInterface_RecvPkt.place();
+	if (traceIpcHookReady)
+		TraceIPC.place();
+	bool required = CCMInterface_RecvPkt.place();
 
 	required &= CJobMgr_BRouteMsgToJob.place();
 	required &= CDepotDownloadMgr_BYldRequestDepotManifest.place();

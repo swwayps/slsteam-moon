@@ -65,7 +65,7 @@ int main()
 	// the mandatory hook chain instead of an optional extra.
 	expect(
 		hooks.find(
-			"&&CCMInterface_RecvPkt.setup(VFTIndexes::CCMInterface::RecvPkt,&hkCMInterface_RecvPkt)")
+			"boolsucceeded=CCMInterface_RecvPkt.setup(VFTIndexes::CCMInterface::RecvPkt,&hkCMInterface_RecvPkt)")
 			!= std::string::npos,
 		"CM receive setup is part of the mandatory hook chain");
 	expect(

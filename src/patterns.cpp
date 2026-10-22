@@ -672,6 +672,7 @@ bool Patterns::init()
 	CDepotDownloadMgr::EvaluateConfigChanges.optional = true;
 	CDepotDownloadMgr::OnChunkUnpackedStack.optional = true;
 	CDepotDownloadMgr::OnChunkUnpackedReg.optional = true;
+	TraceIPC.optional = true;
 	ParentalSignatureCheck.optional = true;
 	ParentalSettingsReceived.optional = true;
 	SteamUI::AppControllerRunFrame.optional = true;

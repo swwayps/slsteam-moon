@@ -1,6 +1,7 @@
 // Hooks::setup() must fail, without patching anything, when a required hook
 // has no target or its target cannot be patched; load() then leaves Steam
-// unmodified instead of reporting success with the hook missing.
+// unmodified instead of reporting success with the hook missing. TraceIPC
+// only logs, so it is not required.
 // Build: make test-hook-placement (links the whole object set).
 #include "../src/hooks.hpp"
 #include "../src/log.hpp"
@@ -38,10 +39,9 @@ bool inChild(Scenario scenario)
 	       WEXITSTATUS(status) == 0;
 }
 
-void pointRequiredHooksAt(lm_address_t target)
+void pointRequiredHooksAt(lm_address_t target, lm_address_t stride = 0)
 {
-	for (Pattern_t* pattern : {&Patterns::TraceIPC,
-	                           &Patterns::CWebSocketConnection::BBuildAndAsyncSendFrame,
+	for (Pattern_t* pattern : {&Patterns::CWebSocketConnection::BBuildAndAsyncSendFrame,
 	                           &Patterns::CJobMgr::BRouteMsgToJob,
 	                           &Patterns::CDepotDownloadMgr::BYldRequestDepotManifest,
 	                           &Patterns::CUser::CheckAppOwnership,
@@ -49,7 +49,10 @@ void pointRequiredHooksAt(lm_address_t target)
 	                           &Patterns::CUser::PostCallbackToAppId,
 	                           &Patterns::CSteamEngine::ProcessIPCFrame,
 	                           &Patterns::CSteamEngine::SetAppIdForCurrentPipe})
+	{
 		pattern->address = target;
+		target += stride;
+	}
 	VFTIndexes::CCMInterface::RecvPkt.address = target;
 }
 
@@ -81,6 +84,20 @@ int main()
 		      return failed && bytes[0] == 0xFF && bytes[4] == 0xFF;
 	      }),
 	      "a required hook that cannot be patched fails Hooks::setup()");
+
+	// Small functions every detour can patch, one per required hook.
+	void* code = mmap(nullptr, 4096, PROT_READ | PROT_WRITE,
+	                  MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	if (code == MAP_FAILED) return 2;
+	const unsigned char stub[] = {0x55, 0x89, 0xE5, 0x83, 0xEC, 0x10, 0x90, 0x90, 0xC9, 0xC3};
+	for (std::size_t at = 0; at + sizeof(stub) <= 4096; at += 64)
+		std::memcpy(static_cast<unsigned char*>(code) + at, stub, sizeof(stub));
+	if (mprotect(code, 4096, PROT_READ | PROT_EXEC) != 0) return 2;
+	CHECK(inChild([code] {
+		      pointRequiredHooksAt(reinterpret_cast<lm_address_t>(code), 64);
+		      return Hooks::setup();
+	      }),
+	      "an unresolved TraceIPC does not fail Hooks::setup()");
 
 	if (g_failures == 0) std::printf("\nall hook placement checks passed\n");
 	else std::printf("\n%d hook placement check(s) FAILED\n", g_failures);
