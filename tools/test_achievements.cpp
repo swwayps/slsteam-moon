@@ -151,9 +151,9 @@ int main()
 		      "restoring ignores malformed lines");
 
 		const std::string page =
-			R"({"success":1,"reviews":[{"author":{"steamid":"76561198000000031"}},)"
+			R"({"response":{"query_summary":{"num_reviews":5},"reviews":[{"author":{"steamid":"76561198000000031"}},)"
 			R"({"author":{"steamid":"76561198000000032"}},{"author":{"steamid":"76561198000000031"}},)"
-			R"({"author":{"steamid":"12x"}},{"author":{"steamid":"76561198000000033"}}]})";
+			R"({"author":{"steamid":"12x"}},{"author":{"steamid":"76561198000000033"}}]}})";
 		check(Achievements::parseReviewers(page, 2) ==
 		          std::vector<uint64_t>({76561198000000031ULL, 76561198000000032ULL}),
 		      "reviewers parse in page order, deduplicated and capped");
@@ -166,9 +166,9 @@ int main()
 		      Achievements::parseReviewers(page, 0).empty(),
 		      "an empty page or a zero count yields no reviewer");
 		check(Achievements::reviewUrl(250900, 10) ==
-		          "https://store.steampowered.com/appreviews/250900?json=1&filter=recent"
-		          "&language=all&purchase_type=all&num_per_page=10",
-		      "the review URL matches upstream's lookup");
+		          "https://api.steampowered.com/IUserReviewsService/GetAppReviews/v1/"
+		          "?appid=250900&filter=1&languages%5B0%5D=all&purchase_type=1&num_per_page=10",
+		      "the review URL asks for the newest reviews in every language and purchase type");
 	}
 	std::vector<std::thread> threads;
 	for (int i = 0; i < 4; ++i) threads.emplace_back([&] {

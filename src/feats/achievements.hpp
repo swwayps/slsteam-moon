@@ -37,11 +37,13 @@ inline bool isIndividualSteamId(uint64_t id)
 	return (id >> 32) == 0x01100001u && static_cast<uint32_t>(id) != 0;
 }
 
-// Recent reviewers own the game; the store lists them newest first.
+// Recent reviewers own the game. filter=1 lists them newest first and
+// purchase_type=1 includes key activations; the brackets stay encoded because
+// the curl CLI would read them as a glob.
 inline std::string reviewUrl(uint32_t app, uint32_t count)
 {
-	return "https://store.steampowered.com/appreviews/" + std::to_string(app) +
-		"?json=1&filter=recent&language=all&purchase_type=all&num_per_page=" +
+	return "https://api.steampowered.com/IUserReviewsService/GetAppReviews/v1/?appid=" +
+		std::to_string(app) + "&filter=1&languages%5B0%5D=all&purchase_type=1&num_per_page=" +
 		std::to_string(count);
 }
 

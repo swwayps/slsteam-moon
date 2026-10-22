@@ -51,7 +51,7 @@ int Curl::downloadString(const char* url, std::string& out, const int)
 		g_urls.emplace_back(url);
 	}
 	const std::string link(url);
-	if (link.find("/appreviews/1?") == std::string::npos) return 1;
+	if (link.find("?appid=1&") == std::string::npos) return 1;
 	out = R"({"reviews":[{"author":{"steamid":"76561198000000031"}},)"
 	      R"({"author":{"steamid":"76561198000000032"}}]})";
 	return 0;
@@ -88,7 +88,7 @@ int main()
 		check(g_offers[2].size() == 1 && g_offers[2][0].empty(),
 		      "a failed download is answered empty");
 		check(!g_urls.empty() && g_urls[0] == Achievements::reviewUrl(1, 5),
-		      "the worker asks the store for the requested count");
+		      "the worker asks for the requested count");
 	}
 	Achievements::requestOwnerLookup(1, 1);
 	check(waitForOffers(3), "a finished worker starts again for a later request");
