@@ -57,8 +57,27 @@ int main()
 	       "legacy naked SteamID hook is removed");
 	expect(hooks.find("hkNakedGetSteamId") == std::string::npos,
 	       "legacy executable SteamID trampoline is removed");
-	expect(hooks.find("0xD6FC3200") != std::string::npos,
-	       "SteamID result handling lives in ProcessIPCFrame");
+	expect(hooks.find("0xD6FC3200") == std::string::npos,
+	       "SteamID IPC reply rewrite is replaced by the VFT hook (upstream 779178c)");
+	expect(hooks.find(
+		"IClientUser_GetSteamId.setup(vft, VFTIndexes::IClientUser::GetSteamID")
+		!= std::string::npos,
+	       "SteamID hook is configured from the live IClientUser vtable");
+	expect(occurrences(hooks, "IClientUser_GetSteamId.place();") == 1,
+	       "SteamID hook has one placement path");
+	expect(occurrences(hooks, "IClientUser_GetSteamId.remove();") == 1,
+	       "SteamID hook has one teardown path");
+	expect(hooks.find("!g_currentSteamId.isSet() && steamId.isSet()") != std::string::npos,
+	       "SteamID hook latches only an id with an account");
+	expect(hooks.find("StatsPolicy::setAccount(steamId.accountId())") != std::string::npos,
+	       "SteamID latch still records the stats account");
+	expect(registry.find(
+		"VFTableInfo_t GetSteamID\n"
+		"\t\t{\n"
+		"\t\t\t\"14IClientUserMap\",\n"
+		"\t\t\t\"GetSteamID\"\n"
+		"\t\t};") != std::string::npos,
+	       "SteamID slot is resolved by name from IClientUserMap");
 	expect(patterns.find("IClientUser::GetSteamID") == std::string::npos,
 	       "the removed SteamID hook has no stale locator");
 	expect(patterns.find("IClientUser::GetEncryptedAppTicket") == std::string::npos,

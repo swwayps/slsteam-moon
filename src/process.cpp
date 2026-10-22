@@ -70,7 +70,6 @@ bool IExecutableFile::hasSteamDRM()
 	{
 		return false;
 	}
-	//SteamDRM appends .bind section with very high entropy (usually 7.9+)
 
 	//A validly-parsed but section-stripped/packed binary (common for DRM'd
 	//titles) can leave this empty. size() - 1 would underflow and .at() would
@@ -81,11 +80,18 @@ bool IExecutableFile::hasSteamDRM()
 		return false;
 	}
 
+	//SteamDRM appends .bind section with very high entropy (usually 7.9+)
 	const auto& last = sections.back();
 
 	if (last.name == ".bind")
 	{
 		const auto bytes = readSection(last);
+		if (!bytes.size())
+		{
+			if (g_pLog) g_pLog->warn("Section %s is empty!\n", last.name.c_str());
+			return false;
+		}
+
 		const double entropy = Utils::calculateEntropy(bytes);
 
 		if (g_pLog) g_pLog->debug("%s has entropy of %f\n", last.name.c_str(), entropy);
@@ -157,6 +163,12 @@ bool IExecutableFile::hasDenuvo()
 			}
 
 			const auto bytes = readSection(sec);
+			if (!bytes.size())
+			{
+				if (g_pLog) g_pLog->warn("Section %s is empty!\n", sec.name.c_str());
+				continue;
+			}
+
 			const double entropy = Utils::calculateEntropy(bytes);
 
 			if (g_config.extendedLogging.copy())
@@ -326,8 +338,9 @@ bool CPortableExecutableFile::parseSections()
 			return false;
 		}
 
-		char name[SECTION_HEADER_NAME_SIZE];
-		strncpy(name, reinterpret_cast<char*>(sectHdr), sizeof(name));
+		char name[SECTION_HEADER_NAME_SIZE + 1] { }; //Zero allocate buffer for null termination
+		strncpy(name, reinterpret_cast<char*>(sectHdr), sizeof(name) - 1);
+		//snprintf(name, sizeof(name), "%s", reinterpret_cast<char*>(sectHdr));
 
 		const uint32_t rva = *reinterpret_cast<uint32_t*>(&sectHdr[0xC]);
 		const uint32_t size = *reinterpret_cast<uint32_t*>(&sectHdr[0x10]);
@@ -593,12 +606,12 @@ bool CELFExecutableFile::parseSections()
 		//Headers are the same till e_entry. The 64bit version is longer
 		//so we can just recast it
 		Elf32_Ehdr hdr32 = *reinterpret_cast<Elf32_Ehdr*>(&hdr64);
-		parseElf32Headers(hdr32);
+		return parseElf32Headers(hdr32);
 	}
 	else if (hdr64.e_ident[EI_CLASS] == ELFCLASS64 && hdr64.e_machine == ISA_AMD64)
 	{
 		if (g_pLog) g_pLog->debug("Parsing as 64 bit file\n");
-		parseElf64Headers(hdr64);
+		return parseElf64Headers(hdr64);
 	}
 	else
 	{
@@ -606,7 +619,7 @@ bool CELFExecutableFile::parseSections()
 		return false;
 	}
 
-	return true;
+	return false;
 }
 
 std::filesystem::path Process_t::getPath(const char* fileName)
@@ -682,19 +695,21 @@ std::unordered_set<std::filesystem::path> Process_t::getOpenFiles()
 	const std::filesystem::directory_iterator end;
 	while (!error && file != end)
 	{
+		auto path = file->path();
+
 		//Afaik all files should be symlinks. But better safe than sorry
 		std::error_code linkError;
-		if (std::filesystem::is_symlink(file->path(), linkError) && !linkError)
+		if (std::filesystem::is_symlink(path, linkError) && !linkError)
 		{
-			const auto path = std::filesystem::read_symlink(file->path(), linkError);
-			if (!linkError)
-			{
-				files.emplace(path);
-			}
+			path = std::filesystem::read_symlink(path, linkError);
 		}
-		else
+
+		//Only regular files can be executables; device nodes, FIFOs and deleted
+		//mappings must not be opened.
+		std::error_code typeError;
+		if (!linkError && std::filesystem::is_regular_file(path, typeError))
 		{
-			files.emplace(file->path());
+			files.emplace(path);
 		}
 
 		file.increment(error);
@@ -764,6 +779,12 @@ bool Process_t::analyse()
 	{
 		for (const auto& file : getOpenFiles())
 		{
+			//Don't reanalyse main exe (only affects wine games)
+			if (file == exeFile->path)
+			{
+				continue;
+			}
+
 			const auto executable = IExecutableFile::create(file, LogLevel::Debug);
 			if (!executable)
 			{
@@ -802,41 +823,41 @@ bool Process_t::init(const pid_t pid, const HSteamPipe pipeHandle)
 	this->pid = pid;
 	this->pipeHandle = pipeHandle;
 
-	const auto serverPipe = g_pSteamEngine->getServerPipe(pipeHandle);
-	if (!serverPipe)
+	try
 	{
-		if (g_pLog) g_pLog->warn("ServerPipe for %p is null!\n", reinterpret_cast<void*>(pipeHandle));
-		return false;
-	}
+		exe = getRealExe();
+		if (!exe.string().size())
+		{
+			return false;
+		}
 
-	exe = getRealExe();
-	if (!exe.string().size())
-	{
-		return false;
-	}
+		cmdLine = Utils::strsplit(const_cast<char*>(readFile("cmdline").c_str()), "\0");
+		environ = readFile("environ");
 
-	cmdLine = Utils::strsplit(const_cast<char*>(readFile("cmdline").c_str()), "\0");
-	environ = readFile("environ");
+		if (!environ.size())
+		{
+			return false;
+		}
 
-	if (!environ.size())
-	{
-		return false;
-	}
+		appId = getAppIdFromEnv();
+		if (!appId) //Will fail on steam process
+		{
+			return false;
+		}
 
-	appId = getAppIdFromEnv();
-	if (!appId) //Will fail on steam process
-	{
-		return false;
-	}
+		if (!g_config.smartTickets.copy())
+		{
+			return true;
+		}
 
-	if (!g_config.smartTickets.copy())
-	{
+		//An unparsable exe still leaves a usable appId mapping.
+		analyse();
 		return true;
 	}
-
-	analyse();
-
-	return true;
+	catch (...)
+	{
+		return false;
+	}
 }
 
 std::unordered_map<HSteamPipe, Process_t> g_processMap = std::unordered_map<HSteamPipe, Process_t>();

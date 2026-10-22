@@ -425,8 +425,6 @@ static void hkCMInterface_RecvPkt(void* pCMInterface, CNetPacket* pNetPacket)
 	Hooks::CCMInterface_RecvPkt.tramp.fn(pCMInterface, pNetPacket);
 }
 
-static CSteamId hkClientUser_GetSteamId(const CSteamId& steamId);
-
 static uint32_t hkSteamEngine_ProcessIPCFrame(
 	void* pSteamEngine,
 	HSteamPipe hPipe,
@@ -489,27 +487,6 @@ static uint32_t hkSteamEngine_ProcessIPCFrame(
 		ret = Hooks::CSteamEngine_ProcessIPCFrame.tramp.fn(
 			pSteamEngine, hPipe, pBufIn, pBufOut);
 		FakeAppIds::runIPCFrame(true, interface);
-
-		if (pBufOut && pBufOut->hasBytes(1 + sizeof(CSteamId)) &&
-			interface == EIPCInterface::User && function == 0xD6FC3200)
-		{
-			EIPCExitCode exitCode{};
-			std::memcpy(&exitCode, pBufOut->mem.base, sizeof(exitCode));
-			if (exitCode == EIPCExitCode::Success)
-			{
-				CSteamId id{};
-				std::memcpy(&id, pBufOut->mem.base + 1, sizeof(id));
-				if (!g_currentSteamId.isSet() && id.isSet())
-				{
-					g_currentSteamId = id;
-					StatsPolicy::setAccount(id.accountId());
-				}
-
-				const CSteamId newId =
-					hkClientUser_GetSteamId(g_currentSteamId);
-				std::memcpy(pBufOut->mem.base + 1, &newId, sizeof(newId));
-			}
-		}
 
 		if (interface == EIPCInterface::Utils)
 		{
@@ -626,7 +603,7 @@ static uint32_t hkSteamMatchmakingServers_RequestInternetServerList(void* pSteam
 }
 
 __attribute__((hot))
-static uint32_t hkUser_CheckAppOwnership(void* pClientUser, uint32_t appId, AppOwnershipInfo_t* pOwnershipInfo)
+static bool hkUser_CheckAppOwnership(void* pClientUser, uint32_t appId, AppOwnershipInfo_t* pOwnershipInfo)
 {
 	// Cache the local CUser* as a timing-independent fallback for
 	// getLocalUser().  This hook fires early and constantly with the
@@ -638,8 +615,8 @@ static uint32_t hkUser_CheckAppOwnership(void* pClientUser, uint32_t appId, AppO
 	}
 
 	const auto statsContext = StatsPolicy::context();
-	const uint32_t ret = Hooks::CUser_CheckAppOwnership.tramp.fn(pClientUser, appId, pOwnershipInfo);
-	StatsPolicy::observe(statsContext, appId, ret != 0, pOwnershipInfo);
+	const bool ret = Hooks::CUser_CheckAppOwnership.tramp.fn(pClientUser, appId, pOwnershipInfo);
+	StatsPolicy::observe(statsContext, appId, ret, pOwnershipInfo);
 
 	g_pLog->debugOnce
 	(
@@ -1231,8 +1208,15 @@ static uint8_t hkClientUser_IsUserSubscribedAppInTicket(void* pClientUser, uint6
 	return ticketState;
 }
 
-static CSteamId hkClientUser_GetSteamId(const CSteamId& steamId)
+static CSteamId hkClientUser_GetSteamId(void* pClientUser)
 {
+	const CSteamId steamId = Hooks::IClientUser_GetSteamId.originalFn.fn(pClientUser);
+	// The universe is set before logon; the account id only after it.
+	if (!g_currentSteamId.isSet() && steamId.isSet())
+	{
+		g_currentSteamId = steamId;
+		StatsPolicy::setAccount(steamId.accountId());
+	}
 	if (!g_pSteamEngine)
 	{
 		return steamId;
@@ -1398,6 +1382,7 @@ namespace Hooks
 	VFTHook<IClientUser_IsUserSubscribedAppInTicket_t> IClientUser_IsUserSubscribedAppInTicket;
 	VFTHook<IClientUser_GetEncryptedAppTicket_t> IClientUser_GetEncryptedAppTicket("IClientUser::GetEncryptedAppTicket");
 	VFTHook<IClientUser_GetLegacyCDKey_t> IClientUser_GetLegacyCDKey;
+	VFTHook<IClientUser_GetSteamId_t> IClientUser_GetSteamId;
 
 	VFTHook<IClientUtils_GetAppId_t> IClientUtils_GetAppId("IClientUtils::GetAppId");
 	VFTHook<IClientUtils_GetOfflineMode_t> IClientUtils_GetOfflineMode("IClientUtils::GetOfflineMode");
@@ -1475,12 +1460,14 @@ void Hooks::placeVFTHooks()
 			IClientUser_IsUserSubscribedAppInTicket.setup(vft, VFTIndexes::IClientUser::IsUserSubscribedAppInTicket, &hkClientUser_IsUserSubscribedAppInTicket);
 			IClientUser_GetEncryptedAppTicket.setup(vft, VFTIndexes::IClientUser::GetEncryptedAppTicket, hkClientUser_GetEncryptedAppTicket);
 			IClientUser_GetLegacyCDKey.setup(vft, VFTIndexes::IClientUser::GetLegacyCDKey, hkClientUser_GetLegacyCDKey);
+			IClientUser_GetSteamId.setup(vft, VFTIndexes::IClientUser::GetSteamID, hkClientUser_GetSteamId);
 			IClientUser_BLoggedOn.place();
 			IClientUser_BUpdateAppOwnershipTicket.place();
 			IClientUser_GetAppOwnershipTicketExtendedData.place();
 			IClientUser_IsUserSubscribedAppInTicket.place();
 			IClientUser_GetEncryptedAppTicket.place();
 			IClientUser_GetLegacyCDKey.place();
+			IClientUser_GetSteamId.place();
 			g_pLog->debug("IClientUser->vft at %p\n", static_cast<void*>(vft->vtable));
 		}
 		{
@@ -1800,6 +1787,7 @@ void Hooks::remove()
 	IClientUser_GetAppOwnershipTicketExtendedData.remove();
 	IClientUser_GetEncryptedAppTicket.remove();
 	IClientUser_GetLegacyCDKey.remove();
+	IClientUser_GetSteamId.remove();
 	IClientUser_IsUserSubscribedAppInTicket.remove();
 
 	if (serverDialogHookReady)

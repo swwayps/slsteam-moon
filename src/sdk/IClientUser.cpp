@@ -11,6 +11,12 @@ bool IClientUser::loggedOn()
 	return original && original(this);
 }
 
+CSteamId IClientUser::getSteamId()
+{
+	const auto original = Hooks::IClientUser_GetSteamId.originalFn.fn;
+	return original ? original(this) : CSteamId();
+}
+
 bool IClientUser::setLegacyCDKey(const AppId_t appId, const char* key)
 {
 	return MemHlp::callVFunc<bool(*)(void*, AppId_t, const char*)>(VFTIndexes::IClientUser::SetLegacyCDKey.index, this, appId, key);

@@ -12,5 +12,6 @@ public:
 
 	// Lua plugin API. False until the BLoggedOn VFT hook is placed.
 	bool loggedOn();
+	CSteamId getSteamId();
 	bool setLegacyCDKey(const AppId_t appId, const char* key);
 };

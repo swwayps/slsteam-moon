@@ -119,7 +119,7 @@ namespace Hooks
 	typedef gameserverdetails_t*(*CSteamMatchmakingServers_GetServerDetails_t)(void*, uint32_t, uint32_t);
 	typedef uint32_t(*CSteamMatchmakingServers_RequestInternetServerList_t)(void*, uint32_t, uint32_t, uint32_t, uint32_t);
 
-	typedef uint32_t(*CUser_CheckAppOwnership_t)(void*, uint32_t, AppOwnershipInfo_t*);
+	typedef bool(*CUser_CheckAppOwnership_t)(void*, uint32_t, AppOwnershipInfo_t*);
 	typedef uint32_t(*CUser_GetSubscribedApps_t)(void*, uint32_t*, uint32_t, uint8_t);
 	typedef uint32_t(*CUser_PostCallbackToAppId_t)(void*, uint32_t, uint32_t, void*, uint32_t);
 	typedef uint32_t(*CUser_SpawnGameId_t)(void*, const char*, const char*, const char*, GameId_t*, const char*, int32_t, int32_t, int32_t, int32_t, void*);
@@ -134,6 +134,7 @@ namespace Hooks
 	typedef uint32_t(*IClientUser_GetAppOwnershipTicketExtendedData_t)(void*, uint32_t, void*, uint32_t, uint32_t*, uint32_t*, uint32_t*, uint32_t*);
 	typedef bool(*IClientUser_GetEncryptedAppTicket_t)(void*, void*, uint32_t, uint32_t*);
 	typedef bool(*IClientUser_GetLegacyCDKey_t)(void*, uint32_t, char*, uint32_t);
+	typedef CSteamId(*IClientUser_GetSteamId_t)(void*);
 	typedef uint8_t(*IClientUser_IsUserSubscribedAppInTicket_t)(void*, uint64_t, uint32_t);
 
 	typedef bool(*IClientUtils_GetOfflineMode_t)(void*);
@@ -201,6 +202,7 @@ namespace Hooks
 	extern VFTHook<IClientUser_GetAppOwnershipTicketExtendedData_t> IClientUser_GetAppOwnershipTicketExtendedData;
 	extern VFTHook<IClientUser_GetEncryptedAppTicket_t> IClientUser_GetEncryptedAppTicket;
 	extern VFTHook<IClientUser_GetLegacyCDKey_t> IClientUser_GetLegacyCDKey;
+	extern VFTHook<IClientUser_GetSteamId_t> IClientUser_GetSteamId;
 	extern VFTHook<IClientUser_IsUserSubscribedAppInTicket_t> IClientUser_IsUserSubscribedAppInTicket;
 
 	extern VFTHook<IClientUtils_GetAppId_t> IClientUtils_GetAppId;
