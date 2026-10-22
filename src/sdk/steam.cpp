@@ -14,11 +14,18 @@ namespace Steam
 
 bool Steam::init()
 {
-	void* tier0 = dlopen("libtier0_s.so", RTLD_NOW);
+	//Steam's own copy: a plain dlopen from the audit namespace maps a second
+	//tier0 whose allocator Steam's packets do not come from. load() runs once
+	//steamclient.so and steamui.so are both mapped, and each needs tier0, so
+	//NOLOAD never starts a nested load inside la_objopen.
+	void* tier0 = dlmopen(LM_ID_BASE, "libtier0_s.so", RTLD_NOW | RTLD_LOCAL | RTLD_NOLOAD);
 	if (!tier0)
 	{
 		return false;
 	}
+
+	//handle points at the modules address (potentially more)
+	LOG_DEBUG("libtier0_s.so loaded at %p\n", *reinterpret_cast<void**>(tier0));
 
 	Plat_Alloc = reinterpret_cast<Plat_Alloc_t>(dlsym(tier0, "Plat_Alloc"));
 	Plat_Free = reinterpret_cast<Plat_Free_t>(dlsym(tier0, "Plat_Free"));

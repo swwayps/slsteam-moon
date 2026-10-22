@@ -52,7 +52,7 @@ ifeq ($(shell type mold &> /dev/null && echo "found"),found)
 	LDFLAGS += -fuse-ld=mold
 endif
 
-.PHONY: all build rebuild clean install release test-ascii test-cmwire test-cmclient-loader test-cmclient-session test-provision-locks test-cmrecv-exceptions test-hook-placement test-cache-validation test-notify-async test-catalog-trust test-clientcompat test-dlcids test-dlc-scope test-dlc-metadata test-config-path test-config-discovery test-lua-import test-steamstub-launch test-ownerwork-policy test-filewatcher-burst test-provision-notice test-mtvar-contains test-synthmark test-appinfostate test-pattern-catalog test-pattern-cache test-pattern-refresh test-process-lock test-process-runtime test-atomic-file test-cache-pair test-appinfo-transaction test-appinfo-reload test-audit-symbols test-audit-eh test-audit-policy test-memhlp-target test-memhlp-prologue test-memhlp-pic test-utils-sha test-provision-cache test-provision-refresh test-provision-result test-provision-terminal test-pending-proton test-provision-schedule test-provision-pass test-runtime-dependencies test-thread-start test-steamstub-warmup test-steamstub-launchopt test-boundedexecutor test-steamless-prewarm test-depotkey-scope test-curl-timeout test-manifest-index test-manifestselection test-manifeststore-io test-hotreload-inputs test-hotreload-package test-ownerqueue test-hotreload-capabilities test-libraryremoval test-pics test-yaml-runtime test-manifestpin-patterns test-optional-locators test-patternscan test-fakeappid-presence test-fakeappid-wiring test-ticket test-familyshare test-familyshare-wiring
+.PHONY: all build rebuild clean install release test-ascii test-cmwire test-cmclient-loader test-cmclient-session test-provision-locks test-cmrecv-exceptions test-hook-placement test-cache-validation test-notify-async test-catalog-trust test-clientcompat test-dlcids test-dlc-scope test-dlc-metadata test-config-path test-config-discovery test-lua-import test-steamstub-launch test-ownerwork-policy test-filewatcher-burst test-provision-notice test-mtvar-contains test-synthmark test-appinfostate test-pattern-catalog test-pattern-cache test-pattern-refresh test-process-lock test-process-runtime test-atomic-file test-cache-pair test-appinfo-transaction test-appinfo-reload test-audit-symbols test-audit-eh test-audit-tier0 test-audit-policy test-memhlp-target test-memhlp-prologue test-memhlp-pic test-utils-sha test-provision-cache test-provision-refresh test-provision-result test-provision-terminal test-pending-proton test-provision-schedule test-provision-pass test-runtime-dependencies test-thread-start test-steamstub-warmup test-steamstub-launchopt test-boundedexecutor test-steamless-prewarm test-depotkey-scope test-curl-timeout test-manifest-index test-manifestselection test-manifeststore-io test-hotreload-inputs test-hotreload-package test-ownerqueue test-hotreload-capabilities test-libraryremoval test-pics test-yaml-runtime test-manifestpin-patterns test-optional-locators test-patternscan test-fakeappid-presence test-fakeappid-wiring test-ticket test-familyshare test-familyshare-wiring
 .NOTPARALLEL: clean rebuild
 .PHONY: uninstall clean-libs clean-tools schema-grabber ticket-grabber
 .PHONY: test-library-dates test-library-dates-hook test-depot-overrides
@@ -400,6 +400,29 @@ test-audit-eh:
 	$(CXX) $(CXXFLAGS) tools/test_audit_eh.cpp -o /tmp/test_audit_eh.so $(LDFLAGS)
 	printf 'int main(void) { return 0; }\n' | $(CC) -m32 -x c - -o /tmp/test_audit_eh_main
 	test "$$(LD_AUDIT=/tmp/test_audit_eh.so /tmp/test_audit_eh_main)" = caught
+TIER0_TEST := /tmp/test_audit_tier0
+test-audit-tier0: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
+		obj/api.o obj/feats/depotkey.o obj/feats/librarydates.o obj/ownerwork.o \
+		obj/sdk/steam.o obj/sdk/protobufs/steammessages_clientserver_appinfo.pb.o \
+		obj/sdk/protobufs/steammessages_base.pb.o
+	@mkdir -p $(TIER0_TEST)
+	$(CC) -m32 -shared -fPIC -DTIER0_LIB tools/test_audit_tier0.c -o $(TIER0_TEST)/libtier0_s.so
+	$(CC) -m32 tools/test_audit_tier0.c -L$(TIER0_TEST) -ltier0_s -ldl -o $(TIER0_TEST)/main
+	printf '{ global: la_version; la_preinit; local: *; };\n' > $(TIER0_TEST)/audit.map
+	$(CXX) -O2 -flto=auto -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -fPIC -shared \
+		-I include -isysteminclude tools/test_audit_tier0.cpp \
+		$(filter obj/%.o,$^) \
+		lib/libyaml-cpp.a lib/libprotobuf.a -lcrypto -lpthread -ldl \
+		-Wl,--version-script=$(TIER0_TEST)/audit.map -Wl,--gc-sections \
+		-o $(TIER0_TEST)/audit.so
+	cd $(TIER0_TEST) && LD_LIBRARY_PATH=$(TIER0_TEST) TIER0_TEST_DIR=$(TIER0_TEST) \
+		LD_AUDIT=$(TIER0_TEST)/audit.so ./main > out.txt
+	cat $(TIER0_TEST)/out.txt
+	test -n "$$(sed -n 's/^main //p' $(TIER0_TEST)/out.txt)"
+	test "$$(sed -n 's/^audit //p' $(TIER0_TEST)/out.txt)" = "$$(sed -n 's/^main //p' $(TIER0_TEST)/out.txt)"
+	printf 'int main(void) { return 0; }\n' | $(CC) -m32 -x c - -o $(TIER0_TEST)/main0
+	test "$$(cd $(TIER0_TEST) && LD_LIBRARY_PATH=$(TIER0_TEST) TIER0_TEST_DIR=$(TIER0_TEST) \
+		LD_AUDIT=$(TIER0_TEST)/audit.so ./main0)" = "audit init-failed"
 
 test-audit-policy:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src \
