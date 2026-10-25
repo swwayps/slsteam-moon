@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../ascii.hpp"
+#include "../utils/atomic_file.hpp"
 
 // Pure, side-effect-light helpers for the CEF debug-port rewrite shim.
 //
@@ -261,13 +262,9 @@ namespace CefPort
 		{
 			std::filesystem::create_directories(parent, ec); // best effort
 		}
-		std::ofstream f(path, std::ios::trunc);
-		if (!f)
-		{
-			return false;
-		}
-		f << formatContract(port, ownerPid, ownerStartTicks);
-		return static_cast<bool>(f);
+		// Lumen polls this file: publish it whole, never truncated in place.
+		std::string error;
+		return AtomicFile::write(path, formatContract(port, ownerPid, ownerStartTicks), error);
 	}
 
 	inline bool writePortFile(const std::string& path, uint16_t port)

@@ -12,10 +12,13 @@
 
 #include "../src/feats/cefport.hpp"
 
+#include <csignal>
 #include <cstdio>
 #include <cstdint>
 #include <fstream>
 #include <string>
+#include <sys/resource.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -324,6 +327,20 @@ static void test_contract_owner()
 		CHECK(CefPort::writePortFile(path, 51515, 4242, 987654), "contract: written");
 		CHECK(readLine(path) == "51515", "contract: first line is the port");
 		CHECK(CefPort::readPortFile(path) == 51515, "contract: readPortFile still works");
+		// A write that fails part way (here the file size limit) reports false
+		// and leaves the previous contract whole.
+		const pid_t child = fork();
+		if (child == 0)
+		{
+			std::signal(SIGXFSZ, SIG_IGN);
+			const rlimit one{1, 1};
+			setrlimit(RLIMIT_FSIZE, &one);
+			_exit(CefPort::writePortFile(path, 52525, 4242, 987654) ? 1 : 0);
+		}
+		int status = -1;
+		waitpid(child, &status, 0);
+		CHECK(WIFEXITED(status) && WEXITSTATUS(status) == 0, "contract: failed write reported");
+		CHECK(CefPort::readPortFile(path) == 51515, "contract: failed write keeps the old port");
 		::unlink(path.c_str());
 	}
 
