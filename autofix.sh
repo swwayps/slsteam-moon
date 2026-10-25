@@ -99,6 +99,16 @@ valid_mirror_entry() {
 		&& [[ "$2" =~ ^[0-9a-f]{64}$ ]]
 }
 
+# Print the digest from "<asset url>.sha256", the sidecar package.sh publishes.
+# Nothing when there is no sidecar (older releases); "invalid" when one arrived
+# but is unreadable, so the check fails instead of being skipped.
+sidecar_digest() {
+	local body digest
+	body="$(curl -fsSL --connect-timeout 10 "$1.sha256" 2>/dev/null)" || return 0
+	read -r digest _ <<< "$body"
+	printf '%s' "${digest:-invalid}"
+}
+
 if [ "${AUTOFIX_LIB_ONLY:-0}" = 1 ]; then
 	return 0 2>/dev/null || exit 0
 fi
@@ -149,9 +159,13 @@ if ! curl -fL --connect-timeout 15 --retry 3 --retry-delay 2 "$URL" -o "$ZIP"; t
 	URL="$MIRROR_URL"
 	EXPECTED_SHA="$MIRROR_SHA"
 fi
+if [ -z "$EXPECTED_SHA" ]; then
+	EXPECTED_SHA="$(sidecar_digest "$URL")"
+	[ -n "$EXPECTED_SHA" ] || warn "This release publishes no checksum; installing it unverified."
+fi
 if [ -n "$EXPECTED_SHA" ]; then
 	printf '%s  %s\n' "$EXPECTED_SHA" "$ZIP" | sha256sum -c - >/dev/null \
-		|| die "The mirrored archive failed its integrity check."
+		|| die "The downloaded archive failed its integrity check."
 fi
 
 info "Extracting"
