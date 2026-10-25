@@ -57,6 +57,25 @@ namespace
 	// even reaching it.
 	thread_local bool t_draining = false;
 
+	// Queue an EnsureCompat again for a later owner frame. Every retry counts,
+	// whatever its reason; past kMaxPollAttempts, or when the queue refuses it,
+	// the app stays hidden until the restart applies the persisted mapping.
+	void retryCompat(const OwnerQueue::Command& cmd, const char* reason)
+	{
+		const std::uint32_t next = cmd.attempt() + 1;
+		if (next < CompatLive::kMaxPollAttempts)
+		{
+			const auto pushed = queue().push(
+				OwnerQueue::Command::ensureCompat(cmd.appId(), cmd.managedGeneration(), next),
+				OwnerQueue::monotonicUs());
+			if (pushed != OwnerQueue::PushResult::Full)
+				return;
+			reason = "owner queue full";
+		}
+		g_pLog->warn("OwnerWork: %s for app=%u; keeping it hidden until restart\n",
+		             reason, cmd.appId());
+	}
+
 	// Execute one command. This is the ONLY place the Steam-owned calls are
 	// reached from, whichever thread ends up running them, so the call set,
 	// inputs and order are identical in every mode.
@@ -74,10 +93,7 @@ namespace
 				if (!OwnerWork::compatExecutionAllowed(
 					OwnerWork::onOwnerThread()))
 				{
-					(void)queue().push(
-						OwnerQueue::Command::ensureCompat(
-							cmd.appId(), cmd.managedGeneration(), cmd.attempt()),
-						OwnerQueue::monotonicUs());
+					retryCompat(cmd, "owner IPC thread never ran the compatibility mapping");
 					break;
 				}
 
@@ -92,19 +108,7 @@ namespace
 					// keep the title hidden until then rather than publish a
 					// windows-only app Steam would treat as "no applicable
 					// platform" (0 mounted depots).
-					const std::uint32_t retry = cmd.attempt() + 1;
-					if (retry >= CompatLive::kMaxPollAttempts)
-					{
-						g_pLog->warn(
-							"OwnerWork: compat manager unavailable for app=%u; "
-							"keeping it hidden until restart\n",
-							cmd.appId());
-						break;
-					}
-					(void)queue().push(
-						OwnerQueue::Command::ensureCompat(
-							cmd.appId(), cmd.managedGeneration(), retry),
-						OwnerQueue::monotonicUs());
+					retryCompat(cmd, "compat manager unavailable");
 					break;
 				}
 
@@ -134,19 +138,7 @@ namespace
 
 				// Unavailable: a call into the compat interface faulted. Retry a
 				// bounded number of times before deferring to a restart.
-				const std::uint32_t nextAttempt = cmd.attempt() + 1;
-				if (nextAttempt >= CompatLive::kMaxPollAttempts)
-				{
-					g_pLog->warn(
-						"OwnerWork: live compatibility mapping did not settle for app=%u; "
-						"keeping it hidden until restart\n",
-						cmd.appId());
-					break;
-				}
-				(void)queue().push(
-					OwnerQueue::Command::ensureCompat(
-						cmd.appId(), cmd.managedGeneration(), nextAttempt),
-					OwnerQueue::monotonicUs());
+				retryCompat(cmd, "live compatibility mapping did not settle");
 				break;
 			}
 		}

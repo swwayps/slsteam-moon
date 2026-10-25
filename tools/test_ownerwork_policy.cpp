@@ -7,6 +7,8 @@
 #include "../src/log.hpp"
 #include "../src/ownerwork.hpp"
 #include "../src/sdk/IClientCompat.hpp"
+#include <algorithm>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
@@ -111,12 +113,53 @@ int main()
 	      "the retried request specifies the mapping before publishing (got \"" +
 	      g_compatEvents + "\")");
 
+	// A mapping the owner never takes bounces off every stale flush; the
+	// bounces count as retries, so it gives up instead of looping for ever.
+	setenv("SLSSTEAM_OWNER_QUEUE_MAX_STALE_MS", "1", 1);
+	OwnerWork::init();
+	std::thread([] { OwnerWork::submitCompatReadiness(43, 1); }).join();
+	std::thread([] {
+		for (int i = 0; i < 30; ++i)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(2));
+			OwnerWork::idleTick();
+		}
+	}).join();
+
+	// 32 pending requests fill the queue; the 33rd runs them all off the owner
+	// thread, they bounce back, and the one that no longer fits is reported.
+	setenv("SLSSTEAM_OWNER_QUEUE_MAX_STALE_MS", "0", 1);
+	OwnerWork::init();
+	g_compatEvents.clear();
+	std::thread([] {
+		for (std::uint32_t app = 100; app <= 132; ++app)
+			OwnerWork::submitCompatReadiness(app, 1);
+	}).join();
+	OwnerWork::drainOnOwnerFrame();
+	const auto publishes = std::count(g_compatEvents.begin(), g_compatEvents.end(), 'p');
+
 	g_pLog.reset();
 	std::ifstream in(logPath);
 	std::stringstream log;
 	log << in.rdbuf();
 	check(log.str().find("SLSSTEAM_OWNER_QUEUE is no longer supported") != std::string::npos,
 	      "a leftover SLSSTEAM_OWNER_QUEUE is reported as ignored");
+	const auto lines = [&](const std::string& needle)
+	{
+		std::size_t count = 0;
+		for (std::size_t at = log.str().find(needle); at != std::string::npos;
+		     at = log.str().find(needle, at + 1))
+			++count;
+		return count;
+	};
+	check(lines("did not drain within 1ms") <= 20,
+	      "bounced mapping: at most 20 stale flushes (got " +
+	      std::to_string(lines("did not drain within 1ms")) + ")");
+	check(lines("app=43; keeping it hidden until restart") == 1,
+	      "bounced mapping: one give-up line");
+	check(publishes == 33 || lines("app=132; keeping it hidden until restart") == 1,
+	      "a bounced mapping the full queue refuses is reported (publishes " +
+	      std::to_string(publishes) + ")");
 
 	std::filesystem::remove_all(root);
 	if (failures != 0)
