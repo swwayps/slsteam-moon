@@ -139,13 +139,19 @@ inline std::string buildPicsRequest(const std::vector<uint32_t>& appids)
 // product-info VDF).  When `changesOut` is non-null, also records each
 // such app's `change_number` (used as part of the appinfo.vdf
 // idempotency key).  Returns true if the CM signalled more responses are
-// pending (response_pending) — the caller keeps reading until false.
+// pending (response_pending) — the caller keeps reading until false.  An
+// unreadable body returns false and sets `*malformed`.
 inline bool parsePicsResponse(const std::string& body,
                               std::unordered_map<uint32_t, std::string>& out,
-                              std::unordered_map<uint32_t, uint32_t>* changesOut = nullptr)
+                              std::unordered_map<uint32_t, uint32_t>* changesOut = nullptr,
+                              bool* malformed = nullptr)
 {
 	CMsgClientPICSProductInfoResponse r;
-	if (!r.ParseFromString(body)) return false;
+	if (!r.ParseFromString(body))
+	{
+		if (malformed) *malformed = true;
+		return false;
+	}
 	for (const auto& app : r.apps())
 	{
 		if (app.buffer().empty()) continue;

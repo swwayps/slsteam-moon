@@ -103,6 +103,9 @@ struct ScriptedEndpoint
 	int responsesLeft = -1; // product-info messages before every later socket drops
 	bool withholdFinal = false; // drop instead of sending the last "not pending" flag
 	bool gzip = false; // send each answer gzip-compressed inside a Multi
+	bool fragment = false; // send each answer as a frame without FIN plus a continuation
+	bool corruptSecond = false; // send an unreadable body as the second answer
+	bool closeAfterFinal = false; // send a close frame right after the last answer
 	std::vector<std::vector<uint32_t>> requests;
 	std::unordered_set<uint32_t> delivered; // apps sent with a buffer
 };
@@ -207,20 +210,31 @@ private:
 		return true;
 	}
 
-	static void queue(Handle& h, uint32_t emsg, const std::string& header,
-	                  const std::string& body)
+	static std::string frame(std::uint8_t head, const std::string& payload)
 	{
-		const std::string packet = CmWire::packPacket(emsg, header, body);
-		std::string frame(1, static_cast<char>(0x82));
-		if (packet.size() <= 125)
-			frame += static_cast<char>(packet.size());
+		std::string out(1, static_cast<char>(head));
+		if (payload.size() <= 125)
+			out += static_cast<char>(payload.size());
 		else
 		{
-			frame += static_cast<char>(127);
+			out += static_cast<char>(127);
 			for (int i = 7; i >= 0; --i)
-				frame += static_cast<char>((static_cast<std::uint64_t>(packet.size()) >> (i * 8)) & 0xFF);
+				out += static_cast<char>((static_cast<std::uint64_t>(payload.size()) >> (i * 8)) & 0xFF);
 		}
-		h.rx += frame + packet;
+		return out + payload;
+	}
+
+	static void queue(Handle& h, uint32_t emsg, const std::string& header,
+	                  const std::string& body, bool fragment = false)
+	{
+		const std::string packet = CmWire::packPacket(emsg, header, body);
+		if (!fragment)
+		{
+			h.rx += frame(0x82, packet);
+			return;
+		}
+		const std::size_t half = packet.size() / 2;
+		h.rx += frame(0x02, packet.substr(0, half)) + frame(0x80, packet.substr(half));
 	}
 
 	void answer(Handle& h, const std::string& packet)
@@ -284,10 +298,14 @@ private:
 			}
 			else
 			{
+				// A length-delimited field that runs past the end.
+				const bool corrupt = endpoint.corruptSecond && at == kAppsPerResponse;
 				queue(h, 8904, CMsgProtoBufHeader().SerializeAsString(),
-				      response.SerializeAsString());
+				      corrupt ? std::string("\x0a\x7f", 2) : response.SerializeAsString(),
+				      endpoint.fragment);
 			}
 			if (last && endpoint.withholdFinal) h.dropped = true;
+			if (last && endpoint.closeAfterFinal) h.rx += frame(0x88, "");
 		}
 	}
 };
@@ -390,6 +408,23 @@ int main()
 		setenv("PATH", path.c_str(), 1);
 		CHECK(f.result == FetchResult::Success && f.buffers.size() == knownIn(batch),
 		      "compressed answers are read in process");
+	}
+	{
+		// A fragmented answer is not reassembled; the next CM serves it.
+		ScriptedCms cms;
+		cms.endpoints["cm-a.test"].fragment = true;
+		cms.endpoints["cm-b.test"];
+		const Fetch f = fetch(cms, batch);
+		CHECK(f.result == FetchResult::Success && f.buffers.size() == knownIn(batch),
+		      "a fragmented answer is fetched again from the next CM");
+	}
+	{
+		ScriptedCms cms;
+		cms.endpoints["cm-a.test"].corruptSecond = true;
+		cms.endpoints["cm-b.test"];
+		const Fetch f = fetch(cms, batch);
+		CHECK(f.result == FetchResult::Success && f.buffers.size() == knownIn(batch),
+		      "an unreadable answer is fetched again from the next CM");
 	}
 	{
 		ScriptedCms cms;

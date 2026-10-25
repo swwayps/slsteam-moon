@@ -513,7 +513,9 @@ std::string wsFrame(const std::string& payload)
 // Try to extract ONE complete websocket frame's payload from the front
 // of `buf`.  On success removes the frame from `buf`, sets `payload` and
 // `opcode`, returns true.  Returns false if a full frame isn't buffered
-// yet (or on a protocol error, signalled via `error`).
+// yet (or on a protocol error, signalled via `error`).  Fragmented
+// messages are not reassembled: they fail the session, and the next CM is
+// asked for what is still missing.
 bool wsTryReadFrame(std::string& buf, std::string& payload,
                     uint8_t& opcode, bool& error)
 {
@@ -522,6 +524,7 @@ bool wsTryReadFrame(std::string& buf, std::string& payload,
 	const uint8_t b0 = static_cast<uint8_t>(buf[0]);
 	const uint8_t b1 = static_cast<uint8_t>(buf[1]);
 	opcode = b0 & 0x0F;
+	if ((b0 & 0x80) == 0 || opcode == 0x0) { error = true; return false; }
 	const bool masked = (b1 & 0x80) != 0; // server frames are NOT masked
 	uint64_t len = b1 & 0x7F;
 	size_t pos = 2;
@@ -541,7 +544,8 @@ bool wsTryReadFrame(std::string& buf, std::string& payload,
 		pos += 8;
 	}
 	if (masked) pos += 4; // shouldn't happen from server; skip if present
-	if (len > (128u * 1024u * 1024u)) { error = true; return false; }
+	// The frame and its copy must fit a 32-bit process next to Steam.
+	if (len > (32u * 1024u * 1024u)) { error = true; return false; }
 	if (buf.size() < pos + len) return false;
 	payload = buf.substr(pos, len);
 	buf.erase(0, pos + len);
@@ -573,30 +577,32 @@ std::string buildCmPacket(uint32_t emsg, const std::string& body,
 
 // Dispatch one decoded CM packet.  Recurses into Multi.  Updates `out`
 // for PICS apps, `session` on logon response, and sets `picsDone` when a
-// PICS response with response_pending==false arrives.
-void handlePacket(const std::string& pkt, Session& session,
+// PICS response with response_pending==false arrives.  Returns false for
+// a PICS response it cannot read, which ends the session.
+bool handlePacket(const std::string& pkt, Session& session,
                   std::unordered_map<uint32_t, std::string>& out,
                   std::unordered_map<uint32_t, uint32_t>* changes,
                   bool& gotLogon, bool& picsDone)
 {
 	uint32_t emsg = 0;
 	std::string hdrBytes, body;
-	if (!CmWire::parsePacket(pkt, emsg, hdrBytes, body)) return;
+	if (!CmWire::parsePacket(pkt, emsg, hdrBytes, body)) return true;
 
 	if (emsg == EMSG_MULTI)
 	{
 		CMsgMulti multi;
-		if (!multi.ParseFromString(body)) return;
+		if (!multi.ParseFromString(body)) return true;
 		std::string payload = multi.message_body();
 		if (multi.size_unzipped() > 0)
 		{
 			std::string inflated;
-			if (!gzipInflate(payload, multi.size_unzipped(), inflated)) return;
+			if (!gzipInflate(payload, multi.size_unzipped(), inflated)) return true;
 			payload.swap(inflated);
 		}
 		for (const auto& inner : CmWire::expandMultiBody(payload))
-			handlePacket(inner, session, out, changes, gotLogon, picsDone);
-		return;
+			if (!handlePacket(inner, session, out, changes, gotLogon, picsDone))
+				return false;
+		return true;
 	}
 
 	// Capture the assigned session identity from the response header.
@@ -614,15 +620,17 @@ void handlePacket(const std::string& pkt, Session& session,
 			gotLogon = (resp.eresult() == 1); // k_EResultOK
 			session.loggedOn = gotLogon;
 		}
-		return;
+		return true;
 	}
 
 	if (emsg == EMSG_PICS_PRODUCT_INFO_RESPONSE)
 	{
-		const bool pending = CmWire::parsePicsResponse(body, out, changes);
+		bool malformed = false;
+		const bool pending = CmWire::parsePicsResponse(body, out, changes, &malformed);
+		if (malformed) return false;
 		if (!pending) picsDone = true;
-		return;
 	}
+	return true;
 }
 
 // Read+dispatch frames until `predicate` returns true or the deadline
@@ -646,8 +654,9 @@ bool pumpUntil(TlsSocket& sock, Session& session,
 			}
 			if (opcode == 0x8) return false;          // close
 			if (opcode == 0x9 || opcode == 0xA) continue; // ping/pong: ignore
-			if (opcode == 0x2 || opcode == 0x0)
-				handlePacket(payload, session, out, changes, gotLogon, picsDone);
+			if (opcode == 0x2 &&
+			    !handlePacket(payload, session, out, changes, gotLogon, picsDone))
+				return false;
 		}
 		if (predicate()) return true;
 		if (sock.expired()) return false;
