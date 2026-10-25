@@ -7,7 +7,10 @@
 #include "../src/feats/depotquarantine.hpp"
 
 #include <cstdio>
+#include <cstring>
 #include <string>
+#include <sys/wait.h>
+#include <unistd.h>
 
 static int g_failures = 0;
 
@@ -19,6 +22,36 @@ static int g_failures = 0;
 
 int main()
 {
+	// The pointer chain read out of Steam's unpack callback.
+	{
+		alignas(8) uint8_t depot[8] = {};
+		const uint32_t depotId = 4300;
+		std::memcpy(depot, &depotId, sizeof(depotId));
+		alignas(8) uint8_t owner[0x20] = {};
+		const void* depotPtr = depot;
+		std::memcpy(owner + 0x0c, &depotPtr, sizeof(depotPtr));
+		alignas(8) uint8_t context[0x20] = {};
+		const void* ownerPtr = owner;
+		std::memcpy(context + 0x08, &ownerPtr, sizeof(ownerPtr));
+		CHECK(DepotQuarantine::depotIdFromContext(context) == 4300,
+		      "the depot id is read through the context chain");
+		// A layout change leaves a sentinel where the owner pointer was.
+		const void* sentinel = reinterpret_cast<const void*>(~std::uintptr_t(0) - 0xF);
+		std::memcpy(context + 0x08, &sentinel, sizeof(sentinel));
+		const pid_t child = fork();
+		if (child == 0)
+		{
+			_exit(DepotQuarantine::depotIdFromContext(context) == 0 &&
+			      DepotQuarantine::chunkFingerprint(sentinel) == 0 ? 0 : 1);
+		}
+		int status = 0;
+		waitpid(child, &status, 0);
+		CHECK(WIFEXITED(status) && WEXITSTATUS(status) == 0,
+		      "a sentinel in the chain is not followed");
+		CHECK(DepotQuarantine::chunkFingerprint(owner) != 0,
+		      "a readable chunk has a fingerprint");
+	}
+
 	DepotQuarantine::Registry quarantine;
 	const std::string badKey(32, '\x11');
 	const std::string replacementKey(32, '\x22');

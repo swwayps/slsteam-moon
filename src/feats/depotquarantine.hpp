@@ -7,7 +7,9 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <mutex>
 #include <string>
 #include <unordered_map>
@@ -26,6 +28,52 @@ namespace DepotQuarantine
 	{
 		return location == kDownloadedChunkLocation
 		    && unpackResult == kUnpackFailed;
+	}
+
+	// Pointers read out of Steam's unpack callback. A changed struct layout can
+	// leave a sentinel (the top page, a small value) where a pointer was, and
+	// the hooks cannot catch the fault, so only plausible, aligned pointers
+	// are followed.
+	inline bool plausiblePointer(const void* p) noexcept
+	{
+		const auto a = reinterpret_cast<std::uintptr_t>(p);
+		return a >= 0x10000u && a <= UINTPTR_MAX - 0xFFFu && (a & 3u) == 0;
+	}
+
+	inline const void* readPointer(const void* base, std::size_t offset) noexcept
+	{
+		const void* value = nullptr;
+		std::memcpy(&value, static_cast<const uint8_t*>(base) + offset, sizeof(value));
+		return value;
+	}
+
+	// context+0x08 -> owner, owner+0x0c -> depot, whose first field is the
+	// depot id. 0 when the chain cannot be followed.
+	inline uint32_t depotIdFromContext(const void* context) noexcept
+	{
+		if (!plausiblePointer(context)) return 0;
+		const void* owner = readPointer(context, 0x08);
+		if (!plausiblePointer(owner)) return 0;
+		const void* depot = readPointer(owner, 0x0c);
+		if (!plausiblePointer(depot)) return 0;
+		uint32_t depotId = 0;
+		std::memcpy(&depotId, depot, sizeof(depotId));
+		return depotId;
+	}
+
+	// Hash of the 20-byte chunk SHA OnChunkUnpacked formats at chunk+0x0c, so
+	// separate failing chunks count separately. 0 when it cannot be read.
+	inline uint64_t chunkFingerprint(const void* chunk) noexcept
+	{
+		if (!plausiblePointer(chunk)) return 0;
+		const auto sha = static_cast<const uint8_t*>(chunk) + 0x0c;
+		uint64_t hash = 14695981039346656037ULL;
+		for (std::size_t i = 0; i < 20; ++i)
+		{
+			hash ^= sha[i];
+			hash *= 1099511628211ULL;
+		}
+		return hash ? hash : 1;
 	}
 
 	class Registry

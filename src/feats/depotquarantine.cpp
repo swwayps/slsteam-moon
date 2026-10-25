@@ -91,34 +91,6 @@ namespace
 		return text.str();
 	}
 
-	uint32_t depotIdFromContext(void* context)
-	{
-		if (!context) return 0;
-		const auto bytes = reinterpret_cast<const uint8_t*>(context);
-		const auto owner = *reinterpret_cast<void* const*>(bytes + 0x08);
-		if (!owner) return 0;
-		const auto depot = *reinterpret_cast<void* const*>(
-		    reinterpret_cast<const uint8_t*>(owner) + 0x0c);
-		if (!depot) return 0;
-		return *reinterpret_cast<const uint32_t*>(depot);
-	}
-
-	uint64_t chunkFingerprint(const void* chunk)
-	{
-		if (!chunk) return 0;
-		// OnChunkUnpacked itself formats the 20-byte SHA at chunk+0x0c. Hashing
-		// it lets the policy distinguish separate failing chunks without copying
-		// or logging their identifiers.
-		const auto sha = reinterpret_cast<const uint8_t*>(chunk) + 0x0c;
-		uint64_t hash = 14695981039346656037ULL;
-		for (std::size_t i = 0; i < 20; ++i)
-		{
-			hash ^= sha[i];
-			hash *= 1099511628211ULL;
-		}
-		return hash ? hash : 1;
-	}
-
 	bool currentStplugScriptExists(uint32_t appId)
 	{
 		if (!appId) return false;
@@ -230,13 +202,14 @@ namespace
 	{
 		if (!DepotQuarantine::isTargetFailure(location, unpackResult)) return;
 
-		const uint32_t depotId = depotIdFromContext(context);
+		const uint32_t depotId = DepotQuarantine::depotIdFromContext(context);
 		if (!depotId || g_registry.contains(depotId)) return;
 
 		const auto key = DepotKey::getCachedKey(depotId);
 		if (g_registry.markFailure(depotId, key.appId,
 		                           inManagedScope(key, depotId), key.key,
-		                           unpackResult, chunkFingerprint(chunk)))
+		                           unpackResult,
+		                           DepotQuarantine::chunkFingerprint(chunk)))
 		{
 			g_pLog->info(
 			    "DepotQuarantine: app=%u depot=%u had %zu distinct chunk-unpack "
