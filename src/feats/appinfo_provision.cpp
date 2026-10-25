@@ -387,8 +387,11 @@ void emitNode(std::string& out, const YAML::Node& node, int depth)
 	}
 }
 
+} // namespace
+
 // Strip depots that we have no decryption key for so Steam's
-// downloader picks a depot we *can* actually decrypt.
+// downloader picks a depot we *can* actually decrypt.  External linkage only
+// for tools/test_depot_prune.cpp.
 //
 // Background: api.steamcmd.net returns the full depot list (e.g. for
 // dotAGE that's 638511=windows, 638512=macos, 638513=linux).  If the
@@ -401,9 +404,9 @@ void emitNode(std::string& out, const YAML::Node& node, int depth)
 //   - Drops every "<depot_id>" child of "depots" that lacks a cached
 //     DepotKey, unless it's a DLC entry (`dlcappid` only) which carries
 //     no payload to decrypt.
-//   - Removes a DLC from extended.listofdlc when all of that DLC's content
-//     depots were dropped.  Otherwise PackagePatch advertises the DLC as
-//     owned and Steam independently plans the rejected encrypted content.
+//   - Removes a DLC from extended.listofdlc when none of its content depots
+//     is keyed.  Otherwise PackagePatch advertises the DLC as owned and
+//     Steam independently plans the rejected encrypted content.
 //   - If the surviving set has at least one playable depot but the
 //     original "common.oslist" included an OS we just dropped, narrow
 //     "oslist" to the OSes we still have so Steam picks Proton (for
@@ -478,8 +481,14 @@ void pruneUnsupportedDepots(YAML::Node& body, uint32_t appId,
 		// on app=1868140 depot=4394810).  A size-0 depot has nothing to
 		// install, so dropping it loses no content and keeps Steam from ever
 		// planning the crash-inducing manifest.
+		const bool hasKey = !DepotKey::getCachedKey(depotId).key.empty();
 		if (depotPublicManifestIsEmpty(depotNode))
 		{
+			// Nothing to install, but a keyed DLC is still owned.
+			if (dlcAppId != 0 && hasKey)
+			{
+				usableDlcAppIds.insert(dlcAppId);
+			}
 			++dropped;
 			g_pLog->info("AppInfoProvision: app=%u dropping empty depot %u "
 			             "(public manifest size 0)\n", appId, depotId);
@@ -488,9 +497,6 @@ void pruneUnsupportedDepots(YAML::Node& body, uint32_t appId,
 
 		// DLC entries have no `manifests` block; they're virtual and
 		// don't need a decryption key — keep them.
-		const auto savedKey = DepotKey::getCachedKey(depotId);
-		const bool hasKey = !savedKey.key.empty();
-
 		if (!hasKey && !isVirtualDlc)
 		{
 			++dropped;
@@ -600,6 +606,9 @@ void pruneUnsupportedDepots(YAML::Node& body, uint32_t appId,
 	// single-depot apps.
 	(void)0;
 }
+
+namespace
+{
 
 // Forward declaration: defined with the on-disk cache helpers below.
 const std::string& getCacheDir();
