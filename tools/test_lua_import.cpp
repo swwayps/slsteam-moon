@@ -122,6 +122,15 @@ int main()
 	catch (...) { shaderCacheThrew = true; }
 	check(!shaderCacheThrew, "an unusable Steam config folder does not throw out of the config.vdf edit");
 
+	// The Steam root lookup skips a candidate it cannot resolve (here
+	// ~/.steam/steam is a symlink loop) instead of throwing.
+	std::filesystem::create_directories(root + "/.steam");
+	std::filesystem::create_directory_symlink("steam", root + "/.steam/steam");
+	bool rootLookupThrew = false;
+	try { DepotKey::provisionManifests(); }
+	catch (...) { rootLookupThrew = true; }
+	check(!rootLookupThrew, "an unresolvable Steam root candidate does not throw");
+
 	std::filesystem::remove_all(root);
 	if (failures != 0)
 	{

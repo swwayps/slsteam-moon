@@ -91,7 +91,10 @@ std::string findSteamRoot()
 {
 	for (const auto& candidate : steamPathCandidates())
 	{
-		if (std::filesystem::exists(candidate + "/steam.sh"))
+		// setup() and the config watcher call this: an unresolvable candidate
+		// is skipped, not thrown.
+		std::error_code ec;
+		if (std::filesystem::exists(candidate + "/steam.sh", ec))
 		{
 			return candidate;
 		}
