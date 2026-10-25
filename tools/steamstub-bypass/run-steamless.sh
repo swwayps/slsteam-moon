@@ -73,6 +73,8 @@ TIMEOUT_BIN="$(command -v timeout 2>/dev/null || true)"
 if [ "$PREWARM" -eq 0 ]; then
     [ -n "$EXE_PATH" ] || die "usage: $0 <exe-path>  |  $0 --prewarm" 1
     [ -f "$EXE_PATH" ] || die "exe not found: $EXE_PATH" 1
+    command -v python3 >/dev/null 2>&1 \
+        || die "required command 'python3' not found in PATH" 4
 
     # Refuse our own artefacts so a buggy caller can't recurse on the
     # backup we left behind (`<exe>.original.exe`) or the transient

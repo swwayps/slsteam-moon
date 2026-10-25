@@ -49,7 +49,7 @@ enum class UserMsg
 	GamePreparationFailedBatch,
 	DrmRemovalFailed,          // SteamStub unpack failed; title may not launch
 	LocalStorageError,         // local write/extract failed (disk full / perms)
-	RuntimeDependencyMissing,   // required unzip/gzip helper is unavailable
+	RuntimeDependencyMissing,   // a program run-steamless.sh needs is unavailable
 
 	// --- configuration ---
 	ConfigUnreadable,          // config.yaml unreadable; using defaults
@@ -231,10 +231,10 @@ inline UiMessage messageFor(UserMsg m, Lang lang)
 			         Severity::Error };
 
 		case UserMsg::RuntimeDependencyMissing:
-			return { pt ? "Faltam ferramentas necessárias ({detail}) para processar "
-			              "manifests. Instale-as e reinicie a Steam."
-			            : "Required tools ({detail}) are missing for manifest processing. "
-			              "Install them and restart Steam.",
+			return { pt ? "Faltam ferramentas necessárias ({detail}) para a opção "
+			              "--steamless. Instale-as e reinicie a Steam."
+			            : "Required tools ({detail}) are missing for the --steamless "
+			              "launch option. Install them and restart Steam.",
 			         Severity::Error };
 
 		case UserMsg::ConfigUnreadable:

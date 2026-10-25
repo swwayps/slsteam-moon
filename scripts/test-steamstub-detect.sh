@@ -125,5 +125,19 @@ else
     ok "xxd shim never invoked across all cases"
 fi
 
+# 6. a host without python3 gets a named error (exit 4), not rc=127.
+NOPY="$WORK/no-python"
+mkdir -p "$NOPY"
+for tool in bash basename cat dirname timeout; do
+    ln -s "$(command -v "$tool")" "$NOPY/$tool"
+done
+rc="$(PATH="$NOPY" STEAMLESS_HOME="$WORK/no-such-steamless-home" QUIET=1 \
+    "$NOPY/bash" "$HELPER" "$WORK/v3.exe" >/dev/null 2>"$WORK/no-python.log"; echo $?)"
+if [ "$rc" = "4" ] && grep -q "'python3' not found" "$WORK/no-python.log"; then
+    ok "missing python3 is reported by name (exit 4)"
+else
+    bad "missing python3 expected exit 4 naming python3, got $rc: $(head -c 200 "$WORK/no-python.log")"
+fi
+
 echo "== total: $PASS passed, $FAIL failed =="
 [ "$FAIL" -eq 0 ]

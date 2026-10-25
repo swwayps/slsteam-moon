@@ -34,22 +34,13 @@ namespace
 
 int main()
 {
-	check(RuntimeDependencies::missingTools(true, true, true).empty(),
+	check(RuntimeDependencies::missingTools(true, true).empty(),
 	      "no missing tools produces no detail");
-	check(RuntimeDependencies::missingTools(false, true, true) == "unzip",
-	      "missing unzip is identified");
-	check(RuntimeDependencies::missingTools(true, false, true) == "gzip",
-	      "missing gzip is identified");
-	check(RuntimeDependencies::missingTools(false, false, true) == "unzip, gzip",
-	      "both archive tools share one diagnostic");
-	check(RuntimeDependencies::missingTools(true, true, false) == "timeout",
+	check(RuntimeDependencies::missingTools(false, true) == "timeout",
 	      "missing timeout is identified");
-	check(RuntimeDependencies::missingTools(false, true, false) == "unzip, timeout",
-	      "missing unzip and timeout share one diagnostic");
-	check(RuntimeDependencies::missingTools(true, false, false) == "gzip, timeout",
-	      "missing gzip and timeout share one diagnostic");
-	check(RuntimeDependencies::missingTools(false, false, false)
-	          == "unzip, gzip, timeout",
+	check(RuntimeDependencies::missingTools(true, false) == "python3",
+	      "missing python3 is identified");
+	check(RuntimeDependencies::missingTools(false, false) == "timeout, python3",
 	      "all missing tools share one diagnostic");
 
 	char rootTemplate[] = "/tmp/slsteam-runtime-deps-XXXXXX";
@@ -60,24 +51,29 @@ int main()
 	}
 	else
 	{
+		// The probe names what run-steamless.sh runs; unzip and gzip are not
+		// used by anything the library starts.
 		const std::string root(rootPath);
 		check(RuntimeDependencies::missingToolsOnPath(root.c_str())
-		          == "unzip, gzip, timeout",
+		          == "timeout, python3",
 		      "PATH probe reports all missing helpers");
-		check(createExecutable(root, "unzip"),
-		      "PATH fixture creates an executable unzip");
-		check(RuntimeDependencies::missingToolsOnPath(root.c_str())
-		          == "gzip, timeout",
+		check(createExecutable(root, "unzip") && createExecutable(root, "gzip")
+		          && createExecutable(root, "timeout"),
+		      "PATH fixture creates unzip, gzip and timeout");
+		check(RuntimeDependencies::missingToolsOnPath(root.c_str()) == "python3",
+		      "unzip and gzip do not stand in for python3");
+		check(createExecutable(root, "python3", 0600),
+		      "PATH fixture creates a non-executable python3");
+		check(RuntimeDependencies::missingToolsOnPath(root.c_str()) == "python3",
 		      "PATH probe recognizes only executable helpers");
-		check(createExecutable(root, "gzip"),
-		      "PATH fixture creates an executable gzip");
-		check(createExecutable(root, "timeout"),
-		      "PATH fixture creates an executable timeout");
+		check(chmod((root + "/python3").c_str(), 0700) == 0,
+		      "PATH fixture makes python3 executable");
 		check(RuntimeDependencies::missingToolsOnPath(root.c_str()).empty(),
 		      "PATH probe accepts all executable helpers");
-		unlink((root + "/unzip").c_str());
-		unlink((root + "/gzip").c_str());
-		unlink((root + "/timeout").c_str());
+		for (const char* name : {"unzip", "gzip", "timeout", "python3"})
+		{
+			unlink((root + "/" + name).c_str());
+		}
 		rmdir(root.c_str());
 	}
 

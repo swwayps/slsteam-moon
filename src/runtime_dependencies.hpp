@@ -6,20 +6,14 @@ namespace RuntimeDependencies
 {
 	// Build one stable detail string for the user-facing warning.  Kept pure
 	// so the diagnostic remains unit-testable without Steam or the logger.
-	inline std::string missingTools(bool hasUnzip, bool hasGzip,
-	                                bool hasTimeout)
+	inline std::string missingTools(bool hasTimeout, bool hasPython3)
 	{
 		std::string missing;
-		if (!hasUnzip) missing = "unzip";
-		if (!hasGzip)
+		if (!hasTimeout) missing = "timeout";
+		if (!hasPython3)
 		{
 			if (!missing.empty()) missing += ", ";
-			missing += "gzip";
-		}
-		if (!hasTimeout)
-		{
-			if (!missing.empty()) missing += ", ";
-			missing += "timeout";
+			missing += "python3";
 		}
 		return missing;
 	}
@@ -29,9 +23,8 @@ namespace RuntimeDependencies
 	// supply a fixture without depending on the host's PATH or logger.
 	std::string missingToolsOnPath(const char* path);
 
-	// Probe the external helpers used by manifest extraction, CM gzip
-	// expansion, and Steamless timeout enforcement once per process. Returns
-	// true when all are available.
+	// Probe the programs tools/steamstub-bypass/run-steamless.sh needs, once
+	// per process. Returns true when all are available.
 	bool check();
 
 }
