@@ -458,13 +458,14 @@ void disableShaderCache()
 	if (root.empty()) return;
 
 	const auto path = root + "/config/config.vdf";
-	if (!std::filesystem::exists(path)) return;
+	std::error_code existsError;
+	if (!std::filesystem::exists(path, existsError)) return;
 
 	const auto configLockPath = AppInfoProvision::cacheLockPath();
 	const auto lockParent = std::filesystem::path(configLockPath).parent_path();
 	std::error_code lockDirError;
 	std::filesystem::create_directories(lockParent, lockDirError);
-	if (lockDirError && !std::filesystem::exists(lockParent))
+	if (lockDirError && !std::filesystem::exists(lockParent, existsError))
 	{
 		g_pLog->debug("DepotKey: cannot create config.vdf lock directory: %s\n",
 		              lockDirError.message().c_str());

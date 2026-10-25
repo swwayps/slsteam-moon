@@ -104,6 +104,17 @@ int main()
 	CHECK(AppInfoProvision::requiresProton(kApp) && !AppInfoProvision::requiresProton(44),
 	      "the startup scan marks only the Windows-only pair for Proton");
 
+	// The preinit Proton mapping edit treats an unusable Steam config folder
+	// (a symlink loop here) as absent instead of throwing out of setup().
+	const std::string steam = std::string(home) + "/.local/share/Steam";
+	std::filesystem::create_directories(steam);
+	std::ofstream(steam + "/steam.sh") << "#!/bin/sh\n";
+	std::filesystem::create_directory_symlink("config", steam + "/config");
+	bool flushThrew = false;
+	try { AppInfoProvision::flushPendingProtonMappings(); }
+	catch (...) { flushThrew = true; }
+	CHECK(!flushThrew, "an unusable Steam config folder does not throw out of the Proton mapping edit");
+
 	if (g_failures == 0) std::printf("\nall cache validation checks passed\n");
 	else std::printf("\n%d cache validation check(s) FAILED\n", g_failures);
 	std::fflush(stdout);

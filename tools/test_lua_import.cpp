@@ -112,6 +112,16 @@ int main()
 	check(!std::filesystem::exists(steam + "/depotcache/3_4.manifest"),
 	      "a cut-off shipped manifest is not copied into depotcache");
 
+	// The preinit config.vdf edit treats an unusable Steam config folder (a
+	// symlink loop here) as absent instead of throwing out of setup().
+	g_config.addedAppIds.set({123});
+	std::filesystem::remove_all(steam + "/config");
+	std::filesystem::create_directory_symlink("config", steam + "/config");
+	bool shaderCacheThrew = false;
+	try { DepotKey::disableShaderCache(); }
+	catch (...) { shaderCacheThrew = true; }
+	check(!shaderCacheThrew, "an unusable Steam config folder does not throw out of the config.vdf edit");
+
 	std::filesystem::remove_all(root);
 	if (failures != 0)
 	{

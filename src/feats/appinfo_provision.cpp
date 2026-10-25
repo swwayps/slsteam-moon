@@ -1200,7 +1200,8 @@ bool injectProtonMappings()
 	const auto root = steamRootForConfig();
 	if (root.empty()) return false;
 	const auto path = root + "/config/config.vdf";
-	if (!std::filesystem::exists(path)) return false;
+	std::error_code existsError;
+	if (!std::filesystem::exists(path, existsError)) return false;
 
 	// This function is restricted to setup()'s preinit window. Runtime PICS
 	// workers persist a pending set instead; Steam's ConfigStore writers do
