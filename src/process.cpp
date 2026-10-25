@@ -422,6 +422,8 @@ bool CELFExecutableFile::parseElf32Headers(const Elf32_Ehdr& hdr)
 		logFailure("Failed to read strHdr!\n");
 		return false;
 	}
+	//Names are read as C strings; a table without a final NUL would run past it.
+	strSec.push_back('\0');
 
 	//LOG_DEBUG("strHdr name %u address 0x%x\n", strHdr.sh_name, strHdr.sh_offset);
 
@@ -517,6 +519,8 @@ bool CELFExecutableFile::parseElf64Headers(const Elf64_Ehdr& hdr)
 		logFailure("Failed to read strHdr!\n");
 		return false;
 	}
+	//Names are read as C strings; a table without a final NUL would run past it.
+	strSec.push_back('\0');
 
 	//LOG_DEBUG("strHdr name %u address 0x%llx\n", strHdr.sh_name, strHdr.sh_offset);
 

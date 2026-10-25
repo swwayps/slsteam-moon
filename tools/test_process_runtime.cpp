@@ -115,6 +115,51 @@ std::vector<uint8_t> makeHugeStringTableElf64()
 	return b;
 }
 
+// A valid-magic ELF whose section header string table has no terminating NUL.
+// Section 1 is named from offset 1, so its name runs to the end of the table.
+// The table is 12 bytes, an i386 malloc chunk with no slack, so an unbounded
+// read runs into the next chunk header instead of a lucky zero byte.
+template<typename Ehdr, typename Shdr>
+std::vector<uint8_t> makeUnterminatedNamesElf(unsigned char elfClass, uint16_t machine)
+{
+	constexpr char table[] = "Z.text_abcde"; // written without its NUL
+	const size_t tableOffset = sizeof(Ehdr) + 2 * sizeof(Shdr);
+	std::vector<uint8_t> b(tableOffset + sizeof(table) - 1, 0);
+	Ehdr hdr{};
+	hdr.e_ident[EI_MAG0] = ELFMAG0;
+	hdr.e_ident[EI_MAG1] = ELFMAG1;
+	hdr.e_ident[EI_MAG2] = ELFMAG2;
+	hdr.e_ident[EI_MAG3] = ELFMAG3;
+	hdr.e_ident[EI_CLASS] = elfClass;
+	hdr.e_machine = machine;
+	hdr.e_shoff = sizeof(Ehdr);
+	hdr.e_shnum = 2;
+	hdr.e_shstrndx = 0;
+	hdr.e_shentsize = sizeof(Shdr);
+	std::memcpy(b.data(), &hdr, sizeof(hdr));
+	Shdr names{};
+	names.sh_offset = tableOffset;
+	names.sh_size = sizeof(table) - 1;
+	Shdr text{};
+	text.sh_name = 1;
+	std::memcpy(b.data() + sizeof(Ehdr), &names, sizeof(names));
+	std::memcpy(b.data() + sizeof(Ehdr) + sizeof(Shdr), &text, sizeof(text));
+	std::memcpy(b.data() + tableOffset, table, sizeof(table) - 1);
+	return b;
+}
+bool sectionNameStopsAtTableEnd(const char* path, const std::vector<uint8_t>& bytes)
+{
+	writeFile(path, bytes);
+	const auto exe = IExecutableFile::create(path, LogLevel::Debug);
+	if (exe && exe->sections.size() == 1 && exe->sections[0].name == ".text_abcde")
+	{
+		return true;
+	}
+	std::fprintf(stderr, "  %s: parsed=%d sections=%zu first name length=%zu\n", path,
+	             exe != nullptr, exe ? exe->sections.size() : 0,
+	             exe && !exe->sections.empty() ? exe->sections[0].name.size() : 0);
+	return false;
+}
 // A valid-magic i386 PE with a single ".bind" section whose size advertises
 // ~4 GiB. hasSteamDRM() reads the last section when it is named ".bind";
 // readSection() must not resize()/fread() a buffer sized past the file end.
@@ -238,6 +283,12 @@ int main()
 
 	expect(drmProbeSurvives("/tmp/slsteam_huge_bind.pe", makeHugeBindSectionPe()),
 	       "a .bind section larger than the file does not trigger a giant read");
+	expect(sectionNameStopsAtTableEnd("/tmp/slsteam_unterminated.elf32",
+	           makeUnterminatedNamesElf<Elf32_Ehdr, Elf32_Shdr>(ELFCLASS32, 0x3)),
+	       "an unterminated ELF32 section name stops at the string table end");
+	expect(sectionNameStopsAtTableEnd("/tmp/slsteam_unterminated.elf64",
+	           makeUnterminatedNamesElf<Elf64_Ehdr, Elf64_Shdr>(ELFCLASS64, 0x3e)),
+	       "an unterminated ELF64 section name stops at the string table end");
 
 	return failures == 0 ? 0 : 1;
 }
