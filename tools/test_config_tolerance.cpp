@@ -169,6 +169,25 @@ int main()
 	          g_config.dlcData.get().empty(),
 	      "removing DlcData revokes the configured DLC");
 
+	// Scripts over MaxManagedApps stay inactive; the user is told once.
+	const std::string steam = root + "/.local/share/Steam";
+	std::filesystem::create_directories(steam + "/config/stplug-in");
+	std::ofstream(steam + "/steam.sh") << "#!/bin/sh\n";
+	for (const char* script : {"10.lua", "11.lua", "12.lua"})
+		std::ofstream(steam + "/config/stplug-in/" + script) << "addappid(1)\n";
+	std::ofstream(configHome + "/SLSsteam/luaappids.yaml", std::ios::trunc) << "";
+	std::ofstream(configHome + "/SLSsteam/config.yaml", std::ios::trunc)
+		<< "MaxManagedApps: 1\nNotifications: no\n";
+	check(g_config.loadSettings() && g_config.loadSettings(), "a config over the app limit loads");
+	std::size_t notices = 0;
+	{
+		std::ifstream logFile(root + "/test.log");
+		for (std::string line; std::getline(logFile, line);)
+			if (line.find("notifyUser:") != std::string::npos && line.find("MaxManagedApps") != std::string::npos)
+				++notices;
+	}
+	check(notices == 1, "scripts over MaxManagedApps are reported to the user once");
+
 	std::filesystem::remove_all(root);
 	if (failures != 0)
 	{

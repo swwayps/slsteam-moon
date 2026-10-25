@@ -45,6 +45,7 @@ static const UserMsg kAll[] = {
 	UserMsg::ConfigParseFailed,
 	UserMsg::ConfigRepaired,
 	UserMsg::ConfigWriteFailed,
+	UserMsg::ManagedAppsCapped,
 };
 
 int main()

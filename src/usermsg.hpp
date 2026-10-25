@@ -56,6 +56,7 @@ enum class UserMsg
 	ConfigParseFailed,         // config.yaml malformed; using defaults
 	ConfigRepaired,            // config.yaml had a formatting slip; auto-fixed
 	ConfigWriteFailed,         // could not create/save config
+	ManagedAppsCapped,         // scripts over MaxManagedApps; {detail} = inactive count
 };
 
 struct UiMessage
@@ -263,6 +264,15 @@ inline UiMessage messageFor(UserMsg m, Lang lang)
 			            : "Couldn't save the configuration. Check the permissions on "
 			              "your home folder.",
 			         Severity::Error };
+
+		case UserMsg::ManagedAppsCapped:
+			return { pt ? "{detail} jogo(s) estão inativos porque há mais scripts do que "
+			              "MaxManagedApps permite. Aumente MaxManagedApps no config.yaml "
+			              "(0 remove o limite)."
+			            : "{detail} game(s) are inactive because there are more scripts "
+			              "than MaxManagedApps allows. Raise MaxManagedApps in config.yaml "
+			              "(0 removes the limit).",
+			         Severity::Warning };
 	}
 	// Unreachable for a valid enum; keep the compiler happy and fail safe.
 	return { pt ? "Ocorreu um erro inesperado."

@@ -641,6 +641,9 @@ bool CConfig::loadSettings()
 		             selected.ignored, effectiveCap,
 		             installed.accela.size(), installedLegacy,
 		             legacyApps.size() - installedLegacy, ids.active.size());
+		// Loads are serialized (reload mutex, init); a popup only when the
+		// number of inactive scripts changes, not on every reload.
+		static std::size_t reportedIgnored = 0;
 		if (selected.ignored != 0)
 		{
 			g_pLog->notify(
@@ -649,7 +652,13 @@ bool CConfig::loadSettings()
 			    "Raise MaxManagedApps in config.yaml (0 disables the limit) if "
 			    "this is intentional.\n",
 			    selected.ignored, effectiveCap);
+			if (selected.ignored != reportedIgnored)
+			{
+				g_pLog->notifyUser(UserMsg::ManagedAppsCapped,
+				                   std::to_string(selected.ignored));
+			}
 		}
+		reportedIgnored = selected.ignored;
 
 		// Publish stable local dates before the new app set becomes visible to
 		// ownership queries. Keep these out of the user-authored override map.
