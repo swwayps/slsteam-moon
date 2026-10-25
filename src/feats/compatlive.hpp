@@ -16,7 +16,6 @@ enum class StepStatus : std::uint8_t
 	Unavailable,
 	Ready,
 	Requested,
-	Waiting,
 };
 
 struct StepResult
@@ -24,10 +23,10 @@ struct StepResult
 	StepStatus status = StepStatus::Unavailable;
 };
 
-inline StepResult step(
-	IClientCompat* compat,
-	std::uint32_t appId,
-	bool requestAlreadySubmitted) noexcept
+// Specifies the mapping whenever none resolves: a retry follows a missing or
+// faulting compat manager, so no earlier request can be relied on. Repeating
+// the same tool and priority is the same write.
+inline StepResult step(IClientCompat* compat, std::uint32_t appId) noexcept
 {
 	if (compat == nullptr || appId == 0)
 		return {StepStatus::Unavailable};
@@ -36,8 +35,6 @@ inline StepResult step(
 		const char* current = compat->getCompatToolName(appId);
 		if (current != nullptr && current[0] != '\0')
 			return {StepStatus::Ready};
-		if (requestAlreadySubmitted)
-			return {StepStatus::Waiting};
 
 		const char* selected = compat->getCompatToolName(0);
 		if (selected == nullptr || selected[0] == '\0')

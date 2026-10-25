@@ -92,23 +92,23 @@ int main()
 	      "the registry slot reads the default compatibility mapping");
 
 	fake.appMapping = "GE-Proton";
-	const auto existing = CompatLive::step(compat, 582010, false);
+	const auto existing = CompatLive::step(compat, 582010);
 	check(existing.status == CompatLive::StepStatus::Ready &&
 	      fake.specifyCalls == 1,
 	      "an existing per-app mapping is ready without being overwritten");
 
 	fake.appMapping.clear();
-	const auto requested = CompatLive::step(compat, 582010, false);
+	const auto requested = CompatLive::step(compat, 582010);
 	check(requested.status == CompatLive::StepStatus::Requested &&
 	      fake.specifyCalls == 2 && fake.specifiedName == "proton-cachyos",
 	      "an absent mapping requests the user's default tool exactly once");
-	const auto waiting = CompatLive::step(compat, 582010, true);
-	check(waiting.status == CompatLive::StepStatus::Waiting &&
-	      fake.specifyCalls == 2,
-	      "a submitted asynchronous mapping is polled without resubmission");
+	const auto retried = CompatLive::step(compat, 582010);
+	check(retried.status == CompatLive::StepStatus::Requested &&
+	      fake.specifyCalls == 3 && fake.specifiedName == "proton-cachyos",
+	      "a retry while no mapping resolves specifies the same tool again");
 	fake.reflectSpecified = true;
 	fake.appMapping.clear();
-	const auto immediate = CompatLive::step(compat, 582010, false);
+	const auto immediate = CompatLive::step(compat, 582010);
 	check(immediate.status == CompatLive::StepStatus::Ready &&
 	      fake.appMapping == "proton-cachyos",
 	      "a synchronously visible mapping completes without another owner frame");
@@ -116,11 +116,11 @@ int main()
 	fake.appMapping.clear();
 
 	fake.defaultMapping.clear();
-	const auto fallback = CompatLive::step(compat, 238320, false);
+	const auto fallback = CompatLive::step(compat, 238320);
 	check(fallback.status == CompatLive::StepStatus::Requested &&
 	      fake.specifiedName == "proton_experimental",
 	      "Proton Experimental is used only when the default mapping is empty");
-	check(CompatLive::step(nullptr, 582010, false).status ==
+	check(CompatLive::step(nullptr, 582010).status ==
 	      CompatLive::StepStatus::Unavailable,
 	      "a missing live interface fails closed");
 

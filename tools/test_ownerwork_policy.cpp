@@ -46,9 +46,16 @@ namespace PackagePatch
 	bool runtimeRefreshPending() noexcept { return false; }
 	void reprocessCurrentState() noexcept {}
 }
+// Order of the compat calls and ownership publications the runner makes:
+// 's' = specifyCompatTool, 'p' = publishPreparedBase.
+std::string g_compatEvents;
 namespace HotReload
 {
-	bool publishPreparedBase(std::uint32_t, std::uint64_t) noexcept { return true; }
+	bool publishPreparedBase(std::uint32_t, std::uint64_t) noexcept
+	{
+		g_compatEvents += 'p';
+		return true;
+	}
 }
 namespace AppInfoState
 {
@@ -57,7 +64,10 @@ namespace AppInfoState
 }
 IClientCompat* g_pClientCompat = nullptr;
 const char* IClientCompat::getCompatToolName(const AppId_t) { return ""; }
-void IClientCompat::specifyCompatTool(const AppId_t, const char*, const char*, int32_t) {}
+void IClientCompat::specifyCompatTool(const AppId_t, const char*, const char*, int32_t)
+{
+	g_compatEvents += 's';
+}
 // The config translation unit publishes configured DLC ids to the apps
 // feature, which this test does not link.
 namespace Apps
@@ -87,6 +97,19 @@ int main()
 
 	OwnerWork::drainOnOwnerFrame();
 	check(syncRuns == 1 && syncTid == threadId(), "the owner frame runs the queued sync");
+
+	// The compat manager is captured only on Steam's first compat call, so an
+	// early request is retried. That retry has issued nothing yet: it must
+	// still specify the mapping before the title is published.
+	g_pClientCompat = nullptr;
+	OwnerWork::submitCompatReadiness(42, 1);
+	check(g_compatEvents.empty(), "no compat manager yet: nothing is specified or published");
+	static unsigned char compatObject = 0;
+	g_pClientCompat = reinterpret_cast<IClientCompat*>(&compatObject);
+	OwnerWork::drainOnOwnerFrame();
+	check(g_compatEvents == "sp",
+	      "the retried request specifies the mapping before publishing (got \"" +
+	      g_compatEvents + "\")");
 
 	g_pLog.reset();
 	std::ifstream in(logPath);

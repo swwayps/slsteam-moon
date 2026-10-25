@@ -108,15 +108,14 @@ namespace
 					break;
 				}
 
-				const auto result = CompatLive::step(
-					compat, cmd.appId(), cmd.attempt() != 0);
+				const auto result = CompatLive::step(compat, cmd.appId());
 
 				// Ready       -> an effective mapping already resolves for the
 				//                app (a config.vdf entry loaded at boot, a global
 				//                default, or a live specify that reflected at
 				//                once). Publish it into ownership now.
-				// Requested/  -> specifyCompatTool has been issued. Steam stores
-				// Waiting         and persists that mapping synchronously (it
+				// Requested   -> specifyCompatTool has been issued. Steam stores
+				//                and persists that mapping synchronously (it
 				//                reappears in config.vdf), but getCompatToolName
 				//                only reflects it after an internal refresh that
 				//                can lag several seconds. That readback is not a
