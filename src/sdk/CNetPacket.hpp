@@ -36,10 +36,9 @@ public:
 //
 // Rather than hard-code either layout, the field offset shift is detected once
 // from a live Steam-owned packet (detectLayout) and applied to every field
-// access here.  s_fieldShift defaults to 0 and detection tries shift 0 FIRST,
-// so on the stable client it stays 0 and every access is byte-for-byte
-// identical to the original fixed-offset struct — the shifted path only ever
-// engages on a client whose packets do not validate at 0.
+// access here.  s_fieldShift defaults to 0 and detection tries shift 0 FIRST;
+// it settles once, and a packet SLSsteam builds itself waits for that
+// (layoutSettled()).
 class CNetPacket
 {
 public:
@@ -55,9 +54,18 @@ public:
 	constexpr static std::size_t OFF_SIZE = 0x8;
 	constexpr static std::size_t OFF_ORIGBODY = 0x10;
 
-	// Detected field shift (0 = classic/stable layout).  int, single writer
-	// (detectLayout runs on the CM receive thread); benign as a plain global.
-	static inline int s_fieldShift = 0;
+	// Detected field shift (0 = classic layout), written once by detectLayout
+	// on the CM receive thread before s_layoutSettled is released; other
+	// threads read it.
+	static inline std::atomic<int> s_fieldShift{0};
+	static inline std::atomic<bool> s_layoutSettled{false};
+
+	// True once the shift is final. A packet SLSsteam builds itself must not
+	// be used before then: the shift can still change under it.
+	static bool layoutSettled()
+	{
+		return s_layoutSettled.load(std::memory_order_acquire);
+	}
 
 private:
 
@@ -71,13 +79,15 @@ private:
 	T fieldGet(std::size_t off) const
 	{
 		T value;
-		std::memcpy(&value, raw_ + off + s_fieldShift, sizeof(T));
+		std::memcpy(&value, raw_ + off + s_fieldShift.load(std::memory_order_relaxed),
+		            sizeof(T));
 		return value;
 	}
 	template <typename T>
 	void fieldSet(std::size_t off, T value)
 	{
-		std::memcpy(raw_ + off + s_fieldShift, &value, sizeof(T));
+		std::memcpy(raw_ + off + s_fieldShift.load(std::memory_order_relaxed),
+		            &value, sizeof(T));
 	}
 
 	static bool plausibleBody(CNetPacketBody* body)
@@ -102,8 +112,7 @@ public:
 	// and stays undetected so a later packet can settle it.
 	static void detectLayout(const CNetPacket* packet)
 	{
-		static std::atomic<bool> settled{false};
-		if (settled.load(std::memory_order_acquire) || packet == nullptr)
+		if (layoutSettled() || packet == nullptr)
 			return;
 		const auto* base = reinterpret_cast<const uint8_t*>(packet);
 		for (const int shift : {0, 8})
@@ -121,8 +130,8 @@ public:
 			            sizeof(headerSize));
 			if (headerSize > size - sizeof(CNetPacketBody))
 				continue;
-			s_fieldShift = shift;
-			settled.store(true, std::memory_order_release);
+			s_fieldShift.store(shift, std::memory_order_relaxed);
+			s_layoutSettled.store(true, std::memory_order_release);
 			g_pLog->info("CNetPacket: field layout settled at shift %d\n", shift);
 			return;
 		}

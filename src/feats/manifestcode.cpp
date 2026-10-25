@@ -470,7 +470,10 @@ bool hkBBuildAndAsyncSendFrame(void* pConnection,
                                uint8_t* pubData,
                                uint32_t cubData)
 {
-	if (eOpCode == k_eWebSocketOpCode_Binary)
+	// The scratch packet below is read through the packet field layout, which
+	// the first received packet can still change; until then frames go out
+	// as they came (nothing rewritten here is sent before the first receive).
+	if (eOpCode == k_eWebSocketOpCode_Binary && CNetPacket::layoutSettled())
 	{
 		CNetPacket packet{};
 		packet.setBody(reinterpret_cast<CNetPacketBody*>(Steam::Plat_Alloc(cubData)));
