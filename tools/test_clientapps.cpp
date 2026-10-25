@@ -46,7 +46,6 @@ VFTableInfo_t::VFTableInfo_t(const char* type, const char* function, unsigned in
 namespace VFTIndexes::IClientApps
 {
 VFTableInfo_t GetAppData{"14IClientAppsMap", "GetAppData", 0};
-VFTableInfo_t GetAppDataSection{"14IClientAppsMap", "GetAppDataSection", 5};
 VFTableInfo_t RequestAppInfoUpdate{"14IClientAppsMap", "RequestAppInfoUpdate", 7};
 VFTableInfo_t GetAppType{"14IClientAppsMap", "GetAppType", 10};
 }

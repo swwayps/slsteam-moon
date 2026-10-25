@@ -189,11 +189,6 @@ namespace VFTIndexes
 			"14IClientAppsMap",
 			"GetAppData"
 		};
-		VFTableInfo_t GetAppDataSection
-		{
-			"14IClientAppsMap",
-			"GetAppDataSection"
-		};
 		VFTableInfo_t GetAppType
 		{
 			"14IClientAppsMap",

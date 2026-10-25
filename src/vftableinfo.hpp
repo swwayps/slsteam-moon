@@ -73,7 +73,6 @@ namespace VFTIndexes
 	namespace IClientApps
 	{
 		extern VFTableInfo_t GetAppData;
-		extern VFTableInfo_t GetAppDataSection;
 		extern VFTableInfo_t GetAppType;
 		extern VFTableInfo_t GetDLCCount;
 		extern VFTableInfo_t GetDLCDataByIndex;

@@ -707,7 +707,6 @@ bool Patterns::init()
 	SteamUI::AppControllerRunFrame.optional = true;
 	SteamUI::GetAppByID.optional = true;
 	SteamUI::MarkAppChange.optional = true;
-	SteamUI::BuildCompleteAppOverviewChange.optional = true;
 	SteamUI::OwnershipFlagsReference.optional = true;
 
 	loadActiveCatalogs();
@@ -814,16 +813,6 @@ namespace Patterns
 			SigFollowMode::None,
 			&g_modSteamUI,
 			"Patterns::SteamUI::MarkAppChange"
-		};
-		// Direct cdecl entry: (controller, change, optional_callback).  The
-		// detour only publishes an atomic reassert request after the original.
-		Pattern_t BuildCompleteAppOverviewChange
-		{
-			"BuildCompleteAppOverviewChange",
-			"55 89 E5 57 56 53 E8 ? ? ? ? 81 C3 ? ? ? ? 81 EC 8C 00 00 00 8B 7D 08 89 5D A4 E8 ? ? ? ? 84 C0",
-			SigFollowMode::None,
-			&g_modSteamUI,
-			"Patterns::SteamUI::BuildCompleteAppOverviewChange"
 		};
 		// FillInAppOverview reads CSteamApp::OwnershipFlags through `mov
 		// eax,[ecx+disp8]` immediately before serializing eAppOwnershipFlags.

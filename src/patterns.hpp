@@ -58,7 +58,6 @@ namespace Patterns
 		extern Pattern_t AppControllerRunFrame;
 		extern Pattern_t GetAppByID;
 		extern Pattern_t MarkAppChange;
-		extern Pattern_t BuildCompleteAppOverviewChange;
 		extern Pattern_t OwnershipFlagsReference;
 	}
 
