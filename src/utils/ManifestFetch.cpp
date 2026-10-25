@@ -68,32 +68,6 @@ void setOfflineStatus(bool offline)
 	}
 }
 
-struct OfflineCleaner
-{
-	OfflineCleaner()
-	{
-		const char* home = std::getenv("HOME");
-		if (home)
-		{
-			std::string path = std::string(home) + "/.config/SLSsteam/offline";
-			std::remove(path.c_str());
-			std::string dir = std::string(home) + "/.config/SLSsteam";
-			if (std::filesystem::exists(dir))
-			{
-				std::error_code ec;
-				for (auto& entry : std::filesystem::directory_iterator(dir, ec))
-				{
-					if (entry.is_regular_file() && entry.path().filename().string().rfind("offline_", 0) == 0)
-					{
-						std::filesystem::remove(entry.path(), ec);
-					}
-				}
-			}
-		}
-	}
-};
-static OfflineCleaner g_offlineCleaner;
-
 std::mutex g_circuitLock;
 ProviderCircuit g_providerCircuit(
 	/*failureThreshold=*/2, /*cooldownMs=*/30000);
@@ -784,6 +758,25 @@ bool awaitManifestBlobFor(uint64_t manifestGid, uint32_t appId,
 	return result;
 }
 
+
+void clearOfflineFlags()
+{
+	const char* home = std::getenv("HOME");
+	if (!home) return;
+	const std::filesystem::path dir = std::filesystem::path(home) / ".config/SLSsteam";
+	std::error_code ec;
+	std::filesystem::remove(dir / "offline", ec);
+	for (std::filesystem::directory_iterator it(dir, ec), end; !ec && it != end;
+	     it.increment(ec))
+	{
+		std::error_code entryEc;
+		if (it->path().filename().string().starts_with("offline_")
+		    && it->is_regular_file(entryEc))
+		{
+			std::filesystem::remove(it->path(), entryEc);
+		}
+	}
+}
 
 void resetSessionState()
 {

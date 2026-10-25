@@ -18,6 +18,7 @@
 #include "runtime_attestation.hpp"
 #include "runtime_dependencies.hpp"
 #include "utils.hpp"
+#include "utils/ManifestFetch.hpp"
 #include "utils/process_lock.hpp"
 
 #include "feats/achievements.hpp"
@@ -680,6 +681,7 @@ static void load()
 	// g_pLog is alive.
 	{
 		BootProf::Span importProfile(g_pLog.get(), "lua_imports");
+		ManifestFetch::clearOfflineFlags();
 		DepotKey::onStartup();
 		Achievements::loadOwners();
 	}

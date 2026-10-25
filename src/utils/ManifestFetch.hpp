@@ -309,4 +309,8 @@ namespace ManifestFetch
 	void resetSessionState();
 
 	bool areProvidersOffline();
+
+	// Remove the offline flags of the previous session. Called from load(), so
+	// only the client that runs the session clears them.
+	void clearOfflineFlags();
 }
