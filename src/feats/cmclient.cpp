@@ -652,7 +652,7 @@ bool pumpUntil(TlsSocket& sock, Session& session,
 				if (err) return false;
 				break;
 			}
-			if (opcode == 0x8) return false;          // close
+			if (opcode == 0x8) return predicate();    // close: done if answered
 			if (opcode == 0x9 || opcode == 0xA) continue; // ping/pong: ignore
 			if (opcode == 0x2 &&
 			    !handlePacket(payload, session, out, changes, gotLogon, picsDone))

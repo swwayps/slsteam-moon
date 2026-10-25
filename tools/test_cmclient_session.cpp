@@ -427,6 +427,16 @@ int main()
 		      "an unreadable answer is fetched again from the next CM");
 	}
 	{
+		// The CM closes the socket right after its final answer.
+		ScriptedCms cms;
+		cms.endpoints["cm-a.test"].closeAfterFinal = true;
+		cms.endpoints["cm-b.test"];
+		const Fetch f = fetch(cms, {1, 2, 10});
+		CHECK(f.result == FetchResult::Success && f.buffers.size() == 2 &&
+		          cms.endpoints["cm-b.test"].requests.empty(),
+		      "a close after the final answer still completes the request");
+	}
+	{
 		ScriptedCms cms;
 		cms.endpoints["cm-a.test"];
 		cms.endpoints["cm-b.test"];
