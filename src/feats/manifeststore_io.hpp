@@ -69,16 +69,21 @@ namespace ManifestStoreIO
 		    + std::to_string(counter.fetch_add(1, std::memory_order_relaxed));
 	}
 
+	// Payload magic first and the end marker last, the rule downloads pass
+	// (ManifestFetch::looksLikeArchivedManifest): a partly written file fails.
 	inline bool isValidManifest(const fs::path& path)
 	{
 		std::error_code ec;
 		if (!fs::is_regular_file(path, ec) || ec) return false;
-		if (fs::file_size(path, ec) < sizeof(uint32_t) || ec) return false;
+		if (fs::file_size(path, ec) < 16 || ec) return false;
 
 		std::ifstream in(path, std::ios::binary);
 		uint32_t magic = 0;
+		uint32_t end = 0;
 		if (!in.read(reinterpret_cast<char*>(&magic), sizeof(magic))) return false;
-		return magic == 0x71F617D0u;
+		if (!in.seekg(-static_cast<std::streamoff>(sizeof(end)), std::ios::end)) return false;
+		if (!in.read(reinterpret_cast<char*>(&end), sizeof(end))) return false;
+		return magic == 0x71F617D0u && end == 0x32C415ABu;
 	}
 
 	inline ArchivedGidIndex newestValidManifestGids(const fs::path& storeDir)

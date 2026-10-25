@@ -23,13 +23,17 @@ static int g_failures = 0;
 		else         { std::printf("ok:   %s\n", msg); }                     \
 	} while (0)
 
+// A Steam manifest starts with the payload magic and ends with 0x32C415AB;
+// withEnd=false writes one cut off before its end.
 static void writeManifest(const fs::path& path, uint32_t magic,
-                          const std::string& payload)
+                          const std::string& payload, bool withEnd = true)
 {
 	fs::create_directories(path.parent_path());
 	std::ofstream out(path, std::ios::binary | std::ios::trunc);
 	out.write(reinterpret_cast<const char*>(&magic), sizeof(magic));
 	out.write(payload.data(), static_cast<std::streamsize>(payload.size()));
+	const uint32_t end = 0x32C415ABu;
+	if (withEnd) out.write(reinterpret_cast<const char*>(&end), sizeof(end));
 }
 
 static std::string readAll(const fs::path& path)
@@ -102,6 +106,17 @@ int main()
 	      "invalid manifest is rejected");
 	CHECK(!fs::exists(badStored) && !fs::exists(badStaged),
 	      "invalid manifest leaves no store or depotcache copy");
+
+	// A partially written manifest has the right magic but no end marker.
+	const fs::path cutSource = root / "cut.manifest";
+	writeManifest(cutSource, 0x71F617D0u, "payload-cut-short", false);
+	CHECK(!ManifestStoreIO::isValidManifest(cutSource),
+	      "a manifest without its end marker is not valid");
+	CHECK(!ManifestStoreIO::publish(cutSource, store / "3_4.manifest",
+	                                depotcache / "3_4.manifest") &&
+	          !fs::exists(store / "3_4.manifest") &&
+	          !fs::exists(depotcache / "3_4.manifest"),
+	      "a manifest without its end marker is not published");
 
 	// The preferred marker records observation order explicitly. Gids remain
 	// opaque and are never compared numerically.
