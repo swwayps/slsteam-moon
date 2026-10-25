@@ -448,6 +448,25 @@ pattern_elapsed_ms=$(( ($(date +%s%N) - pattern_started) / 1000000 ))
 unset SLSM_TEST_PATTERN_CACHE SLSM_TEST_PATTERN_DELAY PATTERN_ORDER_LOG
 rm -f "$PATTERN_HELPER"
 
+# The Lumen sidecar starts even when another process only names its path in
+# its arguments (here `tail -f` on a file next to it).
+reset_state
+LUMEN_TEST_DIR="$HOME_DIR/.local/share/Lumen"
+LUMEN_MARK="$HOME_DIR/lumen-started"
+mkdir -p "$LUMEN_TEST_DIR"
+printf '#!/bin/sh\ntouch "%s"\n' "$LUMEN_MARK" > "$LUMEN_TEST_DIR/lumen"
+chmod +x "$LUMEN_TEST_DIR/lumen"
+: > "$LUMEN_TEST_DIR/lumen.log"
+tail -f "$LUMEN_TEST_DIR/lumen.log" >/dev/null 2>&1 &
+lumen_decoy=$!
+run_wrapper
+for _ in 1 2 3 4 5 6 7 8 9 10; do [ -e "$LUMEN_MARK" ] && break; sleep 0.2; done
+kill "$lumen_decoy" 2>/dev/null; wait "$lumen_decoy" 2>/dev/null
+[ -e "$LUMEN_MARK" ] \
+  && ok "a process naming the sidecar path does not stop the sidecar" \
+  || bad "the sidecar was skipped because another process names its path"
+rm -rf "$LUMEN_TEST_DIR" "$LUMEN_MARK"
+
 if [ "${SLSM_KEEP_TEST_TMP:-0}" = 1 ]; then
 	echo "test artifacts kept at $HOME_DIR"
 else

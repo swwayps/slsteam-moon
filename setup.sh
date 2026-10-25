@@ -848,9 +848,12 @@ fi
 # endpoint is enabled, then launch the Lumen sidecar DETACHED and WITHOUT the
 # loader env (it must use its own static libs, not Steam's 32-bit runtime).
 # Lumen injects the LuaTools frontend via CDP and hosts the backend in-process.
-# Single-instance guarded so a second wrapper invocation doesn't stack sidecars.
+# Single-instance guarded so a second wrapper invocation doesn't stack sidecars
+# (Lumen releases before its own lock need this). The sidecar runs without
+# arguments, so only that exact command line counts as running.
 LUMEN_DIR="$HOME/.local/share/Lumen"
-if [ -x "$LUMEN_DIR/lumen" ] && ! pgrep -f "$LUMEN_DIR/lumen" >/dev/null 2>&1; then
+if [ -x "$LUMEN_DIR/lumen" ] && \
+   ! pgrep -u "$(id -u)" -xf "$LUMEN_DIR/lumen" >/dev/null 2>&1; then
 	touch "$HOME/.steam/steam/.cef-enable-remote-debugging" 2>/dev/null || true
 	touch "$HOME/.steam/debian-installation/.cef-enable-remote-debugging" 2>/dev/null || true
 	env -u LD_AUDIT -u LD_PRELOAD -u LD_LIBRARY_PATH \
