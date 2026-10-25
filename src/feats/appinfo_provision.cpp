@@ -1251,15 +1251,12 @@ bool injectProtonMappings()
 	int added = 0;
 	for (uint32_t appId : g_needProton)
 	{
-		const std::string key = "\"" + std::to_string(appId) + "\"";
-		// Already mapped (by us or the user)?  Search only within the
-		// mapping block to avoid matching the same id elsewhere.
-		// Cheap: search from mapBrace forward; CompatToolMapping is
-		// near the end of the file in practice.
-		if (content.find(key, mapBrace) != std::string::npos)
+		// An existing entry (the user's or ours) wins.
+		if (CompatTool::hasAppMapping(content, appId))
 		{
 			continue;
 		}
+		const std::string key = "\"" + std::to_string(appId) + "\"";
 		const std::string entry =
 			"\n\t\t\t\t\t\t" + key + "\n\t\t\t\t\t\t{\n"
 			"\t\t\t\t\t\t\t\"name\"\t\t\"" + toolName + "\"\n"

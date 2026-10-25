@@ -79,6 +79,21 @@ int main()
 	CHECK_EQ(CompatTool::parseDefaultTool("\"CompatToolMapping\"\n{\n\t\"0\"\n\t{"), "",
 	         "unbalanced object -> empty (no crash)");
 
+	// An app counts as mapped only through a key directly inside the block.
+	// The same id later in config.vdf (here a depots entry) or as a value
+	// must not suppress the Proton mapping.
+	const std::string laterDepot =
+		"\"Steam\"\n{\n"
+		"\t\"CompatToolMapping\"\n\t{\n"
+		"\t\t\"7\"\n\t\t{\n\t\t\t\"name\"\t\t\"x\"\n\t\t\t\"priority\"\t\t\"42\"\n\t\t}\n"
+		"\t}\n"
+		"\t\"depots\"\n\t{\n\t\t\"42\"\n\t\t{\n\t\t\t\"CDN\"\t\t\"1\"\n\t\t}\n\t}\n}\n";
+	CHECK_EQ(CompatTool::hasAppMapping(laterDepot, 42) ? "mapped" : "absent", "absent",
+	         "an id outside the block or used as a value is not a mapping");
+	CHECK_EQ(CompatTool::hasAppMapping(laterDepot, 7) ? "mapped" : "absent", "mapped",
+	         "a key inside the block is a mapping");
+	CHECK_EQ(CompatTool::hasAppMapping("\"Steam\"\n{\n}\n", 7) ? "mapped" : "absent", "absent",
+	         "no mapping block -> not mapped");
 	if (g_failures == 0)
 		std::printf("OK: %d checks passed\n", g_checks);
 	else

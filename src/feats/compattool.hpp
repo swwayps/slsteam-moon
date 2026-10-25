@@ -25,6 +25,7 @@
 // appinfo_provision.cpp.
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 
 namespace CompatTool
@@ -60,33 +61,43 @@ namespace CompatTool
 		return s.substr(q1 + 1, q2 - q1 - 1);
 	}
 
+	// Position of the '{' opening the entry keyed `key` (quoted, e.g. "\"0\"")
+	// inside the CompatToolMapping block, or npos. A key is followed by its
+	// object brace, so the same digits used as a value do not match.
+	inline std::size_t findMappingEntry(const std::string& content, const std::string& key)
+	{
+		const std::size_t mapPos = content.find("\"CompatToolMapping\"");
+		if (mapPos == std::string::npos) return std::string::npos;
+		const std::size_t mapBrace = content.find('{', mapPos);
+		if (mapBrace == std::string::npos) return std::string::npos;
+		const std::size_t mapEnd = matchBrace(content, mapBrace);
+		if (mapEnd == std::string::npos) return std::string::npos;
+
+		std::size_t k = mapBrace;
+		while ((k = content.find(key, k)) != std::string::npos && k < mapEnd)
+		{
+			const std::size_t b = content.find_first_not_of(" \t\r\n", k + key.size());
+			if (b != std::string::npos && b < mapEnd && content[b] == '{')
+				return b;
+			k += key.size();
+		}
+		return std::string::npos;
+	}
+
+	inline bool hasAppMapping(const std::string& content, std::uint32_t appId)
+	{
+		return findMappingEntry(content, "\"" + std::to_string(appId) + "\"")
+			!= std::string::npos;
+	}
+
 	// Return the user's default compatibility-tool name from a config.vdf
 	// body, or "" if Steam Play has no default tool set (or the file shape is
 	// unexpected).  Robust against partial/malformed input.
 	inline std::string parseDefaultTool(const std::string& content)
 	{
-		const std::size_t mapPos = content.find("\"CompatToolMapping\"");
-		if (mapPos == std::string::npos) return {};
-		const std::size_t mapBrace = content.find('{', mapPos);
-		if (mapBrace == std::string::npos) return {};
-		const std::size_t mapEnd = matchBrace(content, mapBrace);
-		if (mapEnd == std::string::npos) return {};
-
-		// Locate the standalone "0" key (the global default) within the block.
-		static const std::string zeroKey = "\"0\"";
-		std::size_t k = mapBrace;
-		while ((k = content.find(zeroKey, k)) != std::string::npos && k < mapEnd)
-		{
-			// Must be a key: the next non-whitespace char is its object '{'.
-			std::size_t b = content.find_first_not_of(" \t\r\n", k + zeroKey.size());
-			if (b != std::string::npos && b < mapEnd && content[b] == '{')
-			{
-				std::size_t objEnd = matchBrace(content, b);
-				if (objEnd == std::string::npos) objEnd = mapEnd;
-				return readName(content, b, objEnd);
-			}
-			k += zeroKey.size();
-		}
-		return {};
+		// The global default is the standalone "0" key.
+		const std::size_t b = findMappingEntry(content, "\"0\"");
+		if (b == std::string::npos) return {};
+		return readName(content, b, matchBrace(content, b));
 	}
 }
