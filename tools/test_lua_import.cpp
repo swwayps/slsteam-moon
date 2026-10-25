@@ -9,7 +9,10 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <csignal>
+#include <iterator>
 #include <string>
+#include <sys/resource.h>
 #include <unistd.h>
 #include <vector>
 namespace
@@ -67,6 +70,47 @@ int main()
 	try { DepotKey::reloadLuaScripts(); }
 	catch (...) { unreadableThrew = true; }
 	check(!unreadableThrew, "an unreadable script folder does not throw out of the importer");
+
+	// A key write that fails (here: the file size limit) is reported and
+	// leaves the previous key file as it was.
+	const auto readAll = [](const std::string& path)
+	{
+		std::ifstream in(path, std::ios::binary);
+		return std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+	};
+	check(DepotKey::saveKeyToCache(7, 701, std::string(32, 'A'), true), "a key is saved");
+	const std::string keyFile = DepotKey::getKeyPath(701);
+	const std::string saved = readAll(keyFile);
+	signal(SIGXFSZ, SIG_IGN);
+	rlimit previous{};
+	getrlimit(RLIMIT_FSIZE, &previous);
+	rlimit tiny = previous;
+	tiny.rlim_cur = 16;
+	setrlimit(RLIMIT_FSIZE, &tiny);
+	const bool savedOverLimit = DepotKey::saveKeyToCache(7, 701, std::string(32, 'B'), true);
+	setrlimit(RLIMIT_FSIZE, &previous);
+	check(!savedOverLimit, "a failed key write is reported");
+	check(!saved.empty() && readAll(keyFile) == saved,
+	      "a failed key write leaves the saved key file intact");
+
+	// Manifests a script folder ships are copied into depotcache only whole.
+	const auto writeManifest = [](const std::string& path, bool withEnd)
+	{
+		std::ofstream out(path, std::ios::binary);
+		const uint32_t magic = 0x71F617D0u, end = 0x32C415ABu;
+		out.write(reinterpret_cast<const char*>(&magic), sizeof(magic));
+		out << "manifest-payload";
+		if (withEnd) out.write(reinterpret_cast<const char*>(&end), sizeof(end));
+	};
+	std::filesystem::create_directories(steam + "/config/depotcache");
+	writeManifest(steam + "/config/depotcache/1_2.manifest", true);
+	writeManifest(steam + "/config/depotcache/3_4.manifest", false);
+	DepotKey::provisionManifests();
+	check(readAll(steam + "/depotcache/1_2.manifest") ==
+	          readAll(steam + "/config/depotcache/1_2.manifest"),
+	      "a complete shipped manifest is copied into depotcache");
+	check(!std::filesystem::exists(steam + "/depotcache/3_4.manifest"),
+	      "a cut-off shipped manifest is not copied into depotcache");
 
 	std::filesystem::remove_all(root);
 	if (failures != 0)

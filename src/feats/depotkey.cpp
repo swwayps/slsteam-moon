@@ -5,6 +5,7 @@
 #include "depotkey_import.hpp"
 #include "depotkey_index.hpp"
 #include "appinfo_provision.hpp"
+#include "manifeststore_io.hpp"
 #include "stats_policy.hpp"
 
 #include "../config.hpp"
@@ -23,6 +24,7 @@
 #include "yaml-cpp/yaml.h"
 
 #include <charconv>
+#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -32,6 +34,7 @@
 #include <regex>
 #include <set>
 #include <sstream>
+#include <unistd.h>
 #include <vector>
 
 namespace DepotKey
@@ -218,14 +221,20 @@ bool saveKeyToCache(uint32_t appId, uint32_t depotId, const std::string& key, bo
 	node << YAML::Value << finalManaged;
 	node << YAML::EndMap;
 
-	std::ofstream ofs(path.c_str(), std::ios::out | std::ios::trunc);
-	if (!ofs.is_open())
+	// Replace the file whole, so a failed write never leaves a torn key over
+	// the saved one. No fsync: a lost key is imported or observed again.
+	const std::string temp = path + ".tmp." + std::to_string(getpid());
 	{
-		g_pLog->debug("DepotKey: cannot write %s\n", path.c_str());
-		return false;
+		std::ofstream ofs(temp, std::ios::out | std::ios::trunc | std::ios::binary);
+		ofs.write(node.c_str(), node.size());
+		ofs.close();
+		if (!ofs || std::rename(temp.c_str(), path.c_str()) != 0)
+		{
+			std::remove(temp.c_str());
+			g_pLog->debug("DepotKey: cannot write %s\n", path.c_str());
+			return false;
+		}
 	}
-	ofs.write(node.c_str(), node.size());
-	if (!ofs.good()) return false;
 
 	g_pLog->infoOnce("DepotKey: cached key for app=%u depot=%u\n", finalAppId, depotId);
 
@@ -426,12 +435,11 @@ void provisionManifests()
 			auto dstSize = std::filesystem::file_size(target, ec);
 			needsCopy = (!ec && srcSize != dstSize);
 		}
-		if (needsCopy)
+		// Only a complete manifest, and never a partly written copy of one.
+		if (needsCopy && ManifestStoreIO::isValidManifest(path)
+		    && ManifestStoreIO::atomicCopy(path, target))
 		{
-			std::filesystem::copy_file(
-				path, target,
-				std::filesystem::copy_options::overwrite_existing, ec);
-			if (!ec) ++copied;
+			++copied;
 		}
 	}
 	if (copied > 0)
