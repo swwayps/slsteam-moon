@@ -35,14 +35,17 @@ void quietWindowCoalescesOneBurst()
 	});
 
 	const auto start = std::chrono::steady_clock::now();
+	std::size_t seen = 0;
 	const auto drained = FileWatcherBurst::drainAdditionalReadable(
-		pipeFds[0], /*quietWindowMs=*/40, /*maxWindowMs=*/500);
+		pipeFds[0], [&](const char*, std::size_t bytes) { seen += bytes; },
+		/*quietWindowMs=*/40, /*maxWindowMs=*/500);
 	const auto elapsed = std::chrono::steady_clock::now() - start;
 	writer.join();
 	close(pipeFds[0]);
 	close(pipeFds[1]);
 
 	CHECK(drained == 5, "all writes in one burst are drained together");
+	CHECK(seen == drained, "every drained batch is handed to the caller");
 	CHECK(elapsed >= 90ms, "quiet window restarts after each arriving write");
 }
 
@@ -65,7 +68,8 @@ void maximumWindowBoundsContinuousTraffic()
 
 	const auto start = std::chrono::steady_clock::now();
 	const auto drained = FileWatcherBurst::drainAdditionalReadable(
-		pipeFds[0], /*quietWindowMs=*/50, /*maxWindowMs=*/100);
+		pipeFds[0], [](const char*, std::size_t) {},
+		/*quietWindowMs=*/50, /*maxWindowMs=*/100);
 	const auto elapsed = std::chrono::steady_clock::now() - start;
 	writer.join();
 	close(pipeFds[0]);

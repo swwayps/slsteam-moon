@@ -356,12 +356,12 @@ bool CConfig::init()
 	if(created)
 	{
 		watcher = new CFileWatcher(onFileChange);
-		watcher->addFile(getPath().c_str());
+		// The folder, not the files: a luaappids.yaml created after boot is
+		// then seen too. Other files there (caches, state) do not reload.
+		watcher->addFile(getDir().c_str(), {"config.yaml", "luaappids.yaml"});
 
-		// Also watch the new-version AdditionalApps sources so adding a game
-		// (a .lua dropped into stplug-in, or an entry appended to
-		// luaappids.yaml) hot-reloads without a Steam restart.
-		watcher->addFile(getLuaAppIdsPath().c_str());
+		// Also watch stplug-in, so adding a game (a .lua dropped in)
+		// hot-reloads without a Steam restart.
 		const auto steamRoot = findSteamRootForConfig();
 		if (!steamRoot.empty())
 		{

@@ -14,9 +14,11 @@ namespace FileWatcherBurst
 // additional batch that arrives inside one quiet window, but return
 // periodically under continuous traffic so configuration updates cannot be
 // postponed forever. This turns a bulk directory copy into one logical reload
-// instead of one reload per 4 KiB inotify read.
+// instead of one reload per 4 KiB inotify read. Each batch read is passed to
+// onBatch(data, size) before the next read.
+template <typename OnBatch>
 inline std::size_t drainAdditionalReadable(
-	int fd, int quietWindowMs = 250, int maxWindowMs = 5000) noexcept
+	int fd, OnBatch&& onBatch, int quietWindowMs = 250, int maxWindowMs = 5000) noexcept
 {
 	if (fd < 0 || quietWindowMs <= 0 || maxWindowMs <= 0) return 0;
 
@@ -49,6 +51,7 @@ inline std::size_t drainAdditionalReadable(
 			bytes = read(fd, buffer, sizeof(buffer));
 		} while (bytes < 0 && errno == EINTR);
 		if (bytes <= 0) return total;
+		onBatch(static_cast<const char*>(buffer), static_cast<std::size_t>(bytes));
 		total += static_cast<std::size_t>(bytes);
 	}
 }

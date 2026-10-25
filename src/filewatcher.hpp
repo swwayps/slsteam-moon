@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <pthread.h>
 #include <string>
 #include <unordered_map>
@@ -13,18 +14,28 @@ class CFileWatcher
 	pthread_t watchThread;
 
 public:
+	struct Watch
+	{
+		std::string path;
+		// For a directory: the entry names whose events count. Empty: all.
+		std::vector<std::string> names;
+	};
+
 	int notifyFd;
-	std::unordered_map<int, std::string> fileFdMap;
-	// Owned copies of every watched path, so the watch can be re-armed after an
-	// atomic-rename replace swaps the file's inode (see rearm()).
-	std::vector<std::string> watchedPaths;
+	// Watch id -> index in watchedPaths.
+	std::unordered_map<int, std::size_t> fileFdMap;
+	// Every watched path, so the watch can be re-armed after an atomic-rename
+	// replace swaps the file's inode (see rearm()).
+	std::vector<Watch> watchedPaths;
 
 	FileModifyEvent_t onModify;
 
 	CFileWatcher(const FileModifyEvent_t onModify);
 	~CFileWatcher();
 
-	bool addFile(const char* path);
+	bool addFile(const char* path, std::vector<std::string> names = {});
+	// Whether a batch of inotify events holds one that should reload.
+	bool wants(const char* events, std::size_t size) const;
 	void rearm();
 	bool start();
 	void stop();

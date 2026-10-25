@@ -62,7 +62,7 @@ endif
 .PHONY: test-manifestdonor test-manifestdonor-runtime test-manifestfetch
 .PHONY: test-reconcilepin-scan
 .PHONY: test-depotkey-recv-policy
-.PHONY: test-private-apps test-config-settings test-config-tolerance test-config-create test-plugin-config test-curl-child test-legacy-cdkey test-utils-number test-launch-options
+.PHONY: test-private-apps test-config-settings test-config-tolerance test-config-watch test-config-create test-plugin-config test-curl-child test-legacy-cdkey test-utils-number test-launch-options
 
 test-manifestdonor:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror \
@@ -730,6 +730,17 @@ test-config-tolerance: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
 		lib/libyaml-cpp.a lib/libprotobuf.a -lcrypto -lpthread -ldl \
 		-o /tmp/test_config_tolerance
 	/tmp/test_config_tolerance
+test-config-watch: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
+		obj/api.o obj/feats/depotkey.o \
+		obj/feats/librarydates.o obj/ownerwork.o \
+		obj/sdk/protobufs/steammessages_clientserver_appinfo.pb.o \
+		obj/sdk/protobufs/steammessages_base.pb.o
+	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
+		-I include -isysteminclude tools/test_config_watch.cpp \
+		$(filter obj/%.o,$^) \
+		lib/libyaml-cpp.a lib/libprotobuf.a -lcrypto -lpthread -ldl \
+		-o /tmp/test_config_watch
+	/tmp/test_config_watch
 
 test-steamstub-launch: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
 		obj/api.o obj/feats/depotkey.o \

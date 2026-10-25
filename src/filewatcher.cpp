@@ -5,6 +5,7 @@
 #include "log.hpp"
 #include "ownerwork.hpp"
 
+#include <algorithm>
 #include <atomic>
 #include <cstdlib>
 #include <mutex>
@@ -12,15 +13,15 @@
 #include <sys/inotify.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <utility>
 
 namespace
 {
-	// inotify mask per path.  Files are watched for content writes (config
-	// rewrites arrive via atomic rename, re-armed after each event).
-	// Directories (e.g. <Steam>/config/stplug-in) must instead watch for
-	// entries being created/removed/moved, since IN_MODIFY on a directory
-	// does NOT fire when a .lua is dropped in or deleted — that is how games
-	// are added/removed in the new-version layout.
+	// inotify mask per path.  Files are watched for content writes.
+	// Directories (stplug-in, the config folder) must instead watch for
+	// entries being created/removed/moved/closed after writing, since
+	// IN_MODIFY on a directory does NOT fire when a file is dropped in,
+	// renamed over or deleted.
 	uint32_t maskForPath(const char* path)
 	{
 		struct stat st{};
@@ -91,16 +92,19 @@ void* watchLoop(void* args)
 		// Read a full batch.  Directory events carry a trailing name of
 		// variable length, so a fixed sizeof(inotify_event) read would leave
 		// the name bytes in the kernel buffer and mis-align the next read.
-		// We don't parse individual events (onModify reloads everything), we
-		// just need to drain the batch and fire one reload.
+		// One reload covers the whole batch when any event in it counts.
 		alignas(inotify_event) char buf[4096];
 		ssize_t size = read(watcher->notifyFd, buf, sizeof(buf));
 		if (size <= 0)
 		{
 			continue;
 		}
-		size += static_cast<ssize_t>(
-			FileWatcherBurst::drainAdditionalReadable(watcher->notifyFd));
+		bool wanted = watcher->wants(buf, static_cast<std::size_t>(size));
+		size += static_cast<ssize_t>(FileWatcherBurst::drainAdditionalReadable(
+			watcher->notifyFd, [&](const char* batch, std::size_t bytes)
+			{
+				wanted = wanted || watcher->wants(batch, bytes);
+			}));
 
 		// A shutdown request can arrive while poll()/read() were blocked; don't
 		// start a reload (which logs and touches g_config) if we're tearing
@@ -130,7 +134,10 @@ void* watchLoop(void* args)
 		// earlier.
 		watcher->rearm();
 
-		watcher->onModify();
+		if (wanted)
+		{
+			watcher->onModify();
+		}
 	}
 
 	return nullptr;
@@ -159,7 +166,7 @@ CFileWatcher::~CFileWatcher()
 	}
 }
 
-bool CFileWatcher::addFile(const char* path)
+bool CFileWatcher::addFile(const char* path, std::vector<std::string> names)
 {
 	int fd = inotify_add_watch(notifyFd, path, maskForPath(path));
 	if (fd == -1)
@@ -167,8 +174,8 @@ bool CFileWatcher::addFile(const char* path)
 		return false;
 	}
 
-	watchedPaths.emplace_back(path);
-	fileFdMap[fd] = path;
+	watchedPaths.push_back({path, std::move(names)});
+	fileFdMap[fd] = watchedPaths.size() - 1;
 	g_pLog->debug("Added %s to FileWatcher %i\n", path, notifyFd);
 	return true;
 }
@@ -179,14 +186,38 @@ bool CFileWatcher::addFile(const char* path)
 // refreshes a live watch and recovers one the kernel dropped via IN_IGNORED.
 void CFileWatcher::rearm()
 {
-	for (const auto& path : watchedPaths)
+	for (std::size_t i = 0; i < watchedPaths.size(); ++i)
 	{
-		int fd = inotify_add_watch(notifyFd, path.c_str(), maskForPath(path.c_str()));
+		const char* path = watchedPaths[i].path.c_str();
+		int fd = inotify_add_watch(notifyFd, path, maskForPath(path));
 		if (fd != -1)
 		{
-			fileFdMap[fd] = path;
+			fileFdMap[fd] = i;
 		}
 	}
+}
+
+bool CFileWatcher::wants(const char* events, std::size_t size) const
+{
+	std::size_t offset = 0;
+	while (offset + sizeof(inotify_event) <= size)
+	{
+		const auto* event = reinterpret_cast<const inotify_event*>(events + offset);
+		offset += sizeof(inotify_event) + event->len;
+		const auto it = fileFdMap.find(event->wd);
+		// A queue overflow, an unknown id or an event on the watched path
+		// itself always counts.
+		if (it == fileFdMap.end() || event->len == 0)
+		{
+			return true;
+		}
+		const auto& names = watchedPaths[it->second].names;
+		if (names.empty() || std::find(names.begin(), names.end(), event->name) != names.end())
+		{
+			return true;
+		}
+	}
+	return false;
 }
 
 bool CFileWatcher::start()
