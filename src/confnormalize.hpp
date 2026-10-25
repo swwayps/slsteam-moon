@@ -9,14 +9,13 @@
 // catch and abort Steam at startup (boot loop); at best the entire config is
 // discarded and every managed game reads as unmanaged.
 //
-// repairSeqIndent() normalises the indentation of block-sequence items so the
-// document parses again. It is intentionally a pure, dependency-free text
-// transform (no yaml-cpp, no globals) so it is trivially testable, and it is
-// meant to run ONLY after yaml-cpp has already rejected the file. The caller
-// re-parses the result and keeps it only if it now parses, so this can never
-// make a well-formed file worse. On a file that is already consistent it
-// returns the input BYTE-IDENTICAL (changed=false), so it never triggers a
-// spurious rewrite / FileWatcher thrash.
+// repairSeqIndent() normalises the indentation of flat block-sequence items so
+// the document parses again. It is a pure text transform (no yaml-cpp, no
+// globals). ConfLoad::parseWithRepair runs it BEFORE parsing and persists a
+// changed result that parses, so a run whose items open a nested block (valid
+// YAML) is left alone. On a file that is already consistent it returns the
+// input BYTE-IDENTICAL (changed=false), so it never triggers a spurious
+// rewrite / FileWatcher thrash.
 
 #include <string>
 #include <vector>
@@ -50,6 +49,28 @@ namespace ConfNormalize
 				return false;
 			indent = i;
 			return true;
+		}
+
+		// An item whose content continues on deeper lines (a bare "-", an
+		// inline nested "- -", a key ending in ':' or a block scalar). Its
+		// children are indented on purpose, so its run is not a writer slip.
+		inline bool opensBlock(const std::string& line, size_t indent)
+		{
+			std::string rest = line.substr(indent + 1);
+			const size_t comment = rest.find(" #");
+			if (comment != std::string::npos) rest.resize(comment);
+			const size_t begin = rest.find_first_not_of(" \t");
+			if (begin == std::string::npos) return true;
+			const size_t end = rest.find_last_not_of(" \t");
+			rest = rest.substr(begin, end - begin + 1);
+			if (rest[0] == '-' && (rest.size() == 1 || rest[1] == ' ' || rest[1] == '\t'))
+				return true;
+			const size_t lastToken = rest.find_last_of(" \t");
+			const std::string tail =
+				lastToken == std::string::npos ? rest : rest.substr(lastToken + 1);
+			return rest.back() == ':'
+				|| ((tail[0] == '|' || tail[0] == '>')
+				    && tail.find_first_not_of("|>+-0123456789") == std::string::npos);
 		}
 
 		inline std::string stripLeadingSpaces(const std::string& line)
@@ -124,6 +145,18 @@ namespace ConfNormalize
 				{
 					break;
 				}
+			}
+
+			bool nested = false;
+			for (size_t m = i; m <= lastItem && !nested; m++)
+			{
+				size_t ind = 0;
+				nested = detail::isSeqItem(lines[m], ind) && detail::opensBlock(lines[m], ind);
+			}
+			if (nested)
+			{
+				i = lastItem + 1;
+				continue;
 			}
 
 			// Force every seq item in [i, lastItem] to the first item's indent.

@@ -15,10 +15,8 @@
 //   * anything that still cannot be parsed reports Outcome::Failed with an
 //     empty node, so the caller falls back to built-in defaults and boots.
 //
-// It NEVER throws (every YAML::Load is wrapped), so it does not depend on the
-// release build's exception landing pads -- which, per config.hpp, can be
-// bypassed under -O3 -flto and abort the client. For the common corruption the
-// normalised text is parsed FIRST, so the throwing path is not even exercised.
+// It never throws (every YAML::Load is wrapped). The normalised text is parsed
+// first, so only flat lists with mixed indentation are rewritten.
 
 #include "confnormalize.hpp"
 #include "yaml-cpp/yaml.h"

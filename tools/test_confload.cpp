@@ -93,6 +93,29 @@ int main() {
           "silent-fold config -> 3 clean ids (not the folded 2)");
   }
 
+  // 6) Valid nested lists are not the writer slip: an item that opens a block
+  //    keeps its children's deeper indent and the file is not rewritten.
+  {
+    YAML::Node node;
+    std::string repaired;
+    auto outcome = ConfLoad::parseWithRepair(
+        "X:\n  - ids:\n      - 1\n      - 2\n  - other\n", node, repaired);
+    check(outcome == Outcome::ParsedAsIs &&
+          node["X"].size() == 2 && node["X"][0]["ids"].size() == 2 &&
+          node["X"][1].as<std::string>("") == "other",
+          "a mapping item with a nested list is kept as written");
+    outcome = ConfLoad::parseWithRepair(
+        "X:\n  - - a\n    - b\n  -\n    - c\n  - d\n", node, repaired);
+    check(outcome == Outcome::ParsedAsIs &&
+          node["X"].size() == 3 && node["X"][0].size() == 2 &&
+          node["X"][1].size() == 1 && node["X"][2].as<std::string>("") == "d",
+          "inline and bare nested sequences are kept as written");
+    outcome = ConfLoad::parseWithRepair(
+        "X:\n  - note: |-  # text\n      - not an item\n  - y\n", node, repaired);
+    check(outcome == Outcome::ParsedAsIs &&
+          node["X"][0]["note"].as<std::string>("") == "- not an item",
+          "a block scalar whose text starts with a dash is kept as written");
+  }
   // 5) Empty file parses as-is (a null document; defaults kick in downstream).
   {
     YAML::Node node;
