@@ -47,7 +47,7 @@ namespace HotReload
 		const std::lock_guard lock(g_mutex);
 		g_published.push_back(managed);
 	}
-	bool publishPreparedBase(std::uint32_t, std::uint64_t) noexcept { return true; }
+	bool publishPreparedBase(std::uint32_t, std::uint64_t, bool*) noexcept { return true; }
 }
 // Steam-side work the watcher's idle tick can reach; nothing is queued here.
 namespace PackagePatch

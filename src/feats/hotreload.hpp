@@ -23,10 +23,12 @@ namespace HotReload
 		bool forceSourceRefresh = false) noexcept;
 
 	// Publish a base into package ownership only after its local appinfo has
-	// completed the live splice/reload boundary.
+	// completed the live splice/reload boundary. With `busy`, a held lock is
+	// not waited for: `*busy` is set and nothing is published.
 	bool publishPreparedBase(
 		std::uint32_t baseAppId,
-		std::uint64_t expectedManagedGeneration) noexcept;
+		std::uint64_t expectedManagedGeneration,
+		bool* busy = nullptr) noexcept;
 
 	// The async base refresh has made a newer metadata topology durable. Rebuild
 	// one generation even when managed membership and manifest fingerprints are

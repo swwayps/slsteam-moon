@@ -53,7 +53,7 @@ namespace PackagePatch
 std::string g_compatEvents;
 namespace HotReload
 {
-	bool publishPreparedBase(std::uint32_t, std::uint64_t) noexcept
+	bool publishPreparedBase(std::uint32_t, std::uint64_t, bool*) noexcept
 	{
 		g_compatEvents += 'p';
 		return true;

@@ -5,13 +5,18 @@
 #include "../src/feats/appinfo_provision.hpp"
 #include "../src/feats/hotreload.hpp"
 #include "../src/log.hpp"
+#include "../src/ownerwork.hpp"
+#include "../src/sdk/IClientCompat.hpp"
+#include "../src/vftableinfo.hpp"
 
 #include <atomic>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
+#include <fstream>
 #include <memory>
 #include <mutex>
+#include <sstream>
 #include <string>
 #include <thread>
 
@@ -53,6 +58,37 @@ int main()
 
 	HotReload::initialize();
 	HotReload::publish({42}, true);
+
+	// The owner IPC thread publishes a Proton title after its mapping. A pass
+	// holding its mutex must not stall that thread; the publication waits for
+	// a later owner frame instead.
+	OwnerWork::latchOwnerThread();
+	VFTIndexes::IClientCompat::GetCompatToolName.index = 0;
+	VFTIndexes::IClientCompat::SpecifyCompatTool.index = 1;
+	static void* compatVtable[] = {
+		reinterpret_cast<void*>(+[](void*, AppId_t) -> const char* { return "proton_experimental"; }),
+		reinterpret_cast<void*>(+[](void*, AppId_t, const char*, const char*, int32_t) {}),
+	};
+	static void** compatObject = compatVtable;
+	g_pClientCompat = reinterpret_cast<IClientCompat*>(&compatObject);
+	std::atomic<bool> passHeld{false};
+	std::thread pass([&] {
+		const std::lock_guard<std::mutex> lock(AppInfoProvision::provisioningPassMutex());
+		passHeld = true;
+		std::this_thread::sleep_for(std::chrono::seconds(2));
+	});
+	while (!passHeld) std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	const auto submitted = std::chrono::steady_clock::now();
+	OwnerWork::submitCompatReadiness(42, 0);
+	CHECK(std::chrono::steady_clock::now() - submitted < std::chrono::seconds(1),
+	      "the owner thread does not wait for a provisioning pass to publish");
+	pass.join();
+	OwnerWork::drainOnOwnerFrame();
+	std::stringstream log;
+	log << std::ifstream(logPath).rdbuf();
+	CHECK(log.str().find("prepared base=42 not published") != std::string::npos,
+	      "the publication runs on the next owner frame");
+	g_pClientCompat = nullptr;
 
 	// A provisioning pass is running.
 	AppInfoProvision::provisioningPassMutex().lock();

@@ -129,10 +129,15 @@ namespace
 				//                for. This is the difference between the title
 				//                appearing in ~1-2s and it staying at "0 B"
 				//                until the next launch.
+				// Steam's dispatcher must not wait on a pass or publication, so
+				// a held lock sends the request to a later frame instead.
 				if (result.status != CompatLive::StepStatus::Unavailable)
 				{
+					bool busy = false;
 					(void)HotReload::publishPreparedBase(
-						cmd.appId(), cmd.managedGeneration());
+						cmd.appId(), cmd.managedGeneration(), &busy);
+					if (busy)
+						retryCompat(cmd, "hot reload stayed busy");
 					break;
 				}
 

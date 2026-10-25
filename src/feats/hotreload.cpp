@@ -343,7 +343,8 @@ void publish(
 
 bool publishPreparedBase(
 	std::uint32_t baseAppId,
-	std::uint64_t expectedManagedGeneration) noexcept
+	std::uint64_t expectedManagedGeneration,
+	bool* busy) noexcept
 {
 	try
 	{
@@ -364,9 +365,19 @@ bool publishPreparedBase(
 			return false;
 		};
 
+		const auto acquire = [busy](std::unique_lock<std::mutex>& lock)
+		{
+			if (busy == nullptr)
+				lock.lock();
+			else if (!lock.try_lock())
+				*busy = true;
+			return lock.owns_lock();
+		};
+
 		if (baseAppId == 0) return false;
 		CoordinatorState& state = coordinator();
-		std::lock_guard<std::mutex> coordinatorLock(state.mutex);
+		std::unique_lock<std::mutex> coordinatorLock(state.mutex, std::defer_lock);
+		if (!acquire(coordinatorLock)) return false;
 		if (!state.initialized) return reject("hot reload is not initialized yet");
 		if (state.managedAppIds.count(baseAppId) == 0)
 			return reject("the app is no longer managed");
@@ -375,8 +386,9 @@ bool publishPreparedBase(
 
 		// Lock order matches the other completion path. It rejects stale work if
 		// the app was removed/re-added while its cache was being prepared.
-		std::lock_guard<std::mutex> passLock(
-			AppInfoProvision::provisioningPassMutex());
+		std::unique_lock<std::mutex> passLock(
+			AppInfoProvision::provisioningPassMutex(), std::defer_lock);
+		if (!acquire(passLock)) return false;
 		const auto managed = g_config.managedAppIds.get();
 		if (managed != state.managedAppIds)
 			return reject("the managed set changed during preparation");
