@@ -4,11 +4,16 @@
 #include "../src/config.hpp"
 #include "../src/feats/steamstub.hpp"
 #include "../src/log.hpp"
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
+#include <dlfcn.h>
+#include <fcntl.h>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <string>
+#include <thread>
 #include <unistd.h>
 #include <vector>
 namespace
@@ -28,6 +33,21 @@ namespace
 namespace Apps
 {
 	void setConfiguredAppDlcIds(const std::vector<uint32_t>&) {}
+}
+// setenv() as seen by the linked SteamStub code: a call from a forked child
+// (not async-signal-safe there, it allocates) leaves a marker file.
+static pid_t g_parentPid = getpid();
+static char g_childSetenvMark[256] = "";
+extern "C" int setenv(const char* name, const char* value, int overwrite)
+{
+	if (getpid() != g_parentPid && g_childSetenvMark[0] != '\0')
+	{
+		const int fd = open(g_childSetenvMark, O_CREAT | O_WRONLY, 0600);
+		if (fd >= 0) close(fd);
+	}
+	using Real = int (*)(const char*, const char*, int);
+	static const Real real = reinterpret_cast<Real>(dlsym(RTLD_NEXT, "setenv"));
+	return real(name, value, overwrite);
 }
 int main()
 {
@@ -52,6 +72,28 @@ int main()
 	try { SteamStub::onLaunchApp(123); }
 	catch (...) { threw = true; }
 	check(!threw, "an unresolvable library folder does not throw out of the launch hook");
+
+	// The helper gets its environment from the parent; the forked child only
+	// execs (a setenv there can deadlock on a lock another thread held).
+	const std::string kit = root + "/kit";
+	const std::string helperOut = root + "/helper.out";
+	std::filesystem::create_directories(kit + "/tools/steamstub-bypass");
+	std::filesystem::create_directories(kit + "/tools/steamless-bin");
+	std::ofstream(kit + "/tools/steamless-bin/Steamless.CLI.exe") << "";
+	std::ofstream(kit + "/tools/steamstub-bypass/run-steamless.sh")
+		<< "printf '%s:%s:%s' \"$STEAMLESS_HOME\" \"$QUIET\" \"$1\" > " << helperOut << "\n";
+	std::snprintf(g_childSetenvMark, sizeof(g_childSetenvMark), "%s/child-setenv", root.c_str());
+	SteamStub::setup(kit.c_str());
+	SteamStub::warmupAsync();
+	for (int i = 0; i < 50 && !std::filesystem::exists(helperOut); ++i)
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	std::ifstream outFile(helperOut);
+	const std::string seen((std::istreambuf_iterator<char>(outFile)), std::istreambuf_iterator<char>());
+	check(seen == kit + "/tools/steamless-bin:1:--prewarm",
+	      "the helper sees STEAMLESS_HOME and QUIET (got \"" + seen + "\")");
+	check(!std::filesystem::exists(g_childSetenvMark),
+	      "the forked child does not call setenv");
 
 	std::filesystem::remove_all(root);
 	if (failures != 0)

@@ -25,6 +25,7 @@
 #include <mutex>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <sys/wait.h>
 #include <signal.h>
 #include <thread>
@@ -269,33 +270,53 @@ namespace
 		return HelperWait::Failed;
 	}
 
-	// Run `<script> <exePath>` synchronously with the STEAMLESS_HOME
-	// env var pointing at our bundled binaries.  Returns the helper's
-	// exit code, or -1 on spawn failure.
+	// Start `bash <script> <argument>` in its own process group, with
+	// STEAMLESS_HOME pointing at our bundled binaries. QUIET=1 keeps the
+	// SLSsteam log clean of Steamless's banner (errors still go to stderr).
+	// The environment is built here: after fork() in a threaded process the
+	// child may only make async-signal-safe calls, and setenv() allocates.
+	pid_t spawnHelper(const char* argument)
+	{
+		std::vector<std::string> environment;
+		for (char** entry = environ; entry != nullptr && *entry != nullptr; ++entry)
+		{
+			const std::string_view variable(*entry);
+			if (variable.starts_with("STEAMLESS_HOME=") || variable.starts_with("QUIET="))
+				continue;
+			environment.emplace_back(variable);
+		}
+		environment.push_back("STEAMLESS_HOME=" + g_steamlessHome);
+		environment.push_back("QUIET=1");
+		std::vector<char*> envp;
+		for (auto& variable : environment) envp.push_back(variable.data());
+		envp.push_back(nullptr);
+		std::string bash = "bash";
+		std::string script = g_helperScript;
+		std::string arg = argument;
+		char* const argv[] = {bash.data(), script.data(), arg.data(), nullptr};
+
+		const pid_t pid = fork();
+		if (pid == 0)
+		{
+			(void)setpgid(0, 0);
+			execve("/bin/bash", argv, envp.data());
+			_exit(127);
+		}
+		if (pid > 0) (void)setpgid(pid, pid);
+		return pid;
+	}
+
+	// Run `<script> <exePath>` synchronously. Returns the helper's exit
+	// code, or -1 on spawn failure.
 	int runHelper(const std::string& exePath)
 	{
-		const pid_t pid = fork();
+		const pid_t pid = spawnHelper(exePath.c_str());
 		if (pid < 0)
 		{
 			g_pLog->warn("SteamStub: fork() failed (errno=%d)\n", errno);
 			return -1;
 		}
-		if (pid == 0)
-		{
-			(void)setpgid(0, 0);
-			// Child.  Set STEAMLESS_HOME, exec the helper.
-			setenv("STEAMLESS_HOME", g_steamlessHome.c_str(), 1);
-			// QUIET=1 keeps the SLSsteam log clean of Steamless's
-			// banner; the helper still logs its own one-liner per
-			// step plus errors via stderr.
-			setenv("QUIET", "1", 1);
-			execlp("/bin/bash", "bash", g_helperScript.c_str(),
-			       exePath.c_str(), nullptr);
-			// If exec returns we are in a wedged state; bail loudly.
-			_exit(127);
-		}
 
-		(void)setpgid(pid, pid);
 		// Parent.  Wait synchronously — we want the unpacked exe in
 		// place before LaunchApp returns and Proton starts.
 		int status = 0;
@@ -329,22 +350,12 @@ namespace
 	// not the calling thread).  Same env, same waitpid, just no exe.
 	int runPrewarm()
 	{
-		const pid_t pid = fork();
+		const pid_t pid = spawnHelper("--prewarm");
 		if (pid < 0)
 		{
 			g_pLog->warn("SteamStub: prewarm fork() failed (errno=%d)\n", errno);
 			return -1;
 		}
-		if (pid == 0)
-		{
-			(void)setpgid(0, 0);
-			setenv("STEAMLESS_HOME", g_steamlessHome.c_str(), 1);
-			setenv("QUIET", "1", 1);
-			execlp("/bin/bash", "bash", g_helperScript.c_str(),
-			       "--prewarm", nullptr);
-			_exit(127);
-		}
-		(void)setpgid(pid, pid);
 		int status = 0;
 		switch (waitForHelper(pid, status, "Steamless prewarm"))
 		{
