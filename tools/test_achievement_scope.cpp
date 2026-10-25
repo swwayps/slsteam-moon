@@ -10,8 +10,10 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <fstream>
 #include <memory>
 #include <string>
+#include <unistd.h>
 #include <utility>
 
 namespace {
@@ -103,7 +105,7 @@ bool safeFailure(bool modern, const std::optional<std::vector<uint8_t>>& output)
 CConfig g_config;
 std::unique_ptr<CLog> g_pLog = std::make_unique<CLog>("");
 CConfig::~CConfig() = default;
-CLog::CLog(const char*) {}
+CLog::CLog(const char* path) { if (path && *path) ofstream.open(path); }
 CLog::~CLog() = default;
 LogLevel CLog::getMinLevel() { return LogLevel::Warn; }
 bool CConfig::isAddedAppId(uint32_t id) { return addedAppIds.contains(id); }
@@ -246,6 +248,32 @@ int main() {
 		const auto* before = other.body();
 		check(!Achievements::recvReply(&other) && other.body() == before,
 		      "an unrelated service reply packet is left untouched");
+	}
+	// Unanswered requests are kept up to a cap; reaching it is reported once
+	// instead of silently ending the rewrite for the session.
+	{
+		const std::string capLog = "/tmp/test_achievement_scope_cap." + std::to_string(getpid());
+		g_pLog = std::make_unique<CLog>(capLog.c_str());
+		// A game no earlier case touched, so its configured owner is asked.
+		constexpr uint32_t capGame = 54400;
+		license(0); injected = true; available = true; excluded = false;
+		g_config.addedAppIds.set({capGame});
+		const auto rewrite = [](uint64_t job) {
+			CMsgProtoBufHeader header;
+			header.set_steamid(self); header.set_jobid_source(job);
+			const auto bytes = PlayerStats::buildSpoofedRequest(self, capGame);
+			return Achievements::rewriteRequest(true, bytes.data(), bytes.size(), header);
+		};
+		bool capped = false;
+		for (int i = 0; i < 5000 && !capped; ++i) capped = rewrite(nextJob++).empty();
+		rewrite(nextJob++);
+		g_pLog.reset();
+		std::ifstream in(capLog);
+		int reports = 0;
+		for (std::string line; std::getline(in, line);)
+			if (line.find("unanswered") != std::string::npos) ++reports;
+		std::remove(capLog.c_str());
+		check(capped && reports == 1, "a full request table is reported once");
 	}
 	std::printf("%d failure(s)\n", failures);
 	return failures ? 1 : 0;

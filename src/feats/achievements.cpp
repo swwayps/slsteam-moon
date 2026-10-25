@@ -228,7 +228,17 @@ std::vector<uint8_t> Achievements::rewriteRequest(bool modern,
 			it->second.epoch = 0; // Ambiguous duplicate: any reply must fail safely.
 			return {};
 		}
-		if (pending.size() >= 4096 || out.size() > maxReplyBytes) return {};
+		if (pending.size() >= 4096)
+		{
+			// The table only drains on replies, so a full one stops the
+			// rewrite for this session. Say so once.
+			static std::atomic<bool> reported{false};
+			if (!reported.exchange(true))
+				g_pLog->warn("Achievements: 4096 schema requests are unanswered; "
+				             "owner schema rewrites stop until Steam restarts\n");
+			return {};
+		}
+		if (out.size() > maxReplyBytes) return {};
 		pending.emplace(header.jobid_source(),
 			Pending{app, account, epoch, modern, owner, choice.source});
 	}
