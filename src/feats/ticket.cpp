@@ -18,11 +18,30 @@
 #include "yaml-cpp/emittermanip.h"
 
 #include <exception>
+#include <cstdio>
 #include <filesystem>
 #include <fstream>
 #include <ios>
 #include <mutex>
 #include <sstream>
+#include <unistd.h>
+
+// Replace a ticket file whole, so a failed write never leaves a torn ticket
+// over the saved one. No fsync: this runs on the CM thread, and a lost ticket
+// is requested again.
+static bool writeTicketFile(const std::string& path, const YAML::Emitter& node)
+{
+	const std::string temp = path + ".tmp." + std::to_string(getpid());
+	std::ofstream ofs(temp, std::ios::out | std::ios::trunc | std::ios::binary);
+	ofs.write(node.c_str(), node.size());
+	ofs.close();
+	if (!ofs || std::rename(temp.c_str(), path.c_str()) != 0)
+	{
+		std::remove(temp.c_str());
+		return false;
+	}
+	return true;
+}
 
 std::unordered_map<AppId_t, CSteamId> Ticket::oneTimeSteamIdSpoof = std::unordered_map<AppId_t, CSteamId>();
 std::unordered_map<AppId_t, Ticket::SavedTicket> Ticket::ticketMap = std::unordered_map<AppId_t, SavedTicket>();
@@ -113,10 +132,7 @@ bool Ticket::saveTicketToCache(CMsgClientGetAppOwnershipTicketResponse* resp)
 	node << YAML::EndMap;
 
 	const auto path = Ticket::getTicketPath(appId);
-	std::ofstream ofs(path.c_str(), std::ios::out | std::ios::trunc);
-	if (!ofs.is_open()) return false;
-	ofs.write(node.c_str(), node.size());
-	if (!ofs.good()) return false;
+	if (!writeTicketFile(path, node)) return false;
 
 	g_pLog->infoOnce("Saved ticket for %u\n", appId);
 
@@ -294,10 +310,7 @@ bool Ticket::saveEncryptedTicketToCache(CMsgClientRequestEncryptedAppTicketRespo
 	node << YAML::EndMap;
 
 	const auto path = getEncryptedTicketPath(appId);
-	std::ofstream ofs(path.c_str(), std::ios::out | std::ios::trunc);
-	if (!ofs.is_open()) return false;
-	ofs.write(node.c_str(), node.size());
-	if (!ofs.good()) return false;
+	if (!writeTicketFile(path, node)) return false;
 
 	g_pLog->infoOnce("Saved encrypted ticket for %u\n", appId);
 
