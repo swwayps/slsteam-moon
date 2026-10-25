@@ -494,12 +494,7 @@ bool CConfig::loadSettings()
 	}
 
 	__loadErrors = std::string("");
-	// Configuration-authored DLC scope is a replace-only snapshot. Revoke the
-	// previous one before parsing so a removed or malformed block cannot retain
-	// stale local entitlements during a hot reload.
-	dlcData = dlcData.empty();
-	Apps::setConfiguredAppDlcIds({});
-	
+
 	disableFamilyLock = getSetting<bool>(node, "DisableFamilyShareLock", true);
 	disableParentalRestrictions = getSetting<bool>(node, "DisableParentalRestrictions", false);
 	useWhiteList = getSetting<bool>(node, "UseWhitelist", false);
@@ -763,6 +758,9 @@ bool CConfig::loadSettings()
 	{
 		//g_pLog->notify("Missing DlcData entry in config!");
 		setError(ELoadError::MissingKey, "DlcData");
+		// The configured scope is replace-only: a removed block revokes it.
+		dlcData = dlcData.empty();
+		Apps::setConfiguredAppDlcIds({});
 	}
 
 	const auto denuvoGamesNode = node["DenuvoGames"];

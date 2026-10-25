@@ -38,10 +38,14 @@ namespace
 }
 
 // loadSettings publishes configured DLC ids to the apps feature, which this
-// test does not link.
+// test does not link; the publications are recorded instead.
+std::vector<std::vector<uint32_t>> g_dlcPublications;
 namespace Apps
 {
-	void setConfiguredAppDlcIds(const std::vector<uint32_t>&) {}
+	void setConfiguredAppDlcIds(const std::vector<uint32_t>& ids)
+	{
+		g_dlcPublications.push_back(ids);
+	}
 }
 
 int main()
@@ -146,6 +150,24 @@ int main()
 		<< "AchievementOwnerId: 76561198000000001\n";
 	check(g_config.loadSettings() && g_config.achievementOwnerId.get() == 76561198000000001ULL,
 	      "an explicit AchievementOwnerId applies");
+
+	// A reload replaces the configured DLC scope in one publication, so game
+	// pipes never see it emptied while the rest of the config is read.
+	std::ofstream(configHome + "/SLSsteam/luaappids.yaml", std::ios::trunc)
+		<< "AdditionalApps:\n  - 42\n";
+	std::ofstream(configHome + "/SLSsteam/config.yaml", std::ios::trunc)
+		<< "DlcData:\n  42:\n    4201: \"Test DLC\"\n";
+	g_dlcPublications.clear();
+	check(g_config.loadSettings() && g_config.loadSettings(), "a config with DlcData reloads");
+	check(g_dlcPublications == std::vector<std::vector<uint32_t>>{{4201}, {4201}},
+	      "each reload publishes the configured DLC once, with no empty scope first");
+	std::ofstream(configHome + "/SLSsteam/config.yaml", std::ios::trunc)
+		<< "AchievementOwnerId: 0\n";
+	g_dlcPublications.clear();
+	check(g_config.loadSettings() &&
+	          g_dlcPublications == std::vector<std::vector<uint32_t>>{{}} &&
+	          g_config.dlcData.get().empty(),
+	      "removing DlcData revokes the configured DLC");
 
 	std::filesystem::remove_all(root);
 	if (failures != 0)
