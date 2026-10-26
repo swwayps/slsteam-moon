@@ -672,9 +672,13 @@ int synthesizeDepotsFromStore(YAML::Node& body, uint32_t appId)
 	// Accumulate file lists per OS across all of the app's depots so we can
 	// synthesize one launch entry per platform (native + forced-Proton).
 	std::vector<std::string> winFiles, linFiles, macFiles;
+	// One walk of the store for every depot, instead of one per depot.
+	std::optional<ManifestStore::ArchivedGidIndex> archived;
 	for (uint32_t depotId : DepotKey::managedDepotsForApp(appId))
 	{
-		const uint64_t gid = ManifestStore::bestArchivedGid(depotId, /*excludeGid=*/0);
+		if (!archived) archived = ManifestStore::archivedGidIndex();
+		const auto found = archived->find(depotId);
+		const uint64_t gid = found == archived->end() ? 0 : found->second;
 		if (gid == 0) continue; // no archived manifest -> can't plan it
 
 		// Read the archived manifest, derive the depot's OS from its parsed
