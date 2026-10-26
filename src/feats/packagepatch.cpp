@@ -962,9 +962,8 @@ namespace PackagePatch
 			g_loadPackageHookSize = 0;
 		}
 		g_pOrigLoadPackage = nullptr;
-		g_pCUtlMemoryGrow  = nullptr;
-		g_pMarkLicenseAsChanged = nullptr;
-		g_pProcessPendingLicenseUpdates = nullptr;
+		// The grow and mark/process pointers stay set: a refresh already past
+		// its checks still calls them, and steamclient.so stays mapped.
 		g_pPackage0.store(nullptr, std::memory_order_release);
 		g_licenseReconciled.store(false, std::memory_order_release);
 		g_package0Injected.store(false, std::memory_order_release);
