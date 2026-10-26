@@ -1,5 +1,7 @@
 #pragma once
 
+#include "pattern_catalog.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -44,13 +46,7 @@ namespace PatternCache
 		const Locator* entry(std::string_view symbol) const noexcept;
 	};
 
-	struct CompiledLocator
-	{
-		std::string_view symbol;
-		bool required = true;
-		std::string_view signature;
-		std::string_view followMode;
-	};
+	using CompiledLocator = PatternCatalog::CompiledLocator;
 
 	bool identityMatches(
 		const ModuleIdentity& cached,

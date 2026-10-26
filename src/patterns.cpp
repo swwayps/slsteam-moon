@@ -406,23 +406,6 @@ namespace
 		return result;
 	}
 
-	std::vector<PatternCache::CompiledLocator> compiledLocalPolicy(bool steamUi)
-	{
-		std::vector<PatternCache::CompiledLocator> result;
-		for (const Pattern_t* pattern : Patterns::patterns())
-		{
-			if ((pattern->module == &g_modSteamUI) != steamUi)
-				continue;
-			result.push_back({
-				pattern->symbol,
-				!pattern->optional,
-				pattern->pattern,
-				followModeName(pattern->followMode),
-			});
-		}
-		return result;
-	}
-
 	void loadActiveCatalogs()
 	{
 		g_steamClientLocal = loadLocalCatalog(
@@ -433,9 +416,8 @@ namespace
 		g_steamUiCatalog.reset();
 
 		const auto clientPolicy = compiledPolicy(false);
-		const auto localClientPolicy = compiledLocalPolicy(false);
 		if (g_steamClientLocal.catalog
-		    && !PatternCache::policyMatches(g_steamClientLocal.catalog.value(), localClientPolicy))
+		    && !PatternCache::policyMatches(g_steamClientLocal.catalog.value(), clientPolicy))
 		{
 			g_pLog->warn("Local pattern cache for steamclient changed compiled locator policy; ignoring it\n");
 			g_steamClientLocal.catalog.reset();
@@ -443,9 +425,8 @@ namespace
 			g_steamClientLocal.dirty = true;
 		}
 		const auto uiPolicy = compiledPolicy(true);
-		const auto localUiPolicy = compiledLocalPolicy(true);
 		if (g_steamUiLocal.catalog
-		    && !PatternCache::policyMatches(g_steamUiLocal.catalog.value(), localUiPolicy))
+		    && !PatternCache::policyMatches(g_steamUiLocal.catalog.value(), uiPolicy))
 		{
 			g_pLog->warn("Local pattern cache for steamui changed compiled locator policy; ignoring it\n");
 			g_steamUiLocal.catalog.reset();
