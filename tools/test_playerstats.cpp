@@ -105,6 +105,14 @@ int main()
 		auto appid = parseRequestAppId(bad, sizeof(bad));
 		CHECK(!appid.has_value(), "truncated input -> no appid, no crash");
 	}
+	{
+		// Field 2^32+2 is out of range, not field 2 cut to 32 bits.
+		std::vector<uint8_t> body;
+		putVarint(body, ((1ULL << 32) + 2) << 3);
+		putVarint(body, 7);
+		CHECK(!parseRequestAppId(body.data(), body.size()).has_value(),
+		      "an out-of-range field number is not read as the appid");
+	}
 
 	if (g_failures == 0) { std::printf("\nALL PASS\n"); return 0; }
 	std::printf("\n%d CHECK(S) FAILED\n", g_failures);
