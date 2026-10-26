@@ -233,38 +233,6 @@ const PatternCatalog::Locator* PatternCatalog::Catalog::entry(
 	return found == locators_.end() ? nullptr : &*found;
 }
 
-std::optional<std::uintptr_t> PatternCatalog::Catalog::target(
-	std::string_view symbol
-) const noexcept
-{
-	const Locator* found = entry(symbol);
-	if (found == nullptr)
-		return std::nullopt;
-	return static_cast<std::uintptr_t>(found->targetRva);
-}
-
-std::optional<std::uintptr_t> PatternCatalog::Catalog::executableTarget(
-	std::string_view symbol,
-	bool required,
-	std::uint64_t moduleSize,
-	std::span<const ExecutableRange> ranges
-) const noexcept
-{
-	const Locator* found = entry(symbol);
-	if (found == nullptr || found->required != required
-	    || found->targetRva >= moduleSize)
-		return std::nullopt;
-	const std::uintptr_t rva = found->targetRva;
-	const auto executable = std::find_if(ranges.begin(), ranges.end(), [&](const ExecutableRange& range)
-	{
-		return range.begin < range.end && range.end <= moduleSize
-		    && rva >= range.begin && rva < range.end;
-	});
-	return executable == ranges.end()
-		? std::nullopt
-		: std::optional<std::uintptr_t>(rva);
-}
-
 bool PatternCatalog::Catalog::validatePolicy(
 	std::span<const CompiledLocator> compiled
 ) const noexcept

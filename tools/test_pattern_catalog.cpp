@@ -143,9 +143,9 @@ int main()
 	{
 		expect(parsed->component() == "steamclient", "component is retained");
 		expect(parsed->revision() == 1, "revision is retained");
-		auto target = parsed->target("Patterns::Root");
-		expect(target.has_value() && *target == 4660, "symbol maps to exact RVA");
-		expect(!parsed->target("Patterns::Missing").has_value(),
+		const auto* root = parsed->entry("Patterns::Root");
+		expect(root != nullptr && root->targetRva == 4660, "symbol maps to exact RVA");
+		expect(parsed->entry("Patterns::Missing") == nullptr,
 		       "unknown symbol has no target");
 
 		const PatternCatalog::CompiledLocator allowed[] =
@@ -192,22 +192,6 @@ int main()
 		};
 		expect(!parsed->validatePolicy(requiredAbsent),
 		       "an absent required locator rejects the catalog");
-		const PatternCatalog::ExecutableRange executable[] =
-		{
-			{4096, 5000},
-		};
-		expect(parsed->executableTarget("Patterns::Root", true, 8192, executable) == 4660,
-		       "compiled locator may use an RVA in an executable range");
-		expect(!parsed->executableTarget("Patterns::Root", false, 8192, executable),
-		       "runtime lookup cannot change optionality");
-		const PatternCatalog::ExecutableRange nonExecutable[] =
-		{
-			{0, 4096},
-		};
-		expect(!parsed->executableTarget("Patterns::Root", true, 8192, nonExecutable),
-		       "RVA outside executable segments is ignored");
-		expect(!parsed->executableTarget("Patterns::Root", true, 4096, executable),
-		       "RVA outside the current module is ignored");
 	}
 
 	{
@@ -237,7 +221,8 @@ int main()
 			       !client->entry(
 				"Patterns::CAppInfoCache::ThreadedReadFromDisk")->required,
 			       "optional live disk reload remains optional");
-			expect(client->target("Patterns::CAppInfoCache::SkipFlagReference") == 5100,
+			expect(client->entry("Patterns::CAppInfoCache::SkipFlagReference") != nullptr &&
+			       client->entry("Patterns::CAppInfoCache::SkipFlagReference")->targetRva == 5100,
 			       "instruction-site lookup keeps its exact RVA");
 		}
 	}

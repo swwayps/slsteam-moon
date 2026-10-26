@@ -341,34 +341,6 @@ bool PatternCache::policyMatches(
 	return true;
 }
 
-bool PatternCache::validate(
-	const Catalog& catalog,
-	const ModuleIdentity& current,
-	std::span<const CompiledLocator> compiled,
-	std::span<const std::uint8_t> moduleBytes
-) noexcept
-{
-	if (!identityMatches(catalog.identity, current)
-	    || moduleBytes.size() != current.size
-	    || !policyMatches(catalog, compiled))
-		return false;
-
-	for (const auto& locator : catalog.locators)
-	{
-		const auto signatureBytes = signatureSize(locator.signature);
-		if (!signatureBytes || locator.matchRva > moduleBytes.size()
-		    || *signatureBytes > moduleBytes.size() - locator.matchRva
-		    || !signatureMatches(
-				locator.signature,
-				moduleBytes.subspan(
-					static_cast<std::size_t>(locator.matchRva), *signatureBytes
-				)
-			))
-			return false;
-	}
-	return true;
-}
-
 std::string PatternCache::serialize(const Catalog& catalog)
 {
 	if (!validCatalogShape(catalog))

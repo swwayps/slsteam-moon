@@ -163,8 +163,8 @@ int main()
 		"8B 45 ?", std::span<const std::uint8_t>(bytes.data() + 100, 2)),
 		"truncated signature bytes reject the cache");
 
-	expect(PatternCache::validate(catalog, expected, policy, bytes),
-	       "all cache locators validate against the fixture");
+	expect(PatternCache::policyMatches(catalog, policy),
+	       "the compiled policy accepts the fixture cache");
 	if (const auto first = catalog.entry("Patterns::First"); first != nullptr)
 	{
 		const auto cold = MemHlp::scanPatternRange(
@@ -225,18 +225,12 @@ int main()
 		       "compiled follow-mode mismatch rejects the local cache policy");
 	}
 	{
-		auto mutated = bytes;
-		mutated[101] = 0x46;
-		expect(!PatternCache::validate(catalog, expected, policy, mutated),
-		       "one signature mismatch rejects the complete cache hit");
-	}
-	{
 		const PatternCache::CompiledLocator incomplete[] =
 		{
 			{"Patterns::First", true, "55 89 E5", "None"},
 		};
-		expect(!PatternCache::validate(catalog, expected, incomplete, bytes),
-		       "compiled policy mismatch rejects the cache");
+		expect(!PatternCache::policyMatches(catalog, incomplete),
+		       "a cached locator the build no longer compiles rejects the cache");
 	}
 	{
 		auto incompleteCatalog = catalog;
@@ -279,8 +273,7 @@ int main()
 			{"Patterns::CAppInfoCache::SkipFlagReference", false,
 			 "8B 45 ?", "None"},
 		};
-		expect(PatternCache::validate(
-			clientHotReload, expected, clientPolicy, bytes),
+		expect(PatternCache::policyMatches(clientHotReload, clientPolicy),
 			"exact local client cache accepts function and instruction locators");
 		expect(clientHotReload.entry(
 			"Patterns::CAppInfoCache::GetOrAddAppData") != nullptr &&
@@ -309,9 +302,10 @@ int main()
 			{"Patterns::SteamUI::AppControllerRunFrame", false,
 			 "55 57 56 53 E8 ? ? ? ?", "None"},
 		};
-		expect(PatternCache::validate(steamUi, uiIdentity, uiPolicy, bytes),
+		expect(PatternCache::identityMatches(steamUi.identity, uiIdentity) &&
+		       PatternCache::policyMatches(steamUi, uiPolicy),
 		       "exact local SteamUI cache is independently valid");
-		expect(!PatternCache::validate(steamUi, expected, uiPolicy, bytes),
+		expect(!PatternCache::identityMatches(steamUi.identity, expected),
 		       "SteamUI cache cannot be reused for steamclient");
 	}
 

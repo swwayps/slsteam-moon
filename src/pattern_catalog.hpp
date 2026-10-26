@@ -45,11 +45,6 @@ namespace PatternCatalog
 		std::string_view followMode;
 	};
 
-	struct ExecutableRange
-	{
-		std::uintptr_t begin;
-		std::uintptr_t end;
-	};
 
 	class Catalog
 	{
@@ -62,13 +57,6 @@ namespace PatternCatalog
 		std::span<const Locator> locators() const noexcept { return locators_; }
 
 		const Locator* entry(std::string_view symbol) const noexcept;
-		std::optional<std::uintptr_t> target(std::string_view symbol) const noexcept;
-		std::optional<std::uintptr_t> executableTarget(
-			std::string_view symbol,
-			bool required,
-			std::uint64_t moduleSize,
-			std::span<const ExecutableRange> ranges
-		) const noexcept;
 		bool validatePolicy(std::span<const CompiledLocator> compiled) const noexcept;
 
 	private:

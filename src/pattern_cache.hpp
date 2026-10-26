@@ -69,18 +69,12 @@ namespace PatternCache
 		std::uint64_t derivedTargetRva
 	) noexcept;
 
-	// Validate the complete local hit as one transaction.  A single locator
-	// mismatch rejects the catalog so callers can run the embedded resolver and
-	// publish a new catalog after a successful cold scan.
+	// The local hit is accepted as one transaction: a single locator that
+	// disagrees with the compiled policy rejects the catalog, so callers run the
+	// embedded resolver and publish a new catalog after a successful cold scan.
 	bool policyMatches(
 		const Catalog& catalog,
 		std::span<const CompiledLocator> compiled
-	) noexcept;
-	bool validate(
-		const Catalog& catalog,
-		const ModuleIdentity& current,
-		std::span<const CompiledLocator> compiled,
-		std::span<const std::uint8_t> moduleBytes
 	) noexcept;
 
 	std::string serialize(const Catalog& catalog);
