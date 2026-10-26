@@ -19,6 +19,7 @@
 #include <memory>
 #include <new>
 #include <string>
+#include <string_view>
 #include <thread>
 
 // Live heap allocations, to see what a code path keeps.
@@ -39,6 +40,15 @@ void operator delete(void* p) noexcept
 	std::free(p);
 }
 void operator delete(void* p, std::size_t) noexcept { operator delete(p); }
+
+// Linked with -Wl,--wrap=dlsym: a process where libcrypto's SHA1 cannot be
+// found, which must not make every digest match.
+extern "C" void* __real_dlsym(void* handle, const char* symbol);
+extern "C" void* __wrap_dlsym(void* handle, const char* symbol)
+{
+	if (symbol != nullptr && std::string_view(symbol) == "SHA1") return nullptr;
+	return __real_dlsym(handle, symbol);
+}
 
 static int g_failures = 0;
 #define CHECK(cond, msg)                                               \
@@ -109,6 +119,19 @@ int main()
 	replaceFile(buffer, wireWithGid("1234567891"));
 	CHECK(!AppInfoProvision::readValidatedCacheBuffer(kApp, read),
 	      "a pair replaced after its validation is validated again");
+
+	// A digest of 20 zero bytes matches no buffer.
+	{
+		const std::string other = wireWithGid("1234567892");
+		std::string zeroDigest = metadataFor(other);
+		const auto at = zeroDigest.find("sha_b64: ");
+		zeroDigest.replace(at, zeroDigest.find('\n', at) - at,
+		                   "sha_b64: " + base64::to_base64(std::string(20, '\0')));
+		replaceFile(buffer, other);
+		replaceFile(metadata, zeroDigest);
+		CHECK(!AppInfoProvision::readValidatedCacheBuffer(kApp, read),
+		      "a zero digest is rejected even when libcrypto's SHA1 is missing");
+	}
 
 	const std::string empty = wireWithGid("0");
 	replaceFile(buffer, empty);

@@ -8,6 +8,7 @@
 #include "../config.hpp"
 #include "../globals.hpp"
 #include "../log.hpp"
+#include "../sha1.hpp"
 #include "../utils/atomic_file.hpp"
 #include "../utils/process_lock.hpp"
 
@@ -26,8 +27,6 @@
 #include <filesystem>
 #include <fstream>
 #include <ios>
-#include <openssl/sha.h>
-#include <dlfcn.h>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -559,28 +558,6 @@ bool validateGeneratedVdf(const std::vector<uint8_t>& data,
 }
 
 // ---------------------------------------------------------------------------
-// Compute SHA-1 (binary_hash field)
-// ---------------------------------------------------------------------------
-
-void sha1(const void* data, size_t n, uint8_t out[20])
-{
-	static unsigned char* (*p_SHA1)(const unsigned char *d, size_t n, unsigned char *md) = nullptr;
-	if (!p_SHA1)
-	{
-		void* handle = dlopen("libcrypto.so.1.1", RTLD_NOLOAD | RTLD_LAZY);
-		if (!handle) handle = dlopen("libcrypto.so.1.0.0", RTLD_NOLOAD | RTLD_LAZY);
-		if (!handle) handle = dlopen("libcrypto.so.3", RTLD_NOLOAD | RTLD_LAZY);
-		if (!handle) handle = RTLD_DEFAULT;
-		p_SHA1 = (unsigned char*(*)(const unsigned char*, size_t, unsigned char*))dlsym(handle, "SHA1");
-	}
-	
-	if (p_SHA1)
-		p_SHA1(static_cast<const uint8_t*>(data), n, out);
-	else
-		memset(out, 0, 20);
-}
-
-// ---------------------------------------------------------------------------
 // Serialise the parsed AppInfoFile back to disk
 // ---------------------------------------------------------------------------
 
@@ -724,7 +701,7 @@ bool mergeAppImpl(AppInfoFile& f,
 	ne.pics_token    = 0;
 	std::memcpy(ne.sha, sha.data(), 20);
 	ne.change_number = changeNumber;
-	sha1(indexed.data(), indexed.size(), ne.binary_hash);
+	Sha1::digest(indexed.data(), indexed.size(), ne.binary_hash);
 	ne.binary_vdf    = std::move(indexed);
 
 	// Replace existing entry by appid, or append.
@@ -814,7 +791,7 @@ bool loadCachedBuffer(const std::string& metaPath, uint32_t expectedAppId,
 		}
 
 		uint8_t digest[20]{};
-		sha1(out.buffer.data(), out.buffer.size(), digest);
+		Sha1::digest(out.buffer.data(), out.buffer.size(), digest);
 		const bool shaMatches = out.sha.size() == sizeof(digest) &&
 		    std::memcmp(out.sha.data(), digest, sizeof(digest)) == 0;
 		const AppInfoProvision::cache::CacheRecordFacts facts{

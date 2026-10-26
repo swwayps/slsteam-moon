@@ -279,7 +279,8 @@ test-hook-placement: $(objs) $(libs)
 test-cache-validation: $(objs) $(libs)
 	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
 		-I include -isysteminclude tools/test_cache_validation.cpp \
-		$(objs) $(libs) -lpthread -ldl -o /tmp/test_cache_validation
+		$(objs) $(libs) -Wl,--wrap=dlsym -lpthread -ldl \
+		-o /tmp/test_cache_validation
 	/tmp/test_cache_validation
 test-send-frame: $(objs) $(libs)
 	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
