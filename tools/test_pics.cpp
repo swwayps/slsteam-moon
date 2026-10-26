@@ -91,6 +91,37 @@ int main()
 		      "response scope: normalized cold app is excluded from async requests");
 	}
 
+	// Product-info answers are scanned for added apps before any parse.
+	{
+		const auto appEntry = [](std::uint32_t id)
+		{
+			std::vector<std::uint8_t> info;
+			ProtoWire::putVarintField(info, 1, id); // appid
+			info.insert(info.end(), {0x2A, 3, 'a', 'b', 'c'}); // buffer
+			std::vector<std::uint8_t> field{0x0A, static_cast<std::uint8_t>(info.size())};
+			field.insert(field.end(), info.begin(), info.end());
+			return field;
+		};
+		std::vector<std::uint8_t> answer;
+		for (const std::uint32_t id : {10u, 20u})
+		{
+			const auto entry = appEntry(id);
+			answer.insert(answer.end(), entry.begin(), entry.end());
+		}
+		ProtoWire::putVarintField(answer, 2, 30); // unknown_appids
+		const auto none = [](std::uint32_t) { return false; };
+		CHECK(PICS::namesAddedApp(answer, [](std::uint32_t id) { return id == 20; }),
+		      "answer scan: an added app is found");
+		CHECK(!PICS::namesAddedApp(answer, none),
+		      "answer scan: an answer for other games is skipped");
+		CHECK(!PICS::namesAddedApp(answer, [](std::uint32_t id) { return id == 30; }),
+		      "answer scan: unknown app ids are not answered apps");
+		auto cut = answer;
+		cut.pop_back();
+		CHECK(PICS::namesAddedApp(cut, none),
+		      "answer scan: an answer that does not walk gets the full parse");
+	}
+
 	if (g_failures == 0) { std::printf("\nALL PASS\n"); return 0; }
 	std::printf("\n%d CHECK(S) FAILED\n", g_failures);
 	return 1;

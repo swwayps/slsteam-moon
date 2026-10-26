@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <cstring>
 #include <limits>
+#include <span>
 
 
 //Helper class to make calculations more legible
@@ -239,13 +240,13 @@ public:
 		serialize(message, nullptr);
 	}
 
-	template<typename T>
-	T deserializeBody() const
+	// The serialized message after the header; empty when the packet's sizes
+	// do not hold one.
+	std::span<const uint8_t> messageBytes() const
 	{
-		T message;
 		if (!isValid())
 		{
-			return message;
+			return {};
 		}
 
 		CNetPacketBody* b = body();
@@ -254,7 +255,7 @@ public:
 		const std::size_t available = bytes - headerOffset;
 		if (b->headerSize > available)
 		{
-			return message;
+			return {};
 		}
 
 		const std::size_t messageOffset = headerOffset + b->headerSize;
@@ -262,11 +263,21 @@ public:
 		if (messageSize > static_cast<std::size_t>(
 				std::numeric_limits<int>::max()))
 		{
-			return message;
+			return {};
 		}
 
-		message.ParseFromArray(reinterpret_cast<uint8_t*>(b) + messageOffset,
-			static_cast<int>(messageSize));
+		return {reinterpret_cast<const uint8_t*>(b) + messageOffset, messageSize};
+	}
+
+	template<typename T>
+	T deserializeBody() const
+	{
+		T message;
+		const auto bytes = messageBytes();
+		if (!bytes.empty())
+		{
+			message.ParseFromArray(bytes.data(), static_cast<int>(bytes.size()));
+		}
 		return message;
 	}
 

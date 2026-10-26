@@ -1,6 +1,7 @@
 // Steam's CM receive hook hands every packet to CmRecv::dispatchNetPacket, so
 // nothing a message handler throws may unwind into Steam.
 // Build: make test-cmrecv-exceptions (links the whole object set).
+#include "../src/config.hpp"
 #include "../src/feats/appinfo_vdf.hpp"
 #include "../src/feats/cmrecv.hpp"
 #include "../src/log.hpp"
@@ -30,6 +31,9 @@ static int g_failures = 0;
 // Once armed, the next allocation on this thread fails.
 static thread_local bool t_failNextAllocation = false;
 static thread_local bool t_allocationFailed = false;
+// While set, bytes allocated on this thread are added up.
+static thread_local bool t_countBytes = false;
+static thread_local std::size_t t_allocatedBytes = 0;
 
 void* operator new(std::size_t size)
 {
@@ -39,6 +43,7 @@ void* operator new(std::size_t size)
 		t_allocationFailed = true;
 		throw std::bad_alloc();
 	}
+	if (t_countBytes) t_allocatedBytes += size;
 	if (void* p = std::malloc(size ? size : 1)) return p;
 	throw std::bad_alloc();
 }
@@ -83,6 +88,40 @@ int main()
 	t_failNextAllocation = false;
 	CHECK(t_allocationFailed && !escaped,
 	      "a handler that throws does not unwind into Steam's receive hook");
+
+	// Most product-info answers are for other games: Steam's receive thread
+	// must not copy them into a parsed message.
+	{
+		g_config.managedAppIds.set({42});
+		CMsgClientPICSProductInfoResponse others;
+		const std::string appinfo(4096, 'x');
+		for (std::uint32_t app = 1000; app < 2000; ++app)
+		{
+			auto* entry = others.add_apps();
+			entry->set_appid(app);
+			entry->set_change_number(7);
+			entry->set_buffer(appinfo);
+		}
+		const std::string large = others.SerializeAsString();
+		std::vector<std::uint8_t> largeStorage(
+			sizeof(CNetPacketBody) + header.size() + large.size());
+		auto* largeBody = reinterpret_cast<CNetPacketBody*>(largeStorage.data());
+		largeBody->type = CNetPacket::PROTOBUF_TYPE_MASK | k_EMsgClientPICSProductInfoResponse;
+		largeBody->headerSize = header.size();
+		std::memcpy(largeStorage.data() + sizeof(CNetPacketBody), header.data(), header.size());
+		std::memcpy(largeStorage.data() + sizeof(CNetPacketBody) + header.size(),
+		            large.data(), large.size());
+		CNetPacket largePacket{};
+		largePacket.setBody(largeBody);
+		largePacket.setSize(largeStorage.size());
+		t_allocatedBytes = 0;
+		t_countBytes = true;
+		CmRecv::dispatchNetPacket(&largePacket);
+		t_countBytes = false;
+		CHECK(t_allocatedBytes < 64 * 1024,
+		      ("a 4 MiB answer without a managed app is not parsed (" +
+		       std::to_string(t_allocatedBytes / 1024) + " KiB allocated)").c_str());
+	}
 
 	// The appinfo.vdf lookup skips a candidate it cannot resolve: here
 	// ~/.steam/steam points at itself.

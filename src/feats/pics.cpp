@@ -399,6 +399,19 @@ bool enqueueRawCacheItems(std::vector<RawCacheItem> items)
 		});
 }
 
+// Queue this answer's refreshes with the caches found missing at startup,
+// then the DLC metadata repair, which runs last so an older library entry
+// never delays the game that triggered the callback (it has its own cooldown).
+void queueCallbackRepairs(const std::string& appinfoVdfPath,
+                          std::vector<AppInfoProvision::RefreshRequest> requests)
+{
+	const auto startupCacheRepairs = HotReload::takeMissingCacheRepairRequests();
+	requests.insert(requests.end(), startupCacheRepairs.begin(), startupCacheRepairs.end());
+	if (!requests.empty())
+		AppInfoProvision::refreshInBackground(appinfoVdfPath, requests);
+	HotReload::repairMissingDlcMetadata(appinfoVdfPath);
+}
+
 } // namespace
 
 void recvProductInfoResponse(CMsgClientPICSProductInfoResponse* resp)
@@ -504,21 +517,15 @@ void recvProductInfoResponse(CMsgClientPICSProductInfoResponse* resp)
 	}
 	const auto plan = AppInfoProvision::selectRefreshRequests(
 		observed, AppInfoProvision::RefreshReason::PicsProductInfo);
-	auto refreshRequests = excludeRefreshRequestsForApps(
+	queueCallbackRepairs(appinfoVdfPath, excludeRefreshRequestsForApps(
 		plan.requests,
 		rawCacheWorkerAvailable ? rawCacheRepairs
-		                        : std::unordered_set<uint32_t>{});
-	auto startupCacheRepairs = HotReload::takeMissingCacheRepairRequests();
-	refreshRequests.insert(
-		refreshRequests.end(), startupCacheRepairs.begin(),
-		startupCacheRepairs.end());
-	if (!refreshRequests.empty())
-		AppInfoProvision::refreshInBackground(appinfoVdfPath, refreshRequests);
+		                        : std::unordered_set<uint32_t>{}));
+}
 
-	// Run migration repair only after response-specific hot-add/cache work has
-	// been queued, so an older library entry can never delay the game that
-	// triggered this callback. The coordinator applies its own cooldown.
-	HotReload::repairMissingDlcMetadata(appinfoVdfPath);
+void recvUnmanagedProductInfoResponse()
+{
+	queueCallbackRepairs(AppInfoVdf::findExistingPath(), {});
 }
 
 void recvChangesSinceResponse(CMsgClientPICSChangesSinceResponse* resp)

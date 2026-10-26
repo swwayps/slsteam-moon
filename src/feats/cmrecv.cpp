@@ -128,6 +128,15 @@ void dispatch(CNetPacket* pkt, uint32_t eMsg)
 		{
 			// Observe-only: the handler reads the response (cache repair,
 			// background refresh scheduling) and never rewrites it for Steam.
+			// Most answers are for other games and skip the parse, which would
+			// copy every app's buffer on Steam's receive thread.
+			if (!PICS::namesAddedApp(pkt->messageBytes(), [](uint32_t appId) {
+				return g_config.isAddedAppId(appId) || g_config.managedAppIds.contains(appId);
+			}))
+			{
+				PICS::recvUnmanagedProductInfoResponse();
+				break;
+			}
 			auto body = pkt->deserializeBody<CMsgClientPICSProductInfoResponse>();
 			PICS::recvProductInfoResponse(&body);
 			break;

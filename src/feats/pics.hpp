@@ -22,9 +22,11 @@
 
 #pragma once
 
+#include "protowire.hpp"
 #include "provision_refresh.hpp"
 
 #include <cstdint>
+#include <span>
 #include <unordered_set>
 #include <vector>
 
@@ -34,7 +36,38 @@ class CMsgClientPICSChangesSinceResponse;
 namespace PICS
 {
 	void recvProductInfoResponse(CMsgClientPICSProductInfoResponse* resp);
+	// An answer that names no added app: only the repairs that wait for any
+	// product-info callback run.
+	void recvUnmanagedProductInfoResponse();
 	void recvChangesSinceResponse(CMsgClientPICSChangesSinceResponse* resp);
+
+	// Whether a serialized product-info answer names an app `isAdded`
+	// accepts, read from the wire without copying the app buffers. An answer
+	// that does not walk cleanly counts as naming one and gets the full parse.
+	template <typename IsAdded>
+	bool namesAddedApp(std::span<const std::uint8_t> message, IsAdded&& isAdded)
+	{
+		bool named = false;
+		const bool walked = ProtoWire::walk(message.data(), message.size(),
+			[&](const ProtoWire::Field& field)
+			{
+				// CMsgClientPICSProductInfoResponse.apps = 1, AppInfo.appid = 1.
+				if (named || field.number != 1 || field.wireType != 2) return;
+				const std::uint8_t* app = message.data() + field.valueOff;
+				const bool appWalked = ProtoWire::walk(app, field.valueLen,
+					[&](const ProtoWire::Field& appField)
+					{
+						if (appField.number != 1 || appField.wireType != 0) return;
+						std::size_t at = appField.valueOff;
+						std::uint64_t appId = 0;
+						if (!ProtoWire::readVarint(app, field.valueLen, at, appId) ||
+							appId > UINT32_MAX || isAdded(static_cast<std::uint32_t>(appId)))
+							named = true;
+					});
+				named = named || !appWalked;
+			});
+		return named || !walked;
+	}
 
 
 	inline std::unordered_set<uint32_t> selectManagedResponseApps(
