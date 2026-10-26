@@ -321,14 +321,13 @@ bool Apps::checkAppOwnership(uint32_t appId, AppOwnershipInfo_t* pInfo)
 	{
 		return false;
 	}
-	if (StatsPolicy::hasNativeLicense(appId))
-	{
-		return false;
-	}
-
 	// Only LuaTools-managed apps are unlocked; everything else keeps Steam's
 	// answer untouched.
 	if (!g_config.isAddedAppId(appId))
+	{
+		return false;
+	}
+	if (StatsPolicy::hasNativeLicense(appId))
 	{
 		return false;
 	}

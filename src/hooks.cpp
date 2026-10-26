@@ -603,9 +603,11 @@ static bool hkUser_CheckAppOwnership(void* pClientUser, uint32_t appId, AppOwner
 		g_pLocalUser = reinterpret_cast<CUser*>(pClientUser);
 	}
 
-	const auto statsContext = StatsPolicy::context();
+	// Only added apps are tracked; the other games' checks skip the policy lock.
+	const bool tracked = g_config.isAddedAppId(appId);
+	const auto statsContext = tracked ? StatsPolicy::context() : StatsPolicy::Context{};
 	const bool ret = Hooks::CUser_CheckAppOwnership.tramp.fn(pClientUser, appId, pOwnershipInfo);
-	StatsPolicy::observe(statsContext, appId, ret, pOwnershipInfo);
+	if (tracked) StatsPolicy::observe(statsContext, appId, ret, pOwnershipInfo);
 
 	g_pLog->debugOnce
 	(
