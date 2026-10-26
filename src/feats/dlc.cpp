@@ -74,7 +74,7 @@ bool DLC::userSubscribedInTicket(uint32_t appId)
 
 uint32_t DLC::getDlcCount(uint32_t appId)
 {
-	if (!g_config.managedAppIds.get().contains(appId))
+	if (!g_config.managedAppIds.contains(appId))
 	{
 		return 0;
 	}
@@ -91,7 +91,7 @@ uint32_t DLC::getDlcCount(uint32_t appId)
 bool DLC::getDlcDataByIndex(uint32_t appId, int index, uint32_t* dlcId, bool* available, char* dlcName, size_t& dlcNameLen)
 {
 	if (!dlcId || !available || !dlcName
-	    || !g_config.managedAppIds.get().contains(appId))
+	    || !g_config.managedAppIds.contains(appId))
 	{
 		return false;
 	}

@@ -138,7 +138,7 @@ void markProtonNeeded(uint32_t appId,
 {
 	std::lock_guard<std::mutex> passLock(g_provisionPassMu);
 	if (!publication.managed ||
-	    g_config.managedAppIds.get().count(appId) == 0)
+	    !g_config.managedAppIds.contains(appId))
 		return;
 
 	std::lock_guard<std::mutex> publicationLock(g_cachePublicationMu);
@@ -2257,7 +2257,7 @@ bool readValidatedDlcMetadataCache(
 		return false;
 
 	std::lock_guard<std::mutex> publicationLock(g_cachePublicationMu);
-	const bool managed = g_config.managedAppIds.get().count(baseAppId) != 0;
+	const bool managed = g_config.managedAppIds.contains(baseAppId);
 	const std::uint64_t currentGeneration =
 		cachePublicationGenerationLocked(baseAppId);
 	if (!managed) return false;

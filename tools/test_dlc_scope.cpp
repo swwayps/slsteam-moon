@@ -14,7 +14,24 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
+#include <new>
 #include <unordered_set>
+
+namespace
+{
+bool g_countAllocations = false;
+std::size_t g_allocations = 0;
+}
+
+void* operator new(std::size_t size)
+{
+	if (g_countAllocations) ++g_allocations;
+	if (void* p = std::malloc(size ? size : 1)) return p;
+	throw std::bad_alloc();
+}
+void operator delete(void* p) noexcept { std::free(p); }
+void operator delete(void* p, std::size_t) noexcept { std::free(p); }
 
 namespace
 {
@@ -169,6 +186,27 @@ int main()
 	localUserAvailable = false;
 	CHECK(DLC::shouldUnlockDlc(kManagedDlc),
 	      "managed DLC remains eligible before local ownership is available");
+
+	// Game pipes ask for the count and each entry; neither may copy the
+	// managed set.
+	{
+		std::unordered_set<std::uint32_t> many{kBaseApp};
+		for (std::uint32_t id = 1; id <= 2500; ++id) many.insert(id);
+		g_config.managedAppIds.set(many);
+		g_config.dlcData.set({{kBaseApp, manualDlcData}});
+		std::uint32_t dlc = 0;
+		bool dlcAvailable = false;
+		char name[32] = {};
+		std::size_t nameLen = sizeof(name);
+		g_allocations = 0;
+		g_countAllocations = true;
+		const auto count = DLC::getDlcCount(kBaseApp);
+		const bool listed = DLC::getDlcDataByIndex(
+			kBaseApp, 0, &dlc, &dlcAvailable, name, nameLen);
+		g_countAllocations = false;
+		CHECK(count == 1 && listed && g_allocations < 50,
+		      "DLC enumeration does not copy the managed set");
+	}
 
 	std::printf(failures == 0 ? "\nALL PASS\n" : "\n%d FAILURE(S)\n", failures);
 	return failures == 0 ? 0 : 1;
