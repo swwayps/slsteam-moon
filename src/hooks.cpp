@@ -393,24 +393,12 @@ static void hkCMInterface_RecvPkt(void* pCMInterface, CNetPacket* pNetPacket)
 
 	if (pNetPacket && pNetPacket->isProtoBuf())
 	{
-		const uint32_t type = pNetPacket->getProtoBufType();
-		CMsgProtoBufHeader header;
-		if (pNetPacket->deserializeHeader(header))
+		if (FamilyShare::shouldChoke(g_config.disableFamilyLock.get(), *pNetPacket))
 		{
-			const bool hasTargetJobName = header.has_target_job_name();
-			const std::string_view targetJobName = hasTargetJobName
-			    ? std::string_view(header.target_job_name())
-			    : std::string_view{};
-			if (FamilyShare::shouldBlock(
-				g_config.disableFamilyLock.get(),
-				type,
-				hasTargetJobName,
-				targetJobName))
-			{
-				g_pLog->debug("Choking Family Share message %u\n", type);
-				pNetPacket->free();
-				return;
-			}
+			g_pLog->debug("Choking Family Share message %u\n",
+			              static_cast<uint32_t>(pNetPacket->getProtoBufType()));
+			pNetPacket->free();
+			return;
 		}
 
 		// Route the CM protobuf frame through the message features (depot key,

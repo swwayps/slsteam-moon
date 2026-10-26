@@ -14,7 +14,23 @@
 #include <sys/mman.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <new>
 #include <vector>
+
+namespace
+{
+bool g_countAllocations = false;
+std::size_t g_allocations = 0;
+}
+
+void* operator new(std::size_t size)
+{
+	if (g_countAllocations) ++g_allocations;
+	if (void* p = std::malloc(size ? size : 1)) return p;
+	throw std::bad_alloc();
+}
+void operator delete(void* p) noexcept { std::free(p); }
+void operator delete(void* p, std::size_t) noexcept { std::free(p); }
 
 namespace
 {
@@ -139,6 +155,21 @@ int main()
 			&& parsedHeader.has_target_job_name()
 			&& parsedHeader.target_job_name() == kNotifyRunningApps,
 		"valid packet header parses within bounds");
+
+	expect(
+		FamilyShare::shouldChoke(true, validPacket),
+		"the receive hook chokes the running-app service method");
+
+	// Every other CM packet passes through the same check: it must be decided
+	// from the type alone, without parsing a header.
+	validBody->type = CNetPacket::PROTOBUF_TYPE_MASK | 751;
+	g_allocations = 0;
+	g_countAllocations = true;
+	const bool choked = FamilyShare::shouldChoke(true, validPacket);
+	g_countAllocations = false;
+	expect(!choked && g_allocations == 0,
+	       "an unrelated packet is forwarded without parsing its header");
+	validBody->type = CNetPacket::PROTOBUF_TYPE_MASK | kServiceMethod;
 
 	CNetPacket nullPacket{};
 	expect(
