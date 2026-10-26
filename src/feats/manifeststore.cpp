@@ -248,17 +248,21 @@ namespace ManifestStore
 		const std::string prefix = std::to_string(depotId) + "_";
 		uint64_t best = 0;
 		fs::file_time_type bestTime{};
-		for (const auto& entry : fs::directory_iterator(store, ec))
+		// Reached from the planner hook: advance with the error_code overload,
+		// since the range-for operator++ throws into Steam on a read error.
+		const fs::directory_iterator end;
+		for (fs::directory_iterator it(store, ec); !ec && it != end; it.increment(ec))
 		{
-			if (ec) break;
-			if (!entry.is_regular_file(ec)) continue;
+			const auto& entry = *it;
+			std::error_code entryError;
+			if (!entry.is_regular_file(entryError)) continue;
 			const auto name = entry.path().filename().string();
 			const uint64_t gid = gidFromName(name, prefix);
 			if (!gid || gid == excludeGid) continue;
 			if (!ManifestStoreIO::isValidManifest(entry.path())) continue;
 
-			const auto t = entry.last_write_time(ec);
-			if (ec) continue;
+			const auto t = entry.last_write_time(entryError);
+			if (entryError) continue;
 			if (!best || t > bestTime) { best = gid; bestTime = t; }
 		}
 		return best;
