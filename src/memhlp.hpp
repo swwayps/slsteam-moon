@@ -147,14 +147,28 @@ namespace MemHlp
 		return success;
 	}
 
+	// The executable (r-x) segments of this process from one read of
+	// /proc/self/maps. libmem reads the whole file for every segment lookup,
+	// which a pass over every locator would pay once per lookup.
+	struct CodeSegments
+	{
+		std::vector<lm_segment_t> segments; // ascending base
+
+		static CodeSegments read();
+		// The executable segment holding `address`, or nullptr.
+		const lm_segment_t* find(lm_address_t address) const;
+	};
+
 	std::vector<int16_t> patternToBytes(const char* pattern);
 	lm_address_t patternScan(const char* pattern, lm_module_t module);
 	// Reports the module-wide match count, optionally every match address (up
 	// to MemHlp::kMaxConvergenceCandidates), and returns LM_ADDRESS_BAD unless
 	// exactly one match was found.  A caller that can prove convergence uses
-	// the address list instead of the return value.
+	// the address list instead of the return value.  Without `code`, the
+	// segments are read for this call.
 	lm_address_t patternScan(const char* pattern, lm_module_t module,
-		std::size_t* matchesOut, std::vector<uintptr_t>* allMatches);
+		std::size_t* matchesOut, std::vector<uintptr_t>* allMatches,
+		const CodeSegments* code = nullptr);
 
 	struct SignatureSearchResult
 	{
@@ -171,7 +185,8 @@ namespace MemHlp
 		lm_module_t module,
 		SigFollowMode mode,
 		const int16_t* extraData,
-		size_t extraDataSize
+		size_t extraDataSize,
+		const CodeSegments* code = nullptr
 	);
 
 	// Lua plugin API (memhlp.getModule, memhlp.hexdump). getModule caches by

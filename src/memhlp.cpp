@@ -7,8 +7,9 @@
 
 #include "libmem/libmem.h"
 
+#include <algorithm>
 #include <iomanip>
-#include <map>
+#include <iterator>
 #include <memory>
 #include <optional>
 #include <sstream>
@@ -40,15 +41,11 @@ std::vector<int16_t> MemHlp::patternToBytes(const char* pattern)
 	return bytes;
 }
 
-lm_address_t MemHlp::patternScan(const char* pattern, lm_module_t targetModule,
-	std::size_t* matchesOut, std::vector<uintptr_t>* allMatches)
+MemHlp::CodeSegments MemHlp::CodeSegments::read()
 {
-	const auto bytes = patternToBytes(pattern);
-
-	auto codeSegments = std::map<lm_address_t, lm_address_t>();
+	CodeSegments code;
 	const static auto enumSegments = [](lm_segment_t* seg, lm_void_t* arg) -> lm_bool_t
 	{
-		auto rSegments = reinterpret_cast<std::map<lm_address_t, lm_address_t>*>(arg);
 		// Only executable code segments. LM_PROT_XR is the combined mask
 		// (X|R), so `& LM_PROT_XR` is true for ANY readable region — it would
 		// pull in rw-p/r--p DATA segments (heaps, glibc arenas) and scan them.
@@ -57,14 +54,38 @@ lm_address_t MemHlp::patternScan(const char* pattern, lm_module_t targetModule,
 		// SIGSEGV on some machines but not others. Require the execute bit.
 		if((seg->prot & LM_PROT_XR) == LM_PROT_XR)
 		{
-			(*rSegments)[seg->base] = seg->base + seg->size;
-			//g_pLog->debug("Code section at %p to %p\n", seg->base, seg->base + seg->size);
+			reinterpret_cast<std::vector<lm_segment_t>*>(arg)->push_back(*seg);
 		}
 
 		return LM_TRUE;
 	};
 
-	LM_EnumSegments(enumSegments, &codeSegments);
+	LM_EnumSegments(enumSegments, &code.segments);
+	std::sort(code.segments.begin(), code.segments.end(),
+		[](const lm_segment_t& left, const lm_segment_t& right) { return left.base < right.base; });
+	return code;
+}
+
+const lm_segment_t* MemHlp::CodeSegments::find(lm_address_t address) const
+{
+	const auto after = std::upper_bound(segments.begin(), segments.end(), address,
+		[](lm_address_t value, const lm_segment_t& segment) { return value < segment.base; });
+	if (after == segments.begin())
+	{
+		return nullptr;
+	}
+	const lm_segment_t& segment = *std::prev(after);
+	return address < segment.end ? &segment : nullptr;
+}
+
+lm_address_t MemHlp::patternScan(const char* pattern, lm_module_t targetModule,
+	std::size_t* matchesOut, std::vector<uintptr_t>* allMatches,
+	const CodeSegments* code)
+{
+	const auto bytes = patternToBytes(pattern);
+
+	const CodeSegments own = code == nullptr ? CodeSegments::read() : CodeSegments{};
+	const CodeSegments& codeSegments = code == nullptr ? own : *code;
 
 	if (bytes.empty())
 	{
@@ -75,13 +96,14 @@ lm_address_t MemHlp::patternScan(const char* pattern, lm_module_t targetModule,
 	// only thing that distinguishes "this signature identifies its target" from
 	// "this signature matches several places and the first one won".
 	PatternScanTotal total;
-	for(const auto& itm : codeSegments)
+	for(const auto& segment : codeSegments.segments)
 	{
-		if (targetModule.base > itm.second)
+		const lm_address_t segmentEnd = segment.base + segment.size;
+		if (targetModule.base > segmentEnd)
 		{
 			continue;
 		}
-		if (targetModule.base + targetModule.size < itm.first)
+		if (targetModule.base + targetModule.size < segment.base)
 		{
 			continue;
 		}
@@ -89,7 +111,7 @@ lm_address_t MemHlp::patternScan(const char* pattern, lm_module_t targetModule,
 		// Every match address is retained (up to the cap) so a caller with a
 		// relative follow mode can prove convergence instead of guessing.
 		accumulateScan(total,
-			scanPatternRange(bytes, itm.first, itm.second, true,
+			scanPatternRange(bytes, segment.base, segmentEnd, true,
 				allMatches, kMaxConvergenceCandidates));
 	}
 
@@ -115,7 +137,8 @@ MemHlp::SignatureSearchResult MemHlp::searchSignatureDetailed(
 	lm_module_t module,
 	SigFollowMode mode,
 	const int16_t* extraData,
-	size_t extraDataSize
+	size_t extraDataSize,
+	const CodeSegments* code
 )
 {
 	// Keep the original match separate from the followed target.  Relative and
@@ -124,7 +147,7 @@ MemHlp::SignatureSearchResult MemHlp::searchSignatureDetailed(
 	SignatureSearchResult result;
 	std::size_t matches = 0;
 	std::vector<uintptr_t> allMatches;
-	result.match = patternScan(signature, module, &matches, &allMatches);
+	result.match = patternScan(signature, module, &matches, &allMatches, code);
 	result.target = result.match;
 	result.matches = matches;
 	if (matches > 1)
@@ -192,7 +215,10 @@ MemHlp::SignatureSearchResult MemHlp::searchSignatureDetailed(
 				g_pLog->debug("Searching function prologue of %s from %p\n", name, reinterpret_cast<void*>(result.match));
 				{
 					lm_segment_t matchSegment{};
-					if (!LM_FindSegment(result.match, &matchSegment))
+					const lm_segment_t* known = code ? code->find(result.match) : nullptr;
+					if (known != nullptr)
+						matchSegment = *known;
+					if (known == nullptr && !LM_FindSegment(result.match, &matchSegment))
 					{
 						g_pLog->warn("Unable to find matched segment for %s\n", name);
 						result.target = LM_ADDRESS_BAD;

@@ -43,7 +43,7 @@ public:
 	          MemHlp::SigFollowMode followMode, std::vector<int16_t> prologue,
 	          lm_module_t* module = nullptr, const char* symbol = nullptr);
 
-	bool find();
+	bool find(const MemHlp::CodeSegments& code);
 };
 
 namespace Patterns

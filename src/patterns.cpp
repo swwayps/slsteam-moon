@@ -139,6 +139,7 @@ namespace
 	const char* verifyCachedTarget(
 		const Pattern_t& pattern,
 		const lm_module_t& module,
+		const MemHlp::CodeSegments& code,
 		std::uint64_t matchRva,
 		std::uint64_t targetRva,
 		lm_address_t& matchOut,
@@ -150,10 +151,8 @@ namespace
 			return "target RVA is outside the module";
 		const lm_address_t candidate = module.base
 			+ static_cast<lm_address_t>(targetRva);
-		lm_segment_t targetSegment {};
 		const bool targetInside = candidate >= module.base && candidate < module.end;
-		const bool targetExecutable = targetInside && LM_FindSegment(candidate, &targetSegment)
-			&& (targetSegment.prot & LM_PROT_XR) == LM_PROT_XR;
+		const bool targetExecutable = targetInside && code.find(candidate) != nullptr;
 		if (!targetExecutable)
 			return "target RVA is not executable";
 
@@ -164,12 +163,8 @@ namespace
 			return "match RVA is outside the module";
 		const lm_address_t match = module.base
 			+ static_cast<lm_address_t>(matchRva);
-		lm_segment_t matchSegment {};
-		if (!LM_FindSegment(match, &matchSegment)
-		    || (matchSegment.prot & LM_PROT_XR) != LM_PROT_XR
-		    || match < matchSegment.base
-		    || match >= matchSegment.end
-		    || matchSegment.end - match < *signatureBytes)
+		const lm_segment_t* matchSegment = code.find(match);
+		if (matchSegment == nullptr || matchSegment->end - match < *signatureBytes)
 			return "signature range is not executable";
 		if (!PatternCache::signatureMatches(
 			pattern.pattern,
@@ -187,7 +182,7 @@ namespace
 			case MemHlp::SigFollowMode::PrologueUpwards:
 				derivedTarget = MemHlp::findPrologue(
 					match,
-					MemHlp::prologueLowerBound(module.base, matchSegment.base),
+					MemHlp::prologueLowerBound(module.base, matchSegment->base),
 					pattern.prologue.empty() ? nullptr : pattern.prologue.data(),
 					pattern.prologue.size()
 				);
@@ -213,6 +208,7 @@ namespace
 
 	std::optional<lm_address_t> localCatalogAddress(
 		const Pattern_t& pattern,
+		const MemHlp::CodeSegments& code,
 		lm_address_t* matchAddressOut
 	)
 	{
@@ -249,7 +245,7 @@ namespace
 		lm_address_t match = LM_ADDRESS_BAD;
 		lm_address_t candidate = LM_ADDRESS_BAD;
 		if (const char* reason = verifyCachedTarget(
-			pattern, module, entry->matchRva, entry->targetRva, match, candidate))
+			pattern, module, code, entry->matchRva, entry->targetRva, match, candidate))
 			return reject(reason);
 		if (matchAddressOut != nullptr)
 			*matchAddressOut = match;
@@ -258,10 +254,11 @@ namespace
 
 	std::optional<lm_address_t> catalogAddress(
 		const Pattern_t& pattern,
+		const MemHlp::CodeSegments& code,
 		lm_address_t* matchAddressOut
 	)
 	{
-		if (const auto local = localCatalogAddress(pattern, matchAddressOut))
+		if (const auto local = localCatalogAddress(pattern, code, matchAddressOut))
 			return local;
 		const PatternCatalog::Catalog* catalog = catalogFor(pattern);
 		if (catalog == nullptr)
@@ -288,8 +285,8 @@ namespace
 		lm_address_t match = LM_ADDRESS_BAD;
 		lm_address_t candidate = LM_ADDRESS_BAD;
 		const char* reason = entry->matchRva
-			? verifyCachedTarget(pattern, module, *entry->matchRva, entry->targetRva,
-			                     match, candidate)
+			? verifyCachedTarget(pattern, module, code, *entry->matchRva,
+			                     entry->targetRva, match, candidate)
 			: "it names no match RVA";
 		if (reason != nullptr)
 		{
@@ -569,12 +566,12 @@ Pattern_t::Pattern_t(const char* name, const char* pattern,
 	Patterns::patterns().emplace_back(this);
 }
 
-bool Pattern_t::find()
+bool Pattern_t::find(const MemHlp::CodeSegments& code)
 {
 	lm_module_t& targetModule = module ? *module : g_modSteamClient;
 	matchAddress = LM_ADDRESS_BAD;
 	lm_address_t cachedMatch = LM_ADDRESS_BAD;
-	if (const auto trusted = catalogAddress(*this, &cachedMatch))
+	if (const auto trusted = catalogAddress(*this, code, &cachedMatch))
 	{
 		address = *trusted;
 		matchAddress = cachedMatch;
@@ -584,7 +581,7 @@ bool Pattern_t::find()
 		const auto resolved = MemHlp::searchSignatureDetailed
 		(
 			name.c_str(), pattern.c_str(), targetModule, followMode,
-			prologue.empty() ? nullptr : prologue.data(), prologue.size()
+			prologue.empty() ? nullptr : prologue.data(), prologue.size(), &code
 		);
 		matchAddress = resolved.match;
 		address = resolved.target;
@@ -597,11 +594,9 @@ bool Pattern_t::find()
 		// embedded resolver, which is the path every unknown client build takes.
 		if (address != LM_ADDRESS_BAD)
 		{
-			lm_segment_t targetSegment {};
 			const bool inside = address >= targetModule.base
 			                 && address < targetModule.base + targetModule.size;
-			const bool executable = LM_FindSegment(address, &targetSegment)
-			                     && (targetSegment.prot & LM_PROT_XR) == LM_PROT_XR;
+			const bool executable = code.find(address) != nullptr;
 			if (!inside || !executable)
 			{
 				g_pLog->warn(
@@ -631,9 +626,7 @@ bool Pattern_t::find()
 		}
 		else
 		{
-			lm_segment_t segment {};
-			const bool executable = LM_FindSegment(address, &segment)
-			                     && (segment.prot & LM_PROT_XR) == LM_PROT_XR;
+			const bool executable = code.find(address) != nullptr;
 			const bool insideModule = address >= targetModule.base
 			                       && address < targetModule.base + targetModule.size;
 			RuntimeAttestation::emit
@@ -692,9 +685,11 @@ bool Patterns::init()
 
 	loadActiveCatalogs();
 
+	// One read of the process segments serves every locator below.
+	const auto code = MemHlp::CodeSegments::read();
 	for(auto& pattern : patterns())
 	{
-		if (!pattern->find())
+		if (!pattern->find(code))
 		{
 			if (pattern->optional)
 			{

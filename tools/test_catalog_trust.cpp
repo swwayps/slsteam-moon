@@ -20,6 +20,18 @@
 extern "C" char __executable_start;
 extern "C" char etext;
 
+// Linked with -Wl,--wrap=LM_EnumSegments: counts reads of the process
+// segments (libmem's LM_FindSegment walks them too).
+static int g_segmentWalks = 0;
+extern "C" lm_bool_t __real_LM_EnumSegments(
+	lm_bool_t (*callback)(lm_segment_t*, lm_void_t*), lm_void_t* arg);
+extern "C" lm_bool_t __wrap_LM_EnumSegments(
+	lm_bool_t (*callback)(lm_segment_t*, lm_void_t*), lm_void_t* arg)
+{
+	++g_segmentWalks;
+	return __real_LM_EnumSegments(callback, arg);
+}
+
 static int g_failures = 0;
 #define CHECK(cond, msg)                                               \
 	do {                                                               \
@@ -91,7 +103,9 @@ int main()
 	std::strncpy(g_modSteamClient.path, self.c_str(), sizeof(g_modSteamClient.path) - 1);
 
 	// The first pass applies the compiled optional flags the catalog must repeat.
+	g_segmentWalks = 0;
 	(void)Patterns::init();
+	const int coldWalks = g_segmentWalks;
 	const std::uint64_t rva =
 		reinterpret_cast<lm_address_t>(&anchor) - g_modSteamClient.base;
 	const auto dir = std::filesystem::path(home) / "SLSsteam" / "patterns" / "steamclient";
@@ -99,7 +113,12 @@ int main()
 	std::ofstream(dir / (Utils::getFileSHA256(self.c_str()) + ".toml"), std::ios::binary)
 		<< catalogFor(self, rva);
 
+	g_segmentWalks = 0;
 	(void)Patterns::init();
+	const int catalogWalks = g_segmentWalks;
+	CHECK(coldWalks == 1 && catalogWalks == 1,
+	      ("one locator pass reads the process segments once (cold " +
+	       std::to_string(coldWalks) + ", catalog " + std::to_string(catalogWalks) + ")").c_str());
 	const lm_address_t named = g_modSteamClient.base + static_cast<lm_address_t>(rva);
 	bool used = false;
 	for (const Pattern_t* pattern : Patterns::patterns())

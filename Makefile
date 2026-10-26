@@ -309,7 +309,8 @@ test-notify-async: $(objs) $(libs)
 test-catalog-trust: $(objs) $(libs)
 	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
 		-I include -isysteminclude tools/test_catalog_trust.cpp \
-		$(objs) $(libs) -lpthread -ldl -o /tmp/test_catalog_trust
+		$(objs) $(libs) -Wl,--wrap=LM_EnumSegments -lpthread -ldl \
+		-o /tmp/test_catalog_trust
 	/tmp/test_catalog_trust
 test-cmclient-loader:
 	$(CXX) -std=c++20 -ffunction-sections -fdata-sections -I include -I src \
