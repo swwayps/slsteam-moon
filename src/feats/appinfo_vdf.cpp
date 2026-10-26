@@ -847,8 +847,8 @@ std::string recoveryPath(const std::string& path)
 
 bool quarantineCurrent(const std::string& path)
 {
-	if (!std::filesystem::exists(path)) return false;
 	std::error_code ec;
+	if (!std::filesystem::exists(path, ec)) return false;
 	const auto target = recoveryPath(path);
 	std::filesystem::rename(path, target, ec);
 	if (ec)
@@ -904,8 +904,8 @@ bool readWithRecovery(const std::string& path, AppInfoFile& out,
 
 bool snapshotBeforeWrite(const std::string& path, std::string& err)
 {
-	if (!std::filesystem::exists(path)) return true;
 	std::error_code ec;
+	if (!std::filesystem::exists(path, ec)) return true;
 	std::filesystem::copy_file(path, rollbackPath(path),
 		std::filesystem::copy_options::overwrite_existing, ec);
 	if (ec)
@@ -1057,7 +1057,8 @@ bool injectApp(const std::string& path,
 int injectAllCached(const std::string& path)
 {
 	const auto cacheDir = g_config.getDir() + "/cache";
-	if (!std::filesystem::exists(cacheDir)) return 0;
+	std::error_code cacheDirError;
+	if (!std::filesystem::exists(cacheDir, cacheDirError)) return 0;
 
 	// Contention is the only reason to stand down. This is the boot splice: it
 	// is the single thing that makes a managed app visible on the next start, so

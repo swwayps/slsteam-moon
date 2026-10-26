@@ -191,7 +191,7 @@ std::string cmListCachePath()
 {
 	const std::string dir = g_config.getDir() + "/cache";
 	std::error_code ec;
-	if (!std::filesystem::exists(dir)) std::filesystem::create_directories(dir, ec);
+	if (!std::filesystem::exists(dir, ec)) std::filesystem::create_directories(dir, ec);
 	return dir + "/cmlist.txt";
 }
 

@@ -46,11 +46,9 @@ std::string getCacheDir()
 	std::stringstream ss;
 	ss << g_config.getDir() << "/cache";
 	const auto dir = ss.str();
-	if (!std::filesystem::exists(dir))
-	{
-		std::error_code ec;
+	std::error_code ec;
+	if (!std::filesystem::exists(dir, ec))
 		std::filesystem::create_directories(dir, ec);
-	}
 	return dir;
 }
 

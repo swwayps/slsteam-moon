@@ -188,7 +188,8 @@ std::unordered_set<uint32_t> CConfig::loadLuaAppIdsYaml()
 {
 	std::unordered_set<uint32_t> result;
 	const auto path = getLuaAppIdsPath();
-	if (!std::filesystem::exists(path)) return result;
+	std::error_code existsError;
+	if (!std::filesystem::exists(path, existsError)) return result;
 
 	try
 	{

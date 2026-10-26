@@ -838,11 +838,9 @@ const std::string& getCacheDir()
 {
 	static const std::string dir = [] {
 		const std::string value = g_config.getDir() + "/cache";
-		if (!std::filesystem::exists(value))
-		{
-			std::error_code ec;
+		std::error_code ec;
+		if (!std::filesystem::exists(value, ec))
 			std::filesystem::create_directories(value, ec);
-		}
 		return value;
 	}();
 	return dir;

@@ -4,6 +4,7 @@
 // Build: make test-cache-validation (links the whole object set).
 #include "../src/config.hpp"
 #include "../src/feats/appinfo_provision.hpp"
+#include "../src/feats/appinfo_vdf.hpp"
 #include "../src/log.hpp"
 #include "../src/utils/process_lock.hpp"
 
@@ -216,6 +217,22 @@ int main()
 	try { AppInfoProvision::flushPendingProtonMappings(); }
 	catch (...) { flushThrew = true; }
 	CHECK(!flushThrew, "an unusable Steam config folder does not throw out of the Proton mapping edit");
+
+	// The boot splice runs in preinit too: an unusable SLSsteam config folder
+	// (a symlink loop) reads as having no cache.
+	{
+		const std::string loop = std::string(home) + "/loop";
+		std::filesystem::create_directories(loop);
+		std::filesystem::create_directory_symlink("SLSsteam", loop + "/SLSsteam");
+		setenv("XDG_CONFIG_HOME", loop.c_str(), 1);
+		bool spliceThrew = false;
+		int spliced = -1;
+		try { spliced = AppInfoVdf::injectAllCached(std::string(home) + "/appinfo.vdf"); }
+		catch (...) { spliceThrew = true; }
+		setenv("XDG_CONFIG_HOME", home, 1);
+		CHECK(!spliceThrew && spliced == 0,
+		      "an unusable config folder does not throw out of the boot splice");
+	}
 
 	if (g_failures == 0) std::printf("\nall cache validation checks passed\n");
 	else std::printf("\n%d cache validation check(s) FAILED\n", g_failures);
