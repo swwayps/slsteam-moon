@@ -274,14 +274,7 @@ bool manifestInManagedScope(uint32_t appId, uint32_t depotId,
 
 	uint32_t depotDlcAppId = knownContentAppId;
 	if (!depotDlcAppId && baseAppId)
-	{
-		std::string wire;
-		if (AppInfoProvision::readValidatedCacheBuffer(baseAppId, wire))
-		{
-			depotDlcAppId = AppInfoProvision::dlcAppIdForDepot(
-				wire, baseAppId, depotId);
-		}
-	}
+		depotDlcAppId = AppInfoProvision::provisionedDlcAppIdForDepot(baseAppId, depotId);
 	const uint32_t contentAppId = manifestContentAppId(
 		baseAppId, appId, key.appId, depotDlcAppId);
 	const bool nativeLicense = contentAppId &&

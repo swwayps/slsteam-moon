@@ -130,6 +130,15 @@ private:
 
 std::mutex g_cacheValidationMu;
 CacheValidationMemo g_cacheValidationMemo;
+
+// DLC classification of depots, per base app, for one pair identity.
+struct DepotDlcMemo
+{
+	cache::CacheValidationKey identity;
+	std::unordered_map<uint32_t, uint32_t> dlcByDepot;
+};
+std::mutex g_depotDlcMemoMu;
+std::unordered_map<uint32_t, DepotDlcMemo> g_depotDlcMemo;
 std::unordered_map<uint32_t, CacheProbe> g_cacheProbeMemo;
 std::mutex g_provisionPassMu;
 std::mutex g_cachePublicationMu;
@@ -2136,6 +2145,35 @@ bool readValidatedCacheBuffer(uint32_t appId, std::string& buffer)
 	return readValidatedCacheBufferLocked(appId, buffer, diag);
 }
 
+uint32_t provisionedDlcAppIdForDepot(uint32_t baseAppId, uint32_t depotId)
+{
+	if (!baseAppId || !depotId) return 0;
+	// The planner, BYld and the request-code observer ask about the same
+	// depots on every plan: answer repeats for an unchanged pair from memory,
+	// without the cache lock or a full buffer read.
+	cache::CacheValidationKey identity{};
+	if (!statBuffer(baseAppId, identity)) return 0;
+	{
+		std::lock_guard<std::mutex> lock(g_depotDlcMemoMu);
+		const auto found = g_depotDlcMemo.find(baseAppId);
+		if (found != g_depotDlcMemo.end() && found->second.identity == identity)
+		{
+			const auto depot = found->second.dlcByDepot.find(depotId);
+			if (depot != found->second.dlcByDepot.end()) return depot->second;
+		}
+	}
+	std::string wire;
+	if (!readValidatedCacheBuffer(baseAppId, wire)) return 0;
+	const uint32_t dlcAppId = dlcAppIdForDepot(wire, baseAppId, depotId);
+	// Stored under the identity seen before the read: a pair replaced in
+	// between only costs one more read on the next query.
+	std::lock_guard<std::mutex> lock(g_depotDlcMemoMu);
+	auto& entry = g_depotDlcMemo[baseAppId];
+	if (!(entry.identity == identity)) entry = {identity, {}};
+	entry.dlcByDepot[depotId] = dlcAppId;
+	return dlcAppId;
+}
+
 namespace
 {
 // Per-app authoritative-set contribution memo. locallyAuthoritativeApps ran once
@@ -4039,6 +4077,10 @@ bool forgetAppImpl(uint32_t appId, bool preserveTicketArtifacts)
 		std::lock_guard<std::mutex> validationLock(g_cacheValidationMu);
 		g_cacheProbeMemo.erase(appId);
 		g_cacheValidationMemo.erase(appId);
+	}
+	{
+		std::lock_guard<std::mutex> depotLock(g_depotDlcMemoMu);
+		g_depotDlcMemo.erase(appId);
 	}
 
 	const auto cacheDir = getCacheDir();

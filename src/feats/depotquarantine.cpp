@@ -176,10 +176,7 @@ namespace
 	// recorded.
 	uint32_t dlcAppIdFromProvisionedAppinfo(uint32_t appId, uint32_t depotId)
 	{
-		if (!appId || !depotId) return 0;
-		std::string wire;
-		if (!AppInfoProvision::readValidatedCacheBuffer(appId, wire)) return 0;
-		return AppInfoProvision::dlcAppIdForDepot(wire, appId, depotId);
+		return AppInfoProvision::provisionedDlcAppIdForDepot(appId, depotId);
 	}
 
 	void recordQuarantine(uint32_t appId, uint32_t depotId, uint32_t dlcAppId,

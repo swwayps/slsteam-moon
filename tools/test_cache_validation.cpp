@@ -5,10 +5,12 @@
 #include "../src/config.hpp"
 #include "../src/feats/appinfo_provision.hpp"
 #include "../src/log.hpp"
+#include "../src/utils/process_lock.hpp"
 
 #include "base64/base64.hpp"
 
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -17,6 +19,7 @@
 #include <memory>
 #include <new>
 #include <string>
+#include <thread>
 
 // Live heap allocations, to see what a code path keeps.
 static std::atomic<long> g_liveAllocations{0};
@@ -129,6 +132,43 @@ int main()
 		CHECK(allRead && grown < 20,
 		      ("replaced pairs do not pile up in the validation memo (+" +
 		       std::to_string(grown) + " live allocations)").c_str());
+	}
+
+	// Planner and manifest hooks classify the same depots over and over; a
+	// repeat for an unchanged pair answers without the cache lock or a read.
+	{
+		const uint32_t base = 46;
+		const auto taggedWire = [](const char* dlc)
+		{
+			return std::string("\"appinfo\"\n{\n\t\"depots\"\n\t{\n"
+			                   "\t\t\"4601\"\n\t\t{\n\t\t\t\"manifests\"\n\t\t\t{\n"
+			                   "\t\t\t\t\"public\"\n\t\t\t\t{\n\t\t\t\t\t\"gid\"\t\"11\"\n"
+			                   "\t\t\t\t}\n\t\t\t}\n\t\t}\n"
+			                   "\t\t\"4602\"\n\t\t{\n\t\t\t\"dlcappid\"\t\"") +
+			       dlc + "\"\n\t\t}\n\t}\n}\n";
+		};
+		const std::string tagged = taggedWire("47");
+		replaceFile(cache + "/picsbuffer_46.bin", tagged);
+		replaceFile(cache + "/picsbuffer_46.yaml", metadataFor(tagged, base));
+		const bool classified =
+			AppInfoProvision::provisionedDlcAppIdForDepot(base, 4602) == 47 &&
+			AppInfoProvision::provisionedDlcAppIdForDepot(base, 4601) == 0;
+		auto answer = std::make_shared<std::atomic<long>>(-1);
+		{
+			ProcessLock::FileLock holder(AppInfoProvision::cacheLockPath(), false);
+			std::thread([answer, base] {
+				answer->store(AppInfoProvision::provisionedDlcAppIdForDepot(base, 4602));
+			}).detach();
+			for (int i = 0; i < 100 && answer->load() < 0; ++i)
+				std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			CHECK(classified && answer->load() == 47,
+			      "a repeated depot query does not wait for the cache lock");
+		}
+		const std::string retagged = taggedWire("48");
+		replaceFile(cache + "/picsbuffer_46.bin", retagged);
+		replaceFile(cache + "/picsbuffer_46.yaml", metadataFor(retagged, base));
+		CHECK(AppInfoProvision::provisionedDlcAppIdForDepot(base, 4602) == 48,
+		      "a republished pair is classified again");
 	}
 
 	// 42 ships only a Windows depot, 44 a Linux one.

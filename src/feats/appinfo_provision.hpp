@@ -340,6 +340,9 @@ bool memoizePublishedCachePairLocked(uint32_t appId);
 // usable depot content. The helper acquires the cross-process cache lock and
 // is the single safe entry point for direct buffer consumers.
 bool readValidatedCacheBuffer(uint32_t appId, std::string& buffer);
+// The DLC appid the base app's validated pair assigns to `depotId`; 0 for base
+// or shared content and when there is no valid pair.
+uint32_t provisionedDlcAppIdForDepot(uint32_t baseAppId, uint32_t depotId);
 
 // Return active appinfo that must remain authoritative over Steam's token-
 // gated refresh. Synthetic marker-only compatibility state is retained even
