@@ -98,8 +98,38 @@ struct CacheValidationResult
 	std::string diag;
 };
 
+// The newest validation per app. A replaced pair gets a new identity and only
+// the newest one can still match the files, so it takes the old entry's place
+// instead of adding one for the rest of the session.
+class CacheValidationMemo
+{
+public:
+	const CacheValidationResult* find(const cache::CacheValidationKey& key) const
+	{
+		const auto found = entries_.find(key.appId);
+		if (found == entries_.end() || !(found->second.first == key)) return nullptr;
+		return &found->second.second;
+	}
+	void set(const cache::CacheValidationKey& key, CacheValidationResult result)
+	{
+		entries_.insert_or_assign(key.appId, std::make_pair(key, std::move(result)));
+	}
+	// The slot memoizeValidatedPublication assigns, emptied when the app's
+	// entry held another identity.
+	CacheValidationResult& operator[](const cache::CacheValidationKey& key)
+	{
+		auto& entry = entries_[key.appId];
+		if (!(entry.first == key)) entry = {key, {}};
+		return entry.second;
+	}
+	void erase(uint32_t appId) { entries_.erase(appId); }
+private:
+	std::unordered_map<uint32_t,
+		std::pair<cache::CacheValidationKey, CacheValidationResult>> entries_;
+};
+
 std::mutex g_cacheValidationMu;
-std::map<cache::CacheValidationKey, CacheValidationResult> g_cacheValidationMemo;
+CacheValidationMemo g_cacheValidationMemo;
 std::unordered_map<uint32_t, CacheProbe> g_cacheProbeMemo;
 std::mutex g_provisionPassMu;
 std::mutex g_cachePublicationMu;
@@ -1559,8 +1589,8 @@ bool readValidatedCacheBufferLocked(uint32_t appId, std::string& wireOut,
 		if (identified)
 		{
 			std::lock_guard<std::mutex> validationLock(g_cacheValidationMu);
-			const auto found = g_cacheValidationMemo.find(identity);
-			if (found != g_cacheValidationMemo.end() && found->second.valid)
+			const auto* found = g_cacheValidationMemo.find(identity);
+			if (found != nullptr && found->valid)
 			{
 				if (requiresProton) *requiresProton = cachedWireRequiresProton(wire);
 				wireOut = std::move(wire);
@@ -1594,7 +1624,7 @@ bool readValidatedCacheBufferLocked(uint32_t appId, std::string& wireOut,
 		if (identified)
 		{
 			std::lock_guard<std::mutex> validationLock(g_cacheValidationMu);
-			g_cacheValidationMemo.insert_or_assign(identity, CacheValidationResult{true, {}});
+			g_cacheValidationMemo.set(identity, CacheValidationResult{true, {}});
 		}
 		if (requiresProton) *requiresProton = requiresProtonFromBody(appNode);
 		wireOut = std::move(wire);
@@ -1654,10 +1684,9 @@ cache::CacheUse cacheUseForApp(uint32_t appId, bool refreshUnavailable)
 	bool memoHit = false;
 	{
 		std::lock_guard<std::mutex> lk(g_cacheValidationMu);
-		auto it = g_cacheValidationMemo.find(key);
-		if (it != g_cacheValidationMemo.end())
+		if (const auto* found = g_cacheValidationMemo.find(key))
 		{
-			result = it->second;
+			result = *found;
 			memoHit = true;
 		}
 	}
@@ -1665,7 +1694,7 @@ cache::CacheUse cacheUseForApp(uint32_t appId, bool refreshUnavailable)
 	{
 		result.valid = hasValidatedCachedBuffer(appId, result.diag);
 		std::lock_guard<std::mutex> lk(g_cacheValidationMu);
-		g_cacheValidationMemo.emplace(key, result);
+		g_cacheValidationMemo.set(key, result);
 	}
 	if (result.valid && !cacheMarkerAllowsRead(appId))
 	{
@@ -1747,10 +1776,9 @@ CacheProbe probeCacheImpl(uint32_t appId, CacheProbeMode mode)
 	bool memoHit = false;
 	{
 		std::lock_guard<std::mutex> validationLock(g_cacheValidationMu);
-		const auto found = g_cacheValidationMemo.find(key);
-		if (found != g_cacheValidationMemo.end())
+		if (const auto* found = g_cacheValidationMemo.find(key))
 		{
-			validation = found->second;
+			validation = *found;
 			memoHit = true;
 		}
 	}
@@ -1758,7 +1786,7 @@ CacheProbe probeCacheImpl(uint32_t appId, CacheProbeMode mode)
 	{
 		validation.valid = hasValidatedCachedBuffer(appId, validation.diag);
 		std::lock_guard<std::mutex> validationLock(g_cacheValidationMu);
-		g_cacheValidationMemo.emplace(key, validation);
+		g_cacheValidationMemo.set(key, validation);
 	}
 	if (validation.valid && !cacheMarkerAllowsRead(appId))
 		validation.valid = false;
@@ -4010,6 +4038,7 @@ bool forgetAppImpl(uint32_t appId, bool preserveTicketArtifacts)
 	{
 		std::lock_guard<std::mutex> validationLock(g_cacheValidationMu);
 		g_cacheProbeMemo.erase(appId);
+		g_cacheValidationMemo.erase(appId);
 	}
 
 	const auto cacheDir = getCacheDir();

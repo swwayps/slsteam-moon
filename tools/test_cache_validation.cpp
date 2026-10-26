@@ -8,13 +8,34 @@
 
 #include "base64/base64.hpp"
 
+#include <atomic>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <new>
 #include <string>
+
+// Live heap allocations, to see what a code path keeps.
+static std::atomic<long> g_liveAllocations{0};
+void* operator new(std::size_t size)
+{
+	if (void* p = std::malloc(size ? size : 1))
+	{
+		++g_liveAllocations;
+		return p;
+	}
+	throw std::bad_alloc();
+}
+void operator delete(void* p) noexcept
+{
+	if (!p) return;
+	--g_liveAllocations;
+	std::free(p);
+}
+void operator delete(void* p, std::size_t) noexcept { operator delete(p); }
 
 static int g_failures = 0;
 #define CHECK(cond, msg)                                               \
@@ -91,6 +112,24 @@ int main()
 	replaceFile(metadata, metadataFor(empty));
 	CHECK(!AppInfoProvision::readValidatedCacheBuffer(kApp, read),
 	      "a pair without a usable depot is rejected");
+
+	// Every refresh replaces the pair; the memo keeps one validation per app.
+	{
+		const auto cycle = [&](int i)
+		{
+			const std::string next = wireWithGid(std::to_string(1000000000 + i).c_str());
+			replaceFile(buffer, next);
+			replaceFile(metadata, metadataFor(next));
+			return AppInfoProvision::readValidatedCacheBuffer(kApp, read);
+		};
+		bool allRead = cycle(0) && cycle(1);
+		const long before = g_liveAllocations.load();
+		for (int i = 2; i < 202; ++i) allRead = cycle(i) && allRead;
+		const long grown = g_liveAllocations.load() - before;
+		CHECK(allRead && grown < 20,
+		      ("replaced pairs do not pile up in the validation memo (+" +
+		       std::to_string(grown) + " live allocations)").c_str());
+	}
 
 	// 42 ships only a Windows depot, 44 a Linux one.
 	const std::string windows = wireWithGid("1234567890", "windows");
