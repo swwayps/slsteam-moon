@@ -61,7 +61,7 @@ endif
 .NOTPARALLEL: clean rebuild
 .PHONY: uninstall clean-libs clean-tools schema-grabber ticket-grabber
 .PHONY: test-library-dates test-library-dates-hook test-depot-overrides
-.PHONY: test-vftableinfo-registry test-owner-frame-wiring
+.PHONY: test-vftableinfo-registry test-owner-frame-wiring test-decompiler-walk
 .PHONY: test-achievements test-achievement-scope test-stats-audit test-parental test-lfs
 .PHONY: test-stats-provenance
 .PHONY: test-manifestdonor test-manifestdonor-runtime test-manifestfetch
@@ -888,6 +888,12 @@ test-log-format:
 		fi; \
 		echo "ok: LOG_FORMAT_$$c rejected"; \
 	done
+test-decompiler-walk:
+	$(CXX) -O2 -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem include -I src \
+		tools/test_decompiler_walk.cpp src/decompiler.cpp \
+		src/utils.cpp src/process.cpp lib/liblibmem.a -Wl,--wrap=LM_FindSegment \
+		-ldl -lpthread -o /tmp/test_decompiler_walk
+	/tmp/test_decompiler_walk
 test-vftable-anchors:
 	$(CXX) -O2 -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem include -I src \
 		tools/test_vftable_anchors.cpp src/decompiler.cpp src/vftableinfo.cpp \
