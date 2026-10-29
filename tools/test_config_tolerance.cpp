@@ -188,6 +188,40 @@ int main()
 	}
 	check(notices == 1, "scripts over MaxManagedApps are reported to the user once");
 
+	// Every game add reloads the whole config: lists are logged as a count,
+	// not one line per entry, and an unchanged error block is not repeated.
+	const auto logCount = [&](const std::string& needle)
+	{
+		std::size_t count = 0;
+		std::ifstream logFile(root + "/test.log");
+		for (std::string line; std::getline(logFile, line);)
+			if (line.find(needle) != std::string::npos)
+				++count;
+		return count;
+	};
+	{
+		std::string large = "AdditionalApps:\n";
+		for (int id = 100000; id < 100500; ++id)
+			large += "  - " + std::to_string(id) + "\n";
+		large += "AppTokens:\n";
+		for (int id = 100000; id < 100500; ++id)
+			large += "  " + std::to_string(id) + ": 1234\n";
+		std::ofstream(configHome + "/SLSsteam/config.yaml", std::ios::trunc) << large;
+		const std::size_t before = logCount("] Added ");
+		check(g_config.loadSettings() && g_config.loadSettings(), "a config with large lists reloads");
+		check(logCount("] Added ") == before,
+		      "reloads log no line per list entry (got " +
+		      std::to_string(logCount("] Added ") - before) + ")");
+	}
+	{
+		std::ofstream(configHome + "/SLSsteam/config.yaml", std::ios::trunc)
+			<< "AchievementOwnerId: 0\nNotifications: no\n";
+		const std::size_t before = logCount("Config loading errors");
+		check(g_config.loadSettings() && g_config.loadSettings(), "a config missing keys reloads");
+		check(logCount("Config loading errors") - before == 1,
+		      "an unchanged missing-key report is written once");
+	}
+
 	std::filesystem::remove_all(root);
 	if (failures != 0)
 	{

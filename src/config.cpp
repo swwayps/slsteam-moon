@@ -740,7 +740,7 @@ bool CConfig::loadSettings()
 					const std::string dlcName = dlc.second.as<std::string>();
 
 					data.dlcIds[dlcId] = dlcName;
-					g_pLog->info("DlcId %u -> %s\n", dlcId, dlcName.c_str());
+					g_pLog->debug("DlcId %u -> %s\n", dlcId, dlcName.c_str());
 				}
 
 				_dlcData[parentId] = data;
@@ -791,7 +791,7 @@ bool CConfig::loadSettings()
 					_denuvoGames[steamId].emplace(appId);
 
 					//Again, not loggin SteamId because of privacy
-					g_pLog->info("Added DenuvoGame %u\n", appId);
+					g_pLog->debug("Added DenuvoGame %u\n", appId);
 				}
 			}
 			catch (...)
@@ -878,10 +878,15 @@ bool CConfig::loadSettings()
 		lockedApps.set(ManifestPins::lockedAppSet(pinMap));
 	}
 
+	// The watcher reloads on every game add: write the block again only when
+	// it changed. Loads are serialized, so the static needs no lock.
+	static std::string reportedErrors;
 	const auto errors = __loadErrors.get();
-	if (errors.size())
+	if (errors != reportedErrors)
 	{
-		g_pLog->notify("%s\n", errors.c_str());
+		reportedErrors = errors;
+		if (!errors.empty())
+			g_pLog->notify("%s\n", errors.c_str());
 	}
 
 	if (const auto loaded = pluginConfigLoaded.load())

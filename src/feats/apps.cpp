@@ -243,7 +243,7 @@ bool Apps::unlockApp(uint32_t appId, AppOwnershipInfo_t* info, const CSteamId& o
 	info->freeLicense = info->familyShared;
 	info->siteLicense = false;
 
-	g_pLog->infoOnce("Unlocked %u\n", appId);
+	g_pLog->debugOnce("Unlocked %u\n", appId);
 	return true;
 }
 

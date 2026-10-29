@@ -245,10 +245,10 @@ public:
 				T val = subNode.as<T>();
 				list.emplace(val);
 
-				//TODO: Find better way to log shit
+				// Per entry at debug: the watcher reloads on every game add.
 				if constexpr (std::is_same_v<T, uint32_t>)
 				{
-					g_pLog->info("Added %u to %s\n", val, name);
+					g_pLog->debug("Added %u to %s\n", val, name);
 				}
 			}
 			catch(...)
@@ -258,6 +258,10 @@ public:
 			}
 		}
 
+		if constexpr (std::is_same_v<T, uint32_t>)
+		{
+			g_pLog->info("Config: %s has %zu id(s)\n", name, list.size());
+		}
 		return list;
 	}
 
@@ -286,11 +290,11 @@ public:
 
 				if constexpr (std::is_same_v<T, uint32_t> && std::is_same_v<T, T2>)
 				{
-					g_pLog->info("Added %u to %u in %s\n", k, v, name);
+					g_pLog->debug("Added %u to %u in %s\n", k, v, name);
 				}
 				else if constexpr (std::is_same_v<T, uint32_t> && std::is_same_v<T2, uint64_t>)
 				{
-					g_pLog->info("Added %u to %llu in %s\n", k, static_cast<unsigned long long>(v), name);
+					g_pLog->debug("Added %u to %llu in %s\n", k, static_cast<unsigned long long>(v), name);
 				}
 			}
 			catch(...)
