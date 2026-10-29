@@ -629,7 +629,9 @@ bool hkBRouteMsgToJob(void* pJobMgr, void* arg2, void* pMsg, void* pJob)
 
 	const auto* hdrPtr = reinterpret_cast<const MsgHdr*>(pBuf);
 	const uint32_t cbProtoHdr = hdrPtr->headerLength;
-	if (cbProtoHdr == 0 || sizeof(MsgHdr) + cbProtoHdr > cbBuf)
+	// Compared against what is left after the prefix: `8 + length` wraps for
+	// a garbage length near 2^32 and would pass.
+	if (cbProtoHdr == 0 || cbProtoHdr > cbBuf - sizeof(MsgHdr))
 	{
 		return Hooks::CJobMgr_BRouteMsgToJob.tramp.fn(pJobMgr, arg2, pMsg, pJob);
 	}
