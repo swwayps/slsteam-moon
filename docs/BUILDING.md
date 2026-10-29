@@ -37,7 +37,7 @@ Dependencies (Ubuntu/Debian):
 ```
 sudo dpkg --add-architecture i386
 sudo apt update
-sudo apt install g++-multilib make libssl-dev:i386 libcurl4-openssl-dev:i386
+sudo apt install g++-multilib make libcurl4-openssl-dev libcurl4-openssl-dev:i386 libssl-dev libssl-dev:i386
 ```
 
 Arch:
@@ -46,7 +46,8 @@ Arch:
 sudo pacman -S multilib/lib32-gcc-libs multilib/lib32-openssl multilib/lib32-curl
 ```
 
-The `--host` script sniffs for these and tells you what's missing.
+The `--host` script checks for g++, make and a working `-m32` toolchain,
+and prints these lines when one is missing.
 
 ### Portable build (`scripts/build.sh --portable`)
 
