@@ -525,8 +525,8 @@ void pruneUnsupportedDepots(YAML::Node& body, uint32_t appId,
 				usableDlcAppIds.insert(dlcAppId);
 			}
 			++dropped;
-			g_pLog->info("AppInfoProvision: app=%u dropping empty depot %u "
-			             "(public manifest size 0)\n", appId, depotId);
+			g_pLog->debug("AppInfoProvision: app=%u dropping empty depot %u "
+			              "(public manifest size 0)\n", appId, depotId);
 			continue;
 		}
 
@@ -619,8 +619,8 @@ void pruneUnsupportedDepots(YAML::Node& body, uint32_t appId,
 	}
 
 	body["depots"] = newDepots;
-	g_pLog->info("AppInfoProvision: app=%u dropped %d/%d unsupported depots (kept %d)\n",
-	             appId, dropped, totalNumeric, kept);
+	g_pLog->debug("AppInfoProvision: app=%u dropped %d/%d unsupported depots (kept %d)\n",
+	              appId, dropped, totalNumeric, kept);
 
 	// If none of the surviving depots target Linux natively, the app
 	// can only run through Proton.  Register it for a CompatToolMapping
@@ -1796,7 +1796,7 @@ SourceResult renderAndPersist(uint32_t appId, const YAML::Node& appNode,
 			reason = "concrete depots are not usable";
 		else if (renderResult == SourceResult::VirtualDlc)
 			reason = "DLC has no usable content depots";
-		g_pLog->info("AppInfoProvision: app=%u render stopped (%s)\n", appId, reason);
+		g_pLog->debug("AppInfoProvision: app=%u render stopped (%s)\n", appId, reason);
 		return renderResult;
 	}
 	if (wire.find("\"depots\"") == std::string::npos)
@@ -1819,8 +1819,8 @@ SourceResult renderAndPersist(uint32_t appId, const YAML::Node& appNode,
 		return SourceResult::LocalFailure;
 	}
 
-	g_pLog->infoOnce("AppInfoProvision: app=%u provisioned (change=%u, %zu bytes wire)\n",
-	             appId, changeNumber, wire.size());
+	g_pLog->debugOnce("AppInfoProvision: app=%u provisioned (change=%u, %zu bytes wire)\n",
+	                  appId, changeNumber, wire.size());
 	return SourceResult::Success;
 }
 
@@ -2599,12 +2599,12 @@ ProvisionOutcome provisionAppDetailed(uint32_t appId,
 			    provisionAppFromCmBuffer(appId, it->second, cn, publication);
 			if (cmResult == SourceResult::Success)
 			{
-				g_pLog->info("AppInfoProvision: app=%u provisioned via CM\n", appId);
+				g_pLog->debug("AppInfoProvision: app=%u provisioned via CM\n", appId);
 				return ProvisionOutcome::Updated;
 			}
 			if (!shouldTryProviderFallback(cmResult))
 			{
-				g_pLog->info(
+				g_pLog->debug(
 				    "AppInfoProvision: app=%u CM result is terminal (%s); "
 				    "provider fallback suppressed\n", appId,
 				    cmResult == SourceResult::NoUsableContent
@@ -2650,7 +2650,7 @@ ProvisionOutcome provisionAppDetailed(uint32_t appId,
 	for (const auto& tmpl : providerChain())
 	{
 		url = expandUrl(tmpl, appId);
-		g_pLog->info("AppInfoProvision: app=%u GET %s\n", appId, url.c_str());
+		g_pLog->debug("AppInfoProvision: app=%u GET %s\n", appId, url.c_str());
 
 		// Retry transient failures (timeouts, 5xx, cold-network DNS) with a
 		// bounded linear backoff inside the pass's shared provider budget.
@@ -2717,7 +2717,7 @@ ProvisionOutcome provisionAppDetailed(uint32_t appId,
 			reason = "concrete depots are not usable";
 		else if (renderResult == SourceResult::VirtualDlc)
 			reason = "DLC has no usable content depots";
-		g_pLog->info("AppInfoProvision: app=%u render stopped (%s)\n", appId, reason);
+		g_pLog->debug("AppInfoProvision: app=%u render stopped (%s)\n", appId, reason);
 		if (recordsTerminalVerdict(renderResult))
 			noteTerminalProvisionResult(
 				appId, renderResult, changeNumber, publication);
@@ -2768,8 +2768,8 @@ ProvisionOutcome provisionAppDetailed(uint32_t appId,
 		return ProvisionOutcome::LocalFailure;
 	}
 
-	g_pLog->infoOnce("AppInfoProvision: app=%u provisioned (change=%u, %zu bytes wire)\n",
-	             appId, changeNumber, wire.size());
+	g_pLog->debugOnce("AppInfoProvision: app=%u provisioned (change=%u, %zu bytes wire)\n",
+	                  appId, changeNumber, wire.size());
 	return ProvisionOutcome::Updated;
 }
 
