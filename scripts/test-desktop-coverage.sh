@@ -1327,5 +1327,16 @@ check "restore keeps a foreign system symlink" "yes" "$([ -L "$SYSL/libreoffice-
 check "restore keeps a foreign user symlink" "yes" \
   "$([ -L "$HL/.local/share/applications/writer-link.desktop" ] && echo yes || echo no)"
 
+# A guardian pass run in the installer's shell leaves its stderr open.
+HE="$TMP/homeE"; mkdir -p "$HE/data/applications" "$HE/runtime"
+stderrE=$( (XDG_DATA_HOME="$HE/data" XDG_DATA_DIRS="$TMP/emptyE" XDG_CONFIG_HOME="$HE/conf" \
+  XDG_STATE_HOME="$HE/state" XDG_RUNTIME_DIR="$HE/runtime" DC_HOME="$HE" \
+  DC_BACKUP_ROOT="$HE/backup" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" \
+  DC_SUDO="$SUDO_SHIM" DC_FLOCK="$FLOCK_SHIM" \
+  DC_UPDATE_DESKTOP_DATABASE="$UPDATE_SHIM" DC_KBUILDSYCOCA="$KBUILD_SHIM" \
+  dc_guardian_run >/dev/null; echo STDERR-MARK >&2) 2>&1 )
+check "guardian pass leaves the caller's stderr open" "yes" \
+  "$(case "$stderrE" in *STDERR-MARK*) echo yes ;; *) echo no ;; esac)"
+
 [ "$fail" = 0 ] && echo "ALL PASS" || echo "FAILURES"
 exit "$fail"
