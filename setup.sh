@@ -297,7 +297,7 @@ install_slssteam()
 		log_error "$LIB not found"
 		echo ""
 		echo "   If you're a developer, build it first:"
-		echo -e "     ${GREEN}./build-docker.sh${NC}  ${MUTED}# For releases (requires Podman/Docker)${NC}"
+		echo -e "     ${GREEN}scripts/build.sh --portable${NC}  ${MUTED}# For releases (requires Podman/Docker)${NC}"
 		echo -e "     ${GREEN}make${NC}               ${MUTED}# For local testing${NC}"
 		echo ""
 		exit 1
@@ -810,8 +810,8 @@ slsm_refresh_patterns() {
 slsm_refresh_patterns
 
 # CloudRedirect (optional): inject its 32-bit cloud-save hook via LD_PRELOAD.
-# Our bundled build is CloudRedirect 2.1.5 (correct save restore via
-# StripCasShaLeaf) with the steamclient.so wait extended 10s -> 120s so it
+# Our build (cloudredirect-moon, deployed by the luatools installer) restores
+# saves via StripCasShaLeaf and waits up to 120 s for steamclient.so, so it
 # attaches on slow-bootstrap distros (Arch/CachyOS) too. It is a plain
 # LD_PRELOAD library: loading it as an LD_AUDIT auditor corrupts the client
 # heap (realloc(): invalid pointer) during init, so it must NOT go in the
@@ -897,13 +897,8 @@ EOF
 	return 0
 }
 
-# NOTE: the user-level autostart override (mirror the system/Steam autostart entry
-# so the desktop session's auto-launch of Steam runs through our wrapper) now lives
-# in the shared coverage lib as dc_seed_autostart_override, invoked from dc_run —
-# so it runs at install AND on every per-launch/Lumen re-assert, and covers ANY
-# distro that auto-starts Steam via /etc/xdg/autostart (SteamOS/Bazzite and beyond),
-# not just at install time. The old setup_autostart_override/is_autostart_steam_desktop/
-# rewrite_primary_exec_to_wrapper helpers were removed as dead code.
+# The autostart override lives in desktop-coverage.lib.sh as
+# dc_seed_autostart_override, run by dc_run.
 
 # ---------------------------------------------------------------------------
 # System launcher interception
