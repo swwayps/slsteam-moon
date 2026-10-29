@@ -78,11 +78,8 @@ bool hasNormalizedCache(uint32_t appId)
 {
 	try
 	{
-		// This runs on the detached raw-cache worker. Do not invoke yaml-cpp
-		// here: its LoadFile error path cannot reliably unwind through the
-		// optimized portable build and a concurrently replaced metadata file
-		// can therefore abort Steam. The emitted cache format is deliberately
-		// small and already has a bounded, no-throw parser.
+		// Runs on the detached raw-cache worker: read the small metadata file
+		// with a size bound and the allocation-light parser, not yaml-cpp.
 		std::ifstream metadataInput(getMetaPath(appId),
 		                           std::ios::binary | std::ios::ate);
 		if (!metadataInput.is_open()) return false;

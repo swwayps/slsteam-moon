@@ -42,7 +42,6 @@ static int g_failures = 0;
 int main()
 {
 	using AppInfoProvision::CacheReadiness;
-	using AppInfoProvision::ColdStartMode;
 	using AppInfoProvision::selectColdStartApps;
 	using AppInfoProvision::cache::CacheUse;
 	using AppInfoProvision::cache::CacheMetadataView;
@@ -65,21 +64,17 @@ int main()
 	using AppInfoProvision::cache::shouldInvalidateDlcMetadata;
 	using AppInfoProvision::cache::wireSizeMatches;
 
-	for (const auto mode : {ColdStartMode::StartupRequireUsablePair,
-	                        ColdStartMode::RuntimeMissingOnly})
 	{
 		const auto cold = selectColdStartApps(
 		    {{1, CacheReadiness::Busy}, {2, CacheReadiness::Unverified},
 		     {3, CacheReadiness::Missing}, {4, CacheReadiness::Invalid},
-		     {5, CacheReadiness::ValidStale}, {6, CacheReadiness::Fresh}},
-		    mode);
+		     {5, CacheReadiness::ValidStale}, {6, CacheReadiness::Fresh}});
 		CHECK(!cold.contains(1),
-		      "busy runtime cache never becomes synchronous network work");
+		      "busy cache never becomes synchronous network work");
 		CHECK(!cold.contains(2),
-		      "unverified runtime cache defers to background validation");
-		CHECK(cold.contains(3), "confirmed runtime miss remains recoverable");
-		CHECK(cold.contains(4),
-		      "confirmed invalid runtime pair remains recoverable");
+		      "unverified cache defers to background validation");
+		CHECK(cold.contains(3), "confirmed miss remains recoverable");
+		CHECK(cold.contains(4), "confirmed invalid pair remains recoverable");
 		CHECK(!cold.contains(5),
 		      "validated stale cache remains usable at startup");
 		CHECK(!cold.contains(6), "a fresh pair is never a cold start");

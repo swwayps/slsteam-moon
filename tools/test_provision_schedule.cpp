@@ -25,9 +25,7 @@ void check(bool condition, const char* message)
 int main()
 {
     using AppInfoProvision::CacheReadiness;
-    using AppInfoProvision::shouldRequeueRefreshAfterStartFailure;
     using AppInfoProvision::asyncProvisionEnabled;
-    using AppInfoProvision::shouldWarmCurlBeforePics;
     using AppInfoProvision::shouldMarkColdCacheSanitized;
     using AppInfoProvision::PreinitProvisionAction;
     using AppInfoProvision::preinitProvisionAction;
@@ -43,10 +41,6 @@ int main()
               PreinitProvisionAction::SynchronousProvision,
           "disabled async mode keeps the full synchronous setup pass");
 
-    check(shouldRequeueRefreshAfterStartFailure(false),
-          "a known failed follow-up start retains the queued refresh");
-    check(!shouldRequeueRefreshAfterStartFailure(true),
-          "an uncertain worker recovery keeps the active refresh gate");
     check(shouldMarkColdCacheSanitized(false),
           "provider-normalized cold results suppress raw PICS replacement");
     check(!shouldMarkColdCacheSanitized(true),
@@ -62,10 +56,6 @@ int main()
           "environment one can re-enable async provisioning");
     check(!asyncProvisionEnabled(true, "unexpected"),
           "invalid environment value fails closed");
-    check(shouldWarmCurlBeforePics(true),
-          "managed apps require curl warmup before the PICS worker");
-    check(shouldWarmCurlBeforePics(false),
-          "future hot-adds also require curl warmup before the PICS worker");
 
     const std::unordered_set<std::uint32_t> managed{420530, 555, 666, 777, 888};
     const std::unordered_set<std::uint32_t> synthetic{420530, 999};

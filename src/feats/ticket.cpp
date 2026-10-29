@@ -355,22 +355,13 @@ bool Ticket::recvAppTicket(CMsgClientGetAppOwnershipTicketResponse* msg)
 	// so the install stalls at "Failed downloading 1 manifests
 	// (Connection timeout)" minutes later.
 	//
-	// Stamp eresult=OK on the parsed message so the downloader proceeds.
-	// We intentionally do NOT touch the `ticket` string field — that
-	// lives in Steam's protobuf arena and rewriting it has corrupted the
-	// heap in past experiments.  set_eresult is
-	// a trivial int32 mutation, no allocation.  If Steam's later pipeline
-	// strictly validates the ticket bytes we may need to re-route this
-	// through a fresh message buffer (mirror what hkBRouteMsgToJob does
-	// for GetManifestRequestCode), but try the minimal change first.
+	// Stamp eresult=OK so the downloader proceeds. Only the int32 changes:
+	// the `ticket` string is arena-owned and rewriting it corrupts the heap.
 	if (Ticket::shouldStampAppOwnershipTicket(
 			g_config.isAddedAppId(appId), Apps::isAddedAppDlcId(appId)))
 	{
 		msg->set_eresult(static_cast<int32_t>(k_EResultOK));
-		// One-time log so we don't spam every retry.  Note: do NOT
-		// use infoOnce here — a bug in CLog dedup-thread interaction
-		// has caused crashes in the past.  A plain `info` is safe;
-		// CM only sends a handful of these per session.
+		// Logged on every stamp; the CM sends only a few of these per session.
 		g_pLog->info("Ticket: stamped eresult=OK on AppOwnershipTicket response for AdditionalApp=%u\n",
 		             appId);
 		return true;

@@ -320,16 +320,15 @@ static void setup()
 	// sees the appinfo entry in Steam's initial in-memory cache.
 	{
 		const bool asyncProvision = AppInfoProvision::asyncProvisioningEnabled();
-		const bool warmCurl = AppInfoProvision::shouldWarmCurlBeforePics(
-		    !g_config.managedAppIds.get().empty());
 
 		// Loading libcurl's TLS dependency tree from the first PICS worker
 		// callback can crash the 32-bit Steam client. Warm it up here while
 		// setup() still owns the safe preinit call stack; the callback then
 		// only reuses already-resolved function pointers. This intentionally
-		// does not depend on appinfo.vdf being discoverable: the PICS callback
-		// can still run and must never be the first libcurl loader.
-		if (warmCurl && !CmClient::prepareForThreadedFetch())
+		// depends neither on appinfo.vdf being discoverable nor on managed apps
+		// existing: a later hot-add starts the same worker, and the PICS
+		// callback must never be the first libcurl loader.
+		if (!CmClient::prepareForThreadedFetch())
 		{
 			g_pLog->warn("CmClient: unable to preload libcurl before PICS worker\n");
 		}
@@ -363,7 +362,7 @@ static void setup()
 				// field rollback: refresh every managed app before the splice.
 				DepotKey::importLuaScripts();
 				BootProf::Span provisionProfile(g_pLog.get(), "provision.sync_preinit");
-				AppInfoProvision::provisionAllAddedApps(candidate);
+				AppInfoProvision::provisionAllAddedApps();
 			}
 			else
 			{
@@ -375,9 +374,7 @@ static void setup()
 				BootProf::Span provisionProfile(g_pLog.get(), "provision.cold_preinit");
 				const auto startupCandidates = g_config.managedAppIds.get();
 				AppInfoProvision::provisionColdStartApps(
-				    candidate,
 				    startupCandidates,
-				    AppInfoProvision::ColdStartMode::StartupRequireUsablePair,
 				    nullptr,
 				    true);
 			}

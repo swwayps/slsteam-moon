@@ -2,11 +2,8 @@
 //
 // Pure freshness logic for the AdditionalApps provisioning cache.
 //
-// AppInfoProvision::provisionApp does one synchronous HTTP GET per added
-// app, and Steam re-execs setup() several times during a single cold boot,
-// so the naive cost is O(n_apps * n_passes) network round-trips that grow
-// with every game the user adds.  We short-circuit the fetch when a
-// freshly-written picsbuffer_<appid>.bin is already on disk.
+// A provisioning pass skips the fetch for an app whose picsbuffer_<appid>.bin
+// was written within the TTL, so repeated passes in one boot stay cheap.
 //
 // The window (TTL) is intentionally short and applies only to legacy/full
 // refresh passes inside one boot. Startup splice eligibility is structural,
@@ -57,10 +54,9 @@ struct CacheMetadataView
 	bool synthetic = false;
 };
 
-// Parse the small metadata format emitted by persistBuffer without invoking
-// yaml-cpp. YAML::LoadFile reports a missing/malformed file by throwing; the
-// portable optimized build cannot reliably unwind that throw from a watcher
-// pthread, so a cache miss must be represented as an ordinary false result.
+// Parse the small metadata format emitted by persistBuffer without yaml-cpp:
+// one allocation-free, no-throw pass that stays cheap on worker threads. A
+// malformed or incomplete record returns false.
 inline bool parseCacheMetadata(
 	std::string_view text,
 	CacheMetadataView& output) noexcept

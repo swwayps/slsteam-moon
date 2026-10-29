@@ -11,29 +11,20 @@
 // finishes without downloading anything (visible in `content_log.txt`:
 // `0 mounted depots`, `has no changes, 0 active: 0 target`).
 //
-// We previously tried to enrich the in-flight PICS buffer.  Steam
-// validates the buffer against the SHA-1 it received in the PICS
-// changelist, so any rewrite tripped the integrity check and looped the
-// cold-cache login forever.
+// The in-flight PICS buffer is never edited: Steam checks it against the
+// changelist SHA-1 and loops on "Loading user data" after any change. This
+// module instead splices complete product-info into `appcache/appinfo.vdf`
+// before Steam opens the file, so Steam reads the depots from its own cache.
 //
-// This module addresses that case at a different layer: it pulls a
-// complete product-info text buffer from a public mirror and splices
-// a synthetic entry into `appcache/appinfo.vdf` *before Steam opens the
-// file*.  Steam then reads its own cache, finds the depots/manifests,
-// and the downloader proceeds normally.  The runtime PICS path is left
-// untouched, so the cold-loop fix is preserved.
-//
-// Provider: `https://api.steamcmd.net/v1/info/{appid}` (Pavel/SteamDB,
-// JSON; identical schema to the SteamCMD `app_info_print`, including
-// `_change_number` and `_sha`).  Selectable via
-// `AppInfoProvision::setProvider` if a future config knob is wired up.
+// Product-info comes from one batched anonymous CM request (CmClient); apps
+// without a readable CM answer fall back to api.steamcmd.net.
 //
 // Output writes through the same on-disk cache layout that
 // `feats/pics.cpp` uses (`<config>/cache/picsbuffer_<appid>.bin` plus
 // `picsbuffer_<appid>.yaml`).  During setup, missing pairs are provisioned
-// before `AppInfoVdf::injectAllCached` splices them into the appinfo file;
-// background refreshes for already-known apps are consumed on the next
-// Steam start.
+// before `AppInfoVdf::injectAllCached` splices them into the appinfo file.
+// Background refreshes rewrite the pair and publish it into Steam's live
+// appinfo cache when the request allows it (selectRuntimePublishCandidates).
 //
 // Idempotent and best-effort: any network/parse failure is logged and
 // skipped — Steam continues with whatever it has.
@@ -157,16 +148,8 @@ inline bool cachedRuntimePublicationAllowed(
 		readiness == CacheReadiness::ValidStale;
 }
 
-enum class ColdStartMode { StartupRequireUsablePair, RuntimeMissingOnly };
-
-inline bool coldStartPrimesTerminalMemo(ColdStartMode mode) noexcept
-{
-	return mode == ColdStartMode::StartupRequireUsablePair;
-}
-
 inline std::unordered_set<std::uint32_t> selectColdStartApps(
-	const std::vector<std::pair<std::uint32_t, CacheReadiness>>& candidates,
-	ColdStartMode /*mode*/)
+	const std::vector<std::pair<std::uint32_t, CacheReadiness>>& candidates)
 {
 	std::unordered_set<std::uint32_t> selected;
 	for (const auto& [appId, readiness] : candidates)
@@ -235,14 +218,12 @@ bool readValidatedDlcMetadataCache(
 	DlcMetadata::CacheRecord& record);
 
 // Fetch and persist a synthetic PICS buffer, where needed, for the managed
-// ids sourced from stplug-in or luaappids.yaml. `appinfoVdfPath` is Steam's
-// appcache/appinfo.vdf, used to skip apps that already have a usable entry.
-// Installed compatibility ids never enter provider calls.
+// ids sourced from stplug-in or luaappids.yaml. Installed compatibility ids
+// never enter provider calls.
 // Returns the number of buffers newly written (0 means everything was
 // already provisioned or none needed).  `allowConfigWrite` is true only for
 // the preinit pass, before Steam can concurrently rewrite config.vdf.
-int provisionAllAddedApps(const std::string& appinfoVdfPath,
-                          bool allowConfigWrite = true);
+int provisionAllAddedApps(bool allowConfigWrite = true);
 
 struct ProvisionPassSummary
 {
@@ -268,17 +249,15 @@ void flushPendingProtonMappings();
 // receive a live compatibility mapping before package publication.
 bool requiresProton(std::uint32_t appId) noexcept;
 
-// Provision managed apps whose cache pair is not ready for the current PICS
-// response. This synchronous fallback runs on the PICS recv thread when
-// called at runtime, or during setup() before the appinfo splice when
-// `allowConfigWrite` is true. It publishes a normalized cache pair;
+// Synchronously provision the managed candidates whose cache pair is missing
+// or invalid, publishing a normalized pair. Runs in setup() before the
+// appinfo splice; `allowConfigWrite` lets it write Proton mappings into
+// config.vdf instead of queueing them.
 // `sanitizedApps`, when supplied, receives ids successfully normalized during
 // this invocation. Offline fallback bookkeeping stays pass-local: startup
 // splicing independently revalidates every complete pair before merging it.
 int provisionColdStartApps(
-    const std::string& appinfoVdfPath,
     const std::unordered_set<std::uint32_t>& candidates,
-    ColdStartMode mode,
     std::unordered_set<uint32_t>* sanitizedApps = nullptr,
     bool allowConfigWrite = false);
 

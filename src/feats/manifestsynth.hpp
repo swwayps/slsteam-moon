@@ -11,8 +11,8 @@
 // usable token).  Provisioning uses an anonymous CM session by design (it
 // must never touch the user's live session — that trips the changelist
 // SHA-1 "Loading user data" loop), so the product-info it receives for
-// such a title carries NO `depots` block.  provisionApp then bails
-// ("buffer has no depots") and Steam shows the app as 0 B.
+// such a title carries NO `depots` block; without synthesis it has no usable
+// content and Steam shows the app as 0 B.
 //
 // The data isn't actually missing, though: the LuaTools per-game zip
 // shipped the depot manifest (archived in the ManifestStore) and the depot
@@ -27,7 +27,7 @@
 // Kept free of globals/I/O (only yaml-cpp + std) so it is host-unit-
 // testable (tools/test_manifestsynth.cpp); the disk gather (which depots a
 // title owns, and their best archived gid) lives in
-// appinfo_provision.cpp::gatherSynthDepots.
+// appinfo_provision.cpp::synthesizeDepotsFromStore.
 
 #pragma once
 

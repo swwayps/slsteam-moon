@@ -23,7 +23,6 @@
 
 #include "cmclient.hpp"
 
-#include "cm_budget.hpp"
 #include "cmlist_cache.hpp"
 #include "provision_network.hpp"
 
@@ -85,14 +84,6 @@ public:
 	using Clock = std::chrono::steady_clock;
 
 	BatchBudget() : m_started(Clock::now()) {}
-
-	long remainingSeconds(long operationCapSecs) const
-	{
-		const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-		    Clock::now() - m_started).count();
-		return remainingBudgetSeconds(elapsed, kTotalTimeoutMs,
-		                              operationCapSecs);
-	}
 
 	long remainingMilliseconds(long operationCapMs) const
 	{
@@ -157,8 +148,8 @@ AppInfoProvision::NetworkFailure httpsGet(const std::string& url,
 }
 
 // ---------------------------------------------------------------------------
-// CM server list (public, no auth).  Parsed via yaml-cpp (JSON ⊂ YAML),
-// mirroring appinfo_provision's extractAppNode trick.
+// CM server list (public, no auth).  Endpoints are picked out of the JSON
+// with a plain string scan.
 // ---------------------------------------------------------------------------
 
 struct Endpoint { std::string host; int port; };
