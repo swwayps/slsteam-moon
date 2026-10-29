@@ -395,12 +395,16 @@ bool enqueueRawCacheItems(std::vector<RawCacheItem> items)
 			ThreadStart::runGuarded(
 				runRawCacheWorker,
 				[] {
+					// The batch is dropped; later product-info answers queue it again.
+					g_pLog->warn("PICS: raw cache worker failed; its batch waits "
+					             "for the next product-info answer\n");
 					std::lock_guard<std::mutex> lock(g_rawCacheQueueMu);
 					g_rawCacheWorkerActive = false;
 				},
 				[] {});
 		},
 		[] {
+			g_pLog->warn("PICS: raw cache worker did not start\n");
 			std::lock_guard<std::mutex> lock(g_rawCacheQueueMu);
 			g_rawCacheWorkerActive = false;
 		});

@@ -4,10 +4,16 @@
 #include "../src/feats/achievements.hpp"
 #include "../src/log.hpp"
 
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <cstdio>
+#include <fstream>
 #include <map>
+#include <sstream>
+#include <stdexcept>
+#include <thread>
+#include <unistd.h>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -21,6 +27,8 @@ std::map<uint32_t, std::vector<std::vector<uint64_t>>> g_offers;
 std::vector<std::string> g_urls;
 int g_saves = 0;
 int g_failures = 0;
+std::atomic<bool> g_throwOnOffer{false};
+const std::string g_logPath = "/tmp/test_achievement_lookup." + std::to_string(::getpid()) + ".log";
 
 void check(bool ok, const char* label)
 {
@@ -39,8 +47,8 @@ bool waitForOffers(std::size_t total)
 }
 }
 
-std::unique_ptr<CLog> g_pLog = std::make_unique<CLog>("");
-CLog::CLog(const char*) {}
+std::unique_ptr<CLog> g_pLog = std::make_unique<CLog>(g_logPath.c_str());
+CLog::CLog(const char* path) { ofstream.open(path, std::ios::trunc); }
 CLog::~CLog() = default;
 LogLevel CLog::getMinLevel() { return LogLevel::Warn; }
 
@@ -68,6 +76,7 @@ void Achievements::saveOwners()
 
 void Achievements::offerOwners(uint32_t app, const std::vector<uint64_t>& owners)
 {
+	if (g_throwOnOffer.exchange(false)) throw std::runtime_error("offer failed");
 	{
 		std::lock_guard lock(g_mutex);
 		g_offers[app].push_back(owners);
@@ -104,6 +113,19 @@ int main()
 		check(g_changed.wait_for(lock, std::chrono::seconds(5), [] { return g_saves >= 1; }),
 		      "a save request writes the learned owners off Steam's threads");
 	}
+	// A worker that throws answers what is still queued and says so.
+	g_throwOnOffer = true;
+	Achievements::requestOwnerLookup(7, 1);
+	bool reported = false;
+	for (int i = 0; i < 200 && !reported; ++i)
+	{
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		std::stringstream log;
+		log << std::ifstream(g_logPath).rdbuf();
+		reported = log.str().find("owner lookup worker failed") != std::string::npos;
+	}
+	check(reported, "a failed lookup worker is logged");
+	std::remove(g_logPath.c_str());
 	std::printf("%d failure(s)\n", g_failures);
 	return g_failures ? 1 : 0;
 }

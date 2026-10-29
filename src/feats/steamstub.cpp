@@ -603,6 +603,7 @@ void warmupAsync()
 				},
 				[]
 				{
+					g_pLog->warn("SteamStub: prewarm worker failed; launch will warm inline\n");
 					g_warmupFailed.store(true, std::memory_order_release);
 				},
 				[]
