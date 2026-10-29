@@ -67,12 +67,11 @@ failure than "the call ran on the watcher thread, exactly as it always used to".
 
 ### Removed settings
 
-`SLSSTEAM_OWNER_QUEUE` (the off switch) and `SLSSTEAM_OWNER_QUEUE_DEADLINE_MS`
-are no longer supported. Running this work on the watcher thread could
-deadlock the owner IPC thread, and the handoff no longer blocks, so there is no
-deadline to set. If either is still present in a wrapper script it is ignored
-and a warning is logged. `SLSSTEAM_AFFTRACE` was removed with the
-thread-affinity trace and has no effect.
+`SLSSTEAM_OWNER_QUEUE` (the off switch) is no longer supported: running this
+work on the watcher thread could deadlock the owner IPC thread. A leftover one
+in a wrapper script is ignored and a warning is logged.
+`SLSSTEAM_OWNER_QUEUE_DEADLINE_MS` (the handoff no longer blocks) and
+`SLSSTEAM_AFFTRACE` (removed with the thread-affinity trace) have no effect.
 
 ### What the log says
 
