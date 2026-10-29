@@ -27,7 +27,6 @@ int main()
 {
     using AppInfoProvision::CacheReadiness;
     using AppInfoProvision::asyncProvisionEnabled;
-    using AppInfoProvision::shouldMarkColdCacheSanitized;
     using AppInfoProvision::PreinitProvisionAction;
     using AppInfoProvision::preinitProvisionAction;
     using AppInfoProvision::RefreshReason;
@@ -42,10 +41,6 @@ int main()
               PreinitProvisionAction::SynchronousProvision,
           "disabled async mode keeps the full synchronous setup pass");
 
-    check(shouldMarkColdCacheSanitized(false),
-          "provider-normalized cold results suppress raw PICS replacement");
-    check(!shouldMarkColdCacheSanitized(true),
-          "explicit fallback stays replaceable until cache provenance is checked");
 
     check(asyncProvisionEnabled(true, nullptr),
           "config enables async provisioning by default");

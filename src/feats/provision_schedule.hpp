@@ -80,12 +80,5 @@ inline bool asyncProvisionEnabled(bool configEnabled, const char* envOverride)
 	return false;
 }
 
-// A cache accepted only as an explicit stale fallback must remain eligible for
-// a newer raw PICS response. Fresh/provider-normalized cold results can be
-// marked in-process so the callback does not race their publication.
-inline bool shouldMarkColdCacheSanitized(bool explicitFallback)
-{
-	return !explicitFallback;
-}
 
 } // namespace AppInfoProvision

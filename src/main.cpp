@@ -368,10 +368,7 @@ static void setup()
 				DepotKey::importLuaScripts();
 				BootProf::Span provisionProfile(g_pLog.get(), "provision.cold_preinit");
 				const auto startupCandidates = g_config.managedAppIds.get();
-				AppInfoProvision::provisionColdStartApps(
-				    startupCandidates,
-				    nullptr,
-				    true);
+				AppInfoProvision::provisionColdStartApps(startupCandidates);
 			}
 
 			BootProf::Span spliceProfile(g_pLog.get(), "appinfo.splice_preinit");

@@ -221,9 +221,9 @@ bool readValidatedDlcMetadataCache(
 // ids sourced from stplug-in or luaappids.yaml. Installed compatibility ids
 // never enter provider calls.
 // Returns the number of buffers newly written (0 means everything was
-// already provisioned or none needed).  `allowConfigWrite` is true only for
-// the preinit pass, before Steam can concurrently rewrite config.vdf.
-int provisionAllAddedApps(bool allowConfigWrite = true);
+// already provisioned or none needed). Runs in preinit, before Steam can
+// rewrite config.vdf, so it writes Proton mappings there directly.
+int provisionAllAddedApps();
 
 struct ProvisionPassSummary
 {
@@ -236,10 +236,11 @@ struct ProvisionPassSummary
 	std::size_t failed = 0;
 };
 
+// Steam owns config.vdf while it runs, so Proton mappings found here are
+// queued for flushPendingProtonMappings().
 ProvisionPassSummary provisionRequestedApps(
 	const std::string& appinfoVdfPath,
-	const std::vector<RefreshRequest>& requests,
-	bool allowConfigWrite = false);
+	const std::vector<RefreshRequest>& requests);
 
 // Apply Proton mappings deferred by runtime provisioning. This is called from
 // setup() before Steam starts its live ConfigStore writers.
@@ -251,15 +252,10 @@ bool requiresProton(std::uint32_t appId) noexcept;
 
 // Synchronously provision the managed candidates whose cache pair is missing
 // or invalid, publishing a normalized pair. Runs in setup() before the
-// appinfo splice; `allowConfigWrite` lets it write Proton mappings into
-// config.vdf instead of queueing them.
-// `sanitizedApps`, when supplied, receives ids successfully normalized during
-// this invocation. Offline fallback bookkeeping stays pass-local: startup
-// splicing independently revalidates every complete pair before merging it.
-int provisionColdStartApps(
-    const std::unordered_set<std::uint32_t>& candidates,
-    std::unordered_set<uint32_t>* sanitizedApps = nullptr,
-    bool allowConfigWrite = false);
+// appinfo splice and writes Proton mappings into config.vdf directly.
+// Offline fallback bookkeeping stays pass-local: startup splicing
+// independently revalidates every complete pair before merging it.
+int provisionColdStartApps(const std::unordered_set<std::uint32_t>& candidates);
 
 // Resolve the config/env gate for the asynchronous refresh path.
 bool asyncProvisioningEnabled();

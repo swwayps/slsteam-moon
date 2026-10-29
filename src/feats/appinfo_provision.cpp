@@ -2929,7 +2929,7 @@ int provisionAppsPass(const std::unordered_set<uint32_t>& added,
 	return provisioned;
 }
 
-int provisionAllAddedApps(bool allowConfigWrite)
+int provisionAllAddedApps()
 {
 	ProvisionPassCoordinator coordinator(g_provisionPassMu);
 	const auto added = coordinator.snapshot(
@@ -2940,23 +2940,15 @@ int provisionAllAddedApps(bool allowConfigWrite)
 	const int provisioned = provisionAppsPass(
 		added, false, context, nullptr, "startup");
 	coordinator.commit([&] {
-		if (allowConfigWrite)
-		{
-			if (!injectProtonMappings())
-				persistPendingProtonMappings(true);
-		}
-		else
-		{
-			persistPendingProtonMappings(false);
-		}
+		if (!injectProtonMappings())
+			persistPendingProtonMappings(true);
 	});
 	return provisioned;
 }
 
 ProvisionPassSummary provisionRequestedApps(
 	const std::string& appinfoVdfPath,
-	const std::vector<RefreshRequest>& requests,
-	bool allowConfigWrite)
+	const std::vector<RefreshRequest>& requests)
 {
 	ProvisionPassSummary summary;
 	if (requests.empty()) return summary;
@@ -3079,11 +3071,7 @@ ProvisionPassSummary provisionRequestedApps(
 
 	std::vector<RefreshRequest> runtimePublished;
 	coordinator.commit([&] {
-		if (allowConfigWrite)
-		{
-			if (!injectProtonMappings()) persistPendingProtonMappings(true);
-		}
-		else persistPendingProtonMappings(false);
+		persistPendingProtonMappings(false);
 		std::vector<RefreshRequest> basePublish;
 		for (const auto& request : publish)
 		{
@@ -3128,11 +3116,8 @@ ProvisionPassSummary provisionRequestedApps(
 	return summary;
 }
 
-int provisionColdStartApps(const std::unordered_set<uint32_t>& candidates,
-                           std::unordered_set<uint32_t>* sanitizedApps,
-                           bool allowConfigWrite)
+int provisionColdStartApps(const std::unordered_set<uint32_t>& candidates)
 {
-	if (sanitizedApps) sanitizedApps->clear();
 	std::unordered_set<uint32_t> fallbackApps;
 
 	ProvisionPassCoordinator coordinator(g_provisionPassMu);
@@ -3211,9 +3196,6 @@ int provisionColdStartApps(const std::unordered_set<uint32_t>& candidates,
 			// (normalized=false), which must still be replaceable by a newer
 			// response. persistAppBuffer() applies the final provenance guard
 			// for normalized and legacy pairs.
-			if (sanitizedApps &&
-			    shouldMarkColdCacheSanitized(explicitFallback))
-				sanitizedApps->insert(appId);
 			noteColdRetryOutcome(appId, false);
 			continue;
 		}
@@ -3234,9 +3216,6 @@ int provisionColdStartApps(const std::unordered_set<uint32_t>& candidates,
 			if (unresolved) ++unresolvedCount;
 			continue;
 		}
-		if (sanitizedApps &&
-		    shouldMarkColdCacheSanitized(explicitFallback))
-			sanitizedApps->insert(appId);
 		noteColdRetryOutcome(appId, false);
 	}
 	if (unresolvedCount != 0)
@@ -3248,15 +3227,8 @@ int provisionColdStartApps(const std::unordered_set<uint32_t>& candidates,
 	}
 
 	coordinator.commit([&] {
-		if (allowConfigWrite)
-		{
-			if (!injectProtonMappings())
-				persistPendingProtonMappings(true);
-		}
-		else
-		{
-			persistPendingProtonMappings(false);
-		}
+		if (!injectProtonMappings())
+			persistPendingProtonMappings(true);
 	});
 	return provisioned;
 }
@@ -3698,7 +3670,7 @@ bool startRefreshWorker(
 				{
 					ScopedNotifySuppression suppression;
 					BootProf::Span profile(g_pLog.get(), "provision.async");
-					(void)provisionRequestedApps(path, requests, false);
+					(void)provisionRequestedApps(path, requests);
 				},
 				[]
 				{
