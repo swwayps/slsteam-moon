@@ -1,6 +1,8 @@
 schema = 1
 
 # Trusted, data-only scenarios used by the real-Steam candidate validator.
+# The validator is swwayps/steam-autorepair: autorepair/model_results.py and
+# its workflows read this file from res/runtime-probes.toml, so keep the path.
 # These entries select existing monitor scenarios; they cannot execute code or
 # supply commands. Independently resolved locators use the resolution-only
 # default; known startup hooks below retain stronger install/invocation proof.
