@@ -1,89 +1,27 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-// Bounded owner-thread command queue (thread-affinity HARDENING, not a fix).
+// Bounded owner-thread command queue. Steam-owned work (package-0 CUtlVector
+// growth, license mark/process, ConfigStore writes) is handed to the owner IPC
+// thread instead of running on the thread that produced it.
 //
-// WHY THIS EXISTS
-// ---------------
-// The config watcher (and the API watcher) are plain inotify pthreads, but
-// the work they produce touches Steam-owned state: the package-0 sync grows a
-// live CUtlVector through the resolved `CUtlMemoryGrow` and runs Steam's
-// license mark/process pass, and the compatibility step writes Steam's
-// ConfigStore. A runtime trace on a controlled VM showed such calls executing
-// on the watcher pthread while the latched owner thread of IClientUtils IPC
-// dispatch was a different thread.
+//  * Fire-and-forget: push/pushBatch return at once and the owner drains on its
+//    next frame; flushStale() runs the whole pending set inline, in order, once
+//    the oldest entry passes the stale threshold (ownerwork.hpp).
+//  * Immutable commands: coalescing replaces a record but keeps the older
+//    enqueue time, so a stream of pushes cannot postpone the stale escape.
+//  * Bounded: a push past the capacity or the per-command id cap is rejected; a
+//    package-0 snapshot is never refused for capacity (it coalesces into one).
+//  * Coalescing: a newer snapshot replaces the pending one and carries its
+//    still-relevant additions; re-pushing pending work reports Duplicate.
+//  * Exactly once, in order: claims take the whole pending set under the lock,
+//    and inline fallbacks run pending work before their own batch.
+//  * Serialised: one recursive execution mutex covers every path.
+//  * Shutdown: shutdown() refuses new work and abandons pending work.
+//  * A throwing command is contained and does not stop later commands.
+//  * No threads: threads spawned from the LD_AUDIT preinit path crash Steam.
 //
-// That is an unwanted execution site regardless of whether it ever causes a
-// user-visible failure: it is off-owner mutation of Steam-owned state. This
-// queue exists so watcher-originated Steam-owned work can be handed to the
-// owner IPC thread instead. It is DEFENSIVE HARDENING plus diagnostics. It is
-// NOT presented as the cause of, or the fix for, any cumulative client
-// failure — that investigation is inconclusive and no causal claim is made
-// here.
-//
-// FIRE-AND-FORGET HANDOFF (measured, not guessed)
-// -----------------------------------------------
-// The first version of this queue made the watcher thread WAIT for the owner
-// to pick the work up, with a 1500 ms deadline and a direct fallback. Guest
-// measurements killed that design:
-//
-//   * owner-thread wake cadence on an idle client: ~3.30 s and ~3.41 s, twice
-//     independently;
-//   * adding five extra drain points (one per hooked dispatcher) did NOT
-//     shorten it (3.30 s -> 3.41 s), so drain DENSITY is not the limiter — the
-//     client simply does not run IPC frames more often when idle;
-//   * so at 1500 ms the wait ALWAYS expired: the watcher paid 1.5 s and then
-//     ran the work off-owner anyway. Worst of both.
-//
-// The handoff is therefore fire-and-forget: `push`/`pushBatch` return
-// immediately and the owner drains whenever it next runs. The hot-add is
-// already asynchronous from the user's point of view (a .lua drops into
-// stplug-in and the library updates a moment later), so a few seconds of
-// handoff latency costs nothing, while the watcher callback goes back to
-// milliseconds.
-//
-// The one case fire-and-forget must still answer is "what if the owner never
-// drains at all?" (client wedged, dispatcher thread replaced, IPC stopped).
-// Accepting eventual execution would mean a hot-add could silently never
-// apply, which is worse than today. So there is an explicit BOUNDED STALENESS
-// escape hatch: `flushStale()` runs the whole pending batch inline, in order,
-// once the oldest entry is older than a threshold chosen far above the
-// measured cadence (default 30 s ~= 9x the 3.3-3.4 s observed). See
-// ownerwork.hpp for the policy and the caller.
-//
-// DESIGN CONSTRAINTS
-// ------------------
-//  * Immutable commands. A stored command is never mutated; coalescing
-//    REPLACES a record with a freshly built one and KEEPS the older record's
-//    enqueue timestamp, so a stream of coalescing pushes cannot postpone the
-//    staleness escape hatch for ever.
-//  * Bounded. A fixed pending capacity and a per-command id cap. On overflow
-//    the push is REJECTED so the caller can run the work itself — semantics
-//    are preserved, only the execution site degrades to today's behaviour.
-//  * Coalescing. A newer pending package-0 snapshot replaces the older one in
-//    place (the complete snapshot is last-write-wins; still-relevant additions
-//    are carried forward). A duplicate compat request for the same
-//    (app, generation) pair is redundant.
-//  * Idempotent enqueue. Re-pushing work already pending is a no-op that
-//    reports `Duplicate`.
-//  * Exactly once. Every accepted command is executed by exactly one of the
-//    owner drain, the staleness flush, or an inline fallback — the pending set
-//    is always claimed under the lock by swapping it out whole.
-//  * In order. Claims are all-or-nothing over the whole pending set, and the
-//    inline fallbacks run any pending work BEFORE the batch they were given,
-//    so the total order of Steam-owned calls never inverts.
-//  * Serialised execution. One recursive execution mutex covers every path, so
-//    two threads can never run this subsystem's Steam-owned work at the same
-//    time, whichever mode each of them is in.
-//  * Shutdown rejection. After `shutdown()` nothing is accepted and pending
-//    work is abandoned, so teardown never races new Steam-owned calls in.
-//  * Exception containment. A throwing command cannot escape into Steam's IPC
-//    frame or a watcher callback, and cannot stop later commands from running.
-//  * No threads. This file creates none: the owner thread drains, the
-//    enqueuing thread returns immediately. (Spawning threads from the
-//    LD_AUDIT preinit path is a recorded anti-pattern in this repo.)
-//
-// Pure logic + std threading primitives only, so it is host-unit-testable
-// with no Steam process (see tools/test_ownerqueue.cpp).
+// Pure logic + std threading primitives, so it is host-unit-testable with no
+// Steam process (tools/test_ownerqueue.cpp).
 #pragma once
 
 #include <algorithm>
@@ -377,8 +315,8 @@ namespace OwnerQueue
 		//
 		// Running the pending set first is what keeps the total order of
 		// Steam-owned calls correct when the queue could not accept `extra`
-		// (capacity) or must not be used at all (no owner latched yet, queue
-		// disabled). Returns the number of commands executed.
+		// (capacity) or is bypassed (no owner latched yet, or the caller is the
+		// owner). Returns the number of commands executed.
 		std::size_t runPendingThen(const std::vector<Command>& extra, const Runner& run)
 		{
 			std::vector<Entry> batch;
@@ -526,7 +464,7 @@ namespace OwnerQueue
 
 			// A snapshot is never refused for capacity: it coalesces into at
 			// most one record, and refusing it would run the package-0 sync
-			// inline on a thread that holds HotReload's lock (see ownerwork.hpp).
+			// inline on a thread that holds HotReload's lock.
 			if (into.size() >= m_capacity && cmd.kind() != Kind::SyncPackage0)
 				return false;
 

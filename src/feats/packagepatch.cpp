@@ -77,11 +77,8 @@ namespace
 	std::unordered_set<uint32_t> g_seededAppIds;
 	std::unordered_set<uint32_t> g_seededDepotIds;
 
-	// Guards the post-injection license-reconcile so we broadcast a
-	// LicensesUpdated_t at most once per process.  Re-broadcasting on
-	// every LoadPackage(0) call would spam the client UI; one reconcile
-	// after the package-0 AppIdVec contains our apps is enough to break
-	// the cold-cache PICS loop.
+	// Broadcast latch: armed at boot (pre-snapshot path) and re-armed once per
+	// unprocessed boot generation, so LoadPackage(0) cannot spam LicensesUpdated_t.
 	std::atomic<bool> g_licenseReconciled{false};
 
 	// Set true once we've actually appended managed app ids into
@@ -998,10 +995,7 @@ namespace PackagePatch
 
 	void tryReconcileLicenses()
 	{
-		// Cheap, lock-free retry entry point driven by a hook that
-		// reliably has a valid local user (CheckAppOwnership).  No-op
-		// after the one-shot broadcast has happened, or before package
-		// 0 has actually been injected.
+		// Lock-free; a no-op unless a broadcast is pending and package 0 is injected.
 		reconcileLicensesOnce();
 	}
 

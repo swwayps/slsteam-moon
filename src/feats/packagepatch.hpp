@@ -34,12 +34,8 @@ namespace PackagePatch
 	// Tear the hooks back down (called from Hooks::remove).
 	void remove();
 
-	// Retry the one-shot post-injection license reconcile.  Called from
-	// a hook that reliably has a valid local user (CheckAppOwnership) so
-	// the LicensesUpdated_t broadcast can happen even when the package-0
-	// injection occurred before the engine user map was populated (cold
-	// cache).  Cheap no-op once the broadcast has fired or before
-	// anything has been injected.
+	// Retry the pending license broadcast (boot, then once per unprocessed boot
+	// generation) from CheckAppOwnership, which has a local user on a cold cache.
 	void tryReconcileLicenses();
 
 	// Reconcile package 0 to one complete managed-state snapshot.  The caller
