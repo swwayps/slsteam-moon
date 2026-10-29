@@ -159,5 +159,26 @@ MISMATCH_STATE="$(
 ck "setup rejects an unassociated mirrored restore fallback" \
    "$([ "$MISMATCH_STATE" = "no:1:1" ] && echo yes || echo no)"
 
+# The legacy per-file restore (used when the coverage lib is missing) copies a
+# system entry back through the privilege prefix it was given.
+LEGACY_TMP="$(mktemp -d)"
+LEGACY_HOME="$LEGACY_TMP/home"
+LEGACY_BIN="$LEGACY_TMP/bin"
+LEGACY_DESKTOP="$LEGACY_TMP/applications/steam.desktop"
+LEGACY_BACKUP="$LEGACY_HOME/.local/share/SLSsteam/backup/${LEGACY_DESKTOP#/}"
+mkdir -p "$LEGACY_BIN" "$(dirname "$LEGACY_DESKTOP")" "$(dirname "$LEGACY_BACKUP")"
+printf '[Desktop Entry]\nExec=wrapped\n' > "$LEGACY_DESKTOP"
+printf '[Desktop Entry]\nExec=steam\n' > "$LEGACY_BACKUP"
+printf '#!/bin/sh\nprintf "%%s\\n" "$*" >> "%s/sudo.log"\nexec "$@"\n' "$LEGACY_TMP" > "$LEGACY_BIN/sudo"
+chmod 0755 "$LEGACY_BIN/sudo"
+HOME="$LEGACY_HOME" PATH="$LEGACY_BIN:$PATH" SLS_SETUP_LIB_ONLY=1 \
+  bash -c 'source "$1/setup.sh"; restore_or_remove_desktop "$2" sudo' \
+  bash "$HERE" "$LEGACY_DESKTOP" > /dev/null 2>&1
+ck "legacy desktop restore copies through the given sudo" \
+   "$(grep -qxF "cp -- $LEGACY_BACKUP $LEGACY_DESKTOP" "$LEGACY_TMP/sudo.log" 2>/dev/null && echo yes || echo no)"
+ck "legacy desktop restore puts the entry back and drops the backup" \
+   "$(grep -q 'Exec=steam' "$LEGACY_DESKTOP" && [ ! -e "$LEGACY_BACKUP" ] && echo yes || echo no)"
+rm -rf "$LEGACY_TMP"
+
 [ "$fail" = 0 ] && echo "ALL PASS" || echo "FAILURES"
 exit "$fail"

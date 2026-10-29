@@ -1290,7 +1290,7 @@ restore_or_remove_desktop() {
 
 	if [ -f "$backup" ]; then
 		log_info "Restoring $f from backup"
-		if $slsm_sudo cp -- "$backup" "$f"; then
+		if $sudo_cmd cp -- "$backup" "$f"; then
 			rm -f -- "$backup"
 			log_success "Restored $f"
 		fi
