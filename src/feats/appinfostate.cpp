@@ -449,7 +449,9 @@ void* __attribute__((cdecl)) hkGetOrAddAppData(
 	// counter nevertheless spans the original call and all guarded work so a
 	// Store, layout, or trampoline cannot be reclaimed under an active entry.
 	ReaderScope reader;
-	if (cache != nullptr)
+	// Stored only when it changes: this runs on every appinfo lookup, and a
+	// store per call dirties the line other threads read the hook state from.
+	if (cache != nullptr && g_cache.load(std::memory_order_relaxed) != cache)
 		g_cache.store(cache, std::memory_order_release);
 
 	const GetOrAddAppDataPtr original =
@@ -466,9 +468,7 @@ void* __attribute__((cdecl)) hkGetOrAddAppData(
 		g_skipOffset.load(std::memory_order_acquire),
 		g_shaOffset.load(std::memory_order_acquire)};
 	auto read = store->readHandle();
-	auto authoritativeRead = g_authoritativeStore.readHandle();
-	return AppInfoState::guard(
-		data, appId, create, read, authoritativeRead, layout);
+	return AppInfoState::guard(data, appId, create, read, layout);
 }
 
 // Deliberately not noexcept: PIC repair may allocate through libmem helpers.

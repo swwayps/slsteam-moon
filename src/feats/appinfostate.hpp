@@ -509,7 +509,6 @@ inline void* guard(
 	std::uint32_t appId,
 	bool create,
 	HotReloadState::Store::ReadHandle& read,
-	HotReloadState::Store::ReadHandle& authoritativeRead,
 	const AppDataLayout::Layout& layout
 ) noexcept
 {
@@ -529,9 +528,7 @@ inline void* guard(
 	}
 
 	const bool skipSet = bytes[layout.skipOffset] != 0;
-	const bool authoritative = authoritativeRead.contains(appId);
-	switch (AppInfoStatePolicy::decide(
-		true, authoritative, false, shaEmpty, skipSet))
+	switch (AppInfoStatePolicy::decide(true, false, shaEmpty, skipSet))
 	{
 		case AppInfoStatePolicy::Action::MarkSkip:
 			static_cast<std::uint8_t*>(data)[layout.skipOffset] = 1;
@@ -547,19 +544,6 @@ inline void* guard(
 			break;
 	}
 	return data;
-}
-
-inline void* guard(
-	void* data,
-	std::uint32_t appId,
-	bool create,
-	HotReloadState::Store::ReadHandle& read,
-	const AppDataLayout::Layout& layout
-) noexcept
-{
-	HotReloadState::Store empty;
-	auto authoritativeRead = empty.readHandle();
-	return guard(data, appId, create, read, authoritativeRead, layout);
 }
 
 bool setup(HotReloadState::Store& store) noexcept;

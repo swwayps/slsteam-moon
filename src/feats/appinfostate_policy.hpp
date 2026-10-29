@@ -13,11 +13,9 @@ enum class Action : std::uint8_t
 };
 
 // Steam's install lookup treats a set skip byte as missing app configuration,
-// so the byte is only held while appinfo is unresolved. Authoritative records
-// stay protected by the outgoing PICS changelist filter instead.
+// so the byte is only held while a managed app's appinfo is unresolved.
 constexpr Action decide(
 	bool managed,
-	[[maybe_unused]] bool authoritative,
 	bool create,
 	bool shaEmpty,
 	bool skipSet

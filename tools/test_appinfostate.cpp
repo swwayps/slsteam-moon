@@ -9,6 +9,7 @@
 #include <mutex>
 #include <new>
 #include <string_view>
+#include <type_traits>
 
 namespace
 {
@@ -41,9 +42,7 @@ bool test_guard_with_real_store()
 {
 	bool ok = true;
 	HotReloadState::Store store;
-	HotReloadState::Store authoritative;
 	store.publish({101});
-	authoritative.publish({});
 	constexpr AppDataLayout::Layout layout{0x10, 0x1C};
 	std::array<std::uint8_t, 64> data{};
 
@@ -90,33 +89,28 @@ bool test_guard_with_real_store()
 		"resolved dirty signal is idempotently consumed");
 
 	// Steam's install lookup rejects resolved appinfo whose skip byte is set
-	// ("Missing configuration"), so authoritative records must leave it clear.
+	// ("Missing configuration"), so resolved records must leave it clear.
 	store.publish({});
 	store.publish({202});
-	authoritative.publish({202});
 	data.fill(0);
 	data[layout.shaOffset] = 0x5a;
 	{
 		auto managedRead = store.readHandle();
-		auto authoritativeRead = authoritative.readHandle();
 		ok &= check(AppInfoState::guard(
-			data.data(), 202, false, managedRead, authoritativeRead, layout) ==
-			data.data(),
-			"resolved authoritative result is returned after policy");
+			data.data(), 202, false, managedRead, layout) == data.data(),
+			"resolved result is returned after policy");
 	}
 	ok &= check(data[layout.skipOffset] == 0,
-		"resolved authoritative appinfo keeps the skip byte clear");
+		"resolved appinfo keeps the skip byte clear");
 	data[layout.skipOffset] = 1;
 	{
 		auto managedRead = store.readHandle();
-		auto authoritativeRead = authoritative.readHandle();
-		AppInfoState::guard(
-			data.data(), 202, false, managedRead, authoritativeRead, layout);
+		AppInfoState::guard(data.data(), 202, false, managedRead, layout);
 	}
 	ok &= check(data[layout.skipOffset] == 0,
 		"resolved appinfo clears a skip byte set while it was unresolved");
 	ok &= check(store.takeResolvedDirty(),
-		"resolved authoritative appinfo also signals its generation");
+		"resolved appinfo also signals its generation");
 
 	store.publish({});
 	store.publish({101});
@@ -493,10 +487,13 @@ bool test_lifecycle_state_machine()
 
 int main()
 {
+	// The skip rule depends on the managed set and the record only; the
+	// hooked lookup reads no other state.
+	static_assert(std::is_invocable_r_v<Action, decltype(&decide), bool, bool, bool, bool>);
+
 	struct PolicyCase
 	{
 		bool managed;
-		bool authoritative;
 		bool create;
 		bool shaEmpty;
 		bool skipSet;
@@ -506,58 +503,56 @@ int main()
 
 	// Mutation check: every row is a literal requirement, not a second
 	// implementation of decide().
-	constexpr std::array<PolicyCase, 17> cases{{
-		{false, false, false, false, false, Action::None, "unmanaged/noncreate/nonempty/clear"},
-		{false, false, false, false, true,  Action::None, "unmanaged/noncreate/nonempty/set"},
-		{false, false, false, true,  false, Action::None, "unmanaged/noncreate/empty/clear"},
-		{false, false, false, true,  true,  Action::None, "unmanaged/noncreate/empty/set"},
-		{false, false, true,  false, false, Action::None, "unmanaged/create/nonempty/clear"},
-		{false, false, true,  false, true,  Action::None, "unmanaged/create/nonempty/set"},
-		{false, false, true,  true,  false, Action::None, "unmanaged/create/empty/clear"},
-		{false, false, true,  true,  true,  Action::None, "unmanaged/create/empty/set"},
-		{true,  false, true,  false, false, Action::None, "managed/create/nonempty/clear"},
-		{true,  false, true,  false, true,  Action::None, "managed/create/nonempty/set"},
-		{true,  false, true,  true,  false, Action::None, "managed/create/empty/clear"},
-		{true,  false, true,  true,  true,  Action::None, "managed/create/empty/set"},
-		{true,  false, false, false, false, Action::SignalResolved, "managed/noncreate/nonempty/clear"},
-		{true,  false, false, false, true,  Action::ClearSkipAndSignalResolved, "managed/noncreate/nonempty/set"},
-		{true,  false, false, true,  false, Action::MarkSkip, "managed/noncreate/empty/clear"},
-		{true,  false, false, true,  true,  Action::None, "managed/noncreate/empty/set"},
-		{true,  true,  false, false, false, Action::SignalResolved, "authoritative/noncreate/nonempty/clear"},
+	constexpr std::array<PolicyCase, 16> cases{{
+		{false, false, false, false, Action::None, "unmanaged/noncreate/nonempty/clear"},
+		{false, false, false, true,  Action::None, "unmanaged/noncreate/nonempty/set"},
+		{false, false, true,  false, Action::None, "unmanaged/noncreate/empty/clear"},
+		{false, false, true,  true,  Action::None, "unmanaged/noncreate/empty/set"},
+		{false, true,  false, false, Action::None, "unmanaged/create/nonempty/clear"},
+		{false, true,  false, true,  Action::None, "unmanaged/create/nonempty/set"},
+		{false, true,  true,  false, Action::None, "unmanaged/create/empty/clear"},
+		{false, true,  true,  true,  Action::None, "unmanaged/create/empty/set"},
+		{true,  true,  false, false, Action::None, "managed/create/nonempty/clear"},
+		{true,  true,  false, true,  Action::None, "managed/create/nonempty/set"},
+		{true,  true,  true,  false, Action::None, "managed/create/empty/clear"},
+		{true,  true,  true,  true,  Action::None, "managed/create/empty/set"},
+		{true,  false, false, false, Action::SignalResolved, "managed/noncreate/nonempty/clear"},
+		{true,  false, false, true,  Action::ClearSkipAndSignalResolved, "managed/noncreate/nonempty/set"},
+		{true,  false, true,  false, Action::MarkSkip, "managed/noncreate/empty/clear"},
+		{true,  false, true,  true,  Action::None, "managed/noncreate/empty/set"},
 	}};
 
 	for (const auto& test : cases)
 	{
 		check(
-			decide(test.managed, test.authoritative, test.create,
-			       test.shaEmpty, test.skipSet) ==
+			decide(test.managed, test.create, test.shaEmpty, test.skipSet) ==
 				test.expected,
 			test.message
 		);
 	}
 
 	check(
-		decide(false, false, false, true, false) == Action::None,
+		decide(false, false, true, false) == Action::None,
 		"non-managed app is untouched"
 	);
 	check(
-		decide(true, false, true, true, false) == Action::None,
+		decide(true, true, true, false) == Action::None,
 		"creating lookup is untouched"
 	);
 	check(
-		decide(true, false, false, true, false) == Action::MarkSkip,
+		decide(true, false, true, false) == Action::MarkSkip,
 		"managed unresolved lookup becomes non-blocking"
 	);
 	check(
-		decide(true, false, false, true, true) == Action::None,
+		decide(true, false, true, true) == Action::None,
 		"already-marked lookup is idempotent"
 	);
 	check(
-		decide(true, false, false, false, false) == Action::SignalResolved,
+		decide(true, false, false, false) == Action::SignalResolved,
 		"non-empty SHA signals current generation"
 	);
 	check(
-		decide(true, false, false, false, true) ==
+		decide(true, false, false, true) ==
 			Action::ClearSkipAndSignalResolved,
 		"resolved appinfo drops a skip byte set while unresolved"
 	);
