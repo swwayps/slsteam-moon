@@ -694,11 +694,8 @@ void onLaunchApp(uint32_t appId)
 
 		const auto pathStr = p.string();
 
-		// Skip the helper's own artefacts: it leaves `<exe>.original.exe`
-		// as a backup and may transiently produce `<exe>.unpacked.exe`.
-		// Re-running steamless on those would corrupt the backup chain
-		// (verified once in the wild: produced .original.exe.original.exe
-		// and a swapped-in unpacked stand-in).
+		// Skip the helper's own artefacts (the `<exe>.original.exe` backup and
+		// `<exe>.unpacked.exe`): processing them again corrupts the backup chain.
 		const auto fname = p.filename().string();
 		auto endsWith = [](const std::string& s, const char* suffix) {
 			const size_t n = std::strlen(suffix);
