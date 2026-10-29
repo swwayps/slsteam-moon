@@ -136,7 +136,19 @@ void* watchLoop(void* args)
 
 		if (wanted)
 		{
-			watcher->onModify();
+			// An exception leaving this thread would abort Steam.
+			try
+			{
+				watcher->onModify();
+			}
+			catch (const std::exception& e)
+			{
+				g_pLog->warn("FileWatcher: change handler failed: %s\n", e.what());
+			}
+			catch (...)
+			{
+				g_pLog->warn("FileWatcher: change handler failed\n");
+			}
 		}
 	}
 
