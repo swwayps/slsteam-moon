@@ -118,6 +118,7 @@ SETUP_IMMUTABLE_STATE="$(
   SLS_SETUP_LIB_ONLY=1 \
   bash -c '
     source "$1/setup.sh"
+    log_warn() { :; }
     LS_LAUNCHER_DIRS=("$2")
     SLSM_KEEP_LAUNCHER_BACKUP=0
     SLSM_KEEP_LAUNCHER_TREE=0
@@ -125,7 +126,7 @@ SETUP_IMMUTABLE_STATE="$(
     printf "%s:%s:%s" "$result" "$SLSM_KEEP_LAUNCHER_BACKUP" "$SLSM_KEEP_LAUNCHER_TREE"
   ' bash "$HERE" "$SETUP_BIN"
 )"
-ck "setup immutable shim reports incomplete restore" yes \
+ck "setup immutable shim reports incomplete restore" \
    "$([ "$SETUP_IMMUTABLE_STATE" = "no:1:1" ] && echo yes || echo no)"
 
 # A usable mirrored file that is not referenced by the live shim is not a safe
