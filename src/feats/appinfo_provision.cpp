@@ -1799,12 +1799,10 @@ SourceResult renderAndPersist(uint32_t appId, const YAML::Node& appNode,
 		g_pLog->debug("AppInfoProvision: app=%u render stopped (%s)\n", appId, reason);
 		return renderResult;
 	}
-	if (wire.find("\"depots\"") == std::string::npos)
-	{
-		g_pLog->info("AppInfoProvision: app=%u buffer has no depots, skipping\n", appId);
-		return SourceResult::IncompleteContent;
-	}
 
+	// Hash our own bytes, never the provider's `_sha`: the buffer drops or
+	// synthesizes depots, and AppInfoVdf::injectApp skips the rewrite when
+	// (appid, change number, sha) match the entry already on disk.
 	std::string sha20;
 	{
 		std::uint8_t tmp[20];
@@ -2553,6 +2551,27 @@ std::mutex& provisioningPassMutex()
 	return g_provisionPassMu;
 }
 
+// Ends an app's provisioning with a source result other than Success: records
+// the terminal verdict where one applies and maps the result to the outcome.
+ProvisionOutcome outcomeWithoutUpdate(uint32_t appId, SourceResult result,
+                                      uint32_t changeNumber,
+                                      const CachePublicationToken& publication)
+{
+	if (recordsTerminalVerdict(result))
+		noteTerminalProvisionResult(appId, result, changeNumber, publication);
+	switch (result)
+	{
+	case SourceResult::VirtualDlc:
+		return ProvisionOutcome::NotApplicable;
+	case SourceResult::NoUsableContent:
+		return ProvisionOutcome::NoUsableContent;
+	case SourceResult::LocalFailure:
+		return ProvisionOutcome::LocalFailure;
+	default:
+		return ProvisionOutcome::IncompleteContent;
+	}
+}
+
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -2614,15 +2633,7 @@ ProvisionOutcome provisionAppDetailed(uint32_t appId,
 				            : cmResult == SourceResult::IncompleteContent
 				                ? "no depot data available anonymously"
 				                : "local cache write failed");
-				if (recordsTerminalVerdict(cmResult))
-					noteTerminalProvisionResult(appId, cmResult, cn, publication);
-				if (cmResult == SourceResult::VirtualDlc)
-					return ProvisionOutcome::NotApplicable;
-				if (cmResult == SourceResult::NoUsableContent)
-					return ProvisionOutcome::NoUsableContent;
-				return cmResult == SourceResult::LocalFailure
-				    ? ProvisionOutcome::LocalFailure
-				    : ProvisionOutcome::IncompleteContent;
+				return outcomeWithoutUpdate(appId, cmResult, cn, publication);
 			}
 			g_pLog->info("AppInfoProvision: app=%u CM response %s, trying steamcmd\n",
 			             appId,
@@ -2703,74 +2714,11 @@ ProvisionOutcome provisionAppDetailed(uint32_t appId,
 		return ProvisionOutcome::IncompleteContent;
 	}
 	const uint32_t changeNumber = pickChangeNumber(appNode);
-
-	std::string wire;
-	bool synthesized = false;
-	const SourceResult renderResult = renderAppinfoBuffer(
-	    appNode, appId, wire, publication, &synthesized);
-	if (renderResult != SourceResult::Success)
-	{
-		const char* reason = "invalid response";
-		if (renderResult == SourceResult::IncompleteContent)
-			reason = "response contains no concrete depot data";
-		else if (renderResult == SourceResult::NoUsableContent)
-			reason = "concrete depots are not usable";
-		else if (renderResult == SourceResult::VirtualDlc)
-			reason = "DLC has no usable content depots";
-		g_pLog->debug("AppInfoProvision: app=%u render stopped (%s)\n", appId, reason);
-		if (recordsTerminalVerdict(renderResult))
-			noteTerminalProvisionResult(
-				appId, renderResult, changeNumber, publication);
-		if (renderResult == SourceResult::VirtualDlc)
-			return ProvisionOutcome::NotApplicable;
-		if (renderResult == SourceResult::NoUsableContent)
-			return ProvisionOutcome::NoUsableContent;
-		return renderResult == SourceResult::LocalFailure
-		    ? ProvisionOutcome::LocalFailure
-		    : ProvisionOutcome::IncompleteContent;
-	}
-
-	// Spot-check: the wire must contain the depots block, otherwise the
-	// upstream JSON itself is stripped (rare, but happens for retired
-	// titles).  Skip the splice in that case rather than persist a
-	// useless entry.
-	if (wire.find("\"depots\"") == std::string::npos)
-	{
-		g_pLog->info("AppInfoProvision: app=%u JSON has no depots, skipping\n", appId);
-		return ProvisionOutcome::IncompleteContent;
-	}
-
-	// Keep the live public gid, which Steam plans the install with; pins are
-	// applied after planning (BuildDepotDependency, ReconcilePin).
-
-	// Compute sha[20] over the FINAL wire buffer (after prune).
-	//
-	// We must NOT reuse SteamCMD's `_sha`: that hash describes the
-	// upstream, unmodified product-info, but we've dropped or synthesized
-	// depots.  AppInfoVdf::injectApp treats
-	// (appid, change_number, sha) as an idempotency key and skips the
-	// rewrite when all three match an existing entry.  If we kept the
-	// upstream sha, a previously-injected full-depot entry would never
-	// be replaced by our pruned one — the on-disk appinfo.vdf would
-	// keep stale depots and Steam would show 0 B.  Hashing our own
-	// bytes guarantees the key changes whenever our output changes.
-	std::string sha20;
-	{
-		std::uint8_t tmp[20];
-		Sha1::digest(wire.data(), wire.size(), tmp);
-		sha20.assign(reinterpret_cast<const char*>(tmp), 20);
-	}
-
-	if (!persistBuffer(appId, changeNumber, sha20, wire, publication,
-	                   synthesized))
-	{
-		g_pLog->info("AppInfoProvision: app=%u failed to persist buffer to cache\n", appId);
-		return ProvisionOutcome::LocalFailure;
-	}
-
-	g_pLog->debugOnce("AppInfoProvision: app=%u provisioned (change=%u, %zu bytes wire)\n",
-	                  appId, changeNumber, wire.size());
-	return ProvisionOutcome::Updated;
+	const SourceResult result =
+	    renderAndPersist(appId, appNode, changeNumber, publication);
+	if (result == SourceResult::Success)
+		return ProvisionOutcome::Updated;
+	return outcomeWithoutUpdate(appId, result, changeNumber, publication);
 }
 
 std::vector<std::uint32_t> publishRuntimeAppInfo(
