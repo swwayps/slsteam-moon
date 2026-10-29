@@ -34,9 +34,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include <sys/uio.h>
-#include <unistd.h>
-
 
 namespace ManifestCode
 {
@@ -91,10 +88,7 @@ void clearDonorSessionLocked()
 // faulting on an unmapped page.
 bool readVptr(const void* object, const void*& vptr) noexcept
 {
-	iovec local{&vptr, sizeof(vptr)};
-	iovec remote{const_cast<void*>(object), sizeof(vptr)};
-	return process_vm_readv(getpid(), &local, 1, &remote, 1, 0) ==
-		static_cast<ssize_t>(sizeof(vptr));
+	return CNetPacket::readMapped(object, &vptr, sizeof(vptr));
 }
 
 void prunePassiveRequestsLocked()
