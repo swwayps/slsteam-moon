@@ -117,10 +117,16 @@ namespace CefPort
 
 	// The argv with the CEF debug port rewritten to `port`, built in `arena`:
 	// elements without the switch are passed through, the others are copied.
-	// nullptr when no element carries the switch or the result does not fit.
+	// nullptr when the argv does not launch the webhelper (a game or tool
+	// started with its own debug port keeps it), no element carries the
+	// switch, or the result does not fit.
 	inline char** rewriteArgv(char* const argv[], uint16_t port, ArgvArena& arena) noexcept
 	{
 		if (argv == nullptr) return nullptr;
+		bool webhelper = false;
+		for (std::size_t i = 0; argv[i] != nullptr && !webhelper; ++i)
+			webhelper = std::strstr(argv[i], "steamwebhelper") != nullptr;
+		if (!webhelper) return nullptr;
 		bool any = false;
 		std::size_t used = 0;
 		std::size_t n = 0;

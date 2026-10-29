@@ -198,15 +198,22 @@ static void test_rewrite_argv()
 	          std::string(out[2]) ==
 	              "exec './steamwebhelper.sh' '--remote-debugging-port=49777' '--x'",
 	      "only the element with the switch is rewritten");
-	char b0[] = "/usr/bin/true";
+	char b0[] = "./steamwebhelper.sh";
 	char* plain[] = {b0, nullptr};
 	CHECK(CefPort::rewriteArgv(plain, 49777, arena) == nullptr,
 	      "an argv without the switch is left alone");
-	std::string longArg = "--remote-debugging-port=8080 ";
+	std::string longArg = "exec ./steamwebhelper.sh --remote-debugging-port=8080 ";
 	longArg.append(sizeof(arena.bytes), 'x');
 	char* tooLong[] = {longArg.data(), nullptr};
 	CHECK(CefPort::rewriteArgv(tooLong, 49777, arena) == nullptr,
 	      "an argv that does not fit the arena is left alone");
+	// A game or tool launched with its own debug port keeps it.
+	char g0[] = "/bin/sh";
+	char g1[] = "-c";
+	char g2[] = "exec '/games/x/x' --remote-debugging-port=9222";
+	char* game[] = {g0, g1, g2, nullptr};
+	CHECK(CefPort::rewriteArgv(game, 49777, arena) == nullptr,
+	      "only the webhelper launch is rewritten");
 }
 
 static void test_ports()
