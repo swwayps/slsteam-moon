@@ -141,20 +141,27 @@ namespace
 			return;
 		}
 
+		// Claim the broadcast: CheckAppOwnership calls this from several
+		// threads, and only one of them may post LicensesUpdated_t.
+		bool expected = false;
+		if (!g_licenseReconciled.compare_exchange_strong(
+			expected, true, std::memory_order_acq_rel))
+		{
+			return;
+		}
+
 		if (user->notifyLicensesUpdated())
 		{
-			g_licenseReconciled.store(true, std::memory_order_release);
 			g_pLog->info("PackagePatch: broadcast LicensesUpdated_t to reconcile package 0\n");
 		}
 		else
 		{
+			// Stays claimed, so this is not logged on every call.
 			g_pLog->warn
 			(
 				"PackagePatch: NotifyLicensesUpdated unavailable; "
 				"cold-cache reconcile skipped (warm cache still works)\n"
 			);
-			// Mark as done so we don't log this every call.
-			g_licenseReconciled.store(true, std::memory_order_release);
 		}
 	}
 
