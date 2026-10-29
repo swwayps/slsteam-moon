@@ -121,7 +121,8 @@ Notifications: yes
 #Notify when SLSsteam is done initializing
 NotifyInit: yes
 
-#Enable sending commands to SLSsteam via /tmp/SLSsteam.API
+#Enable sending commands to SLSsteam via $XDG_RUNTIME_DIR/SLSsteam/api
+#(~/.cache/SLSsteam/api without XDG_RUNTIME_DIR), a 0600 file in a 0700 folder
 API: no
 
 #Enable the usage of Lua plugins from the plugins subdirectory
