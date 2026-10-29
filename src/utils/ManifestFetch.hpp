@@ -168,13 +168,22 @@ namespace ManifestFetch
 			m_halfOpenToken = 0;
 		}
 
-		void cancelCurrentAttempt() noexcept
-		{
-			m_halfOpenInFlight = false;
-			m_halfOpenToken = 0;
-		}
 
 		bool open() const noexcept { return m_open; }
+		// Open and not yet due for its probe. Updates are held back only for
+		// this window: after it, the next update plan is the probe.
+		bool coolingDown(std::int64_t nowMs) const noexcept
+		{
+			return m_open && nowMs < m_retryAtMs;
+		}
+		void reset() noexcept
+		{
+			m_open = false;
+			m_halfOpenInFlight = false;
+			m_halfOpenToken = 0;
+			m_consecutiveTransportFailures = 0;
+			m_retryAtMs = 0;
+		}
 
 	private:
 		void openAt(std::int64_t nowMs)

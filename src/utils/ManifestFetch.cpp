@@ -41,7 +41,6 @@ namespace ManifestFetch
 namespace
 {
 
-std::atomic<bool> g_providersOffline{false};
 std::atomic<uint64_t> g_sessionEpoch{1};
 
 void setOfflineStatus(bool offline)
@@ -100,7 +99,6 @@ void finishProviderAttempt(uint64_t sessionEpoch,
 		    attemptToken, steadyNowMs(), success, rateLimited, transportFailure);
 		nowOffline = g_providerCircuit.open();
 	}
-	g_providersOffline.store(nowOffline, std::memory_order_release);
 	setOfflineStatus(nowOffline);
 	if (!wasOffline && nowOffline)
 	{
@@ -742,8 +740,10 @@ void resetSessionState()
 	{
 		std::lock_guard circuitLock(g_circuitLock);
 		g_sessionEpoch.fetch_add(1, std::memory_order_acq_rel);
-		g_providerCircuit.cancelCurrentAttempt();
+		// A new session starts with the archive assumed reachable.
+		g_providerCircuit.reset();
 	}
+	setOfflineStatus(false);
 	{
 		std::lock_guard lock(g_missingNotifyLock);
 		g_missingNotified.clear();
@@ -758,7 +758,8 @@ void resetSessionState()
 
 bool areProvidersOffline()
 {
-	return g_providersOffline.load();
+	std::lock_guard<std::mutex> lock(g_circuitLock);
+	return g_providerCircuit.coolingDown(steadyNowMs());
 }
 
 HttpResponse archiveRequest(const std::string& method, const std::string& url,
