@@ -5,6 +5,7 @@
 #include "../src/config.hpp"
 #include "../src/feats/appinfo_provision.hpp"
 #include "../src/feats/appinfo_vdf.hpp"
+#include "../src/feats/pics.hpp"
 #include "../src/log.hpp"
 #include "../src/utils/process_lock.hpp"
 
@@ -12,6 +13,8 @@
 
 #include <atomic>
 #include <chrono>
+#include <dirent.h>
+#include <dlfcn.h>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -41,6 +44,25 @@ void operator delete(void* p) noexcept
 	std::free(p);
 }
 void operator delete(void* p, std::size_t) noexcept { operator delete(p); }
+
+// Directory opens while armed, counted by interposing opendir and fdopendir
+// (libstdc++ opens a walk's subfolders through fdopendir).
+static std::atomic<bool> g_countOpens{false};
+static std::atomic<int> g_directoryOpens{0};
+extern "C" DIR* opendir(const char* name)
+{
+	using Real = DIR* (*)(const char*);
+	static const Real real = reinterpret_cast<Real>(dlsym(RTLD_NEXT, "opendir"));
+	if (g_countOpens) ++g_directoryOpens;
+	return real(name);
+}
+extern "C" DIR* fdopendir(int fd)
+{
+	using Real = DIR* (*)(int);
+	static const Real real = reinterpret_cast<Real>(dlsym(RTLD_NEXT, "fdopendir"));
+	if (g_countOpens) ++g_directoryOpens;
+	return real(fd);
+}
 
 // Linked with -Wl,--wrap=dlsym: a process where libcrypto's SHA1 cannot be
 // found, which must not make every digest match.
@@ -217,6 +239,29 @@ int main()
 	try { AppInfoProvision::flushPendingProtonMappings(); }
 	catch (...) { flushThrew = true; }
 	CHECK(!flushThrew, "an unusable Steam config folder does not throw out of the Proton mapping edit");
+
+	// Shader hit caches of a published batch: ~/.steam/steam usually links to
+	// another root, and every userdata folder is opened once for the batch.
+	{
+		const std::string userdata = steam + "/userdata";
+		for (int user = 0; user < 4; ++user)
+			std::filesystem::create_directories(userdata + "/" + std::to_string(user) + "/config");
+		std::ofstream(userdata + "/1/config/46_pbuf") << "x";
+		std::ofstream(userdata + "/2/config/47_pbuf") << "x";
+		std::ofstream(userdata + "/2/config/keep") << "x";
+		std::filesystem::create_directories(std::string(home) + "/.steam");
+		std::filesystem::create_directory_symlink(steam, std::string(home) + "/.steam/steam");
+		g_directoryOpens = 0;
+		g_countOpens = true;
+		PICS::cleanShaderHitCaches({46, 47, 48});
+		g_countOpens = false;
+		const int opens = g_directoryOpens.load();
+		CHECK(!std::filesystem::exists(userdata + "/1/config/46_pbuf") &&
+		      !std::filesystem::exists(userdata + "/2/config/47_pbuf") &&
+		      std::filesystem::exists(userdata + "/2/config/keep") && opens == 9,
+		      ("a batch walks each userdata folder once (" + std::to_string(opens) +
+		       " opens for 9 folders)").c_str());
+	}
 
 	// The boot splice runs in preinit too: an unusable SLSsteam config folder
 	// (a symlink loop) reads as having no cache.

@@ -39,6 +39,9 @@ namespace PICS
 	// An answer that names no added app: only the repairs that wait for any
 	// product-info callback run.
 	void recvUnmanagedProductInfoResponse();
+	// Remove Steam's shader hit cache (<appid>_pbuf under userdata) of apps
+	// whose appinfo was just published.
+	void cleanShaderHitCaches(const std::unordered_set<uint32_t>& appIds);
 	void recvChangesSinceResponse(CMsgClientPICSChangesSinceResponse* resp);
 
 	// Whether a serialized product-info answer names an app `isAdded`

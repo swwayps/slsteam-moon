@@ -202,10 +202,12 @@ bool persistAppBuffer(uint32_t appId, uint32_t changeNumber,
 	return true;
 }
 
-void cleanShaderHitCache(uint32_t appId)
+} // namespace
+
+void cleanShaderHitCaches(const std::unordered_set<uint32_t>& appIds)
 {
 	const char* home = std::getenv("HOME");
-	if (!home) return;
+	if (!home || appIds.empty()) return;
 
 	static const char* steamRoots[] = {
 		"/.steam/steam",
@@ -213,27 +215,35 @@ void cleanShaderHitCache(uint32_t appId)
 		"/.local/share/Steam",
 	};
 
-	const std::string needle = std::to_string(appId) + "_pbuf";
+	std::unordered_set<std::string> needles;
+	for (const uint32_t appId : appIds)
+		needles.insert(std::to_string(appId) + "_pbuf");
 
+	// The roots usually link to each other: walk each real userdata folder
+	// once for the whole batch.
+	std::unordered_set<std::string> walked;
 	for (const char* suffix : steamRoots)
 	{
-		const auto userdataDir = std::string(home) + suffix + "/userdata";
-		if (!std::filesystem::exists(userdataDir)) continue;
-
 		std::error_code ec;
-		for (auto& entry : std::filesystem::recursive_directory_iterator(userdataDir, ec))
+		const auto userdataDir = std::filesystem::canonical(
+			std::string(home) + suffix + "/userdata", ec);
+		if (ec || !walked.insert(userdataDir.string()).second) continue;
+
+		const std::filesystem::recursive_directory_iterator end;
+		for (std::filesystem::recursive_directory_iterator it(userdataDir, ec);
+		     !ec && it != end; it.increment(ec))
 		{
-			if (!entry.is_regular_file()) continue;
-			const auto fn = entry.path().filename().string();
-			if (fn == needle)
-			{
-				g_pLog->info("PICS: removing shader hit cache: %s\n",
-				             entry.path().c_str());
-				std::filesystem::remove(entry.path(), ec);
-			}
+			std::error_code entryError;
+			if (!it->is_regular_file(entryError)) continue;
+			if (needles.count(it->path().filename().string()) == 0) continue;
+			g_pLog->info("PICS: removing shader hit cache: %s\n", it->path().c_str());
+			std::filesystem::remove(it->path(), entryError);
 		}
 	}
 }
+
+namespace
+{
 
 struct RawCacheItem
 {
@@ -275,7 +285,7 @@ void runRawCacheWorker()
 			batch.swap(g_rawCachePending);
 		}
 
-		bool publishedAny = false;
+		std::unordered_set<uint32_t> published;
 		std::map<uint32_t, RawCacheItem> deferred;
 		for (auto& [appId, item] : batch)
 		{
@@ -293,9 +303,7 @@ void runRawCacheWorker()
 			}
 			if (persisted)
 			{
-				publishedAny = true;
-				try { cleanShaderHitCache(item.appId); }
-				catch (...) {}
+				published.insert(item.appId);
 			}
 			else
 			{
@@ -327,8 +335,10 @@ void runRawCacheWorker()
 					deferred[item.appId] = std::move(item);
 			}
 		}
-		if (publishedAny)
+		if (!published.empty())
 		{
+			try { cleanShaderHitCaches(published); }
+			catch (...) {}
 			try { refreshDiscoveredDlcAfterCachePublication(); }
 			catch (...) {}
 		}
