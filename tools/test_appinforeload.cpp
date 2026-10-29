@@ -91,6 +91,29 @@ int main()
 	}
 
 	{
+		// The lookup guard set the skip byte while the SHA was still empty;
+		// Steam's install lookup refuses a record that keeps it.
+		HotReloadState::Store store;
+		store.publish({420530});
+		FakeCache cache;
+		cache.apps[420530] = {};
+		cache.apps[420530][layout.skipOffset] = 1;
+		cache.appResolvedByRead = 420530;
+		cache.apps[777] = {};
+		cache.apps[777][layout.skipOffset] = 1;
+		cache.apps[777][layout.shaOffset] = 0x5A;
+		const AppInfoReload::Runtime runtime{
+			&cache, &readFromDisk, &lookup};
+
+		(void)AppInfoReload::reload(
+			runtime, std::vector<std::uint32_t>{420530, 777}, store, layout);
+		check(cache.apps[420530][layout.skipOffset] == 0,
+		      "a managed record resolved by the disk read loses its skip byte");
+		check(cache.apps[777][layout.skipOffset] == 1,
+		      "a record that is not managed keeps its skip byte");
+	}
+
+	{
 		HotReloadState::Store store;
 		store.publish({420530});
 		FakeCache cache;
