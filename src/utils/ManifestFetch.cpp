@@ -649,7 +649,7 @@ std::shared_ptr<BlobJob> launchOrJoinBlob(uint64_t gid, uint32_t appId,
 	    });
 	if (!accepted)
 	{
-		g_pLog->info(
+		g_pLog->debug(
 		    "ManifestFetch: blob depot=%u gid=%llu executor queue unavailable\n",
 		    depotId, static_cast<unsigned long long>(gid));
 		job->budget->cancel();
@@ -708,7 +708,7 @@ bool awaitManifestBlobFor(uint64_t manifestGid, uint32_t appId,
 	if (job->future.wait_for(std::chrono::milliseconds(timeoutMs)) !=
 	    std::future_status::ready)
 	{
-		g_pLog->info(
+		g_pLog->debug(
 		    "ManifestFetch: blob depot=%u gid=%llu await timed out after %dms\n",
 		    depotId, static_cast<unsigned long long>(manifestGid), timeoutMs);
 		if (notifyOnTimeout) g_pLog->notifyUser(UserMsg::DownloadTimedOut);

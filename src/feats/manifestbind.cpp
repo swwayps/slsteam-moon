@@ -745,7 +745,7 @@ namespace
 					if (ManagedDepotFilter::shouldDrop(
 					        *sizep, DepotKey::isManagedDepot(depotId)))
 					{
-						g_pLog->info(
+						g_pLog->infoOnce(
 						    "ManifestBind[build]: dropping empty depot %u (size 0) from plan\n",
 						    depotId);
 						continue;
@@ -753,7 +753,7 @@ namespace
 
 					if (DepotQuarantine::shouldDropManagedDlc(depotId, dlcAppId))
 					{
-						g_pLog->info(
+						g_pLog->infoOnce(
 						    "ManifestBind[build]: omitting quarantined DLC depot=%u "
 						    "dlcappid=%u on retry\n",
 						    depotId, dlcAppId);

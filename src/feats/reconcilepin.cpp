@@ -78,7 +78,8 @@ namespace
 		}
 		if (*gidp != pin || *sizep != *pinSize)
 		{
-			g_pLog->info(
+			// Once per text: the target ctx is rebuilt on every reconcile.
+			g_pLog->infoOnce(
 			    "ReconcilePin[%s]: app=%u depot=%u target gid=%llu size=%llu "
 			    "-> pinned gid=%llu size=%llu\n",
 			    site, appId, depotId, static_cast<unsigned long long>(*gidp),
@@ -131,7 +132,7 @@ namespace
 		    [](uint32_t depotId) { return DepotKey::isManagedDepot(depotId); },
 		    [appId, side](uint32_t depotId)
 		    {
-			    g_pLog->info(
+			    g_pLog->infoOnce(
 			        "ReconcilePin: app=%u %s dropping empty managed depot=%u "
 			        "from target\n",
 			        appId, side, depotId);

@@ -633,11 +633,10 @@ bool hkBRouteMsgToJob(void* pJobMgr, void* arg2, void* pMsg, void* pJob)
 
 bool hkCDepotDownloadMgr_BYldRequestDepotManifest(void* pthis, uint32_t appId, uint32_t depotId, uint64_t manifestId, const char* branch, void* arg20)
 {
-	g_pLog->info("BYldRequestDepotManifest: app=%u depot=%u manifest=%llu branch=%s\n",
-	             appId, depotId, static_cast<unsigned long long>(manifestId), branch ? branch : "");
-
 	const bool inScope = DepotKey::manifestInManagedScope(
 	    appId, depotId, g_config.getManifestPinForPlanner(appId, depotId) != 0);
+	g_pLog->debug("BYldRequestDepotManifest: app=%u depot=%u manifest=%llu branch=%s\n",
+	              appId, depotId, static_cast<unsigned long long>(manifestId), branch ? branch : "");
 
 	if (!inScope)
 	{
@@ -689,8 +688,8 @@ bool hkCDepotDownloadMgr_BYldRequestDepotManifest(void* pthis, uint32_t appId, u
 				{
 					ManifestStore::markPreferredGid(depotId, manifestId);
 				}
-				g_pLog->info("BYldRequestDepotManifest: blob staged on disk for depot=%u gid=%llu; "
-				             "passing through to drive the request-code handshake\n",
+				g_pLog->info("BYldRequestDepotManifest: blob staged for depot=%u gid=%llu; "
+				             "calling Steam's request\n",
 				             depotId, static_cast<unsigned long long>(manifestId));
 			}
 			else
