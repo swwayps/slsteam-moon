@@ -842,7 +842,6 @@ bool CConfig::loadSettings()
 
 					ManifestPins::AppPins app;
 					app.locked = body["locked"].as<bool>(false);
-					app.buildId = body["build_id"].as<uint32_t>(0);
 
 					const auto depotsNode = body["depots"];
 					if (depotsNode.IsMap())
