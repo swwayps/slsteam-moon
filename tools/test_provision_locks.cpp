@@ -88,6 +88,56 @@ int main()
 	log << std::ifstream(logPath).rdbuf();
 	CHECK(log.str().find("prepared base=42 not published") != std::string::npos,
 	      "the publication runs on the next owner frame");
+
+	// A busy UI runs owner frames much faster than a pass holds its lock.
+	// Frames inside one hold must not use up the retry budget, and a retry
+	// must not specify the mapping again.
+	static std::atomic<int> specifyCalls{0};
+	static void* requestedVtable[] = {
+		reinterpret_cast<void*>(+[](void*, AppId_t) -> const char* { return ""; }),
+		reinterpret_cast<void*>(+[](void*, AppId_t, const char*, const char*, int32_t) {
+			++specifyCalls;
+		}),
+	};
+	static void** requestedObject = requestedVtable;
+	g_pClientCompat = reinterpret_cast<IClientCompat*>(&requestedObject);
+	const auto notPublishedLines = [&logPath] {
+		std::stringstream text;
+		text << std::ifstream(logPath).rdbuf();
+		std::size_t count = 0;
+		for (std::size_t at = text.str().find("prepared base=42 not published");
+		     at != std::string::npos;
+		     at = text.str().find("prepared base=42 not published", at + 1))
+			++count;
+		return count;
+	};
+	const std::size_t before = notPublishedLines();
+	std::atomic<bool> holdStarted{false};
+	std::thread hold([&] {
+		const std::lock_guard<std::mutex> lock(AppInfoProvision::provisioningPassMutex());
+		holdStarted = true;
+		std::this_thread::sleep_for(std::chrono::milliseconds(400));
+	});
+	while (!holdStarted) std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	OwnerWork::submitCompatReadiness(42, 0);
+	for (int frame = 0; frame < 25; ++frame)
+	{
+		OwnerWork::drainOnOwnerFrame();
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	}
+	hold.join();
+	for (int frame = 0; frame < 200 && notPublishedLines() == before; ++frame)
+	{
+		OwnerWork::drainOnOwnerFrame();
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	}
+	std::stringstream busyLog;
+	busyLog << std::ifstream(logPath).rdbuf();
+	CHECK(busyLog.str().find("stayed busy for app=42") == std::string::npos &&
+	          notPublishedLines() == before + 1,
+	      "owner frames inside one lock hold do not use up the retry budget");
+	CHECK(specifyCalls.load() == 1,
+	      "a busy retry does not specify the mapping again");
 	g_pClientCompat = nullptr;
 
 	// A provisioning pass is running.

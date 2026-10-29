@@ -79,13 +79,16 @@ namespace OwnerQueue
 		{
 			return Command(Kind::SyncPackage0, 0, std::move(snapshot));
 		}
+		// busySinceUs: when a held lock first refused the publication; 0 until
+		// then. A retry carrying it only publishes.
 		static Command ensureCompat(
 			std::uint32_t appId,
 			std::uint64_t managedGeneration,
-			std::uint32_t attempt)
+			std::uint32_t attempt,
+			std::uint64_t busySinceUs = 0)
 		{
 			return Command(Kind::EnsureCompat, appId, {},
-				managedGeneration, attempt);
+				managedGeneration, attempt, busySinceUs);
 		}
 
 		Kind kind() const { return m_kind; }
@@ -93,6 +96,7 @@ namespace OwnerQueue
 		std::uint32_t appId() const { return m_appId; }
 		std::uint64_t managedGeneration() const { return m_managedGeneration; }
 		std::uint32_t attempt() const { return m_attempt; }
+		std::uint64_t busySinceUs() const { return m_busySinceUs; }
 
 		// Idempotency key: two commands describe the same work when they are
 		// the same kind and address the same target.
@@ -116,11 +120,13 @@ namespace OwnerQueue
 		        std::uint32_t appId,
 		        PackageSnapshot packageSnapshot,
 		        std::uint64_t managedGeneration = 0,
-		        std::uint32_t attempt = 0)
+		        std::uint32_t attempt = 0,
+		        std::uint64_t busySinceUs = 0)
 			: m_kind(kind),
 			  m_packageSnapshot(std::move(packageSnapshot)),
 			  m_appId(appId),
-			  m_managedGeneration(managedGeneration), m_attempt(attempt)
+			  m_managedGeneration(managedGeneration), m_attempt(attempt),
+			  m_busySinceUs(busySinceUs)
 		{
 		}
 
@@ -129,6 +135,7 @@ namespace OwnerQueue
 		std::uint32_t              m_appId;
 		std::uint64_t              m_managedGeneration;
 		std::uint32_t              m_attempt;
+		std::uint64_t              m_busySinceUs;
 	};
 
 	enum class PushResult : std::uint8_t
