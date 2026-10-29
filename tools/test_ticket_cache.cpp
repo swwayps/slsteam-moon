@@ -1,6 +1,7 @@
 // A ticket save that fails is reported and leaves the saved ticket file as it
-// was (both ticket kinds).
+// was (both ticket kinds). Saving writes no per-app line at the default level.
 // Build: make test-ticket-cache (links the whole object set).
+#include "../src/config.hpp"
 #include "../src/feats/ticket.hpp"
 #include "../src/globals.hpp"
 #include "../src/log.hpp"
@@ -47,7 +48,9 @@ int main()
 	if (!mkdtemp(home)) return 2;
 	setenv("HOME", home, 1);
 	setenv("XDG_CONFIG_HOME", home, 1);
-	g_pLog = std::unique_ptr<CLog>(new CLog((std::string(home) + "/test.log").c_str()));
+	const std::string logPath = std::string(home) + "/test.log";
+	g_pLog = std::unique_ptr<CLog>(new CLog(logPath.c_str()));
+	g_config.logLevel.set(static_cast<unsigned int>(LogLevel::Info));
 	g_currentSteamId = CSteamId(76561198000000001ULL);
 	signal(SIGXFSZ, SIG_IGN);
 
@@ -75,6 +78,11 @@ int main()
 	      "a failed encrypted ticket write is reported");
 	CHECK(!savedEncrypted.empty() && readAll(encryptedPath) == savedEncrypted,
 	      "a failed encrypted ticket write leaves the saved file intact");
+
+	const std::string log = readAll(logPath);
+	CHECK(log.find("[Info] Saved ticket for 42") == std::string::npos
+	      && log.find("[Info] Saved encrypted ticket for 43") == std::string::npos,
+	      "saving a ticket writes no per-app line at the default level");
 
 	g_pLog.reset();
 	std::filesystem::remove_all(home);

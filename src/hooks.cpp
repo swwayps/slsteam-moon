@@ -837,7 +837,7 @@ static bool hkClientAppManager_GetUpdateInfo(void* pClientAppManager, uint32_t a
 
 	if (Apps::shouldDisableUpdates(appId))
 	{
-		g_pLog->infoOnce("Disabled updates for %u\n", appId);
+		g_pLog->debugOnce("Disabled updates for %u\n", appId);
 		return false;
 	}
 
@@ -951,7 +951,7 @@ static bool hkClientRemoteStorage_IsCloudEnabledForApp(void* pClientRemoteStorag
 
 	if (Apps::shouldDisableCloud(appId))
 	{
-		g_pLog->infoOnce("Disabled cloud for %u\n", appId);
+		g_pLog->debugOnce("Disabled cloud for %u\n", appId);
 		return false;
 	}
 

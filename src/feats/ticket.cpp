@@ -134,7 +134,7 @@ bool Ticket::saveTicketToCache(CMsgClientGetAppOwnershipTicketResponse* resp)
 	const auto path = Ticket::getTicketPath(appId);
 	if (!writeTicketFile(path, node)) return false;
 
-	g_pLog->infoOnce("Saved ticket for %u\n", appId);
+	g_pLog->debugOnce("Saved ticket for %u\n", appId);
 
 	SavedTicket& ticket = ticketMap[appId];
 	ticket.steamId = g_currentSteamId;
@@ -180,7 +180,7 @@ void Ticket::launchApp(uint32_t appId)
 		return;
 	}
 	user->updateAppOwnershipTicket(appId, reinterpret_cast<void*>(ticket.ticket.data()), ticket.ticket.size());
-	g_pLog->infoOnce("Force loaded AppOwnershipTicket for %i\n", appId);
+	g_pLog->debugOnce("Force loaded AppOwnershipTicket for %i\n", appId);
 }
 
 void Ticket::getEncryptedAppTicket(uint32_t appId)
@@ -312,7 +312,7 @@ bool Ticket::saveEncryptedTicketToCache(CMsgClientRequestEncryptedAppTicketRespo
 	const auto path = getEncryptedTicketPath(appId);
 	if (!writeTicketFile(path, node)) return false;
 
-	g_pLog->infoOnce("Saved encrypted ticket for %u\n", appId);
+	g_pLog->debugOnce("Saved encrypted ticket for %u\n", appId);
 
 	SavedTicket& ticket = encryptedTicketMap[appId];
 	ticket.steamId = g_currentSteamId;
