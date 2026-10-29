@@ -34,12 +34,14 @@ namespace ConfLoad
 
 	namespace detail
 	{
+		// A config is a map or empty; reading a key from any other root
+		// (plain text, a list) throws, so such a document counts as unparsed.
 		inline bool tryLoad(const std::string& text, YAML::Node& out)
 		{
 			try
 			{
 				out = YAML::Load(text);
-				return true;
+				return out.IsMap() || out.IsNull();
 			}
 			catch (...)
 			{

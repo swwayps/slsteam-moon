@@ -1,6 +1,7 @@
 // The config watcher reloads for config.yaml and luaappids.yaml, including a
 // luaappids.yaml first created after boot, and ignores every other file in the
-// config folder (make test-config-watch).
+// config folder (make test-config-watch). A config that does not parse does
+// not end the watcher thread.
 #include "../src/config.hpp"
 #include "../src/config_default.hpp"
 #include "../src/feats/hotreload.hpp"
@@ -130,6 +131,13 @@ int main()
 		check(reloadedAfter(seen, std::chrono::seconds(3)),
 		      "config.yaml replaced by rename reloads (round " + std::to_string(round) + ")");
 	}
+
+	seen = publishCount();
+	replaceFile(dir + "/config.yaml", "just text\n");
+	check(reloadedAfter(seen, std::chrono::seconds(3)), "a config.yaml that is not a map reloads");
+	seen = publishCount();
+	replaceFile(dir + "/config.yaml", text);
+	check(reloadedAfter(seen, std::chrono::seconds(3)), "the watcher still reloads after it");
 
 	std::filesystem::remove_all(root);
 	std::printf("%s\n", failures == 0 ? "config watch: all passed" : "config watch: FAILED");

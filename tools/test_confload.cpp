@@ -124,6 +124,16 @@ int main() {
     check(outcome == Outcome::ParsedAsIs, "empty config -> ParsedAsIs");
   }
 
+  // 6) A document that is not a map (plain text, a lone list) is a parse
+  //    failure: reading a key from a scalar or list root throws.
+  {
+    YAML::Node node;
+    std::string repaired;
+    check(ConfLoad::parseWithRepair("just text\n", node, repaired) == Outcome::Failed
+          && node.IsNull(), "scalar config -> Failed with an empty node");
+    check(ConfLoad::parseWithRepair("- 1\n- 2\n", node, repaired) == Outcome::Failed,
+          "list config -> Failed");
+  }
   if (failures) { printf("\n%d check(s) failed\n", failures); return 1; }
   printf("\nall checks passed\n");
   return 0;
