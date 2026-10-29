@@ -1575,7 +1575,7 @@ bool Hooks::setup()
 		if (storage != Decompiler::vftables.end())
 		{
 			const auto& slots = storage->second.functions;
-			cloudToggleHookReady = entry.index < slots.size()
+			cloudToggleHookReady = entry.address != 0 && entry.index < slots.size()
 				&& IClientRemoteStorage_IsCloudEnabledForApp.setup(
 					entry.getPrintName().c_str(), slots[entry.index],
 					hkClientRemoteStorage_IsCloudEnabledForApp);
@@ -1595,7 +1595,7 @@ bool Hooks::setup()
 		if (compat != Decompiler::vftables.end())
 		{
 			const auto& slots = compat->second.functions;
-			compatLayerHookReady = entry.index < slots.size()
+			compatLayerHookReady = entry.address != 0 && entry.index < slots.size()
 				&& IClientCompat_BIsCompatLayerEnabled.setup(
 					entry.getPrintName().c_str(), slots[entry.index],
 					hkClientCompat_BIsCompatLayerEnabled);
@@ -1614,7 +1614,7 @@ bool Hooks::setup()
 		if (store != Decompiler::vftables.end())
 		{
 			const auto& slots = store->second.functions;
-			configStoreHookReady = entry.index < slots.size()
+			configStoreHookReady = entry.address != 0 && entry.index < slots.size()
 				&& IClientConfigStore_SetString.setup(
 					entry.getPrintName().c_str(), slots[entry.index],
 					hkClientConfigStore_SetString);
@@ -1635,7 +1635,7 @@ bool Hooks::setup()
 		if (friends != Decompiler::vftables.end())
 		{
 			const auto& slots = friends->second.functions;
-			friendGameHookReady = entry.index < slots.size()
+			friendGameHookReady = entry.address != 0 && entry.index < slots.size()
 				&& IClientFriends_GetFriendGamePlayed.setup(
 					entry.getPrintName().c_str(), slots[entry.index],
 					hkClientFriends_GetFriendGamePlayed);

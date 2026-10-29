@@ -59,6 +59,16 @@ int main()
 	      "each entry is registered once");
 	check(!VFTIndexes::init(),
 	      "init fails closed when no client vtable was parsed");
+	// Only optional hooks use these four, so a missing one disables its
+	// feature instead of the whole load.
+	bool optionalOnly = true;
+	for (VFTableInfo_t* entry : {&VFTIndexes::IClientCompat::BIsCompatLayerEnabled,
+	                             &VFTIndexes::IClientConfigStore::SetString,
+	                             &VFTIndexes::IClientFriends::GetFriendGamePlayed,
+	                             &VFTIndexes::IClientRemoteStorage::IsCloudEnabledForApp})
+		optionalOnly = optionalOnly && entry->init() && entry->address == 0;
+	check(optionalOnly,
+	      "an entry used only by optional hooks does not fail the load when missing");
 	check(VFTIndexes::IClientUser::GetSteamID.typeName == "14IClientUserMap"
 	      && VFTIndexes::IClientUser::GetSteamID.functionName == "GetSteamID",
 	      "the SteamID slot is resolved by name from IClientUserMap");
