@@ -9,12 +9,15 @@ enum class Action : std::uint8_t
 	None,
 	MarkSkip,
 	SignalResolved,
-	MarkSkipAndSignalResolved,
+	ClearSkipAndSignalResolved,
 };
 
+// Steam's install lookup treats a set skip byte as missing app configuration,
+// so the byte is only held while appinfo is unresolved. Authoritative records
+// stay protected by the outgoing PICS changelist filter instead.
 constexpr Action decide(
 	bool managed,
-	bool authoritative,
+	[[maybe_unused]] bool authoritative,
 	bool create,
 	bool shaEmpty,
 	bool skipSet
@@ -24,11 +27,8 @@ constexpr Action decide(
 		return Action::None;
 
 	if (!shaEmpty)
-	{
-		if (authoritative && !skipSet)
-			return Action::MarkSkipAndSignalResolved;
-		return Action::SignalResolved;
-	}
+		return skipSet ? Action::ClearSkipAndSignalResolved
+		               : Action::SignalResolved;
 
 	return skipSet ? Action::None : Action::MarkSkip;
 }

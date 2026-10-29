@@ -89,9 +89,8 @@ bool test_guard_with_real_store()
 	ok &= check(!store.takeResolvedDirty(),
 		"resolved dirty signal is idempotently consumed");
 
-	// A synthetic record is locally authoritative even after its live reload
-	// has installed a real SHA. Steam's update state must retain the skip byte
-	// while still notifying the hot-reload coordinator that metadata resolved.
+	// Steam's install lookup rejects resolved appinfo whose skip byte is set
+	// ("Missing configuration"), so authoritative records must leave it clear.
 	store.publish({});
 	store.publish({202});
 	authoritative.publish({202});
@@ -105,8 +104,17 @@ bool test_guard_with_real_store()
 			data.data(),
 			"resolved authoritative result is returned after policy");
 	}
-	ok &= check(data[layout.skipOffset] == 1,
-		"resolved authoritative appinfo retains the derived skip byte");
+	ok &= check(data[layout.skipOffset] == 0,
+		"resolved authoritative appinfo keeps the skip byte clear");
+	data[layout.skipOffset] = 1;
+	{
+		auto managedRead = store.readHandle();
+		auto authoritativeRead = authoritative.readHandle();
+		AppInfoState::guard(
+			data.data(), 202, false, managedRead, authoritativeRead, layout);
+	}
+	ok &= check(data[layout.skipOffset] == 0,
+		"resolved appinfo clears a skip byte set while it was unresolved");
 	ok &= check(store.takeResolvedDirty(),
 		"resolved authoritative appinfo also signals its generation");
 
@@ -512,10 +520,10 @@ int main()
 		{true,  false, true,  true,  false, Action::None, "managed/create/empty/clear"},
 		{true,  false, true,  true,  true,  Action::None, "managed/create/empty/set"},
 		{true,  false, false, false, false, Action::SignalResolved, "managed/noncreate/nonempty/clear"},
-		{true,  false, false, false, true,  Action::SignalResolved, "managed/noncreate/nonempty/set"},
+		{true,  false, false, false, true,  Action::ClearSkipAndSignalResolved, "managed/noncreate/nonempty/set"},
 		{true,  false, false, true,  false, Action::MarkSkip, "managed/noncreate/empty/clear"},
 		{true,  false, false, true,  true,  Action::None, "managed/noncreate/empty/set"},
-		{true,  true,  false, false, false, Action::MarkSkipAndSignalResolved, "authoritative/noncreate/nonempty/clear"},
+		{true,  true,  false, false, false, Action::SignalResolved, "authoritative/noncreate/nonempty/clear"},
 	}};
 
 	for (const auto& test : cases)
@@ -549,8 +557,9 @@ int main()
 		"non-empty SHA signals current generation"
 	);
 	check(
-		decide(true, false, false, false, true) == Action::SignalResolved,
-		"non-empty SHA signals even when skip is already set"
+		decide(true, false, false, false, true) ==
+			Action::ClearSkipAndSignalResolved,
+		"resolved appinfo drops a skip byte set while unresolved"
 	);
 
 	check(test_guard_with_real_store(),

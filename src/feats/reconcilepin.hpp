@@ -16,7 +16,9 @@
 //
 //  (1) ctx-vector patch: on the TARGET call (flags & 0x8), remove managed
 //      size-zero depots and rewrite remaining ManifestGids to configured pins
-//      in the ctx vector (ptr @ ctx+0x78, count @ ctx+0x84, stride 0x20).
+//      in the ctx vector (CUtlVector, stride 0x20; ctx+0x78 on cfe99f0c,
+//      ctx+0x90 on the 2026-10 client — decoded at setup, see
+//      findCtxDepotVectorOffset).
 //
 //  (2) target-local patch: EvaluateConfigChanges also compares against an
 //      appinfo-derived TARGET CUtlVector built as a function LOCAL at
@@ -91,10 +93,17 @@ namespace ReconcilePin
 			std::size_t expectedOff, std::size_t window,
 			TargetExecutable targetExecutable)
 		{
+			// The builder takes eight stack dwords (hkBuildTarget's arity), so
+			// its caller pops them with `add esp,0x20` straight after the call.
+			// That rejects neighbouring calls with other arities, which the
+			// 2026-10 client moved into the window.
 			const auto callTargetOk = [&](std::size_t off) -> bool
 			{
-				if (off + 5 > len) return false;
+				if (off + 8 > len) return false;
 				if (code[off] != 0xE8) return false;
+				if (code[off + 5] != 0x83 || code[off + 6] != 0xC4
+				    || code[off + 7] != 0x20)
+					return false;
 				std::int32_t rel = 0;
 				std::memcpy(&rel, code + off + 1, sizeof(rel));
 				const std::uintptr_t target = codeAddr + off + 5 +
@@ -135,6 +144,54 @@ namespace ReconcilePin
 					return builder != 0 ? target == builder
 					                    : targetExecutable(target);
 				});
+		}
+
+		// Largest context offset accepted for the depot vector; the struct is
+		// a few hundred bytes, so anything beyond this is a mis-decode.
+		inline constexpr std::size_t kMaxCtxDepotVectorOff = 0x1000;
+		// Bytes of EvaluateConfigChanges searched for the depot-vector loop
+		// (it sits near +0x260 on every inspected client).
+		inline constexpr std::size_t kCtxDepotLoopScanLen = 0x600;
+
+		// Decode the content-update context's DepotEntry vector offset from
+		// EvaluateConfigChanges' per-entry loop:
+		//
+		//   mov edi,[ebp+8] ; mov eax,esi ; shl eax,5 ; add eax,[edi+disp]
+		//
+		// The context grows between client builds (0x78 -> 0x90 on the 2026-10
+		// client), so pinning the offset silently aims the patch at another
+		// field.  Accepts the disp8 (modrm 0x47) and disp32 (modrm 0x87) forms.
+		// Returns the offset, or -1 when the load is absent, ambiguous,
+		// truncated, or implausible, so the caller keeps the patch disabled.
+		inline long findCtxDepotVectorOffset(
+			const std::uint8_t* code, std::size_t len)
+		{
+			static constexpr std::uint8_t kHead[] = {
+				0x8B, 0x7D, 0x08, 0x89, 0xF0, 0xC1, 0xE0, 0x05, 0x03};
+			long found = -1;
+			for (std::size_t off = 0; off + sizeof(kHead) + 2 <= len; ++off)
+			{
+				if (std::memcmp(code + off, kHead, sizeof(kHead)) != 0) continue;
+				const std::size_t modrm = off + sizeof(kHead);
+				std::uint32_t disp = 0;
+				if (code[modrm] == 0x47)
+				{
+					disp = code[modrm + 1];
+				}
+				else if (code[modrm] == 0x87 && modrm + 5 <= len)
+				{
+					std::memcpy(&disp, code + modrm + 1, sizeof(disp));
+				}
+				else
+				{
+					continue;
+				}
+				if (found != -1) return -1;  // ambiguous
+				if (disp == 0 || disp % 4 != 0 || disp > kMaxCtxDepotVectorOff)
+					return -1;
+				found = static_cast<long>(disp);
+			}
+			return found;
 		}
 	}
 }

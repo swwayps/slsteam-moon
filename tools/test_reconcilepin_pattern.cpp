@@ -1,10 +1,9 @@
-// Validate the derived ReconcilePin call site against a 32-bit steamclient:
-// the production locator must find EvaluateConfigChanges' call to the
-// builder that CUserAppManager::BuildDepotDependency resolves to.
+// Validate the derived ReconcilePin sites against a 32-bit steamclient: the
+// production locator must find EvaluateConfigChanges' call to the builder that
+// CUserAppManager::BuildDepotDependency resolves to, and the context's
+// depot-vector offset must decode with the helper the hook uses at runtime.
 // Build with: g++ -std=c++20 -I src tools/test_reconcilepin_pattern.cpp -o /tmp/test_reconcilepin_pattern
-
 #include "feats/reconcilepin.hpp"
-
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
@@ -58,6 +57,34 @@ static std::vector<size_t> findMatches(const std::string& image,
 	return matches;
 }
 
+// File-offset range of the executable PT_LOAD segment.  Code-relative call
+// targets stay consistent in file-offset space within that segment.
+static bool executableRange(const std::string& image, size_t& begin, size_t& end)
+{
+	if (image.size() < 0x34 || image.compare(0, 4, "\x7f" "ELF") != 0) return false;
+	uint32_t phoff = 0;
+	uint16_t phnum = 0;
+	std::memcpy(&phoff, image.data() + 0x1c, sizeof(phoff));
+	std::memcpy(&phnum, image.data() + 0x2c, sizeof(phnum));
+	for (uint16_t i = 0; i < phnum; ++i)
+	{
+		const size_t ph = phoff + static_cast<size_t>(i) * 32;
+		if (ph + 32 > image.size()) return false;
+		uint32_t type = 0, offset = 0, filesz = 0, flags = 0;
+		std::memcpy(&type, image.data() + ph, 4);
+		std::memcpy(&offset, image.data() + ph + 4, 4);
+		std::memcpy(&filesz, image.data() + ph + 16, 4);
+		std::memcpy(&flags, image.data() + ph + 24, 4);
+		if (type == 1 && (flags & 1))
+		{
+			begin = offset;
+			end = static_cast<size_t>(offset) + filesz;
+			return end <= image.size();
+		}
+	}
+	return false;
+}
+
 int main(int argc, char** argv)
 {
 	if (argc != 2)
@@ -73,6 +100,12 @@ int main(int argc, char** argv)
 	}
 	const std::string image{std::istreambuf_iterator<char>(input),
 	                        std::istreambuf_iterator<char>()};
+	size_t textBegin = 0, textEnd = 0;
+	if (!executableRange(image, textBegin, textEnd))
+	{
+		std::cerr << "steamclient has no executable segment\n";
+		return 1;
+	}
 	const auto evaluates = findMatches(image, parse(
 	    "55 89 E5 57 56 53 81 EC DC 00 00 00 89 85 50 FF FF FF "
 	    "8B 45 10 89 85 40 FF FF FF 8B 45 08 8B 40 04"));
@@ -95,23 +128,38 @@ int main(int argc, char** argv)
 	std::memcpy(&relative, image.data() + builderSites.front() + 1, sizeof(relative));
 	const auto builder = static_cast<std::uintptr_t>(
 	    static_cast<int64_t>(builderSites.front() + 5) + relative);
-
 	// File offsets stand in for addresses: both sites lie in .text, so their
 	// rel32 targets compare in the same space.
+	namespace d = ReconcilePin::detail;
 	const size_t entry = evaluates.front();
-	const size_t len = std::min(image.size() - entry,
-	    ReconcilePin::detail::kBuilderCallOff + ReconcilePin::detail::kBuilderCallWindow + 8);
-	const auto inImage = [&](std::uintptr_t target) { return target < image.size(); };
-	const long call = ReconcilePin::detail::findBuilderCall(
-	    reinterpret_cast<const uint8_t*>(image.data()) + entry, len, entry,
-	    builder, inImage);
+	if (entry < textBegin || entry >= textEnd)
+	{
+		std::cerr << "EvaluateConfigChanges lies outside the executable segment\n";
+		return 1;
+	}
+	const auto* code = reinterpret_cast<const uint8_t*>(image.data()) + entry;
+	const size_t readable = textEnd - entry;
+	const auto inText = [&](std::uintptr_t target) {
+		return target >= textBegin && target < textEnd;
+	};
+	const long call = d::findBuilderCall(
+	    code, std::min(readable, d::kBuilderCallOff + d::kBuilderCallWindow + 8),
+	    entry, builder, inText);
 	if (call < 0)
 	{
 		std::cerr << "no call to the builder near EvaluateConfigChanges+0x"
-		          << std::hex << ReconcilePin::detail::kBuilderCallOff << '\n';
+		          << std::hex << d::kBuilderCallOff << '\n';
+		return 1;
+	}
+	const long depots = d::findCtxDepotVectorOffset(
+	    code, std::min(readable, d::kCtxDepotLoopScanLen));
+	if (depots < 0)
+	{
+		std::cerr << "context depot-vector offset not decoded\n";
 		return 1;
 	}
 	std::cout << "ReconcilePin target-vector call at EvaluateConfigChanges+0x"
-	          << std::hex << call << " -> builder 0x" << builder << '\n';
+	          << std::hex << call << " -> builder 0x" << builder
+	          << ", context depot vector at +0x" << depots << std::dec << '\n';
 	return 0;
 }

@@ -55,6 +55,28 @@ int main()
 	CHECK(AppInfoProvision::requiresProtonMapping(
 	          /*keptDepots=*/1, {"windows"}, "windows,macos,linux"),
 	      "app-level Linux without a surviving Linux depot still forces Proton");
+	// Regression: BeamNG.drive (284160) ships its only content depot without an
+	// oslist next to Windows-tagged redistributables; that depot serves Linux.
+	{
+		std::set<std::string> os;
+		AppInfoProvision::addDepotPlatforms(os, "windows");
+		AppInfoProvision::addDepotPlatforms(os, "");
+		CHECK(!AppInfoProvision::requiresProtonMapping(
+		          /*keptDepots=*/3, os, "windows,linux"),
+		      "a depot without an oslist provides the app's native Linux build");
+		CHECK(AppInfoProvision::requiresProtonMapping(
+		          /*keptDepots=*/3, os, "windows"),
+		      "a depot without an oslist does not invent Linux support");
+		// GTA IV (12210): no common.oslist, untagged content beside Windows depots.
+		CHECK(AppInfoProvision::requiresProtonMapping(
+		          /*keptDepots=*/3, os, ""),
+		      "without app-level Linux an untagged depot does not prove native");
+		std::set<std::string> untagged;
+		AppInfoProvision::addDepotPlatforms(untagged, "");
+		CHECK(!AppInfoProvision::requiresProtonMapping(
+		          /*keptDepots=*/1, untagged, ""),
+		      "only untagged depots and no platform metadata keep native behavior");
+	}
 	std::ifstream provisionSource("src/feats/appinfo_provision.cpp");
 	const std::string provisionText(
 		(std::istreambuf_iterator<char>(provisionSource)),

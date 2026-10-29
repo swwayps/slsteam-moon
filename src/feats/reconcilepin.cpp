@@ -47,8 +47,12 @@ namespace
 	// ctx layout (confirmed live on build cfe99f0c).
 	constexpr size_t kCtxFlagsOff = 0x04;
 	constexpr size_t kCtxAppIdOff = 0x08;
-	constexpr size_t kCtxDepotPtrOff = 0x78;
-	constexpr size_t kCtxDepotCountOff = 0x84;
+	// The depot CUtlVector inside ctx moves when Steam grows the context
+	// (0x78 -> 0x90 on the 2026-10 client), so it is decoded from
+	// EvaluateConfigChanges at setup.  0 = not located: the ctx-vector patch
+	// stays off instead of rewriting whatever field now sits at a stale offset.
+	size_t g_ctxDepotVecOff = 0;
+	constexpr size_t kCtxVecCountOff = 0x0c;  // CUtlVector size, after base
 	// flag bit marking the TARGET/appinfo ctx (vs the ACTIVE/installed ctx).
 	constexpr uint32_t kFlagTargetSide = 0x8;
 	// DepotEntry: DepotId @ +0, ManifestGid @ +0x8, Size @ +0x10,
@@ -145,11 +149,12 @@ namespace
 	void patchTargetCtx(void* ctxv, uint32_t appId, uint32_t flags)
 	{
 		if (!(flags & kFlagTargetSide)) return;       // target/appinfo side only
+		if (g_ctxDepotVecOff == 0) return;            // layout not decoded
 
 		auto* ctx = reinterpret_cast<uint8_t*>(ctxv);
-		auto* base = *reinterpret_cast<uint8_t* const*>(ctx + kCtxDepotPtrOff);
-		auto* const countPtr =
-		    reinterpret_cast<int32_t*>(ctx + kCtxDepotCountOff);
+		auto* base = *reinterpret_cast<uint8_t* const*>(ctx + g_ctxDepotVecOff);
+		auto* const countPtr = reinterpret_cast<int32_t*>(
+		    ctx + g_ctxDepotVecOff + kCtxVecCountOff);
 		int32_t count = *countPtr;
 		if (!base || count <= 0 || count > kMaxDepots) return;
 
@@ -327,12 +332,12 @@ namespace
 			const uint32_t appId = *reinterpret_cast<const uint32_t*>(c + kCtxAppIdOff);
 			const uint32_t flags = *reinterpret_cast<const uint32_t*>(c + kCtxFlagsOff);
 
-			if (g_trace)
+			if (g_trace && g_ctxDepotVecOff != 0)
 			{
 				void* base =
-				    *reinterpret_cast<void* const*>(c + kCtxDepotPtrOff);
-				const int32_t count =
-				    *reinterpret_cast<const int32_t*>(c + kCtxDepotCountOff);
+				    *reinterpret_cast<void* const*>(c + g_ctxDepotVecOff);
+				const int32_t count = *reinterpret_cast<const int32_t*>(
+				    c + g_ctxDepotVecOff + kCtxVecCountOff);
 				traceLog(appId, flags, base, count);
 			}
 			patchTargetCtx(ctx, appId, flags);
@@ -367,6 +372,25 @@ namespace ReconcilePin
 			return false;
 		}
 
+		// Decode the ctx depot-vector offset before the detour can run, reading
+		// no further than the end of the code segment.
+		g_ctxDepotVecOff = 0;
+		lm_segment_t segment{};
+		if (LM_FindSegment(pat.address, &segment) && segment.end > pat.address)
+		{
+			const size_t readable = static_cast<size_t>(segment.end - pat.address);
+			const long vecOff = ReconcilePin::detail::findCtxDepotVectorOffset(
+			    reinterpret_cast<const uint8_t*>(pat.address),
+			    readable < ReconcilePin::detail::kCtxDepotLoopScanLen
+			        ? readable : ReconcilePin::detail::kCtxDepotLoopScanLen);
+			if (vecOff > 0) g_ctxDepotVecOff = static_cast<size_t>(vecOff);
+		}
+		if (g_ctxDepotVecOff == 0)
+		{
+			g_pLog->warn("%s", "ReconcilePin: context depot vector not located; "
+			                    "ctx-vector fix disabled\n");
+		}
+
 		g_addr = pat.address;
 		g_size = LM_HookCode(g_addr,
 		                     reinterpret_cast<lm_address_t>(&hkEvaluate),
@@ -381,9 +405,10 @@ namespace ReconcilePin
 		}
 		g_orig = reinterpret_cast<ReconFn_t>(g_tramp);
 		g_pLog->info("ReconcilePin: hooked EvaluateConfigChanges at %p "
-		             "(pin=%d empty=1 trace=%d)\n",
+		             "(pin=%d empty=1 trace=%d ctx_depots=+0x%zx)\n",
 		             reinterpret_cast<void*>(g_addr),
-		             static_cast<int>(g_pinActive), static_cast<int>(g_trace));
+		             static_cast<int>(g_pinActive), static_cast<int>(g_trace),
+		             g_ctxDepotVecOff);
 
 		// Redirect EvaluateConfigChanges' builder call so the -0x90(ebp) target local
 		// is patched too, even with pinning off: the empty-depot filter always runs.

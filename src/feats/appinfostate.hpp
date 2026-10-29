@@ -539,8 +539,8 @@ inline void* guard(
 		case AppInfoStatePolicy::Action::SignalResolved:
 			read.noteResolved();
 			break;
-		case AppInfoStatePolicy::Action::MarkSkipAndSignalResolved:
-			static_cast<std::uint8_t*>(data)[layout.skipOffset] = 1;
+		case AppInfoStatePolicy::Action::ClearSkipAndSignalResolved:
+			static_cast<std::uint8_t*>(data)[layout.skipOffset] = 0;
 			read.noteResolved();
 			break;
 		case AppInfoStatePolicy::Action::None:

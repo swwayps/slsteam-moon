@@ -546,15 +546,16 @@ void pruneUnsupportedDepots(YAML::Node& body, uint32_t appId,
 		}
 
 		// Track which OSes the surviving depots support for the Proton
-		// decision below.
-		if (depotNode.IsMap() && depotNode["config"] &&
-		    depotNode["config"]["oslist"])
+		// decision below; a depot without an oslist serves every platform.
+		if (!isVirtualDlc && depotNode.IsMap())
 		{
 			std::string osStr;
-			try { osStr = depotNode["config"]["oslist"].as<std::string>(); }
-			catch (...) {}
-			const auto parsed = parsePlatformOsList(osStr);
-			survivingOs.insert(parsed.begin(), parsed.end());
+			if (depotNode["config"] && depotNode["config"]["oslist"])
+			{
+				try { osStr = depotNode["config"]["oslist"].as<std::string>(); }
+				catch (...) {}
+			}
+			addDepotPlatforms(survivingOs, osStr);
 		}
 	}
 	std::string commonOsList;
@@ -1446,12 +1447,10 @@ bool requiresProtonFromBody(const YAML::Node& body) noexcept
 			const bool virtualDlc = depot["dlcappid"] && !depot["manifests"];
 			if (virtualDlc) continue;
 			++contentDepots;
-			if (depot["config"] && depot["config"]["oslist"])
-			{
-				const auto parsed = parsePlatformOsList(
-					depot["config"]["oslist"].as<std::string>(""));
-				depotOs.insert(parsed.begin(), parsed.end());
-			}
+			addDepotPlatforms(depotOs,
+				depot["config"] && depot["config"]["oslist"]
+					? depot["config"]["oslist"].as<std::string>("")
+					: std::string());
 		}
 
 		std::string commonOsList;
