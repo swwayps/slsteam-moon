@@ -79,6 +79,9 @@ void dispatch(CNetPacket* pkt, uint32_t eMsg)
 		// Replies to rewritten achievements requests: keep the schema, drop the
 		// owner's progress, or fail closed.
 		case k_EMsgServiceMethodResponse:
+			if (ManifestCode::recvServiceMethodResponse(pkt))
+				break;
+			[[fallthrough]];
 		case k_EMsgClientGetUserStatsResponse:
 			Achievements::recvReply(pkt);
 			break;

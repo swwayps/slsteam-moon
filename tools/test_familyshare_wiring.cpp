@@ -51,9 +51,13 @@ int main()
 	const std::string cmrecv = withoutWhitespace(readFile("src/feats/cmrecv.cpp"));
 	const std::string manifestcode = withoutWhitespace(readFile("src/feats/manifestcode.cpp"));
 	// Achievement owner replies are CM responses, so they are rewritten on this
-	// hook; no other receive path may carry a second copy of that rewrite.
+	// hook; no other receive path may carry a second copy of that rewrite. A
+	// service-method answer to the donor's request-code job is read first and
+	// is not an achievements reply.
 	expect(
-		cmrecv.find("casek_EMsgServiceMethodResponse:casek_EMsgClientGetUserStatsResponse:"
+		cmrecv.find("casek_EMsgServiceMethodResponse:"
+		            "if(ManifestCode::recvServiceMethodResponse(pkt))break;[[fallthrough]];"
+		            "casek_EMsgClientGetUserStatsResponse:"
 		            "Achievements::recvReply(pkt);") != std::string::npos,
 		"achievement replies are rewritten on the CM receive hook");
 	expect(

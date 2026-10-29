@@ -322,6 +322,10 @@ bool resolveDonorResponse(uint64_t job, const CMsgProtoBufHeader& header,
 		             static_cast<unsigned long long>(job), header.eresult(),
 		             code ? "present" : "absent");
 	}
+	if (passive)
+		g_pLog->debug("Donor: Steam answered depot=%u gid=%llu with %s request code\n",
+		              sent.depotId, static_cast<unsigned long long>(sent.gid),
+		              code ? "a" : "no");
 	if (passive && code)
 		ManifestDonor::submitCapturedCode(
 			sent.depotId, sent.gid, code, sent.generation);
@@ -329,6 +333,28 @@ bool resolveDonorResponse(uint64_t job, const CMsgProtoBufHeader& header,
 }
 
 } // namespace
+
+// The i386 build read these answers in CJobMgr::BRouteMsgToJob, which has no
+// x86-64 locator. The CM receive hook sees the same packet before Steam routes
+// it to the job, and only reads it here.
+bool recvServiceMethodResponse(CNetPacket* pkt)
+{
+	if (!pkt || !pkt->isValid()) return false;
+	CMsgProtoBufHeader header;
+	if (!pkt->deserializeHeader(header) || !header.has_jobid_target())
+		return false;
+	// Only the job id has to match a pending donor request; a named answer
+	// to another method is skipped without parsing its body.
+	if (header.has_target_job_name()
+	    && fnvHash(header.target_job_name().c_str()) != kHashGetManifestRequestCode)
+		return false;
+	const CNetPacketBody* const body = pkt->body();
+	const uint32_t bytes = pkt->sizeBytes();
+	const uint32_t offset = sizeof(CNetPacketBody) + body->headerSize;
+	if (offset > bytes) return false;
+	return resolveDonorResponse(header.jobid_target(), header,
+		reinterpret_cast<const uint8_t*>(body) + offset, bytes - offset);
+}
 
 CodeRequest requestCode(uint32_t appId, uint32_t depotId, uint64_t gid)
 {
