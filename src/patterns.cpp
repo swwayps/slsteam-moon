@@ -662,7 +662,7 @@ bool Patterns::init()
 	CUser::MarkLicenseAsChanged.optional = true;
 	CUser::ProcessPendingLicenseUpdates.optional = true;
 	CUser::NotifyLicensesUpdated.optional = true;
-	// LaunchOptions only; no match on the 2026-09 client yet.
+	// Only LaunchOptions depends on it.
 	CUser::SpawnGameId.optional = true;
 	CAppInfoCache::GetOrAddAppData.optional = true;
 	CAppInfoCache::ThreadedReadFromDisk.optional = true;
@@ -870,16 +870,8 @@ namespace Patterns
 			"E8 ? ? ? ? 88 45 ? 83 C4 10 84 C0 0F 84 ? ? ? ? 8B 45 ? 80 7D ? 00",
 			SigFollowMode::Relative
 		};
-		// Direct cdecl entry.  This was a call-site + Relative follow, but the
-		// caller restructured on a later client (the je flipped to a jne with a
-		// different body), so the call-site form drifted to zero matches.  The
-		// entry itself is stable across builds: the PIC-thunk prologue, then the
-		// (appList, size, flags) frame — movzx eax,[ebp+0x14], two null pushes,
-		// the [ebp-0x71] byte save, and the movdqa scratch init.  The two movdqa
-		// displacements are PIC-relative to a data symbol (location-only) and are
-		// masked; the whole form still has exactly one .text match on every
-		// inspected build.  The resolved target is the function entry either way,
-		// so moving from Relative to None does not change the hook placement.
+		// Matched at the entry (PIC-thunk prologue + frame) because its callers'
+		// call sites change between builds; the PIC-relative movdqa loads are masked.
 		Pattern_t GetSubscribedApps
 		{
 			"CUser::GetSubscribedApps",
@@ -936,18 +928,8 @@ namespace Patterns
 		Pattern_t ProcessPendingLicenseUpdates
 		{
 			"CUser::ProcessPendingLicenseUpdates",
-			// The trailing `lea eax,[ebx+disp32]` reaches a data symbol through
-			// the PIC base, so its displacement tracks the GOT layout and moves
-			// on an unrelated client change (0x3B314 -> 0x3B714 between the
-			// 2026-08-03 and 2026-08-16 builds).  Nothing here reads it -- the
-			// hook only calls the resolved entry -- so it is location-only and
-			// stays wildcarded.  The two CUser member offsets loaded above
-			// (count near 0x1C7C, array base near 0x1C70) drifted by 4 on a
-			// later beta (0x1C7C->0x1C78, 0x1C70->0x1C6C), the same 4-byte layout
-			// shift seen on other members; the hook calls the resolved entry and
-			// never reads these values, so only their low byte is masked (the
-			// 0x1C high byte stays pinned) -- the relaxed form keeps one module
-			// match while self-healing across that layout drift.
+			// The PIC-relative `lea` and the low byte of the CUser offsets near
+			// 0x1C7C/0x1C70 drift between builds and are masked; only the entry is called.
 			"55 57 56 53 E8 ? ? ? ? 81 C3 ? ? ? ? 83 EC 2C 8B 44 24 40 8B 88 ? 1C 00 00 85 C9 0F 8E ? ? ? ? 05 ? 1C 00 00 89 44 24 18 8D 83 ? ? ? ? 8B 30",
 			SigFollowMode::None
 		};
@@ -967,29 +949,8 @@ namespace Patterns
 		// (`this`, read from [ebp+0x8]); standard cdecl, safe to call by
 		// resolved pointer with g_pLocalUser as `this`.
 		//
-		// Direct prologue match (push ebp / mov ebp,esp / push edi,esi,ebx
-		// / get_pc_thunk + add ebx / sub esp,0x1bc / mov edi,[ebp+0x8] /
-		// mov edi,[eax+<off>] / mov [ebp-0x1ac],ebx / test edi,edi).  The
-		// get_pc_thunk call rel, the PIC add immediate, the frame size, and
-		// the [ebp-0x1ac] spill offset are masked so local-frame reshuffles
-		// across builds stay compatible.  The member offset (`8B B8 ?? ?? 00
-		// 00` = mov edi,[eax+0x1bXX]) is ALSO masked: it is a CUser layout
-		// field whose value drifted 0x1b18 -> 0x1b14 on the 2026-06-23 client
-		// (a 4-byte shift; RequiresLegacyCDKey moved the same way).  SLSsteam
-		// only needs to LOCATE this function (it invokes it by pointer with
-		// g_pLocalUser as `this`); the offset value itself is internal to the
-		// function, so wildcarding it makes the signature self-heal across that
-		// class of layout drift while staying unique.
-		//
-		// A later beta drifted this further: the field load changed BOTH the
-		// destination register and the offset (mov edi,[eax+0x1b14] -> mov
-		// esi,[eax+0x1b10]), which also flipped the following `test edi,edi` to
-		// `test esi,esi`.  Both the modrm byte and the test are register-choice
-		// noise the hook never reads, so mask them (`8B ? ? 1B 00 00`, `85 ?`).
-		// To stay unique with the looser field load the signature now extends
-		// down to this function's defining act: rebuilding LicensesUpdated_t and
-		// posting callback id 0x7d (`... 83 EC 08 6A 7D 50` = sub esp,8; push
-		// 0x7d; push eax).  Verified: exactly 1 match on every inspected build.
+		// The CUser field load (register, low offset byte) and its `test` (register)
+		// drift between builds and are masked; `push 0x7d` keeps the match unique.
 		Pattern_t NotifyLicensesUpdated
 		{
 			"CUser::NotifyLicensesUpdated",

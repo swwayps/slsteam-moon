@@ -21,14 +21,10 @@
 //  (2) target-local patch: EvaluateConfigChanges also compares against an
 //      appinfo-derived TARGET CUtlVector built as a function LOCAL at
 //      -0x90(ebp).  For some apps the divergent (still-public) gid lives THERE,
-//      not in [ctx+0x78] (live trace, app 3525970: ctx vector already held the
-//      pin, the local held public -> mismatch -> perpetual "updated depots"
-//      loop while installing).  An entry hook can't reach a not-yet-built
-//      local, so we hook the shared appinfo->depot-vector builder that fills it
-//      (derived from the EvaluateConfigChanges call site) and patch the local
-//      AFTER population — but ONLY when the return address is this function's
-//      call site (the builder has 6 callers; patching its output globally would
-//      contaminate the chunk-diff baseline path). The local is always the
+//      not in [ctx+0x78].  An entry hook can't reach a not-yet-built local, so
+//      this function's own call to the builder is redirected to a wrapper that
+//      patches the local after it is filled; the builder's other callers (the
+//      chunk-diff baseline) stay untouched.  The local is always the
 //      appinfo/desired side, so filtering and pinning it cannot hide ACTIVE
 //      state.
 //

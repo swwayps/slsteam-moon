@@ -130,11 +130,8 @@ static bool setupSuccess = false;
 // to claim its own hook-placement guard.
 static std::unique_ptr<ProcessLock::FileLock> g_setupLock;
 
-// CEF debug port chosen ONCE for this Steam-client session (see la_symbind32
-// block below). Picked in load() so it's decided in the long-lived client and
-// inherited by every webhelper-launching fork-child via fork() — the port then
-// stays stable across webhelper restarts (no re-pick, no bindability re-check),
-// which is what keeps the Lumen sidecar reconnecting to the same endpoint.
+// CEF debug port for this client session, resolved once in setup() and inherited
+// by every webhelper fork, so Lumen keeps one port across webhelper restarts.
 static uint16_t g_cefSessionPort = 0;
 
 // When true, we deliberately leave Steam's CEF endpoint on its hard-coded 8080
@@ -219,11 +216,8 @@ static void setup()
 		ProcessLock::perProcessPath("setup"));
 	if (!g_setupLock->acquired())
 	{
-		// Only skip when the lock is genuinely ours and held by another auditor
-		// namespace. An unusable lock (no private runtime directory, or a file at
-		// that path we cannot vouch for) must NOT stop setup: this lock used to
-		// live in /tmp, where pre-creating it and holding an flock was enough for
-		// any local process to switch injection off entirely.
+		// Skip only when another auditor namespace holds our own private lock; an
+		// unusable lock must not stop setup, or a planted file could disable injection.
 		if (g_setupLock->usable())
 		{
 			g_pLog->info("setup: another auditor namespace already initialized this process -> skipping\n");
@@ -421,25 +415,8 @@ static void load()
 
 	try
 	{
-	// la_objopen fires load() once per audited module that opens — i.e. for
-	// BOTH steamclient.so AND steamui.so. The hooking work below must run
-	// exactly once PER PROCESS: the first pass overwrites the target
-	// functions' prologues with detour jumps, so a second pass would re-scan
-	// that already-patched memory, fail the prologue signatures ("Required
-	// pattern not found"), and clobber the resolved addresses.
-	//
-	// A per-.so `static` flag is NOT enough: under LD_AUDIT glibc instantiates
-	// the auditor (this .so) once per link-map namespace, and a Steam process
-	// can have more than one namespace — so there are TWO copies of SLSsteam.so
-	// in the process, each with its own `static`, each running load() against
-	// the SAME (shared) steamclient.so. Confirmed on the affected machine: two
-	// SLSsteam.so mappings in the minidump; load() ran twice with an
-	// independent guard each time. The single-instance machines never hit it.
-	//
-	// So the one-shot has to be PROCESS-global, shared across those copies. A
-	// per-pid advisory file lock is: kernel-level (the fd table is per-process,
-	// so both copies see the same inode/lock), atomic against threads, and
-	// auto-released when the process dies (no stale-lock / pid-reuse hazard).
+	// Hook once per process: a second pass would re-scan already-patched prologues.
+	// load() runs per module in every audit-namespace copy, hence the per-pid flock.
 	static bool loadDone = false;
 	if (loadDone)
 	{
@@ -462,15 +439,7 @@ static void load()
 	// genuine "the other module isn't mapped yet" retry on the next objopen
 	// still works) and BEFORE the heavy work.
 	{
-		// The lock used to be /tmp/.slssteam.load.<pid>, opened without O_EXCL or
-		// O_NOFOLLOW. Any local process could pre-create that path and hold an
-		// exclusive flock on it; our flock(LOCK_NB) then failed and we SKIPPED
-		// the hooking pass — a lock file that doubled as an injection kill
-		// switch. It now lives in the user's private 0700 runtime directory, is
-		// opened with O_NOFOLLOW, and is only honoured when the descriptor really
-		// is a private regular file we own. Anything else is treated as "no
-		// usable lock" and hooking proceeds: failing OPEN here is the safe
-		// direction, because the only cost is a redundant pass.
+		// Fail open: ignore a lock that is not our private file (cost: a redundant pass).
 		const std::string lockDir =
 			RuntimeDir::resolveBase(getenv("XDG_RUNTIME_DIR"), getenv("HOME"));
 		if (!lockDir.empty() && RuntimeDir::ensureDir(lockDir))
@@ -619,10 +588,8 @@ static void load()
 
 	if (!Hooks::setup())
 	{
-		// Hooks::setup() returns false when a REQUIRED hook's pattern did not
-		// resolve.  This tears every hook down and runs Steam unmodified, so it
-		// must never be silent: a bare unload() here previously presented as
-		// "injection did nothing" (no ownership, Buy button) with no log line.
+		// A required hook failed to resolve or to be placed: Steam runs unmodified,
+		// so log it (otherwise it only shows up as missing ownership).
 		g_pLog->warn("Hooks::setup() reported failure; aborting injection and "
 		             "running unmodified\n");
 		unload();

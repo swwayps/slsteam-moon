@@ -1,21 +1,12 @@
 #pragma once
 // Private per-user location for SLSsteam's runtime contracts (the API command
-// file, the one-shot load lock).
+// file, the per-process setup and load locks).
 //
-// Both used to live in /tmp under a fully predictable name:
-//   /tmp/SLSsteam.API          — a control channel with no access control at
-//                                all. Any local process that can write to it
-//                                submits `install|<appid>|<library>`.
-//   /tmp/.slssteam.load.<pid>  — the "only hook once per process" lock, opened
-//                                without O_EXCL or O_NOFOLLOW. A process that
-//                                pre-creates it and holds an exclusive flock
-//                                makes our flock(LOCK_NB) fail, and the old code
-//                                then SKIPPED the hooking pass — an injection
-//                                kill switch available to any local process.
-//
-// $XDG_RUNTIME_DIR is per-user and mode 0700, so a directory under it is not
-// reachable by other users at all. Everything here is header-only and pure apart
-// from the explicitly named filesystem calls, so it can be unit tested.
+// No other local user may create or write these files: the API file installs
+// apps, and a pre-created, flocked load lock would skip hooking. So they live in
+// a 0700 per-user directory, are opened with O_NOFOLLOW and are honoured only as
+// private regular files. Everything here is header-only and pure apart from the
+// explicitly named filesystem calls, so it can be unit tested.
 #include <cerrno>
 #include <cstddef>
 #include <cstdio>

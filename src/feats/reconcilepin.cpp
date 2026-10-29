@@ -170,22 +170,8 @@ namespace
 
 	// --- the TARGET-LOCAL fix (the -0x90(ebp) CUtlVector) -----------------
 	//
-	// applyTargetPin above rewrites the gid in the ctx vector ([ctx+0x78]).
-	// For some apps that vector already holds the pin and the DIVERGENT
-	// (still-public) gid the reconcile actually compares against lives in a
-	// FUNCTION-LOCAL CUtlVector at -0x90(ebp) instead — which an entry hook
-	// cannot reach (it isn't built yet at the prologue).  Live trace, app
-	// 3525970: [ctx+0x78]=pin (no rewrite) but the local=public -> mismatch ->
-	// perpetual "updated depots" loop while installing.
-	//
-	// That local is filled by a shared appinfo->depot-vector builder. Redirect
-	// only EvaluateConfigChanges' direct call so other callers remain untouched.
-	//
-	// The builder + its call-site return address are derived from the matched
-	// EvaluateConfigChanges pattern (offsets confirmed on build cfe99f0c):
-	//   call site `e8 rel32` @ EvalAddr+0x183 -> builder = site+5+rel32;
-	// The wrapper calls the original entry directly, without a trampoline or
-	// return-address inspection.
+	// The divergent gid can sit in this local instead of [ctx+0x78]. It is filled
+	// after entry, so EvaluateConfigChanges' own builder call is redirected.
 	//
 	// CUtlVector<DepotEntry>: element base @ +0x0, count @ +0xc.
 	constexpr size_t kVecBaseOff = 0x00;
@@ -398,11 +384,8 @@ namespace ReconcilePin
 		             reinterpret_cast<void*>(g_addr),
 		             static_cast<int>(g_pinActive), static_cast<int>(g_trace));
 
-		// Also patch the appinfo-derived TARGET local (the -0x90(ebp)
-		// CUtlVector) via a caller-gated hook on its builder, for apps whose
-		// divergent target entries live there instead of in [ctx+0x78]. The
-		// hook is also required when pinning is disabled because the empty-depot
-		// filter is always active. A drift degrades to the ctx-vector patch.
+		// Redirect EvaluateConfigChanges' builder call so the -0x90(ebp) target local
+		// is patched too, even with pinning off: the empty-depot filter always runs.
 		installBuildTargetHook(g_addr);
 		return true;
 	}
