@@ -88,7 +88,7 @@ bool hkSettingsReceived(void* instance,
 			                a6, a7);
 		}
 
-		g_pLog->info("Parental: unlocked settings before Steam applied them (%u -> %zu bytes)\n",
+		g_pLog->infoOnce("Parental: unlocked settings before Steam applied them (%u -> %zu bytes)\n",
 		             settingsLen, rewritten->size());
 		return original(instance, rewritten->data(),
 		                static_cast<uint32_t>(rewritten->size()),
