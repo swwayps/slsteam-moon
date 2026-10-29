@@ -2,7 +2,9 @@
 
 #include <charconv>
 #include <cstdint>
+#include <filesystem>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <system_error>
 
@@ -45,5 +47,26 @@ namespace ManifestIndex
 			return std::nullopt;
 
 		return ManifestName{depotId, gid};
+	}
+
+	// Calls visit(name, mtime) for every regular `<depot>_<gid>.manifest` in
+	// `dir`. Steam's download hooks reach this, so a read error ends the walk
+	// instead of throwing, and an entry that cannot be read skips only itself.
+	template <typename Visit>
+	inline void forEachManifest(const std::string& dir, Visit visit)
+	{
+		namespace fs = std::filesystem;
+		std::error_code ec;
+		const fs::directory_iterator end;
+		for (fs::directory_iterator it(dir, ec); !ec && it != end; it.increment(ec))
+		{
+			std::error_code entryError;
+			if (!it->is_regular_file(entryError) || entryError) continue;
+			const auto parsed = parseManifestName(it->path().filename().string());
+			if (!parsed) continue;
+			const auto mtime = it->last_write_time(entryError);
+			if (entryError) continue;
+			visit(*parsed, mtime);
+		}
 	}
 }

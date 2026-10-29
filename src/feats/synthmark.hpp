@@ -92,10 +92,13 @@ namespace SynthMark
 		std::unordered_set<uint32_t> out;
 		std::error_code ec;
 		if (!std::filesystem::exists(dir, ec)) return out;
-		for (const auto& e : std::filesystem::directory_iterator(dir, ec))
+		// The provisioning publish reaches this: a read error ends the walk
+		// instead of throwing.
+		const std::filesystem::directory_iterator end;
+		for (std::filesystem::directory_iterator it(dir, ec); !ec && it != end;
+		     it.increment(ec))
 		{
-			if (ec) break;
-			const auto name = e.path().filename().string();
+			const auto name = it->path().filename().string();
 			constexpr const char* kPrefix = "synthetic_";
 			if (name.rfind(kPrefix, 0) != 0) continue;
 			const std::string idStr = name.substr(std::char_traits<char>::length(kPrefix));
