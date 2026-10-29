@@ -1,6 +1,7 @@
 // Source wiring test: no exception may leave an rtld-audit callback, so the
 // decompiler pass that la_objopen runs is contained, and so is the logging in
 // the handlers of setup() and load(), which often run after a bad_alloc.
+// Every load() exit that leaves Steam unmodified also tells the user.
 // Build (from repo root):
 //   g++ -std=c++20 -Wall -Wextra -Wpedantic tools/test_audit_guards.cpp -o /tmp/test_audit_guards && /tmp/test_audit_guards
 #include <cstdio>
@@ -53,5 +54,12 @@ int main()
 	expect(contained(load, "load() aborted by exception") &&
 	           contained(load, "load() aborted by a non-std exception"),
 	       "the load() handlers log inside their own try");
+	// Each exit that leaves Steam unmodified tells the user: Steam::init,
+	// VFTIndexes::init, Patterns::init and Hooks::setup.
+	std::size_t notices = 0;
+	for (auto at = load.find("notifyUser(UserMsg::InitializationFailed)"); at != npos;
+	     at = load.find("notifyUser(UserMsg::InitializationFailed)", at + 1))
+		++notices;
+	expect(notices == 4, "every load() exit that leaves Steam unmodified notifies the user");
 	return failures == 0 ? 0 : 1;
 }

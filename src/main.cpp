@@ -575,6 +575,7 @@ static void load()
 	if (!Steam::init())
 	{
 		LOG_NOTIFYERROR("Failed to find steam exports!\n");
+		g_pLog->notifyUser(UserMsg::InitializationFailed);
 		return;
 	}
 
@@ -604,6 +605,7 @@ static void load()
 		// so log it (otherwise it only shows up as missing ownership).
 		g_pLog->warn("Hooks::setup() reported failure; aborting injection and "
 		             "running unmodified\n");
+		g_pLog->notifyUser(UserMsg::InitializationFailed);
 		unload();
 		return;
 	}
