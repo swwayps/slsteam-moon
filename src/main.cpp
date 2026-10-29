@@ -707,7 +707,14 @@ static void load()
 	catch (const std::exception& e)
 	{
 		// Tear the hooks down and say why, so Steam runs unmodified visibly.
-		if (g_pLog) g_pLog->warn("load() aborted by exception: %s\n", e.what());
+		// The handler often runs after a bad_alloc: logging may throw too.
+		try
+		{
+			if (g_pLog) g_pLog->warn("load() aborted by exception: %s\n", e.what());
+		}
+		catch (...)
+		{
+		}
 		try
 		{
 			unload();
@@ -719,7 +726,13 @@ static void load()
 	}
 	catch (...)
 	{
-		if (g_pLog) g_pLog->warn("%s", "load() aborted by a non-std exception\n");
+		try
+		{
+			if (g_pLog) g_pLog->warn("%s", "load() aborted by a non-std exception\n");
+		}
+		catch (...)
+		{
+		}
 		try
 		{
 			unload();
@@ -1048,13 +1061,30 @@ static void decompileBeforeRelocation(const char* path)
 		return;
 	}
 
-	BootProf::Span profile(g_pLog.get(), client ? "decompile_steamclient" : "decompile_steamui");
-	Decompiler::parseModule(mod);
-	for (auto& [name, vft] : Decompiler::vftables)
+	// This runs inside la_objopen, where an exception must not escape. A
+	// module the parser cannot read leaves no vtables, so VFTIndexes::init()
+	// fails and load() leaves Steam unmodified with a notice.
+	try
 	{
-		if (vft.moduleBase == mod.base)
+		BootProf::Span profile(g_pLog.get(), client ? "decompile_steamclient" : "decompile_steamui");
+		Decompiler::parseModule(mod);
+		for (auto& [name, vft] : Decompiler::vftables)
 		{
-			vft.analyze();
+			if (vft.moduleBase == mod.base)
+			{
+				vft.analyze();
+			}
+		}
+	}
+	catch (...)
+	{
+		Decompiler::cleanUp();
+		try
+		{
+			if (g_pLog) g_pLog->warn("%s", "decompiler failed on a client module\n");
+		}
+		catch (...)
+		{
 		}
 	}
 }
@@ -1072,11 +1102,24 @@ static void setupGuarded()
 	}
 	catch (const std::exception& e)
 	{
-		if (g_pLog) g_pLog->warn("setup() aborted by exception: %s\n", e.what());
+		// The handler often runs after a bad_alloc: logging may throw too.
+		try
+		{
+			if (g_pLog) g_pLog->warn("setup() aborted by exception: %s\n", e.what());
+		}
+		catch (...)
+		{
+		}
 	}
 	catch (...)
 	{
-		if (g_pLog) g_pLog->warn("%s", "setup() aborted by a non-std exception\n");
+		try
+		{
+			if (g_pLog) g_pLog->warn("%s", "setup() aborted by a non-std exception\n");
+		}
+		catch (...)
+		{
+		}
 	}
 	setupAborted = true;
 	setupSuccess = false;
