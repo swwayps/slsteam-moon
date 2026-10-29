@@ -424,6 +424,18 @@ void emitNode(std::string& out, const YAML::Node& node, int depth)
 	}
 }
 
+// A depot's config.oslist, or "" when it has none or it is unreadable.
+std::string depotOsList(const YAML::Node& depot)
+{
+	try
+	{
+		if (depot.IsMap() && depot["config"] && depot["config"]["oslist"])
+			return depot["config"]["oslist"].as<std::string>();
+	}
+	catch (...) {}
+	return {};
+}
+
 } // namespace
 
 // Strip depots that we have no decryption key for so Steam's
@@ -463,6 +475,7 @@ void pruneUnsupportedDepots(YAML::Node& body, uint32_t appId,
 	// self-contained.
 	YAML::Node newDepots(YAML::NodeType::Map);
 	std::set<std::string> survivingOs;
+	bool linuxDepotDropped = false;
 	int kept = 0;
 	int keptContent = 0;
 	int dropped = 0;
@@ -535,6 +548,8 @@ void pruneUnsupportedDepots(YAML::Node& body, uint32_t appId,
 		if (!hasKey && !isVirtualDlc)
 		{
 			++dropped;
+			if (parsePlatformOsList(depotOsList(depotNode)).count("linux") != 0)
+				linuxDepotDropped = true;
 			continue;  // omit from newDepots
 		}
 		++kept;
@@ -548,15 +563,7 @@ void pruneUnsupportedDepots(YAML::Node& body, uint32_t appId,
 		// Track which OSes the surviving depots support for the Proton
 		// decision below; a depot without an oslist serves every platform.
 		if (!isVirtualDlc && depotNode.IsMap())
-		{
-			std::string osStr;
-			if (depotNode["config"] && depotNode["config"]["oslist"])
-			{
-				try { osStr = depotNode["config"]["oslist"].as<std::string>(); }
-				catch (...) {}
-			}
-			addDepotPlatforms(survivingOs, osStr);
-		}
+			addDepotPlatforms(survivingOs, depotOsList(depotNode));
 	}
 	std::string commonOsList;
 	try
@@ -566,7 +573,8 @@ void pruneUnsupportedDepots(YAML::Node& body, uint32_t appId,
 	}
 	catch (...) {}
 	const bool protonNeeded = requiresProtonMapping(
-		static_cast<std::size_t>(keptContent), survivingOs, commonOsList);
+		static_cast<std::size_t>(keptContent), survivingOs, commonOsList,
+		linuxDepotDropped);
 
 	// Keep PackagePatch's synthetic ownership list aligned with the depots
 	// above.  A DLC is unsupported only when it had content entries and none

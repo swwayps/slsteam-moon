@@ -76,6 +76,11 @@ int main()
 		CHECK(!AppInfoProvision::requiresProtonMapping(
 		          /*keptDepots=*/1, untagged, ""),
 		      "only untagged depots and no platform metadata keep native behavior");
+		// Shared untagged content beside a Windows depot, while the Linux depot
+		// was dropped for having no key: the untagged depot is not the build.
+		CHECK(AppInfoProvision::requiresProtonMapping(
+		          /*keptDepots=*/3, os, "windows,linux", /*linuxDepotDropped=*/true),
+		      "an untagged depot is not the Linux build when the Linux depot was dropped");
 	}
 	std::ifstream provisionSource("src/feats/appinfo_provision.cpp");
 	const std::string provisionText(
