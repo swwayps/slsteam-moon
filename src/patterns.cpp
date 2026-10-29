@@ -942,20 +942,33 @@ namespace Patterns
 
 	namespace CPackageInfoCache
 	{
+		// x86-64 entry, called from CPackageInfoCache::ReadFromDisk (the
+		// "%s/appcache/packageinfo.vdf" reader) right after
+		// MemAlloc(0xa0) + CPackageInfo::CPackageInfo, with the result tested
+		// as a bool. Args: rdi=PackageInfo*, rsi=sha1, edx=change number,
+		// rcx=KeyValues node; `movsxd rbp,[rcx+0x10]` reads the node. The body
+		// writes Status +0x18 and LicenseType +0x14 and rebuilds AppIdVec
+		// (+0x40, size +0x50) and DepotIdVec (+0x58, size +0x68) through
+		// CUtlMemory::Grow. One match on beta 1792711043, 1793235415 and the
+		// 2026-10-21 x86-64 stable build.
 		Pattern_t LoadPackage
 		{
 			"CPackageInfoCache::LoadPackage",
-			"",
-			SigFollowMode::Relative
+			"41 57 41 56 49 89 F6 41 55 41 54 55 53 48 89 FB 48 81 EC ? ? 00 00 4C 8B 25 ? ? ? ? 89 54 24 ? 48 63 69 10",
+			SigFollowMode::None
 		};
 	}
 
 	namespace CUtlMemory
 	{
+		// LoadPackage's AppIdVec append: `lea rdi,[rbx+0x40]; sub esi,eax;
+		// call Grow; mov eax,[rbx+0x50]; lea esi,[rax+1]; jmp`. The 4-byte
+		// element Grow(CUtlMemory*, int) has ~147 byte-identical copies, so
+		// the call site picks the one LoadPackage itself uses.
 		Pattern_t Grow
 		{
 			"CUtlMemory::Grow",
-			"",
+			"E8 ? ? ? ? 8B 43 50 8D 70 01 EB",
 			SigFollowMode::Relative
 		};
 	}

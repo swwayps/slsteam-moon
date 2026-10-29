@@ -2,11 +2,12 @@
 //
 // In-process Steam structures for the LoadPackage hook.
 //
-// Mirrors LumaCore's struct definitions. The i386 offsets were verified on
-// Linux Steam build b9052d72350d38af101463fb2b5334b8 (CPackageInfo's
-// constructor, LoadPackage body and BUpdateLicenses subscriber loop). The
-// x86-64 offsets below are the natural layout of the same fields and are NOT
-// verified yet: LoadPackage has no x86-64 locator, so nothing reads them.
+// Mirrors LumaCore's struct definitions. x86-64 offsets verified on the
+// steamrt64 beta (steamclient.so build-id 13f56b24...): ReadFromDisk allocates
+// 0xa0 bytes; the constructor (0x1052b10) sets Status=3 at +0x18, zeroes the
+// SHA-1 at +0x1C..+0x2F, constructs the CUtlMemory of AppIdVec at +0x40 and of
+// DepotIdVec at +0x58 and zeroes their sizes at +0x50/+0x68; LoadPackage
+// grows both through CUtlMemory::Grow(&vec, n).
 
 #pragma once
 
@@ -42,7 +43,7 @@ struct PackageInfo
 	void* pExtendNodeBegin;    // +0x38
 	CUtlVector<uint32_t> AppIdVec;   // +0x40..+0x57
 	CUtlVector<uint32_t> DepotIdVec; // +0x58..+0x6F
-	// runtime cache tracking follows — do not touch
+	// +0x70..+0x9F runtime cache tracking — do not touch
 };
 static_assert(offsetof(PackageInfo, Status)     == 0x18, "PackageInfo::Status drift");
 static_assert(offsetof(PackageInfo, SHA_1_Hash) == 0x1C, "PackageInfo::SHA_1_Hash drift");

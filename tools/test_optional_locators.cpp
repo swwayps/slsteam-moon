@@ -193,6 +193,13 @@ int main(int argc, char** argv)
 			          << std::dec << " bytes above the match\n";
 	}
 	(void)ui; // the steamui.so locators checked here are all unported
+	// PackagePatch: LoadPackage's entry and the Grow call inside its AppIdVec
+	// append. Without them added apps own no depots and Steam plans nothing.
+	(void)resolveUnique(
+		client, "CPackageInfoCache::LoadPackage",
+		"41 57 41 56 49 89 F6 41 55 41 54 55 53 48 89 FB 48 81 EC ? ? 00 00 4C 8B 25 ? ? ? ? 89 54 24 ? 48 63 69 10",
+		source);
+	(void)resolveUnique(client, "CUtlMemory::Grow", "E8 ? ? ? ? 8B 43 50 8D 70 01 EB", source);
 	if (failures != 0)
 	{
 		std::cerr << failures << " optional locator check(s) failed\n";
