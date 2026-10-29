@@ -40,6 +40,11 @@ CXXFLAGS := -O3 -flto=auto -fPIC -m32 -std=c++20 \
 
 LDFLAGS := -shared -Wl,--no-undefined -lpthread -ldl
 
+# 64-bit file offsets and inode numbers on every compile line (the -m32 stat
+# family fails with EOVERFLOW on a 64-bit inode). Tests link our objects, so
+# their own lines need the same struct layouts.
+CXX += -D_FILE_OFFSET_BITS=64
+
 ifeq ($(shell echo $$NATIVE),1)
 	CXXFLAGS += -march=native
 endif
@@ -57,7 +62,7 @@ endif
 .PHONY: uninstall clean-libs clean-tools schema-grabber ticket-grabber
 .PHONY: test-library-dates test-library-dates-hook test-depot-overrides
 .PHONY: test-vftableinfo-registry test-owner-frame-wiring
-.PHONY: test-achievements test-achievement-scope test-stats-audit test-parental
+.PHONY: test-achievements test-achievement-scope test-stats-audit test-parental test-lfs
 .PHONY: test-stats-provenance
 .PHONY: test-manifestdonor test-manifestdonor-runtime test-manifestfetch
 .PHONY: test-reconcilepin-scan
@@ -834,6 +839,13 @@ test-log-rotate:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror -I src \
 		tools/test_log_rotate.cpp -o /tmp/test_log_rotate
 	/tmp/test_log_rotate
+
+# Our objects must call the 64-bit stat and readdir (see CXX above); the
+# vendored archives keep their own calls.
+test-lfs: $(objs)
+	@if nm -u $(objs) | grep -E ' (f|l)?stat(at)?$$| readdir$$'; then \
+		echo "FAIL: objects call the 32-bit stat or readdir"; exit 1; \
+	fi; echo "ok: objects use the 64-bit stat and readdir"
 
 test-parental:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src \
