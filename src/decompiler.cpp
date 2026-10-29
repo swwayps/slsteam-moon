@@ -185,14 +185,14 @@ lm_address_t Decompiler::getLeaOffset(lm_inst_t& callInstr)
 	lm_inst_t nextInstr;
 	if (!LM_Disassemble(offset, &nextInstr))
 	{
-		LOG_DEBUG("Failed to disassemble next in getLeaOffset at 0x%x\n", offset);
+		LOG_DEBUG("Failed to disassemble next in getLeaOffset at 0x%lx\n", offset);
 		return LM_ADDRESS_BAD;
 	}
 
 	//Thunk is followed by 'add thunkReg, num'
 	if (strcmp(nextInstr.mnemonic, "add") != 0)
 	{
-		LOG_DEBUG("Failed to get lea offset at 0x%x, next instruction is not an add instruction!\n", offset);
+		LOG_DEBUG("Failed to get lea offset at 0x%lx, next instruction is not an add instruction!\n", offset);
 		return LM_ADDRESS_BAD;
 	}
 
@@ -200,7 +200,7 @@ lm_address_t Decompiler::getLeaOffset(lm_inst_t& callInstr)
 	auto split = Utils::strsplit(nextInstr.op_str, ",");
 	if (split[0] != thunkReg)
 	{
-		LOG_DEBUG("Failed to get lea offset at 0x%x, split[0] != thunkReg\n", callInstr.address);
+		LOG_DEBUG("Failed to get lea offset at 0x%lx, split[0] != thunkReg\n", callInstr.address);
 		return LM_ADDRESS_BAD;
 	}
 
@@ -259,7 +259,7 @@ bool Decompiler::isPICThunk(const lm_inst_t& callInstr, std::string* targetRegis
 	{
 		if (!LM_Disassemble(target, &instr))
 		{
-			LOG_DEBUG("Failed to disassemble 0x%x!\n", target);
+			LOG_DEBUG("Failed to disassemble 0x%lx!\n", target);
 			return false;
 		}
 
@@ -313,6 +313,10 @@ void Decompiler::collectStrings(const lm_module_t& mod, const Elf_Shdr& section)
 	for (lm_address_t addr = start; addr < end; )
 	{
 		lm_address_t begin = addr;
+		// getString leaves the buffer untouched for padding and binary
+		// data; clear it so those bytes are not recorded as the previous
+		// string.
+		strBuf.clear();
 		unsigned int read = getString(addr, &strBuf);
 
 		addr += read;
@@ -425,7 +429,7 @@ bool Decompiler::parseHeader(const lm_module_t& mod)
 
 	for (const auto& shdr : file.sections)
 	{
-		LOG_DEBUG("Section header name %s, address 0x%llx, offset 0x%llx\n", shdr.name.c_str(), shdr.rva, shdr.offset);
+		LOG_DEBUG("Section header name %s, address 0x%lx, offset 0x%lx\n", shdr.name.c_str(), shdr.rva, shdr.offset);
 
 		auto mapName = std::string(mod.name) + "::" + shdr.name;
 		sections[mapName] = shdr;
@@ -449,11 +453,17 @@ void Decompiler::parseModule(const lm_module_t &mod)
 		collectStrings(mod, *shROData);
 	}
 
-	const Elf_Shdr* shRODataStr = getSection(mod, ".rodata.str");
-	if (shRODataStr)
+	// The x86-64 client keeps its literals in merged string sections
+	// (.rodata.str1.1, .rodata.str1.8, ...) rather than in .rodata.
+	const std::string strPrefix = std::string(mod.name) + "::.rodata.str";
+	for (const auto& [secName, shdr] : sections)
 	{
-		LOG_DEBUG("Scanning .rodata.str for strings in %s\n", mod.name);
-		collectStrings(mod, *shRODataStr);
+		if (!secName.starts_with(strPrefix))
+		{
+			continue;
+		}
+		LOG_DEBUG("Scanning %s for strings\n", secName.c_str());
+		collectStrings(mod, shdr);
 	}
 
 	const Elf_Shdr* shDataRelRO = getSection(mod, ".data.rel.ro");
@@ -519,11 +529,8 @@ struct Decompiler::DecodedRun
 void Decompiler::parseFunction(const lm_address_t begin, std::unordered_map<lm_address_t, unsigned int>& references)
 {
 	auto branchesTaken = std::unordered_set<lm_address_t>();
-	std::string thunkReg;
-	lm_address_t leaOffset = LM_ADDRESS_BAD;
-
 	DecodedRun run;
-	__parseFunction(begin, references, branchesTaken, thunkReg, leaOffset, run);
+	__parseFunction(begin, references, branchesTaken, run);
 }
 
 void Decompiler::__parseFunction
@@ -531,25 +538,41 @@ void Decompiler::__parseFunction
 	const lm_address_t begin,
 	std::unordered_map<lm_address_t, unsigned int>& references,
 	std::unordered_set<lm_address_t>& branchesTaken,
-	std::string& thunkReg,
-	lm_address_t& leaOffset,
 	DecodedRun& run
 )
 {
 	lm_address_t addr = begin;
 	lm_inst_t instr;
 
+	unsigned int numCC = 0;
+
 	for (;;)
 	{
 		if (!run.decode(addr, &instr))
 		{
-			LOG_WARN("Failed to disassemble function 0x%x at 0x%x!\n", begin, addr);
+			LOG_WARN("Failed to disassemble function 0x%lx at 0x%lx!\n", begin, addr);
 			return;
 		}
 
-		//LOG_DEBUG("0x%x: %s %s\n", addr, instr.mnemonic, instr.op_str);
+		//LOG_DEBUG("0x%lx: %s %s\n", addr, instr.mnemonic, instr.op_str);
 
 		addr += instr.size;
+
+		//Shitty way to detect function boundaries
+		//TODO: Investigate wheter there is a better way
+		if (strcmp(instr.mnemonic, "int3") == 0)
+		{
+			numCC++;
+
+			if (numCC >= 3)
+			{
+				return;
+			}
+		}
+		else
+		{
+			numCC = 0;
+		}
 
 		if (instr.mnemonic[0] == 'j')
 		{
@@ -559,13 +582,13 @@ void Decompiler::__parseFunction
 			{
 				// An indirect jump (switch table) ends this path; callers
 				// report what they then fail to find.
-				LOG_DEBUG("Failed to follow %s %s at 0x%x!\n", instr.mnemonic, instr.op_str, instr.address);
+				LOG_DEBUG("Failed to follow %s %s at 0x%lx!\n", instr.mnemonic, instr.op_str, instr.address);
 				return;
 			}
 
 			const bool taken = branchesTaken.contains(branch);
 
-			//LOG_DEBUG("Taking branch %s %s at 0x%x to 0x%x\n", instr.mnemonic, instr.op_str, instr.address, branch);
+			//LOG_DEBUG("%s branch %s %s at 0x%lx to 0x%lx\n", (taken ? "Taking" : "Skipping"), instr.mnemonic, instr.op_str, instr.address, branch);
 			branchesTaken.emplace(branch);
 
 			if (strcmp(instr.mnemonic, "jmp") == 0)
@@ -575,13 +598,14 @@ void Decompiler::__parseFunction
 				{
 					return;
 				}
+
 				addr = branch;
 			}
 			else
 			{
 				if (!taken)
 				{
-					__parseFunction(branch, references, branchesTaken, thunkReg, leaOffset, run);
+					__parseFunction(branch, references, branchesTaken, run);
 				}
 			}
 
@@ -595,44 +619,21 @@ void Decompiler::__parseFunction
 			return;
 		}
 
-		if (isPICThunk(instr, &thunkReg))
-		{
-			leaOffset = getLeaOffset(instr);
-			continue;
-		}
-
-		if (leaOffset == LM_ADDRESS_BAD)
-		{
-			continue;
-		}
-
 		if (strcmp(instr.mnemonic, "lea") != 0)
 		{
 			continue;
 		}
 
-		if (!strstr(instr.op_str, thunkReg.c_str()))
+		// RIP-relative string load: "reg, [rip - 0x<disp>]" (the same operands
+		// upstream matches).
+		if (!strstr(instr.op_str, ", [rip - 0x"))
 		{
 			continue;
 		}
 
-		lm_address_t targetAddr;
-		if (strstr(instr.op_str, "-"))
-		{
-			const lm_address_t offset = extractHexNum(instr.op_str);
-			targetAddr = leaOffset - offset;
-		}
-		else if (strstr(instr.op_str, "+"))
-		{
-			const lm_address_t offset = extractHexNum(instr.op_str);
-			targetAddr = leaOffset + offset;
-		}
-		else
-		{
-			continue;
-		}
+		const lm_address_t targetAddr = (instr.address + instr.size) - extractHexNum(instr.op_str);
 
-		//LOG_DEBUG("Target addr for op 0x%x\n", targetAddr);
+		//LOG_DEBUG("Target addr for op 0x%lx\n", targetAddr);
 
 		if (!strings.contains(targetAddr))
 		{

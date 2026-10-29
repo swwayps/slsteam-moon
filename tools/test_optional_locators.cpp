@@ -1,5 +1,5 @@
 // Validate the optional runtime-capability locators against the installed
-// 32-bit Steam client.
+// 64-bit Steam client.
 //
 // These are the compiled locators whose failure silently degrades a
 // feature instead of failing the load, so a signature that stops matching after
@@ -16,21 +16,21 @@
 //
 // Each signature is asserted to be present verbatim in src/patterns.cpp, so
 // this test can never pass against a stale private copy of the pattern, and to
-// resolve to exactly one match in the module it belongs to.
+// resolve to exactly one match in the module it belongs to. Locators not yet
+// ported to x86-64 must compile with an empty signature, which never matches,
+// so their feature stays off instead of patching the wrong code.
 //
 // Build and run with:
 //   make test-optional-locators
 // or point it at another install:
 //   make test-optional-locators STEAMCLIENT=... STEAMUI=...
 
-#include "feats/libraryremoval_policy.hpp"
 
 #include <cstdint>
 #include <cstring>
 #include <fstream>
 #include <iostream>
 #include <iterator>
-#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -148,6 +148,16 @@ std::size_t findPrologueAbove(const std::string& image, std::size_t match,
 	}
 	return std::string::npos;
 }
+// The locator is compiled with an empty signature: `"<name>", ""`.
+void expectUnported(const std::string& source, const std::string& name)
+{
+	const std::string literal = "\"" + name + "\",";
+	std::size_t at = source.find(literal);
+	if (at != std::string::npos)
+		at = source.find_first_not_of(" \t\r\n", at + literal.size());
+	expect(at != std::string::npos && source.compare(at, 3, "\"\",") == 0,
+	       name + ": not ported to x86-64 yet, so its signature must stay empty");
+}
 } // namespace
 
 int main(int argc, char** argv)
@@ -162,79 +172,27 @@ int main(int argc, char** argv)
 	const std::string ui = readFile(argv[2]);
 	const std::string source = readFile(argc == 4 ? argv[3] : "src/patterns.cpp");
 
-	// The trailing `lea eax,[ebx+disp32]` reaches a data symbol through the PIC
-	// base, so its displacement moves whenever the GOT layout shifts. The hook
-	// only calls the resolved entry, so it stays wildcarded. The two CUser
-	// member offsets it loads (count near 0x1C7C, array base near 0x1C70) drift
-	// by 4 across builds (0x1C7C->0x1C78, 0x1C70->0x1C6C on a later beta); they
-	// are internal to the function, so only their low byte is masked while the
-	// 0x1C high byte stays pinned.
-	(void)resolveUnique(
-		client, "CUser::ProcessPendingLicenseUpdates",
-		"55 57 56 53 E8 ? ? ? ? 81 C3 ? ? ? ? 83 EC 2C 8B 44 24 40 8B 88 ? 1C "
-		"00 00 85 C9 0F 8E ? ? ? ? 05 ? 1C 00 00 89 44 24 18 8D 83 ? ? ? ? 8B 30",
-		source);
-
-
-	// FillInAppOverview serializes several fields with this very shape, one
-	// after another, so the discriminator has to be the field offset. The
-	// ownership read stays at 0x18 on both the 2026-08-03 and the 2026-08-16
-	// client, while the block immediately after it reads 0x50. What moved is
-	// only the register holding the app pointer (ecx -> edx), so the modrm byte
-	// is the wildcard and the displacement stays pinned. Wildcarding the
-	// displacement instead also matches exactly once on the newer client, but
-	// it lands on that neighbouring field, and LibraryRemoval would then write
-	// hidden ownership bits into it.
-	const std::size_t ownership = resolveUnique(
-		ui, "CSteamApp::OwnershipFlagsReference",
-		"8B ? 18 8B 9D ? ? ? ? 83 EC 04 50 8D 83 ? ? ? ? 50 FF B5 ? ? ? ? "
-		"E8 ? ? ? ?",
-		source);
-	if (ownership != std::string::npos)
-	{
-		const auto* bytes =
-			reinterpret_cast<const std::uint8_t*>(ui.data()) + ownership;
-		const auto offset = LibraryRemovalPolicy::deriveOwnershipOffset(
-			std::span<const std::uint8_t>(bytes, 3));
-		expect(offset.has_value(),
-		       "CSteamApp::OwnershipFlagsReference: the matched instruction does "
-		       "not decode to a usable ownership-flags offset");
-		if (offset)
-		{
-			std::cout << "CSteamApp::OwnershipFlags offset = 0x" << std::hex
-			          << *offset << std::dec << '\n';
-		}
-	}
-
-	// The GameID decode and the app 202355 check near the top of the function.
-	// PrologueUpwards then walks up to the PIC-thunk prologue.
+	// i386 signatures that have no x86-64 counterpart yet (see
+	// .kiro/research/x86_64-port/STATE.md).
+	expectUnported(source, "CUser::ProcessPendingLicenseUpdates");
+	expectUnported(source, "CSteamApp::OwnershipFlagsReference");
+	expectUnported(source, "ParentalSignatureCheck");
+	// Upstream dev-X86_64: the GameID decode near the top of the function.
+	// PrologueUpwards then walks up to `push rbp; mov rbp, rsp`.
 	const std::size_t spawn = resolveUnique(
-		client, "CUser::SpawnGameId",
-		"80 FA 02 0F 44 85 ? ? ? ? 31 D2 3D 73 16 03 00 0F 84", source);
-	expect(source.find("std::vector<int16_t> { 0x53, 0x56, 0x57, 0xE5, 0x89, 0x55, "
-	                   "-1, -1, -1, -1, 0x5, -1, -1, -1, -1, 0xE8}") != std::string::npos,
+		client, "CUser::SpawnGameId", "31 C0 41 80 78", source);
+	expect(source.find("std::vector<int16_t> { 0xE5, 0x89, 0x48, 0x55 }") != std::string::npos,
 	       "CUser::SpawnGameId: prologue is not the one compiled in src/patterns.cpp");
 	if (spawn != std::string::npos)
 	{
-		const std::size_t start = findPrologueAbove(
-			client, spawn,
-			{0x53, 0x56, 0x57, 0xE5, 0x89, 0x55, -1, -1, -1, -1, 0x05, -1, -1, -1, -1, 0xE8});
+		const std::size_t start = findPrologueAbove(client, spawn, {0xE5, 0x89, 0x48, 0x55});
 		expect(start != std::string::npos,
 		       "CUser::SpawnGameId: no function prologue above the match");
 		if (start != std::string::npos)
 			std::cout << "CUser::SpawnGameId starts 0x" << std::hex << spawn - start
 			          << std::dec << " bytes above the match\n";
 	}
-
-	// The branch after Steam's parental settings signature check, which the
-	// unlock turns into a jmp. The settings field pushed for the account ID
-	// moves between builds (0x182, 0x166), so its low bytes are masked.
-	(void)resolveUnique(
-		client, "ParentalSignatureCheck",
-		"84 C0 75 27 8B 85 ? ? ? ? 8D 9D ? ? ? ? 83 EC 04 FF B0 ? ? 00 00 "
-		"8D 86 ? ? ? ? 50 53 E8 ? ? ? ?",
-		source);
-
+	(void)ui; // the steamui.so locators checked here are all unported
 	if (failures != 0)
 	{
 		std::cerr << failures << " optional locator check(s) failed\n";

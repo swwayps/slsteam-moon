@@ -9,7 +9,7 @@
 
 using EAppType = EProtoAppType;
 
-enum EAppInfoSection
+enum EAppInfoSection : uint32_t
 {
 	k_EAppInfoSectionUnknown = 0x0,
 	k_EAppInfoSectionAll = 0x1,
@@ -36,7 +36,7 @@ enum EAppInfoSection
 
 SDK_Struct AppStateInfo_t
 {
-    EAppReleaseState releaseState;			//0x0
+    EAppReleaseState releaseStuint32_tate;			//0x0
     EAppOwnershipFlags ownershipFlags;	//0x4
     uint8_t __pad0x8[0x4];				//0x8
     uint32_t ownerAccountId;			//0xC

@@ -3,6 +3,7 @@
 #include <charconv>
 #include <cstdint>
 #include <cstring>
+#include <filesystem>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -12,6 +13,7 @@ namespace Utils
 {
 	double calculateEntropy(const std::vector<uint8_t>& bytes);
 	bool isNumber(const char* str);
+	bool isGLIBCBugged(int* pMajorVer = nullptr, int* pMinorVer = nullptr);
 
 	template<typename T>
 	bool tryConvertToNumber(const char* str, T& out)

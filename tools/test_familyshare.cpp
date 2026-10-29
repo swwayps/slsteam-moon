@@ -239,7 +239,7 @@ int main()
 	       WIFEXITED(childStatus) && WEXITSTATUS(childStatus) == 0,
 	       "serialization rejects a header extending beyond the packet");
 
-	static_assert(sizeof(CNetPacket) == 0x20);
+	static_assert(sizeof(CNetPacket) == 0x58);
 	CNetPacket packet{};
 	std::uint8_t body[8]{};
 	std::uint8_t originalBody[8]{};

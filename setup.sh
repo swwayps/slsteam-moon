@@ -612,13 +612,13 @@ guard_session_id() {
 guard_has_display() {
 	[ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]
 }
-# Identify the Steam client library (size:mtime of the 32-bit steamclient.so we
+# Identify the Steam client library (size:mtime of the 64-bit steamclient.so we
 # hook). A client self-update rewrites it, changing this id - the signal that a
 # startup crash is a compatibility break rather than a one-off. Empty when no
 # client is found yet (fresh install): callers then stay conservative.
 guard_client_fp() {
 	for _r in "$HOME/.steam/steam" "$HOME/.steam/debian-installation" "$HOME/.local/share/Steam"; do
-		_c="$_r/ubuntu12_32/steamclient.so"
+		_c="$_r/steamrt64/steamclient.so"
 		if [ -e "$_c" ]; then
 			stat -c '%s:%Y' "$_c" 2>/dev/null || stat -f '%z:%m' "$_c" 2>/dev/null || printf '?'
 			return 0
@@ -773,8 +773,8 @@ slsm_pattern_steam_root() {
 	for _slsm_root in "$HOME/.steam/steam" \
 	                  "$HOME/.steam/debian-installation" \
 	                  "$HOME/.local/share/Steam"; do
-		if [ -f "$_slsm_root/ubuntu12_32/steamclient.so" ] && \
-		   [ -f "$_slsm_root/ubuntu12_32/steamui.so" ]; then
+		if [ -f "$_slsm_root/steamrt64/steamclient.so" ] && \
+		   [ -f "$_slsm_root/steamrt64/steamui.so" ]; then
 			printf '%s' "$_slsm_root"
 			return 0
 		fi
@@ -809,7 +809,12 @@ slsm_refresh_patterns() {
 }
 slsm_refresh_patterns
 
-# CloudRedirect (optional): inject its 32-bit cloud-save hook via LD_PRELOAD.
+# The 64-bit client only loads ELF64 objects (EI_CLASS, byte 4, is 2); a 32-bit
+# preload would just make the loader print an error in every process.
+slsm_is_elf64() {
+	[ "$(od -An -tu1 -j4 -N1 "$1" 2>/dev/null | tr -d ' ')" = 2 ]
+}
+# CloudRedirect (optional): inject its cloud-save hook via LD_PRELOAD.
 # Our bundled build is CloudRedirect 2.1.5 (correct save restore via
 # StripCasShaLeaf) with the steamclient.so wait extended 10s -> 120s so it
 # attaches on slow-bootstrap distros (Arch/CachyOS) too. It is a plain
@@ -820,7 +825,7 @@ slsm_refresh_patterns
 # CloudRedirect's constructor self-removes itself from LD_PRELOAD so child
 # processes (the game, steamwebhelper) don't inherit it.
 CR_SO="$HOME/.local/share/CloudRedirect/cloud_redirect.so"
-if [ -f "$CR_SO" ]; then
+if [ -f "$CR_SO" ] && slsm_is_elf64 "$CR_SO"; then
 	export LD_PRELOAD="$CR_SO${LD_PRELOAD:+:$LD_PRELOAD}"
 fi
 
@@ -834,10 +839,10 @@ fi
 # preload, generically: only on Wayland and only when the lib actually exists
 # (a no-op on distros that don't ship it).
 if [ "${XDG_SESSION_TYPE:-}" = "wayland" ]; then
-	for _ext in /usr/lib/extest/libextest.so \
-	            /usr/lib64/extest/libextest.so \
-	            /usr/lib/x86_64-linux-gnu/extest/libextest.so; do
-		if [ -f "$_ext" ]; then
+	for _ext in /usr/lib64/extest/libextest.so \
+	            /usr/lib/x86_64-linux-gnu/extest/libextest.so \
+	            /usr/lib/extest/libextest.so; do
+		if [ -f "$_ext" ] && slsm_is_elf64 "$_ext"; then
 			export LD_PRELOAD="${LD_PRELOAD:+$LD_PRELOAD:}$_ext"
 			break
 		fi

@@ -74,8 +74,8 @@ case "$*" in
             "$version"
         ;;
     *-h*)
-        printf '  Class:                             ELF32\n'
-        printf '  Machine:                           Intel 80386\n'
+        printf '  Class:                             ELF64\n'
+        printf '  Machine:                           Advanced Micro Devices X86-64\n'
         ;;
 esac
 READELF
@@ -100,8 +100,8 @@ fi
 if [ -x scripts/check-sls-abi.sh ]; then
     READELF="$ABI_READELF" TEST_GLIBC_VERSION=2.34 \
         scripts/check-sls-abi.sh bin/SLSsteam.so >/dev/null 2>&1 \
-        && ok "SLS ABI gate accepts ELF32 GLIBC_2.34" \
-        || bad "SLS ABI gate rejected ELF32 GLIBC_2.34"
+        && ok "SLS ABI gate accepts ELF64 GLIBC_2.34" \
+        || bad "SLS ABI gate rejected ELF64 GLIBC_2.34"
     if READELF="$ABI_READELF" TEST_GLIBC_VERSION=2.35 \
         scripts/check-sls-abi.sh bin/SLSsteam.so >/dev/null 2>&1; then
         bad "SLS ABI gate accepted GLIBC_2.35"

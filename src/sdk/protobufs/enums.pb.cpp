@@ -17,7 +17,7 @@
 
 PROTOBUF_PRAGMA_INIT_SEG
 static constexpr ::PROTOBUF_NAMESPACE_ID::Metadata* file_level_metadata_enums_2eproto = nullptr;
-static const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* file_level_enum_descriptors_enums_2eproto[84];
+static const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* file_level_enum_descriptors_enums_2eproto[86];
 static constexpr ::PROTOBUF_NAMESPACE_ID::ServiceDescriptor const** file_level_service_descriptors_enums_2eproto = nullptr;
 const ::PROTOBUF_NAMESPACE_ID::uint32 TableStruct_enums_2eproto::offsets[1] = {};
 static constexpr ::PROTOBUF_NAMESPACE_ID::internal::MigrationSchema* schemas = nullptr;
@@ -463,7 +463,7 @@ const char descriptor_table_protodef_enums_2eproto[] PROTOBUF_SECTION_VARIABLE(p
   "rBestPerformance\020\001*y\n\024ECloudGamingPlatfo"
   "rm\022\036\n\032k_ECloudGamingPlatformNone\020\000\022\037\n\033k_"
   "ECloudGamingPlatformValve\020\001\022 \n\034k_ECloudG"
-  "amingPlatformNVIDIA\020\002*\355\002\n\030ECompromiseDet"
+  "amingPlatformNVIDIA\020\002*\242\003\n\030ECompromiseDet"
   "ectionType\022#\n\037k_ECompromiseDetectionType"
   "_None\020\000\022)\n%k_ECompromiseDetectionType_Tr"
   "adeEvent\020\001\022*\n&k_ECompromiseDetectionType"
@@ -472,287 +472,307 @@ const char descriptor_table_protodef_enums_2eproto[] PROTOBUF_SECTION_VARIABLE(p
   "ype_TicketAction\020\004\022.\n*k_ECompromiseDetec"
   "tionType_MaliciousRefund\020\005\022&\n\"k_EComprom"
   "iseDetectionType_Move2FA\020\006\022)\n%k_EComprom"
-  "iseDetectionType_DeviceType\020\007*\326\001\n\032EAsync"
-  "GameSessionUserState\0220\n#k_EAsyncGameSess"
-  "ionUserStateUnknown\020\377\377\377\377\377\377\377\377\377\001\0220\n,k_EAsy"
-  "ncGameSessionUserStateWaitingForOthers\020\000"
-  "\022.\n*k_EAsyncGameSessionUserStateReadyFor"
-  "Action\020\001\022$\n k_EAsyncGameSessionUserState"
-  "Done\020\002*\304\001\n\037EAsyncGameSessionUserVisibili"
-  "ty\022;\n7k_EAsyncGameSessionUserVisibilityE"
-  "nvelopeAndSessionList\020\000\0224\n0k_EAsyncGameS"
-  "essionUserVisibilitySessionListOnly\020\001\022.\n"
-  "*k_EAsyncGameSessionUserVisibilityDismis"
-  "sed\020\002*\324\001\n\022EGameRecordingType\022 \n\034k_EGameR"
-  "ecordingType_Unknown\020\000\022%\n!k_EGameRecordi"
-  "ngType_NotRecording\020\001\022(\n$k_EGameRecordin"
-  "gType_ManualRecording\020\002\022,\n(k_EGameRecord"
-  "ingType_BackgroundRecording\020\003\022\035\n\031k_EGame"
-  "RecordingType_Clip\020\004*J\n\007EGRMode\022\023\n\017k_EGR"
-  "Mode_Never\020\000\022\024\n\020k_EGRMode_Always\020\001\022\024\n\020k_"
-  "EGRMode_Manual\020\002*\\\n\014EExportCodec\022\032\n\026k_EE"
-  "xportCodec_Default\020\000\022\027\n\023k_EExportCodec_H"
-  "264\020\001\022\027\n\023k_EExportCodec_H265\020\002*\352\003\n\rEProt"
-  "oAppType\022\025\n\021k_EAppTypeInvalid\020\000\022\022\n\016k_EAp"
-  "pTypeGame\020\001\022\031\n\025k_EAppTypeApplication\020\002\022\022"
-  "\n\016k_EAppTypeTool\020\004\022\022\n\016k_EAppTypeDemo\020\010\022\027"
-  "\n\023k_EAppTypeDeprected\020\020\022\021\n\rk_EAppTypeDLC"
-  "\020 \022\023\n\017k_EAppTypeGuide\020@\022\025\n\020k_EAppTypeDri"
-  "ver\020\200\001\022\025\n\020k_EAppTypeConfig\020\200\002\022\027\n\022k_EAppT"
-  "ypeHardware\020\200\004\022\030\n\023k_EAppTypeFranchise\020\200\010"
-  "\022\024\n\017k_EAppTypeVideo\020\200\020\022\025\n\020k_EAppTypePlug"
-  "in\020\200 \022\031\n\024k_EAppTypeMusicAlbum\020\200@\022\026\n\020k_EA"
-  "ppTypeSeries\020\200\200\001\022\025\n\017k_EAppTypeComic\020\200\200\002\022"
-  "\024\n\016k_EAppTypeBeta\020\200\200\004\022\032\n\022k_EAppTypeShort"
-  "cut\020\200\200\200\200\004\022 \n\023k_EAppTypeDepotOnly\020\200\200\200\200\370\377\377"
-  "\377\377\001*\211\003\n\014EAppTestType\022\036\n\032k_EAppTestType_B"
-  "uildReview\020\000\022\"\n\036k_EAppTestType_StorePage"
-  "Review\020\001\022)\n%k_EAppTestType_SteamChina_Bu"
-  "ildReview\020\002\022-\n)k_EAppTestType_SteamChina"
-  "_StorePageReview\020\003\022=\n9k_EAppTestType_Ste"
-  "amChinaPlatformOperator_StorePageReview\020"
-  "\004\0229\n5k_EAppTestType_SteamChinaPlatformOp"
-  "erator_BuildReview\020\005\022/\n+k_EAppTestType_S"
-  "teamDeckCompatibilityReview\020\006\0220\n,k_EAppT"
-  "estType_SteamFrameCompatibilityReview\020\007*"
-  "\366\002\n\032EChildProcessQueryExitCode\022(\n$k_EChi"
-  "ldProcessQueryExitCode_Success\020\000\022:\n-k_EC"
-  "hildProcessQueryExitCode_ErrorCommandlin"
-  "e\020\377\377\377\377\377\377\377\377\377\001\0224\n\'k_EChildProcessQueryExit"
-  "Code_ErrorOther\020\376\377\377\377\377\377\377\377\377\001\022<\n/k_EChildPr"
-  "ocessQueryExitCode_ErrorUnimplemented\020\375\377"
-  "\377\377\377\377\377\377\377\001\0227\n*k_EChildProcessQueryExitCode"
-  "_ErrorFileSave\020\374\377\377\377\377\377\377\377\377\001\022E\n8k_EChildPro"
-  "cessQueryExitCode_ErrorNotSupportedByPla"
-  "tform\020\373\377\377\377\377\377\377\377\377\001*\362\001\n EWindowsUpdateInsta"
-  "llationImpact\0227\n*k_EWindowsUpdateInstall"
-  "ationImpact_Unknown\020\377\377\377\377\377\377\377\377\377\001\022-\n)k_EWin"
-  "dowsUpdateInstallationImpact_Normal\020\000\022,\n"
-  "(k_EWindowsUpdateInstallationImpact_Mino"
-  "r\020\001\0228\n4k_EWindowsUpdateInstallationImpac"
-  "t_ExclusiveHandling\020\002*\362\001\n\034EWindowsUpdate"
-  "RebootBehavior\0223\n&k_EWindowsUpdateReboot"
-  "Behavior_Unknown\020\377\377\377\377\377\377\377\377\377\001\0223\n/k_EWindow"
-  "sUpdateRebootBehavior_NeverNeedsReboot\020\000"
-  "\0224\n0k_EWindowsUpdateRebootBehavior_Alway"
-  "sNeedsReboot\020\001\0222\n.k_EWindowsUpdateReboot"
-  "Behavior_MightNeedReboot\020\002*\376\001\n\026EExternal"
-  "SaleEventType\022$\n k_EExternalSaleEventTyp"
-  "e_Unknown\020\000\022&\n\"k_EExternalSaleEventType_"
-  "Publisher\020\001\022%\n!k_EExternalSaleEventType_"
-  "Showcase\020\002\022#\n\037k_EExternalSaleEventType_R"
-  "egion\020\003\022\"\n\036k_EExternalSaleEventType_Them"
-  "e\020\004\022&\n\"k_EExternalSaleEventType_Franchis"
-  "e\020\005*\333\001\n\037EEnhancedMarketAppearanceStatus\022"
-  ")\n%k_EnhancedMarketAppearanceStatus_None"
-  "\020\000\022,\n(k_EnhancedMarketAppearanceStatus_P"
-  "ending\020\001\022/\n+k_EnhancedMarketAppearanceSt"
-  "atus_InProgress\020\002\022.\n*k_EnhancedMarketApp"
-  "earanceStatus_Completed\020\003*\363\002\n\031EContentRe"
-  "portSubjectType\022\'\n#k_EContentReportSubje"
-  "ctType_Invalid\020\000\022)\n%k_EContentReportSubj"
-  "ectType_ForumPost\020\001\022-\n)k_EContentReportS"
-  "ubjectType_CommentThread\020\002\022\'\n#k_EContent"
-  "ReportSubjectType_UGCFile\020\003\022-\n)k_EConten"
-  "tReportSubjectType_FriendChatMsg\020\004\022+\n\'k_"
-  "EContentReportSubjectType_ChatRoomMsg\020\005\022"
-  ")\n%k_EContentReportSubjectType_ChatGroup"
-  "\020\006\022#\n\037k_EContentReportSubjectType_MAX\020\007*"
-  "\331\001\n\036EControlledLegalCategoryStatus\022)\n%k_"
-  "EControlledLegalCategoryStatus_None\020\000\022,\n"
-  "(k_EControlledLegalCategoryStatus_Accuse"
-  "d\020\001\022.\n*k_EControlledLegalCategoryStatus_"
-  "Convicted\020\002\022.\n*k_EControlledLegalCategor"
-  "yStatus_Acquitted\020\003*\251\001\n\026EContentModerato"
-  "rLevel\022 \n\034k_EContentModeratorLevel_Any\020\000"
-  "\022\'\n#k_EContentModeratorLevel_Supervisor\020"
-  "\001\022\"\n\036k_EContentModeratorLevel_Valve\020\n\022 \n"
-  "\034k_EContentModeratorLevel_MAX\020\013*\313\006\n\030ECon"
-  "tentReportResolution\022)\n%k_EContentReport"
-  "Resolution_Unresolved\020\000\022(\n$k_EContentRep"
-  "ortResolution_Acquitted\020\001\022&\n\"k_EContentR"
-  "eportResolution_Removed\020\002\022)\n%k_EContentR"
-  "eportResolution_Relabelled\020\003\022)\n%k_EConte"
-  "ntReportResolution_Suspicious\020\004\022/\n+k_ECo"
-  "ntentReportResolution_HarassmentStrike\020\005"
-  "\022%\n!k_EContentReportResolution_Purged\020\006\022"
-  "2\n.k_EContentReportResolution_Disconnect"
-  "edFromApp\020\007\022:\n6k_EContentReportResolutio"
-  "n_SuspiciousIncludingUpvoters\020\010\0220\n,k_ECo"
-  "ntentReportResolution_VisibilityChanged\020"
-  "\t\0229\n5k_EContentReportResolution_CountryR"
-  "estrictionsChanged\020\n\022,\n(k_EContentReport"
-  "Resolution_RemoveAndWarn\020\013\022+\n\'k_EContent"
-  "ReportResolution_RemoveAndBan\020\014\022,\n(k_ECo"
-  "ntentReportResolution_RemoveAndKick\020\r\022)\n"
-  "%k_EContentReportResolution_Sanctioned\020\016"
-  "\022(\n$k_EContentReportResolution_Sustained"
-  "\020\017\022%\n!k_EContentReportResolution_Broken\020"
-  "\020\022\"\n\036k_EContentReportResolution_MAX\020\021*\246\005"
-  "\n\032EContentModerationSanction\022(\n$k_EConte"
-  "ntModerationSanction_Invalid\020\000\022(\n$k_ECon"
-  "tentModerationSanction_Deleted\020\001\0220\n,k_EC"
-  "ontentModerationSanction_CommunityBanned"
-  "\020\002\022*\n&k_EContentModerationSanction_HubBa"
-  "nned\020\003\022,\n(k_EContentModerationSanction_T"
-  "radeBanned\020\004\0226\n2k_EContentModerationSanc"
-  "tion_CommentHistoryDeleted\020\005\022+\n\'k_EConte"
-  "ntModerationSanction_Relabelled\020\006\0221\n-k_E"
-  "ContentModerationSanction_MarkAsSuspicio"
-  "us\020\007\022\'\n#k_EContentModerationSanction_War"
-  "ned\020\010\0220\n,k_EContentModerationSanction_Ki"
-  "ckedFromGroup\020\t\0221\n-k_EContentModerationS"
-  "anction_HarassmentBanned\020\n\0221\n-k_EContent"
-  "ModerationSanction_HarassmentStrike\020\013\022)\n"
-  "%k_EContentModerationSanction_Escalate\020\014"
-  "\022$\n k_EContentModerationSanction_MAX\020\r*\377"
-  "\010\n\033EContentReportSubjectAction\022)\n%k_ECon"
-  "tentReportSubjectAction_Invalid\020\000\022,\n(k_E"
-  "ContentReportSubjectAction_Unresolved\020\001\022"
-  ",\n(k_EContentReportSubjectAction_Sanctio"
-  "ned\020\002\022+\n\'k_EContentReportSubjectAction_A"
-  "cquitted\020\003\022+\n\'k_EContentReportSubjectAct"
-  "ion_Cancelled\020\004\022)\n%k_EContentReportSubje"
-  "ctAction_Updated\020\005\022+\n\'k_EContentReportSu"
-  "bjectAction_Escalated\020\006\022*\n&k_EContentRep"
-  "ortSubjectAction_Disputed\020\007\022+\n\'k_EConten"
-  "tReportSubjectAction_Sustained\020\010\022(\n$k_EC"
-  "ontentReportSubjectAction_Locked\020\t\022*\n&k_"
-  "EContentReportSubjectAction_Unlocked\020\n\022)"
-  "\n%k_EContentReportSubjectAction_Deleted\020"
-  "\013\022(\n$k_EContentReportSubjectAction_Warne"
-  "d\020\014\022/\n+k_EContentReportSubjectAction_Ban"
-  "nedFromHub\020\r\0225\n1k_EContentReportSubjectA"
-  "ction_BannedFromCommunity\020\016\022-\n)k_EConten"
-  "tReportSubjectAction_TradeBanned\020\017\0224\n0k_"
-  "EContentReportSubjectAction_MarkedAsSusp"
-  "icious\020\020\022.\n*k_EContentReportSubjectActio"
-  "n_ResetContent\020\021\0222\n.k_EContentReportSubj"
-  "ectAction_EscalatedForCSAM\020\022\0227\n3k_EConte"
-  "ntReportSubjectAction_EscalatedForTerror"
-  "ism\020\023\022)\n%k_EContentReportSubjectAction_C"
-  "laimed\020\024\022*\n&k_EContentReportSubjectActio"
-  "n_Released\020\025\0221\n-k_EContentReportSubjectA"
-  "ction_PrivateMessaged\020\026\022/\n+k_EContentRep"
-  "ortSubjectAction_OwnerDisputed\020\027*\211\032\n\024ECo"
-  "ntentReportReason\022\"\n\036k_EContentReportRea"
-  "son_Invalid\020\000\022\037\n\033k_EContentReportReason_"
-  "None\020\001\022\"\n\036k_EContentReportReason_Unknown"
-  "\020\002\022%\n!k_EContentReportReason_Harassment\020"
-  "\003\0222\n.k_EContentReportReason_BullyingAndI"
-  "ntimidation\020\004\022#\n\037k_EContentReportReason_"
-  "Stalking\020\005\022\"\n\036k_EContentReportReason_Dox"
-  "xing\020\006\022*\n&k_EContentReportReason_OtherHa"
-  "rassment\020\007\022.\n*k_EContentReportReason_Enc"
-  "ouragingViolence\020\010\022.\n*k_EContentReportRe"
-  "ason_EncouragingSelfHarm\020\t\022-\n)k_EContent"
-  "ReportReason_EncouragingSuicide\020\n\0222\n.k_E"
-  "ContentReportReason_OtherViolenceOrSelfH"
-  "arm\020\013\0221\n-k_EContentReportReason_Phishing"
-  "OrAccountTheft\020\014\022,\n(k_EContentReportReas"
-  "on_AttemptedScamming\020\r\0224\n0k_EContentRepo"
-  "rtReason_LinkingToMaliciousContent\020\016\022(\n$"
-  "k_EContentReportReason_Impersonation\020\017\022-"
-  "\n)k_EContentReportReason_OtherScamsAndTh"
-  "eft\020\020\022/\n+k_EContentReportReason_Encourag"
-  "ingTerrorism\020\021\022.\n*k_EContentReportReason"
-  "_OrganizingTerrorism\020\022\022)\n%k_EContentRepo"
-  "rtReason_OtherTerrorism\020\023\022(\n$k_EContentR"
-  "eportReason_TargetedAbuse\020\024\022+\n\'k_EConten"
-  "tReportReason_NamingAndShaming\020\025\022)\n%k_EC"
-  "ontentReportReason_Discrimination\020\026\022%\n!k"
-  "_EContentReportReason_OtherAbuse\020\027\022#\n\037k_"
-  "EContentReportReason_Trolling\020\030\022\"\n\036k_ECo"
-  "ntentReportReason_Baiting\020\031\022$\n k_EConten"
-  "tReportReason_Derailing\020\032\022*\n&k_EContentR"
-  "eportReason_OtherDisruptive\020\033\022\037\n\033k_ECont"
-  "entReportReason_Spam\020\034\022\"\n\036k_EContentRepo"
-  "rtReason_Begging\020\035\022$\n k_EContentReportRe"
-  "ason_Reposting\020\036\022(\n$k_EContentReportReas"
-  "on_OtherOffTopic\020\037\022,\n(k_EContentReportRe"
-  "ason_CSAMSexualContent\020 \0223\n/k_EContentRe"
-  "portReason_CSAMGroomingOrEnticement\020!\022$\n"
-  " k_EContentReportReason_CSAMOther\020\"\0220\n,k"
-  "_EContentReportReason_NudityOrSexualCont"
-  "ent\020#\0220\n,k_EContentReportReason_NonConse"
-  "nsualMaterial\020$\022&\n\"k_EContentReportReaso"
-  "n_Advertising\020%\022(\n$k_EContentReportReaso"
-  "n_ReferralLinks\020&\022#\n\037k_EContentReportRea"
-  "son_Gambling\020\'\022\"\n\036k_EContentReportReason"
-  "_Raffles\020(\0222\n.k_EContentReportReason_Oth"
-  "erCommercialActivity\020)\022,\n(k_EContentRepo"
-  "rtReason_InauthenticReview\020*\022G\nCk_EConte"
-  "ntReportReason_HiddenAdvertisementOrComm"
-  "ercialCommunication\020+\022D\n@k_EContentRepor"
-  "tReason_MisleadingInformationAboutGoodsO"
-  "rServices\020,\022C\n\?k_EContentReportReason_Mi"
-  "sleadingInformationAboutConsumerRights\020-"
-  "\022>\n:k_EContentReportReason_Noncompliance"
-  "WithPricingRegulations\020.\0226\n2k_EContentRe"
-  "portReason_RightToBeForgottenViolation\020/"
-  "\0229\n5k_EContentReportReason_MissingProces"
-  "singGroundForData\0200\022A\n=k_EContentReportR"
-  "eason_OtherDataProtectionAndPrivacyViola"
-  "tion\0201\022-\n)k_EContentReportReason_Gendere"
-  "dHarassment\0202\022:\n6k_EContentReportReason_"
-  "GenderedBullyingAndIntimidation\0203\022+\n\'k_E"
-  "ContentReportReason_GenderedStalking\0204\022*"
-  "\n&k_EContentReportReason_GenderedDoxxing"
-  "\0205\0222\n.k_EContentReportReason_GenderedOth"
-  "erHarassment\0206\0226\n2k_EContentReportReason"
-  "_GenderedEncouragingViolence\0207\0220\n,k_ECon"
-  "tentReportReason_GenderedTargetedAbuse\0208"
-  "\0221\n-k_EContentReportReason_CSAMFakedSexu"
-  "alContent\0209\0228\n4k_EContentReportReason_Ge"
-  "nderedNonConsensualMaterial\020:\022=\n9k_ECont"
-  "entReportReason_FakedGenderedNonConsensu"
-  "alMaterial\020;\0225\n1k_EContentReportReason_F"
-  "akedNonConsensualMaterial\020<\022\?\n;k_EConten"
-  "tReportReason_NegativeEffectonDiscourseO"
-  "rElections\020=\0221\n-k_EContentReportReason_Q"
-  "uotesModeratedContent\020>\0223\n/k_EContentRep"
-  "ortReason_CredibleThreatOfViolence\020\?\0222\n."
-  "k_EContentReportReason_AutoCreatedOnMode"
-  "ration\020@\022!\n\035k_EContentReportReason_Pirac"
-  "y\020A\022\'\n#k_EContentReportReason_ToSViolati"
-  "on\020B\022)\n%k_EContentReportReason_Miscatego"
-  "rized\020C\0223\n/k_EContentReportReason_Bypass"
-  "ingProfanityFilter\020D\022\036\n\032k_EContentReport"
-  "Reason_MAX\020E*\270\001\n\025EResolutionAutomation\022\""
-  "\n\036k_EResolutionAutomation_Manual\020\000\022.\n*k_"
-  "EResolutionAutomation_PartiallyAutomated"
-  "\020\001\022*\n&k_EResolutionAutomation_FullyAutom"
-  "ated\020\002\022\037\n\033k_EResolutionAutomation_MAX\020\003*"
-  "\223\004\n\022EPressOutletAction\022 \n\034k_EPressOutlet"
-  "Action_Invalid\020\000\022 \n\034k_EPressOutletAction"
-  "_Granted\020\001\022 \n\034k_EPressOutletAction_Remov"
-  "ed\020\002\022 \n\034k_EPressOutletAction_Created\020\003\022 "
-  "\n\034k_EPressOutletAction_Updated\020\004\022 \n\034k_EP"
-  "ressOutletAction_Deleted\020\005\022\"\n\036k_EPressOu"
-  "tletAction_Undeleted\020\006\022\"\n\036k_EPressOutlet"
-  "Action_StagedAdd\020\007\022%\n!k_EPressOutletActi"
-  "on_StagedDelete\020\010\022%\n!k_EPressOutletActio"
-  "n_EnterStaging\020\t\022$\n k_EPressOutletAction"
-  "_ExitStaging\020\n\022)\n%k_EPressOutletAction_R"
-  "everseStagedAdd\020\013\022,\n(k_EPressOutletActio"
-  "n_ReverseStagedDelete\020\014\022\034\n\030k_EPressOutle"
-  "tAction_MAX\020\r*\332\001\n\036EPressOutletMemberPend"
-  "ingState\022+\n\'k_EPressOutletMemberPendingS"
-  "tate_Member\020\000\0221\n-k_EPressOutletMemberPen"
-  "dingState_StagedDelete\020\001\022.\n*k_EPressOutl"
-  "etMemberPendingState_StagedAdd\020\002\022(\n$k_EP"
-  "ressOutletMemberPendingState_MAX\020\003*\232\002\n\024E"
-  "CommentDeleteReason\022\"\n\036k_ECommentDeleteR"
-  "eason_Invalid\020\000\022\037\n\033k_ECommentDeleteReaso"
-  "n_User\020\001\022&\n\"k_ECommentDeleteReason_Threa"
-  "dOwner\020\002\022$\n k_ECommentDeleteReason_Moder"
-  "ator\020\003\022\"\n\036k_ECommentDeleteReason_Support"
-  "\020\004\022\037\n\033k_ECommentDeleteReason_Spam\020\005\022*\n&k"
-  "_ECommentDeleteReason_AccountDeletion\020\006"
+  "iseDetectionType_DeviceType\020\007\0223\n/k_EComp"
+  "romiseDetectionType_LeakedCredentialList"
+  "\020\010*\326\001\n\032EAsyncGameSessionUserState\0220\n#k_E"
+  "AsyncGameSessionUserStateUnknown\020\377\377\377\377\377\377\377"
+  "\377\377\001\0220\n,k_EAsyncGameSessionUserStateWaiti"
+  "ngForOthers\020\000\022.\n*k_EAsyncGameSessionUser"
+  "StateReadyForAction\020\001\022$\n k_EAsyncGameSes"
+  "sionUserStateDone\020\002*\304\001\n\037EAsyncGameSessio"
+  "nUserVisibility\022;\n7k_EAsyncGameSessionUs"
+  "erVisibilityEnvelopeAndSessionList\020\000\0224\n0"
+  "k_EAsyncGameSessionUserVisibilitySession"
+  "ListOnly\020\001\022.\n*k_EAsyncGameSessionUserVis"
+  "ibilityDismissed\020\002*\324\001\n\022EGameRecordingTyp"
+  "e\022 \n\034k_EGameRecordingType_Unknown\020\000\022%\n!k"
+  "_EGameRecordingType_NotRecording\020\001\022(\n$k_"
+  "EGameRecordingType_ManualRecording\020\002\022,\n("
+  "k_EGameRecordingType_BackgroundRecording"
+  "\020\003\022\035\n\031k_EGameRecordingType_Clip\020\004*J\n\007EGR"
+  "Mode\022\023\n\017k_EGRMode_Never\020\000\022\024\n\020k_EGRMode_A"
+  "lways\020\001\022\024\n\020k_EGRMode_Manual\020\002*\\\n\014EExport"
+  "Codec\022\032\n\026k_EExportCodec_Default\020\000\022\027\n\023k_E"
+  "ExportCodec_H264\020\001\022\027\n\023k_EExportCodec_H26"
+  "5\020\002*\352\003\n\rEProtoAppType\022\025\n\021k_EAppTypeInval"
+  "id\020\000\022\022\n\016k_EAppTypeGame\020\001\022\031\n\025k_EAppTypeAp"
+  "plication\020\002\022\022\n\016k_EAppTypeTool\020\004\022\022\n\016k_EAp"
+  "pTypeDemo\020\010\022\027\n\023k_EAppTypeDeprected\020\020\022\021\n\r"
+  "k_EAppTypeDLC\020 \022\023\n\017k_EAppTypeGuide\020@\022\025\n\020"
+  "k_EAppTypeDriver\020\200\001\022\025\n\020k_EAppTypeConfig\020"
+  "\200\002\022\027\n\022k_EAppTypeHardware\020\200\004\022\030\n\023k_EAppTyp"
+  "eFranchise\020\200\010\022\024\n\017k_EAppTypeVideo\020\200\020\022\025\n\020k"
+  "_EAppTypePlugin\020\200 \022\031\n\024k_EAppTypeMusicAlb"
+  "um\020\200@\022\026\n\020k_EAppTypeSeries\020\200\200\001\022\025\n\017k_EAppT"
+  "ypeComic\020\200\200\002\022\024\n\016k_EAppTypeBeta\020\200\200\004\022\032\n\022k_"
+  "EAppTypeShortcut\020\200\200\200\200\004\022 \n\023k_EAppTypeDepo"
+  "tOnly\020\200\200\200\200\370\377\377\377\377\001*\211\003\n\014EAppTestType\022\036\n\032k_E"
+  "AppTestType_BuildReview\020\000\022\"\n\036k_EAppTestT"
+  "ype_StorePageReview\020\001\022)\n%k_EAppTestType_"
+  "SteamChina_BuildReview\020\002\022-\n)k_EAppTestTy"
+  "pe_SteamChina_StorePageReview\020\003\022=\n9k_EAp"
+  "pTestType_SteamChinaPlatformOperator_Sto"
+  "rePageReview\020\004\0229\n5k_EAppTestType_SteamCh"
+  "inaPlatformOperator_BuildReview\020\005\022/\n+k_E"
+  "AppTestType_SteamDeckCompatibilityReview"
+  "\020\006\0220\n,k_EAppTestType_SteamFrameCompatibi"
+  "lityReview\020\007*\366\002\n\032EChildProcessQueryExitC"
+  "ode\022(\n$k_EChildProcessQueryExitCode_Succ"
+  "ess\020\000\022:\n-k_EChildProcessQueryExitCode_Er"
+  "rorCommandline\020\377\377\377\377\377\377\377\377\377\001\0224\n\'k_EChildPro"
+  "cessQueryExitCode_ErrorOther\020\376\377\377\377\377\377\377\377\377\001\022"
+  "<\n/k_EChildProcessQueryExitCode_ErrorUni"
+  "mplemented\020\375\377\377\377\377\377\377\377\377\001\0227\n*k_EChildProcess"
+  "QueryExitCode_ErrorFileSave\020\374\377\377\377\377\377\377\377\377\001\022E"
+  "\n8k_EChildProcessQueryExitCode_ErrorNotS"
+  "upportedByPlatform\020\373\377\377\377\377\377\377\377\377\001*\362\001\n EWindo"
+  "wsUpdateInstallationImpact\0227\n*k_EWindows"
+  "UpdateInstallationImpact_Unknown\020\377\377\377\377\377\377\377"
+  "\377\377\001\022-\n)k_EWindowsUpdateInstallationImpac"
+  "t_Normal\020\000\022,\n(k_EWindowsUpdateInstallati"
+  "onImpact_Minor\020\001\0228\n4k_EWindowsUpdateInst"
+  "allationImpact_ExclusiveHandling\020\002*\362\001\n\034E"
+  "WindowsUpdateRebootBehavior\0223\n&k_EWindow"
+  "sUpdateRebootBehavior_Unknown\020\377\377\377\377\377\377\377\377\377\001"
+  "\0223\n/k_EWindowsUpdateRebootBehavior_Never"
+  "NeedsReboot\020\000\0224\n0k_EWindowsUpdateRebootB"
+  "ehavior_AlwaysNeedsReboot\020\001\0222\n.k_EWindow"
+  "sUpdateRebootBehavior_MightNeedReboot\020\002*"
+  "\366\002\n\035EWindowsUpdateOperationResult\0224\n\'k_E"
+  "WindowsUpdateOperationResult_Unknown\020\377\377\377"
+  "\377\377\377\377\377\377\001\022.\n*k_EWindowsUpdateOperationResu"
+  "lt_NotStarted\020\000\022.\n*k_EWindowsUpdateOpera"
+  "tionResult_InProgress\020\001\022-\n)k_EWindowsUpd"
+  "ateOperationResult_Succeeded\020\002\0227\n3k_EWin"
+  "dowsUpdateOperationResult_SucceededWithE"
+  "rrors\020\003\022*\n&k_EWindowsUpdateOperationResu"
+  "lt_Failed\020\004\022+\n\'k_EWindowsUpdateOperation"
+  "Result_Aborted\020\005*\376\001\n\026EExternalSaleEventT"
+  "ype\022$\n k_EExternalSaleEventType_Unknown\020"
+  "\000\022&\n\"k_EExternalSaleEventType_Publisher\020"
+  "\001\022%\n!k_EExternalSaleEventType_Showcase\020\002"
+  "\022#\n\037k_EExternalSaleEventType_Region\020\003\022\"\n"
+  "\036k_EExternalSaleEventType_Theme\020\004\022&\n\"k_E"
+  "ExternalSaleEventType_Franchise\020\005*\333\001\n\037EE"
+  "nhancedMarketAppearanceStatus\022)\n%k_Enhan"
+  "cedMarketAppearanceStatus_None\020\000\022,\n(k_En"
+  "hancedMarketAppearanceStatus_Pending\020\001\022/"
+  "\n+k_EnhancedMarketAppearanceStatus_InPro"
+  "gress\020\002\022.\n*k_EnhancedMarketAppearanceSta"
+  "tus_Completed\020\003*\363\002\n\031EContentReportSubjec"
+  "tType\022\'\n#k_EContentReportSubjectType_Inv"
+  "alid\020\000\022)\n%k_EContentReportSubjectType_Fo"
+  "rumPost\020\001\022-\n)k_EContentReportSubjectType"
+  "_CommentThread\020\002\022\'\n#k_EContentReportSubj"
+  "ectType_UGCFile\020\003\022-\n)k_EContentReportSub"
+  "jectType_FriendChatMsg\020\004\022+\n\'k_EContentRe"
+  "portSubjectType_ChatRoomMsg\020\005\022)\n%k_ECont"
+  "entReportSubjectType_ChatGroup\020\006\022#\n\037k_EC"
+  "ontentReportSubjectType_MAX\020\007*\331\001\n\036EContr"
+  "olledLegalCategoryStatus\022)\n%k_EControlle"
+  "dLegalCategoryStatus_None\020\000\022,\n(k_EContro"
+  "lledLegalCategoryStatus_Accused\020\001\022.\n*k_E"
+  "ControlledLegalCategoryStatus_Convicted\020"
+  "\002\022.\n*k_EControlledLegalCategoryStatus_Ac"
+  "quitted\020\003*\251\001\n\026EContentModeratorLevel\022 \n\034"
+  "k_EContentModeratorLevel_Any\020\000\022\'\n#k_ECon"
+  "tentModeratorLevel_Supervisor\020\001\022\"\n\036k_ECo"
+  "ntentModeratorLevel_Valve\020\n\022 \n\034k_EConten"
+  "tModeratorLevel_MAX\020\013*\313\006\n\030EContentReport"
+  "Resolution\022)\n%k_EContentReportResolution"
+  "_Unresolved\020\000\022(\n$k_EContentReportResolut"
+  "ion_Acquitted\020\001\022&\n\"k_EContentReportResol"
+  "ution_Removed\020\002\022)\n%k_EContentReportResol"
+  "ution_Relabelled\020\003\022)\n%k_EContentReportRe"
+  "solution_Suspicious\020\004\022/\n+k_EContentRepor"
+  "tResolution_HarassmentStrike\020\005\022%\n!k_ECon"
+  "tentReportResolution_Purged\020\006\0222\n.k_ECont"
+  "entReportResolution_DisconnectedFromApp\020"
+  "\007\022:\n6k_EContentReportResolution_Suspicio"
+  "usIncludingUpvoters\020\010\0220\n,k_EContentRepor"
+  "tResolution_VisibilityChanged\020\t\0229\n5k_ECo"
+  "ntentReportResolution_CountryRestriction"
+  "sChanged\020\n\022,\n(k_EContentReportResolution"
+  "_RemoveAndWarn\020\013\022+\n\'k_EContentReportReso"
+  "lution_RemoveAndBan\020\014\022,\n(k_EContentRepor"
+  "tResolution_RemoveAndKick\020\r\022)\n%k_EConten"
+  "tReportResolution_Sanctioned\020\016\022(\n$k_ECon"
+  "tentReportResolution_Sustained\020\017\022%\n!k_EC"
+  "ontentReportResolution_Broken\020\020\022\"\n\036k_ECo"
+  "ntentReportResolution_MAX\020\021*\333\005\n\032EContent"
+  "ModerationSanction\022(\n$k_EContentModerati"
+  "onSanction_Invalid\020\000\022(\n$k_EContentModera"
+  "tionSanction_Deleted\020\001\0220\n,k_EContentMode"
+  "rationSanction_CommunityBanned\020\002\022*\n&k_EC"
+  "ontentModerationSanction_HubBanned\020\003\022,\n("
+  "k_EContentModerationSanction_TradeBanned"
+  "\020\004\0226\n2k_EContentModerationSanction_Comme"
+  "ntHistoryDeleted\020\005\022+\n\'k_EContentModerati"
+  "onSanction_Relabelled\020\006\0221\n-k_EContentMod"
+  "erationSanction_MarkAsSuspicious\020\007\022\'\n#k_"
+  "EContentModerationSanction_Warned\020\010\0220\n,k"
+  "_EContentModerationSanction_KickedFromGr"
+  "oup\020\t\0221\n-k_EContentModerationSanction_Ha"
+  "rassmentBanned\020\n\0221\n-k_EContentModeration"
+  "Sanction_HarassmentStrike\020\013\022)\n%k_EConten"
+  "tModerationSanction_Escalate\020\014\0223\n/k_ECon"
+  "tentModerationSanction_MarkedIncompatibl"
+  "e\020\r\022$\n k_EContentModerationSanction_MAX\020"
+  "\016*\377\010\n\033EContentReportSubjectAction\022)\n%k_E"
+  "ContentReportSubjectAction_Invalid\020\000\022,\n("
+  "k_EContentReportSubjectAction_Unresolved"
+  "\020\001\022,\n(k_EContentReportSubjectAction_Sanc"
+  "tioned\020\002\022+\n\'k_EContentReportSubjectActio"
+  "n_Acquitted\020\003\022+\n\'k_EContentReportSubject"
+  "Action_Cancelled\020\004\022)\n%k_EContentReportSu"
+  "bjectAction_Updated\020\005\022+\n\'k_EContentRepor"
+  "tSubjectAction_Escalated\020\006\022*\n&k_EContent"
+  "ReportSubjectAction_Disputed\020\007\022+\n\'k_ECon"
+  "tentReportSubjectAction_Sustained\020\010\022(\n$k"
+  "_EContentReportSubjectAction_Locked\020\t\022*\n"
+  "&k_EContentReportSubjectAction_Unlocked\020"
+  "\n\022)\n%k_EContentReportSubjectAction_Delet"
+  "ed\020\013\022(\n$k_EContentReportSubjectAction_Wa"
+  "rned\020\014\022/\n+k_EContentReportSubjectAction_"
+  "BannedFromHub\020\r\0225\n1k_EContentReportSubje"
+  "ctAction_BannedFromCommunity\020\016\022-\n)k_ECon"
+  "tentReportSubjectAction_TradeBanned\020\017\0224\n"
+  "0k_EContentReportSubjectAction_MarkedAsS"
+  "uspicious\020\020\022.\n*k_EContentReportSubjectAc"
+  "tion_ResetContent\020\021\0222\n.k_EContentReportS"
+  "ubjectAction_EscalatedForCSAM\020\022\0227\n3k_ECo"
+  "ntentReportSubjectAction_EscalatedForTer"
+  "rorism\020\023\022)\n%k_EContentReportSubjectActio"
+  "n_Claimed\020\024\022*\n&k_EContentReportSubjectAc"
+  "tion_Released\020\025\0221\n-k_EContentReportSubje"
+  "ctAction_PrivateMessaged\020\026\022/\n+k_EContent"
+  "ReportSubjectAction_OwnerDisputed\020\027*\262\032\n\024"
+  "EContentReportReason\022\"\n\036k_EContentReport"
+  "Reason_Invalid\020\000\022\037\n\033k_EContentReportReas"
+  "on_None\020\001\022\"\n\036k_EContentReportReason_Unkn"
+  "own\020\002\022%\n!k_EContentReportReason_Harassme"
+  "nt\020\003\0222\n.k_EContentReportReason_BullyingA"
+  "ndIntimidation\020\004\022#\n\037k_EContentReportReas"
+  "on_Stalking\020\005\022\"\n\036k_EContentReportReason_"
+  "Doxxing\020\006\022*\n&k_EContentReportReason_Othe"
+  "rHarassment\020\007\022.\n*k_EContentReportReason_"
+  "EncouragingViolence\020\010\022.\n*k_EContentRepor"
+  "tReason_EncouragingSelfHarm\020\t\022-\n)k_ECont"
+  "entReportReason_EncouragingSuicide\020\n\0222\n."
+  "k_EContentReportReason_OtherViolenceOrSe"
+  "lfHarm\020\013\0221\n-k_EContentReportReason_Phish"
+  "ingOrAccountTheft\020\014\022,\n(k_EContentReportR"
+  "eason_AttemptedScamming\020\r\0224\n0k_EContentR"
+  "eportReason_LinkingToMaliciousContent\020\016\022"
+  "(\n$k_EContentReportReason_Impersonation\020"
+  "\017\022-\n)k_EContentReportReason_OtherScamsAn"
+  "dTheft\020\020\022/\n+k_EContentReportReason_Encou"
+  "ragingTerrorism\020\021\022.\n*k_EContentReportRea"
+  "son_OrganizingTerrorism\020\022\022)\n%k_EContentR"
+  "eportReason_OtherTerrorism\020\023\022(\n$k_EConte"
+  "ntReportReason_TargetedAbuse\020\024\022+\n\'k_ECon"
+  "tentReportReason_NamingAndShaming\020\025\022)\n%k"
+  "_EContentReportReason_Discrimination\020\026\022%"
+  "\n!k_EContentReportReason_OtherAbuse\020\027\022#\n"
+  "\037k_EContentReportReason_Trolling\020\030\022\"\n\036k_"
+  "EContentReportReason_Baiting\020\031\022$\n k_ECon"
+  "tentReportReason_Derailing\020\032\022*\n&k_EConte"
+  "ntReportReason_OtherDisruptive\020\033\022\037\n\033k_EC"
+  "ontentReportReason_Spam\020\034\022\"\n\036k_EContentR"
+  "eportReason_Begging\020\035\022$\n k_EContentRepor"
+  "tReason_Reposting\020\036\022(\n$k_EContentReportR"
+  "eason_OtherOffTopic\020\037\022,\n(k_EContentRepor"
+  "tReason_CSAMSexualContent\020 \0223\n/k_EConten"
+  "tReportReason_CSAMGroomingOrEnticement\020!"
+  "\022$\n k_EContentReportReason_CSAMOther\020\"\0220"
+  "\n,k_EContentReportReason_NudityOrSexualC"
+  "ontent\020#\0220\n,k_EContentReportReason_NonCo"
+  "nsensualMaterial\020$\022&\n\"k_EContentReportRe"
+  "ason_Advertising\020%\022(\n$k_EContentReportRe"
+  "ason_ReferralLinks\020&\022#\n\037k_EContentReport"
+  "Reason_Gambling\020\'\022\"\n\036k_EContentReportRea"
+  "son_Raffles\020(\0222\n.k_EContentReportReason_"
+  "OtherCommercialActivity\020)\022,\n(k_EContentR"
+  "eportReason_InauthenticReview\020*\022G\nCk_ECo"
+  "ntentReportReason_HiddenAdvertisementOrC"
+  "ommercialCommunication\020+\022D\n@k_EContentRe"
+  "portReason_MisleadingInformationAboutGoo"
+  "dsOrServices\020,\022C\n\?k_EContentReportReason"
+  "_MisleadingInformationAboutConsumerRight"
+  "s\020-\022>\n:k_EContentReportReason_Noncomplia"
+  "nceWithPricingRegulations\020.\0226\n2k_EConten"
+  "tReportReason_RightToBeForgottenViolatio"
+  "n\020/\0229\n5k_EContentReportReason_MissingPro"
+  "cessingGroundForData\0200\022A\n=k_EContentRepo"
+  "rtReason_OtherDataProtectionAndPrivacyVi"
+  "olation\0201\022-\n)k_EContentReportReason_Gend"
+  "eredHarassment\0202\022:\n6k_EContentReportReas"
+  "on_GenderedBullyingAndIntimidation\0203\022+\n\'"
+  "k_EContentReportReason_GenderedStalking\020"
+  "4\022*\n&k_EContentReportReason_GenderedDoxx"
+  "ing\0205\0222\n.k_EContentReportReason_Gendered"
+  "OtherHarassment\0206\0226\n2k_EContentReportRea"
+  "son_GenderedEncouragingViolence\0207\0220\n,k_E"
+  "ContentReportReason_GenderedTargetedAbus"
+  "e\0208\0221\n-k_EContentReportReason_CSAMFakedS"
+  "exualContent\0209\0228\n4k_EContentReportReason"
+  "_GenderedNonConsensualMaterial\020:\022=\n9k_EC"
+  "ontentReportReason_FakedGenderedNonConse"
+  "nsualMaterial\020;\0225\n1k_EContentReportReaso"
+  "n_FakedNonConsensualMaterial\020<\022\?\n;k_ECon"
+  "tentReportReason_NegativeEffectonDiscour"
+  "seOrElections\020=\0221\n-k_EContentReportReaso"
+  "n_QuotesModeratedContent\020>\0223\n/k_EContent"
+  "ReportReason_CredibleThreatOfViolence\020\?\022"
+  "2\n.k_EContentReportReason_AutoCreatedOnM"
+  "oderation\020@\022!\n\035k_EContentReportReason_Pi"
+  "racy\020A\022\'\n#k_EContentReportReason_ToSViol"
+  "ation\020B\022)\n%k_EContentReportReason_Miscat"
+  "egorized\020C\0223\n/k_EContentReportReason_Byp"
+  "assingProfanityFilter\020D\022\'\n#k_EContentRep"
+  "ortReason_BulkDeletion\020E\022\036\n\032k_EContentRe"
+  "portReason_MAX\020F*\270\001\n\025EResolutionAutomati"
+  "on\022\"\n\036k_EResolutionAutomation_Manual\020\000\022."
+  "\n*k_EResolutionAutomation_PartiallyAutom"
+  "ated\020\001\022*\n&k_EResolutionAutomation_FullyA"
+  "utomated\020\002\022\037\n\033k_EResolutionAutomation_MA"
+  "X\020\003*\223\004\n\022EPressOutletAction\022 \n\034k_EPressOu"
+  "tletAction_Invalid\020\000\022 \n\034k_EPressOutletAc"
+  "tion_Granted\020\001\022 \n\034k_EPressOutletAction_R"
+  "emoved\020\002\022 \n\034k_EPressOutletAction_Created"
+  "\020\003\022 \n\034k_EPressOutletAction_Updated\020\004\022 \n\034"
+  "k_EPressOutletAction_Deleted\020\005\022\"\n\036k_EPre"
+  "ssOutletAction_Undeleted\020\006\022\"\n\036k_EPressOu"
+  "tletAction_StagedAdd\020\007\022%\n!k_EPressOutlet"
+  "Action_StagedDelete\020\010\022%\n!k_EPressOutletA"
+  "ction_EnterStaging\020\t\022$\n k_EPressOutletAc"
+  "tion_ExitStaging\020\n\022)\n%k_EPressOutletActi"
+  "on_ReverseStagedAdd\020\013\022,\n(k_EPressOutletA"
+  "ction_ReverseStagedDelete\020\014\022\034\n\030k_EPressO"
+  "utletAction_MAX\020\r*\332\001\n\036EPressOutletMember"
+  "PendingState\022+\n\'k_EPressOutletMemberPend"
+  "ingState_Member\020\000\0221\n-k_EPressOutletMembe"
+  "rPendingState_StagedDelete\020\001\022.\n*k_EPress"
+  "OutletMemberPendingState_StagedAdd\020\002\022(\n$"
+  "k_EPressOutletMemberPendingState_MAX\020\003*\232"
+  "\002\n\024ECommentDeleteReason\022\"\n\036k_ECommentDel"
+  "eteReason_Invalid\020\000\022\037\n\033k_ECommentDeleteR"
+  "eason_User\020\001\022&\n\"k_ECommentDeleteReason_T"
+  "hreadOwner\020\002\022$\n k_ECommentDeleteReason_M"
+  "oderator\020\003\022\"\n\036k_ECommentDeleteReason_Sup"
+  "port\020\004\022\037\n\033k_ECommentDeleteReason_Spam\020\005\022"
+  "*\n&k_ECommentDeleteReason_AccountDeletio"
+  "n\020\006*\361\001\n\023EDLCHighlightReason\022\036\n\032k_EDLCHig"
+  "hlightReason_None\020\000\022\035\n\031k_EDLCHighlightRe"
+  "ason_New\020\001\022$\n k_EDLCHighlightReason_Comi"
+  "ngSoon\020\002\022(\n$k_EDLCHighlightReason_Player"
+  "Favorite\020\003\022%\n!k_EDLCHighlightReason_Reco"
+  "mmended\020\004\022$\n k_EDLCHighlightReason_NewPl"
+  "ayers\020\005"
   ;
 static ::PROTOBUF_NAMESPACE_ID::internal::once_flag descriptor_table_enums_2eproto_once;
 const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable descriptor_table_enums_2eproto = {
-  false, false, 28999, descriptor_table_protodef_enums_2eproto, "enums.proto", 
+  false, false, 29767, descriptor_table_protodef_enums_2eproto, "enums.proto", 
   &descriptor_table_enums_2eproto_once, nullptr, 0, 0,
   schemas, file_default_instances, TableStruct_enums_2eproto::offsets,
   file_level_metadata_enums_2eproto, file_level_enum_descriptors_enums_2eproto, file_level_service_descriptors_enums_2eproto,
@@ -1902,6 +1922,7 @@ bool ECompromiseDetectionType_IsValid(int value) {
     case 5:
     case 6:
     case 7:
+    case 8:
       return true;
     default:
       return false;
@@ -2088,9 +2109,28 @@ bool EWindowsUpdateRebootBehavior_IsValid(int value) {
   }
 }
 
-const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EExternalSaleEventType_descriptor() {
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EWindowsUpdateOperationResult_descriptor() {
   ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
   return file_level_enum_descriptors_enums_2eproto[71];
+}
+bool EWindowsUpdateOperationResult_IsValid(int value) {
+  switch (value) {
+    case -1:
+    case 0:
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+    case 5:
+      return true;
+    default:
+      return false;
+  }
+}
+
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EExternalSaleEventType_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[72];
 }
 bool EExternalSaleEventType_IsValid(int value) {
   switch (value) {
@@ -2108,7 +2148,7 @@ bool EExternalSaleEventType_IsValid(int value) {
 
 const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EEnhancedMarketAppearanceStatus_descriptor() {
   ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
-  return file_level_enum_descriptors_enums_2eproto[72];
+  return file_level_enum_descriptors_enums_2eproto[73];
 }
 bool EEnhancedMarketAppearanceStatus_IsValid(int value) {
   switch (value) {
@@ -2124,7 +2164,7 @@ bool EEnhancedMarketAppearanceStatus_IsValid(int value) {
 
 const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EContentReportSubjectType_descriptor() {
   ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
-  return file_level_enum_descriptors_enums_2eproto[73];
+  return file_level_enum_descriptors_enums_2eproto[74];
 }
 bool EContentReportSubjectType_IsValid(int value) {
   switch (value) {
@@ -2144,7 +2184,7 @@ bool EContentReportSubjectType_IsValid(int value) {
 
 const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EControlledLegalCategoryStatus_descriptor() {
   ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
-  return file_level_enum_descriptors_enums_2eproto[74];
+  return file_level_enum_descriptors_enums_2eproto[75];
 }
 bool EControlledLegalCategoryStatus_IsValid(int value) {
   switch (value) {
@@ -2160,7 +2200,7 @@ bool EControlledLegalCategoryStatus_IsValid(int value) {
 
 const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EContentModeratorLevel_descriptor() {
   ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
-  return file_level_enum_descriptors_enums_2eproto[75];
+  return file_level_enum_descriptors_enums_2eproto[76];
 }
 bool EContentModeratorLevel_IsValid(int value) {
   switch (value) {
@@ -2176,7 +2216,7 @@ bool EContentModeratorLevel_IsValid(int value) {
 
 const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EContentReportResolution_descriptor() {
   ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
-  return file_level_enum_descriptors_enums_2eproto[76];
+  return file_level_enum_descriptors_enums_2eproto[77];
 }
 bool EContentReportResolution_IsValid(int value) {
   switch (value) {
@@ -2206,7 +2246,7 @@ bool EContentReportResolution_IsValid(int value) {
 
 const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EContentModerationSanction_descriptor() {
   ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
-  return file_level_enum_descriptors_enums_2eproto[77];
+  return file_level_enum_descriptors_enums_2eproto[78];
 }
 bool EContentModerationSanction_IsValid(int value) {
   switch (value) {
@@ -2224,6 +2264,7 @@ bool EContentModerationSanction_IsValid(int value) {
     case 11:
     case 12:
     case 13:
+    case 14:
       return true;
     default:
       return false;
@@ -2232,7 +2273,7 @@ bool EContentModerationSanction_IsValid(int value) {
 
 const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EContentReportSubjectAction_descriptor() {
   ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
-  return file_level_enum_descriptors_enums_2eproto[78];
+  return file_level_enum_descriptors_enums_2eproto[79];
 }
 bool EContentReportSubjectAction_IsValid(int value) {
   switch (value) {
@@ -2268,7 +2309,7 @@ bool EContentReportSubjectAction_IsValid(int value) {
 
 const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EContentReportReason_descriptor() {
   ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
-  return file_level_enum_descriptors_enums_2eproto[79];
+  return file_level_enum_descriptors_enums_2eproto[80];
 }
 bool EContentReportReason_IsValid(int value) {
   switch (value) {
@@ -2342,6 +2383,7 @@ bool EContentReportReason_IsValid(int value) {
     case 67:
     case 68:
     case 69:
+    case 70:
       return true;
     default:
       return false;
@@ -2350,7 +2392,7 @@ bool EContentReportReason_IsValid(int value) {
 
 const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EResolutionAutomation_descriptor() {
   ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
-  return file_level_enum_descriptors_enums_2eproto[80];
+  return file_level_enum_descriptors_enums_2eproto[81];
 }
 bool EResolutionAutomation_IsValid(int value) {
   switch (value) {
@@ -2366,7 +2408,7 @@ bool EResolutionAutomation_IsValid(int value) {
 
 const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EPressOutletAction_descriptor() {
   ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
-  return file_level_enum_descriptors_enums_2eproto[81];
+  return file_level_enum_descriptors_enums_2eproto[82];
 }
 bool EPressOutletAction_IsValid(int value) {
   switch (value) {
@@ -2392,7 +2434,7 @@ bool EPressOutletAction_IsValid(int value) {
 
 const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EPressOutletMemberPendingState_descriptor() {
   ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
-  return file_level_enum_descriptors_enums_2eproto[82];
+  return file_level_enum_descriptors_enums_2eproto[83];
 }
 bool EPressOutletMemberPendingState_IsValid(int value) {
   switch (value) {
@@ -2408,7 +2450,7 @@ bool EPressOutletMemberPendingState_IsValid(int value) {
 
 const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ECommentDeleteReason_descriptor() {
   ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
-  return file_level_enum_descriptors_enums_2eproto[83];
+  return file_level_enum_descriptors_enums_2eproto[84];
 }
 bool ECommentDeleteReason_IsValid(int value) {
   switch (value) {
@@ -2419,6 +2461,24 @@ bool ECommentDeleteReason_IsValid(int value) {
     case 4:
     case 5:
     case 6:
+      return true;
+    default:
+      return false;
+  }
+}
+
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* EDLCHighlightReason_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_enums_2eproto);
+  return file_level_enum_descriptors_enums_2eproto[85];
+}
+bool EDLCHighlightReason_IsValid(int value) {
+  switch (value) {
+    case 0:
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+    case 5:
       return true;
     default:
       return false;

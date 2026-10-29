@@ -31,7 +31,7 @@ namespace
 {
 	using OnChunkStackFn = void(*)(void*, void*, const char*, uint32_t,
 	                               const char*, uint32_t);
-	using OnChunkRegFn = void (__attribute__((regparm(3))) *)(
+	using OnChunkRegFn = void (*)(
 	    void*, void*, const char*, uint32_t, const char*, uint32_t);
 
 	template<typename Fn>
@@ -248,7 +248,7 @@ namespace
 		g_stack.orig(context, chunk, source, location, detail, unpackResult);
 	}
 
-	void __attribute__((regparm(3))) hkOnChunkReg(
+	void hkOnChunkReg(
 	    void* context, void* chunk, const char* source, uint32_t location,
 	    const char* detail, uint32_t unpackResult)
 	{

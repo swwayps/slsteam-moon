@@ -63,7 +63,7 @@ const char* followModeName(MemHlp::SigFollowMode mode)
 std::string catalogFor(const std::string& path, std::uint64_t rva)
 {
 	const auto size = std::filesystem::file_size(path);
-	std::string body = "schema = 1\nplatform = \"linux32\"\ncomponent = \"steamclient\"\n"
+	std::string body = "schema = 1\nplatform = \"linux64\"\ncomponent = \"steamclient\"\n"
 	                   "module_name = \"steamclient.so\"\nmodule_sha256 = \"" +
 	                   Utils::getFileSHA256(path.c_str()) + "\"\nmodule_size = " +
 	                   std::to_string(size) + "\ngnu_build_id = \"" +
@@ -72,7 +72,8 @@ std::string catalogFor(const std::string& path, std::uint64_t rva)
 	                   "minimum_consumer_schema = 1\nrevision = 1\nsource = \"deterministic\"\n";
 	for (const Pattern_t* pattern : Patterns::patterns())
 	{
-		if (pattern->module == &g_modSteamUI) continue;
+		// Unported locators carry no signature, so a refresh never lists them.
+		if (pattern->module == &g_modSteamUI || pattern->pattern.empty()) continue;
 		body += "\n[[locators]]\nsymbol = \"" + pattern->symbol + "\"\nname = \"" +
 		        pattern->name + "\"\ntarget_rva = " + std::to_string(rva) +
 		        "\nmatch_rva = " + std::to_string(rva) + "\nsignature = \"" +

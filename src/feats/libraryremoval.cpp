@@ -19,11 +19,11 @@
 
 namespace
 {
-using GetAppByIDFn = void* (__attribute__((cdecl)) *)(
+using GetAppByIDFn = void* (*)(
 	void*, std::uint32_t, bool);
-using MarkAppChangeFn = void (__attribute__((cdecl)) *)(
+using MarkAppChangeFn = void (*)(
 	void*, std::uint32_t, std::uint32_t);
-using RunFrameFn = void* (__attribute__((cdecl)) *)(void*);
+using RunFrameFn = void* (*)(void*);
 
 template<typename Fn>
 struct Detour
@@ -44,9 +44,9 @@ std::size_t g_ownershipFlagsOffset = 0;
 Detour<MarkAppChangeFn> g_markAppChange;
 Detour<RunFrameFn> g_runFrame;
 
-static_assert(sizeof(void*) == 4,
-	"SteamUI protobuf layout is defined for the Linux i386 client");
-
+// The SteamUI object layout below was derived on the Linux i386 client. The
+// x86-64 build ships the locators empty, so none of this runs until the
+// layout is derived again.
 template<typename Fn>
 void uninstall(Detour<Fn>& detour) noexcept
 {
@@ -132,7 +132,7 @@ void processOneRemoval(void* controller)
 				? "removal" : "restoration");
 }
 
-void __attribute__((cdecl)) hkMarkAppChange(
+void hkMarkAppChange(
 	void* source,
 	std::uint32_t appId,
 	std::uint32_t flags)
@@ -141,7 +141,7 @@ void __attribute__((cdecl)) hkMarkAppChange(
 	g_markAppChange.original(source, appId, flags);
 }
 
-void* __attribute__((cdecl)) hkRunFrame(void* controller)
+void* hkRunFrame(void* controller)
 {
 	if (g_ready.load(std::memory_order_acquire))
 	{

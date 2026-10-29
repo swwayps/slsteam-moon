@@ -34,16 +34,19 @@ SDK_Struct DepotInfo_t
 	AppId_t depotId;			//0x0
 	AppId_t appId;				//0x4
 	uint64_t manifestId;		//0x8
-	uint8_t __pad0x10[0x10];	//0x10
+	uint64_t size;				//0x10
+	uint8_t __pad0x18[0x4];		//0x18
+	bool lcsRequired;			//0x1C
+	uint8_t __pad0x1D[0x3];		//0x1D
 }; //0x20
 
 SDK_Class IClientAppManager
 {
 public:
-	uint32_t getNumLibraryFolders();
-	uint32_t getLibraryFolderLabel(const uint32_t index, char* pChLabel, const uint32_t labelSize);
-	uint32_t getLibraryFolderPath(const uint32_t index, char* pChPath, const uint32_t pathSize);
 	EAppState getAppInstallState(const AppId_t appId);
+	uint32_t getLibraryFolderLabel(const uint32_t index, char* pChLabel, const uint32_t labelSize);
+	uint32_t getLibraryFolderPath(const uint32_t index, char* pChPath, const steamsize_t pathSize);
+	uint32_t getNumLibraryFolders();
 	bool installApp(const AppId_t appId, const uint32_t libraryIndex);
 	uint32_t uninstallApp(const AppId_t appId);
 };

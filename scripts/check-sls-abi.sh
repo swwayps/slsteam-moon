@@ -27,9 +27,9 @@ if ! "$READELF_BIN" --file-header "$BINARY" >"$HEADER_OUTPUT" 2>&1; then
 	echo "could not inspect SLSsteam ELF header: $BINARY" >&2
 	exit 1
 fi
-if ! grep -Eq 'Class:[[:space:]]+ELF32' "$HEADER_OUTPUT" \
-   || ! grep -Eq 'Machine:[[:space:]]+Intel 80386' "$HEADER_OUTPUT"; then
-	echo "$BINARY is not an ELF32 Intel 80386 binary" >&2
+if ! grep -Eq 'Class:[[:space:]]+ELF64' "$HEADER_OUTPUT" \
+   || ! grep -Eq 'Machine:[[:space:]]+Advanced Micro Devices X86-64' "$HEADER_OUTPUT"; then
+	echo "$BINARY is not an ELF64 x86-64 binary" >&2
 	exit 1
 fi
 
@@ -59,4 +59,4 @@ while read -r major minor; do
 	fi
 done <<< "$VERSIONS"
 
-echo "SLSsteam ABI is compatible with ELF32 Intel 80386 and GLIBC_2.34"
+echo "SLSsteam ABI is compatible with ELF64 x86-64 and GLIBC_2.34"

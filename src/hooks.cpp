@@ -8,7 +8,6 @@
 #include "lua.hpp"
 #include "memhlp.hpp"
 #include "patterns.hpp"
-#include "process.hpp"
 #include "vftableinfo.hpp"
 
 #include "sdk/CNetPacket.hpp"
@@ -231,7 +230,7 @@ bool DetourHook<T>::place()
 		return false;
 	g_pLog->debug
 	(
-		"Detour hooked %s (%p) with hook at 0x%x and tramp at 0x%x\n",
+		"Detour hooked %s (%p) with hook at 0x%lx and tramp at 0x%lx\n",
 		this->name.c_str(),
 		reinterpret_cast<void*>(this->originalFn.address),
 		this->hookFn.address,
@@ -266,7 +265,7 @@ bool VFTHook<T>::place()
 
 	LOG_DEBUG
 	(
-		"VFT hooked %s (0x%x) with hook at 0x%x\n",
+		"VFT hooked %s (0x%lx) with hook at 0x%lx\n",
 		this->name.c_str(),
 		this->originalFn.address,
 		this->hookFn.address
@@ -488,37 +487,11 @@ static uint32_t hkSteamEngine_ProcessIPCFrame(
 			pSteamEngine, hPipe, pBufIn, pBufOut);
 	}
 
-	if (cmd == EIPCCmd::ConnectPipe)
-	{
-		const auto serverPipe = g_pSteamEngine->getServerPipe(hPipe);
-		if (serverPipe)
-		{
-			Process_t process{};
-			if (process.init(serverPipe->pid, serverPipe->pipeHandle))
-			{
-				g_processMap.insert_or_assign(
-					serverPipe->pipeHandle, std::move(process));
-				Ticket::connectPipe(hPipe);
-			}
-			else
-			{
-				g_processMap.erase(serverPipe->pipeHandle);
-			}
-		}
-		else
-		{
-			g_processMap.erase(hPipe);
-		}
-	}
-
 	if (cmd == EIPCCmd::ClosePipe)
 	{
-		if (g_processMap.contains(hPipe))
-		{
-			g_pLog->debug("Deleting g_processMap mapping %u for %u\n", g_processMap.at(hPipe).appId, hPipe);
-			g_processMap.erase(hPipe);
-		}
+		FakeAppIds::closePipe(hPipe);
 	}
+
 	return ret;
 }
 
@@ -542,15 +515,14 @@ static uint32_t hkSteamEngine_SetAppIdForCurrentPipe(void* pSteamEngine, uint32_
 	return ret;
 }
 
-static gameserverdetails_t* hkSteamMatchmakingServers_GetServerDetails(void* pSteamMatchmakingServers, uint32_t handle, uint32_t serverIdx)
+static gameserverdetails_t* hkSteamMatchmakingServers_GetServerDetails(void* pSteamMatchmakingServers, HServerRequest handle, uint32_t serverIdx)
 {
 	LOG_TRACE("Calling tramp\n");
 	gameserverdetails_t* ret = Hooks::CSteamMatchmakingServers_GetServerDetails.tramp.fn(pSteamMatchmakingServers, handle, serverIdx);
 
 	LOG_DEBUG
 	(
-		"%s(%p, 0x%x, %u) -> %p\n",
-
+		"%s(%p, %p, %u) -> %p\n",
 		Hooks::CSteamMatchmakingServers_GetServerDetails.name.c_str(),
 		pSteamMatchmakingServers,
 		handle,
@@ -566,16 +538,14 @@ static gameserverdetails_t* hkSteamMatchmakingServers_GetServerDetails(void* pSt
 	return ret;
 }
 
-static uint32_t hkSteamMatchmakingServers_RequestInternetServerList(void* pSteamMatchmakingServers, uint32_t appId, uint32_t a2, uint32_t a3, uint32_t a4)
+static HServerRequest hkSteamMatchmakingServers_RequestInternetServerList(void* pSteamMatchmakingServers, AppId_t appId, void* a2, uint32_t a3, void* a4)
 {
 	const uint32_t fake = FakeAppIds::requestInternetServerList(appId);
-
 	LOG_TRACE("Calling tramp\n");
-	uint32_t handle = Hooks::CSteamMatchmakingServers_RequestInternetServerList.tramp.fn(pSteamMatchmakingServers, fake ? fake : appId, a2, a3, a4);
-
+	HServerRequest handle = Hooks::CSteamMatchmakingServers_RequestInternetServerList.tramp.fn(pSteamMatchmakingServers, fake ? fake : appId, a2, a3, a4);
 	LOG_DEBUG
 	(
-		"%s(%p, %u, 0x%x, 0x%x, 0x%x)->0x%x\n",
+		"%s(%p, %u, %p, %u, %p) -> %p\n",
 
 		Hooks::CSteamMatchmakingServers_RequestInternetServerList.name.c_str(),
 		pSteamMatchmakingServers,
@@ -677,13 +647,20 @@ static uint32_t hkUser_SpawnGameId
 	std::string newCmd = cmd ? cmd : "";
 
 	Apps::spawnGame(pGameId, newExe, newCmd);
-
-	g_pLog->debug("Launching gameId %llu with cmd %s as %s\n", pGameId ? *pGameId : 0ULL, newExe.c_str(), newCmd.c_str());
-
+	// The 64-bit client's games are spawned by srt-client-container, whose
+	// environment still carries LD_AUDIT; drop it for the game (upstream
+	// b464e69). A user-supplied LD_AUDIT in the launch options is kept.
+	if (cmd && newCmd.find("LD_AUDIT=") == std::string::npos)
+	{
+		newExe = "env";
+		newCmd = "env -u LD_AUDIT " + newCmd;
+	}
+	g_pLog->debug("Launching gameId %llu with cmd %s as %s\n",
+	              static_cast<unsigned long long>(pGameId ? *pGameId : 0), newExe.c_str(), newCmd.c_str());
 	return Hooks::CUser_SpawnGameId.tramp.fn
 	(
 		pUser,
-		exe ? newExe.c_str() : nullptr,
+		exe || cmd ? newExe.c_str() : nullptr,
 		cmd ? newCmd.c_str() : nullptr,
 		workingDir,
 		pGameId,
@@ -761,27 +738,26 @@ static bool hkClientAppManager_BCanRemotePlayTogether(void* pClientAppManager, u
 	return true;
 }
 
-static void* hkClientAppManager_LaunchApp(void* pClientAppManager, uint32_t* pAppId, void* a2, void* a3, void* a4)
+static void* hkClientAppManager_LaunchApp(void* pClientAppManager, GameId_t* pGameId, uint32_t a2, uint32_t a3, const char* a4)
 {
-	if (pAppId)
+	if (pGameId)
 	{
+		const auto appId = static_cast<uint32_t>(*pGameId);
 		g_pLog->debugOnce
 		(
-			"%s(%p, %u, %p, %p, %p)\n",
-
+			"%s(%p, %llu, %u, %u, %p)\n",
 			Hooks::IClientAppManager_LaunchApp.name.c_str(),
 			pClientAppManager,
-			*pAppId,
+			static_cast<unsigned long long>(*pGameId),
 			a2,
 			a3,
-			a4
+			static_cast<const void*>(a4)
 		);
-
-		Ticket::launchApp(*pAppId);
-		SteamStub::onLaunchApp(*pAppId);
+		FakeAppIds::launchApp(*pGameId);
+		Ticket::launchApp(appId);
+		SteamStub::onLaunchApp(appId);
 	}
-
-	return Hooks::IClientAppManager_LaunchApp.originalFn.fn(pClientAppManager, pAppId, a2, a3, a4);
+	return Hooks::IClientAppManager_LaunchApp.originalFn.fn(pClientAppManager, pGameId, a2, a3, a4);
 }
 
 static bool hkClientAppManager_IsAppDlcInstalled(void* pClientAppManager, uint32_t appId, uint32_t dlcId)
@@ -885,7 +861,7 @@ static unsigned int hkClientApps_GetDLCCount(void* pClientApps, uint32_t appId)
 	return count;
 }
 
-static bool hkClientApps_GetDLCDataByIndex(void* pClientApps, uint32_t appId, int dlcIndex, uint32_t* pDlcId, bool* pIsAvailable, char* pChDlcName, size_t dlcNameLen)
+static bool hkClientApps_GetDLCDataByIndex(void* pClientApps, uint32_t appId, uint32_t dlcIndex, uint32_t* pDlcId, bool* pIsAvailable, char* pChDlcName, steamsize_t dlcNameLen)
 {
 	bool ret = DLC::getDlcDataByIndex(
 		appId, dlcIndex, pDlcId, pIsAvailable, pChDlcName, dlcNameLen);
@@ -905,7 +881,7 @@ static bool hkClientApps_GetDLCDataByIndex(void* pClientApps, uint32_t appId, in
 	// The name buffer is only filled on success.
 	g_pLog->debugOnce
 	(
-		"%s(%p, %u, %i, %p, %p, %s, %zu) -> %i\n",
+		"%s(%p, %u, %u, %p, %p, %s, %u) -> %i\n",
 
 		Hooks::IClientApps_GetDLCDataByIndex.name.c_str(),
 		pClientApps,
@@ -1163,11 +1139,6 @@ static bool hkClientUser_GetEncryptedAppTicket(void* pClientUser, void* pTicket,
 		success
 	);
 
-	if (success)
-	{
-		Ticket::getEncryptedAppTicket(FakeAppIds::getRealAppIdForCurrentPipe());
-	}
-
 	return success;
 }
 
@@ -1261,15 +1232,6 @@ static CSteamId hkClientUser_GetSteamId(void* pClientUser)
 		return steamId;
 	}
 
-	if (g_config.smartTickets.get() & CConfig::k_ESmartTicketsDenuvo)
-	{
-		const auto process = g_processMap.find(utils->getCurrentSteamPipe());
-		if (process == g_processMap.end() || !process->second.denuvo)
-		{
-			return steamId;
-		}
-	}
-
 	return ticket.steamId;
 }
 
@@ -1326,6 +1288,7 @@ namespace Hooks
 	static bool configStoreHookReady = false;
 	static bool friendGameHookReady = false;
 	static bool traceIpcHookReady = false;
+	static bool manifestCodeHookReady = false;
 
 	DetourHook<TraceIPC_t> TraceIPC;
 
@@ -1488,9 +1451,6 @@ bool Hooks::setup()
 		CCMInterface_RecvPkt.setup(VFTIndexes::CCMInterface::RecvPkt, &hkCMInterface_RecvPkt)
 
 		&& CWebSocketConnection_BBuildAndAsyncSendFrame.setup(Patterns::CWebSocketConnection::BBuildAndAsyncSendFrame, &ManifestCode::hkBBuildAndAsyncSendFrame)
-		&& CJobMgr_BRouteMsgToJob.setup(Patterns::CJobMgr::BRouteMsgToJob, &ManifestCode::hkBRouteMsgToJob)
-		&& CDepotDownloadMgr_BYldRequestDepotManifest.setup(Patterns::CDepotDownloadMgr::BYldRequestDepotManifest, &ManifestCode::hkCDepotDownloadMgr_BYldRequestDepotManifest)
-
 		&& CUser_CheckAppOwnership.setup(Patterns::CUser::CheckAppOwnership, &hkUser_CheckAppOwnership)
 		&& CUser_GetSubscribedApps.setup(Patterns::CUser::GetSubscribedApps, &hkUser_GetSubscribedApps)
 		&& CUser_PostCallbackToAppId.setup(Patterns::CUser::PostCallbackToAppId, &hkUser_PostCallbackToAppId)
@@ -1499,6 +1459,14 @@ bool Hooks::setup()
 		&& CSteamEngine_ProcessIPCFrame.setup(Patterns::CSteamEngine::ProcessIPCFrame, &hkSteamEngine_ProcessIPCFrame)
 		&& CSteamEngine_SetAppIdForCurrentPipe.setup(Patterns::CSteamEngine::SetAppIdForCurrentPipe, &hkSteamEngine_SetAppIdForCurrentPipe);
 
+	// Only the manifest request-code fallback rides these two detours.
+	manifestCodeHookReady =
+		CJobMgr_BRouteMsgToJob.setup(Patterns::CJobMgr::BRouteMsgToJob, &ManifestCode::hkBRouteMsgToJob)
+		&& CDepotDownloadMgr_BYldRequestDepotManifest.setup(Patterns::CDepotDownloadMgr::BYldRequestDepotManifest, &ManifestCode::hkCDepotDownloadMgr_BYldRequestDepotManifest);
+	if (!manifestCodeHookReady)
+	{
+		g_pLog->warn("Request-code routing hooks unavailable; manifest request-code fallback disabled\n");
+	}
 	// TraceIPC only logs IPC calls under ExtendedLogging.
 	traceIpcHookReady = TraceIPC.setup(Patterns::TraceIPC, &hkTraceIPC);
 	if (!traceIpcHookReady)
@@ -1656,8 +1624,11 @@ bool Hooks::place()
 		TraceIPC.place();
 	bool required = CCMInterface_RecvPkt.place();
 
-	required &= CJobMgr_BRouteMsgToJob.place();
-	required &= CDepotDownloadMgr_BYldRequestDepotManifest.place();
+	if (manifestCodeHookReady)
+	{
+		CJobMgr_BRouteMsgToJob.place();
+		CDepotDownloadMgr_BYldRequestDepotManifest.place();
+	}
 	required &= CSteamEngine_ProcessIPCFrame.place();
 	required &= CSteamEngine_SetAppIdForCurrentPipe.place();
 

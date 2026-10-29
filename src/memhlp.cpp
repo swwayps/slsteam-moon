@@ -2,12 +2,14 @@
 
 #include "log.hpp"
 #include "utils.hpp"
+#include "globals.hpp"
 #include "config.hpp"
 #include "pattern_scan.hpp"
 
 #include "libmem/libmem.h"
 
 #include <algorithm>
+#include <cstring>
 #include <iomanip>
 #include <iterator>
 #include <memory>
@@ -301,7 +303,7 @@ lm_address_t MemHlp::getJmpTarget(lm_address_t address)
 	lm_inst_t inst;
 	if (!LM_Disassemble(address, &inst)) //Should not happen if we land in a code section
 	{
-		LOG_DEBUG("Failed to disassemble code at 0x%x!", address);
+		LOG_DEBUG("Failed to disassemble code at 0x%lx!", address);
 		return LM_ADDRESS_BAD;
 	}
 
@@ -343,7 +345,7 @@ lm_address_t MemHlp::findPrologue(lm_address_t address, lm_address_t lowerBound,
 		if (found)
 		{
 			lm_address_t prol = address - i - prologueSize + 1; //Add 1 byte back since bytesSize would be to big otherwise
-			LOG_DEBUG("Prologue found at 0x%x\n", prol);
+			LOG_DEBUG("Prologue found at 0x%lx\n", prol);
 			return prol;
 		}
 	}
@@ -352,105 +354,58 @@ lm_address_t MemHlp::findPrologue(lm_address_t address, lm_address_t lowerBound,
 	return LM_ADDRESS_BAD;
 }
 
-bool MemHlp::fixPICThunkCall(const char* name, lm_address_t fn, lm_address_t tramp)
+// The i386 client reached its GOT through __x86.get_pc_thunk calls, which had
+// to be repaired after relocation into a trampoline. x86-64 code addresses
+// data RIP-relative, so there is nothing to repair (upstream c7d770e).
+bool MemHlp::fixPICThunkCall(const char*, lm_address_t, lm_address_t)
 {
-	LOG_DEBUG("Fixing PIC thunks for %s's trampoline\n", name);
-	constexpr unsigned int maxBytes = 0x5; //Minimum bytes needed to detour a function, so our tramp will at least be of this size
-	
-	lm_inst_t inst;
-	for (unsigned int curTrampOffset = 0; curTrampOffset <= maxBytes; )
-	{
-		lm_address_t startAddress = tramp + curTrampOffset;
-
-		if (!LM_Disassemble(startAddress, &inst))
-		{
-			LOG_DEBUG("Unable to dissassemble code at 0x%x\n", tramp + curTrampOffset);
-			return false;
-		}
-		
-		curTrampOffset += inst.size;
-		LOG_DEBUG("0x%x: %s %s\n", inst.address, inst.mnemonic, inst.op_str);
-		
-		if (strcmp(inst.mnemonic, "call") != 0)
-			continue;
-
-		//Calculate the call address manually with it's original location
-		lm_address_t followAddress = fn + curTrampOffset + *reinterpret_cast<lm_address_t*>(startAddress + 1);
-		bool isIPCThunk = true;
-		char newInstr[256] = {};
-
-		for (unsigned int i = 0; i < 2; i++) //Dissassemble next 2 instructions and check if they're an actual IPC thunk call
-		{
-			if (!LM_Disassemble(followAddress, &inst))
-			{
-				LOG_DEBUG("Unable to dissassemble code at 0x%x\n", followAddress);
-				return false;
-			}
-
-			followAddress += inst.size;
-
-			LOG_DEBUG("0x%x: %s %s\n", inst.address, inst.mnemonic, inst.op_str);
-
-			//Can not declare in switch statement
-			auto splits = std::vector<std::string>();
-			lm_address_t retAddress = LM_ADDRESS_BAD;
-			switch(i)
-			{
-				case 0:
-					if (strcmp(inst.mnemonic, "mov") != 0)
-						isIPCThunk = false;
-					
-					if (inst.op_str[0] == '\0')
-					{
-						isIPCThunk = false;
-						break;
-					}
-					splits = Utils::strsplit(inst.op_str, ",");
-					if (splits.empty() || splits.front().empty())
-					{
-						isIPCThunk = false;
-						break;
-					}
-					retAddress = fn + curTrampOffset; //No need to add any bytes here, since i += inst.size in the outer loop takes care of that
-					if (!formatPICThunkInstruction(
-						newInstr, sizeof(newInstr), inst.mnemonic,
-						splits.front().c_str(), retAddress))
-					{
-						g_pLog->debug("Unable to format PIC thunk instruction\n");
-						return false;
-					}
-					break;
-
-				case 1:
-					if (strcmp(inst.mnemonic, "ret") != 0)
-						isIPCThunk = false;
-					break;
-			}
-
-			if (!isIPCThunk)
-				break;
-		}
-
-		if (!isIPCThunk)
-			continue;
-
-		if (!LM_Assemble(newInstr, &inst))
-		{
-			LOG_DEBUG("Unable to assemble instruction %s!\n", newInstr);
-			return false;
-		}
-
-		lm_prot_t oldProt;
-		LM_ProtMemory(startAddress, inst.size, LM_PROT_XRW, &oldProt);
-		LM_WriteMemory(startAddress, inst.bytes, inst.size);
-		LM_ProtMemory(startAddress, inst.size, oldProt, nullptr);
-		LOG_DEBUG("Replaced PIC thunk call for %s at 0x%x with %s\n", name, followAddress, newInstr);
-		return true;
-	}
-
-	return false;
+	return true;
 }
 
+// Finds the offset of the member object whose vtable belongs to `typeName`
+// (Itanium mangled, e.g. "12CUserAppInfo") inside `object`. The x86-64 port
+// uses this where the i386 client exposed the offset as an instruction
+// immediate (upstream dev-X86_64 searchOffsetByTypeName). Every pointer
+// followed must point into steamclient.so, so a non-object word is skipped
+// without being dereferenced.
+lm_address_t MemHlp::searchOffsetByTypeName(const void* object, const char* typeName, const lm_size_t maxOffset)
+{
+	const lm_address_t moduleBase = g_modSteamClient.base;
+	const lm_address_t moduleEnd = g_modSteamClient.end;
+	const auto inModule = [&](const lm_address_t address, const lm_size_t bytes)
+	{
+		return address >= moduleBase && address <= moduleEnd && moduleEnd - address >= bytes;
+	};
+
+	const auto base = reinterpret_cast<const uint8_t*>(object);
+	for (lm_size_t off = sizeof(lm_address_t); object && off <= maxOffset; off += sizeof(lm_address_t))
+	{
+		lm_address_t vft;
+		std::memcpy(&vft, base + off, sizeof(vft));
+		if (!inModule(vft - sizeof(lm_address_t), sizeof(lm_address_t)))
+			continue;
+
+		lm_address_t typeInfo;
+		std::memcpy(&typeInfo, reinterpret_cast<const void*>(vft - sizeof(lm_address_t)), sizeof(typeInfo));
+		if (!inModule(typeInfo, 2 * sizeof(lm_address_t)))
+			continue;
+
+		lm_address_t name;
+		std::memcpy(&name, reinterpret_cast<const void*>(typeInfo + sizeof(lm_address_t)), sizeof(name));
+		const std::size_t length = std::strlen(typeName) + 1;
+		if (!inModule(name, length))
+			continue;
+
+		if (std::memcmp(reinterpret_cast<const void*>(name), typeName, length) == 0)
+		{
+			LOG_DEBUG("Found %s at offset 0x%zx\n", typeName, static_cast<std::size_t>(off));
+			return off;
+		}
+	}
+
+	g_pLog->warn("Failed to find a %s member\n", typeName);
+	return LM_ADDRESS_BAD;
+}
 
 const char* MemHlp::getTypeName(void* pClass)
 {

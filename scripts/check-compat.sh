@@ -19,14 +19,14 @@ echo "  SLSsteam Binary Compatibility Check"
 echo "========================================="
 echo ""
 
-# Check if it's 32-bit
+# Check if it's 64-bit (the steamrt64 client)
 FILE_OUTPUT=$(file "$BINARY")
 echo "Binary type:"
 echo "  $FILE_OUTPUT"
 echo ""
 
-if ! echo "$FILE_OUTPUT" | grep -q "32-bit"; then
-	echo "⚠️  WARNING: Binary is not 32-bit! Steam requires 32-bit."
+if ! echo "$FILE_OUTPUT" | grep -q "64-bit"; then
+	echo "⚠️  WARNING: Binary is not 64-bit! The steamrt64 client requires 64-bit."
 	echo ""
 fi
 

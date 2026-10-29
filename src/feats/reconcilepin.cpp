@@ -31,7 +31,7 @@ namespace
 	// pointer regparm(1) keeps EAX intact across the call so the relocated
 	// prologue's `mov %eax,-0xb0(%ebp)` reads the right anchor.  (Prologue is a
 	// plain `push ebp`, not a get_pc_thunk -> no fixPICThunkCall.)
-	typedef void* (__attribute__((regparm(1))) *ReconFn_t)(
+	typedef void* (*ReconFn_t)(
 	    void* mgr, void* ctx, void* a1, void* a2);
 
 	ReconFn_t    g_orig = nullptr;
@@ -323,7 +323,6 @@ namespace
 		return true;
 	}
 
-	__attribute__((regparm(1)))
 	void* hkEvaluate(void* mgr, void* ctx, void* a1, void* a2)
 	{
 		if (ctx)

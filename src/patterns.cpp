@@ -570,6 +570,11 @@ bool Pattern_t::find(const MemHlp::CodeSegments& code)
 {
 	lm_module_t& targetModule = module ? *module : g_modSteamClient;
 	matchAddress = LM_ADDRESS_BAD;
+	if (pattern.empty())
+	{
+		address = LM_ADDRESS_BAD;
+		return false;
+	}
 	lm_address_t cachedMatch = LM_ADDRESS_BAD;
 	if (const auto trusted = catalogAddress(*this, code, &cachedMatch))
 	{
@@ -659,6 +664,11 @@ bool Patterns::init()
 	// metadata.  A catalog whose required flags or symbols disagree with this
 	// registry is rejected in full.
 
+	// Locators without an x86-64 signature yet: their features stay off.
+	CPackageInfoCache::LoadPackage.optional = true;
+	CUtlMemory::Grow.optional = true;
+	CJobMgr::BRouteMsgToJob.optional = true;
+	CDepotDownloadMgr::BYldRequestDepotManifest.optional = true;
 	CUser::MarkLicenseAsChanged.optional = true;
 	CUser::ProcessPendingLicenseUpdates.optional = true;
 	CUser::NotifyLicensesUpdated.optional = true;
@@ -697,7 +707,9 @@ bool Patterns::init()
 				// dependent feature; don't fail the whole load.
 				g_pLog->warn
 				(
-					"Optional pattern '%s' not found; dependent feature disabled\n",
+					pattern->pattern.empty()
+						? "Pattern '%s' has no x86-64 signature yet; dependent feature disabled\n"
+						: "Optional pattern '%s' not found; dependent feature disabled\n",
 					pattern->name.c_str()
 				);
 				continue;
@@ -723,95 +735,61 @@ using SigFollowMode = MemHlp::SigFollowMode;
 
 namespace Patterns
 {
-	// The settings field pushed for the account ID moves between builds
-	// (0x182, then 0x166), so its low bytes are masked.
+	// x86-64 client. Signatures for locators shared with upstream come from
+	// upstream dev-X86_64. An empty signature marks a locator that has not been
+	// derived for x86-64 yet: it never resolves and its feature stays off.
+
 	Pattern_t ParentalSignatureCheck
 	{
 		"ParentalSignatureCheck",
-		"84 C0 75 27 8B 85 ? ? ? ? 8D 9D ? ? ? ? 83 EC 04 FF B0 ? ? 00 00 8D 86 ? ? ? ? 50 53 E8 ? ? ? ?",
+		"",
 		SigFollowMode::None
 	};
 	Pattern_t ParentalSettingsReceived
 	{
 		"ParentalSettingsReceived",
-		"55 89 E5 57 56 E8 ? ? ? ? 81 C6 ? ? ? ? 53 81 EC 00 02 00 00 8B 45 08 8B 55 1C 8B 7D 0C",
+		"",
 		SigFollowMode::None
 	};
 
 	Pattern_t TraceIPC
 	{
 		"TraceIPC",
-		"0F 45 F8 85 ED",
+		"48 89 D7 C1 E8",
 		SigFollowMode::PrologueUpwards,
-		std::vector<int16_t> { 0x53, 0x56, 0x57, 0x55 }
+		std::vector<int16_t> { 0x55, 0x41, 0x56, 0x41, 0x57, 0x41 }
 	};
 
 	namespace SteamUI
 	{
-		// Linux i386 steamui.so build
-		// 38adc592f0ab97349639b297203739db70b6547f (SHA-256
-		// 833914b45fcb407e50631d1f62558a28c2f74dc7431b0f0aebd6d25e45b4cd72).
-		// Each complete signature below has exactly one .text match.  They are
-		// optional as a group: live visual removal must fail closed without
-		// affecting package refresh when Steam moves any UI implementation.
 		Pattern_t AppControllerRunFrame
 		{
 			"CSteamUIAppController::RunFrame",
-			"55 57 56 53 E8 ? ? ? ? 81 C3 ? ? ? ? 83 EC 7C E8 ? ? ? ? 8B 84 24 90 00 00 00 D9 5C 24 0C D9 44 24 0C",
+			"",
 			SigFollowMode::None,
 			&g_modSteamUI,
 			"Patterns::SteamUI::AppControllerRunFrame"
 		};
-		// Direct cdecl entry: (controller, appid, create).  The opening PIC
-		// thunk is part of the entry and must be repaired in a trampoline only
-		// if this locator is detoured in the future; LibraryRemoval calls it.
 		Pattern_t GetAppByID
 		{
 			"CSteamUIAppController::GetAppByID",
-			// The trailing `mov eax,[eax+disp32]` reads a controller member near
-			// 0x9E0 that a later client moved (~0xC38); it is location-only for
-			// this locator, so both low displacement bytes are masked while the
-			// high bytes stay 00 00 and the prologue keeps one steamui match.
-			"E8 ? ? ? ? 05 ? ? ? ? 55 89 E5 57 56 53 83 EC 4C 8B 5D 10 8B 75 08 89 45 C8 8B 80 ? ? 00 00",
+			"",
 			SigFollowMode::None,
 			&g_modSteamUI,
 			"Patterns::SteamUI::GetAppByID"
 		};
-		// Direct cdecl entry: (source, appid, change_flags).  Hooking this
-		// captures the otherwise private source receiver used by RunFrame.
 		Pattern_t MarkAppChange
 		{
 			"CUpdateManager::MarkAppChange",
-			// Same controller member load as GetAppByID (near 0x9E0 -> ~0xC38 on
-			// a later client); location-only, so mask its low displacement bytes
-			// (high bytes stay 00 00) while the distinct frame keeps one match.
-			"E8 ? ? ? ? 05 ? ? ? ? 55 89 E5 57 56 53 83 EC 3C 8B 75 0C 8B 5D 10 89 45 D4 8B 80 ? ? 00 00",
+			"",
 			SigFollowMode::None,
 			&g_modSteamUI,
 			"Patterns::SteamUI::MarkAppChange"
 		};
-		// FillInAppOverview reads CSteamApp::OwnershipFlags through `mov
-		// eax,[ecx+disp8]` immediately before serializing eAppOwnershipFlags.
-		// Keep the instruction address so LibraryRemoval derives and validates
-		// the Linux field offset instead of importing the unrelated Windows
-		// layout constant.
-		//
-		// FillInAppOverview emits a run of fields that all share this shape
-		// (type check -> `mov eax,[app+disp8]` -> push value, push descriptor,
-		// push sink, call emitter), so the field displacement is what tells them
-		// apart and MUST stay pinned: ownership is 0x18 on both the 2026-08-03
-		// and the 2026-08-16 client, and the block right after it reads 0x50
-		// through a different emitter.  What actually drifted is only the
-		// register Steam parked the app pointer in (ecx -> edx), so the modrm
-		// byte is the wildcard.
-		//
-		// Do NOT wildcard the displacement instead.  That also yields exactly
-		// one match on the newer client, but it is the neighbouring field, and
-		// LibraryRemoval would then flip hidden-ownership bits inside it.
 		Pattern_t OwnershipFlagsReference
 		{
 			"CSteamApp::OwnershipFlagsReference",
-			"8B ? 18 8B 9D ? ? ? ? 83 EC 04 50 8D 83 ? ? ? ? 50 FF B5 ? ? ? ? E8 ? ? ? ?",
+			"",
 			SigFollowMode::None,
 			&g_modSteamUI,
 			"Patterns::SteamUI::OwnershipFlagsReference"
@@ -823,39 +801,33 @@ namespace Patterns
 		Pattern_t GetServerPipe
 		{
 			"CSteamEngine::GetServerPipe",
-			"0F B7 CA 31 C0 3B 4B",
+			"0F B7 CE 31 D2",
 			SigFollowMode::PrologueUpwards,
-			std::vector<int16_t> { 0x53, 0x56, 0x57 },
+			std::vector<int16_t> { 0x2C, 0x74, 0xF6, 0x85 },
 			nullptr,
 			"Patterns::CSteamEngine::GetServerPipe"
 		};
 		Pattern_t SetAppIdForCurrentPipe
 		{
 			"CSteamEngine::SetAppIdForCurrentPipe",
-			"E8 ? ? ? ? E9 ? ? ? ? ? ? ? ? ? 8B 85 ? ? ? ? 83 EC 08 FF B5",
-			SigFollowMode::Relative
+			"0F 43 C6 83 FB",
+			SigFollowMode::PrologueUpwards,
+			std::vector<int16_t> { 0x55, 0x41, 0x56, 0x41, 0x57, 0x41 }
 		};
 		Pattern_t ProcessIPCFrame
 		{
 			"CSteamEngine::ProcessIPCFrame",
-			"5E C3 FF 74 24",
+			"48 89 DA 44 89 E6 5B",
 			SigFollowMode::PrologueUpwards,
-			std::vector<int16_t> { 0xC3, 0x81, -1, -1, -1, -1, 0xE8, 0x53, 0x56 },
+			std::vector<int16_t> { 0xCD, 0x89, 0x49, 0x55, 0x41 },
 			nullptr,
 			"Patterns::CSteamEngine::ProcessIPCFrame"
 		};
-		Pattern_t Offset_ClientUtils
-		{
-			"CSteamEngine::m_ClientUtils",
-			"89 86 ? ? ? ? 8D 86 ? ? ? ? 89 44 24 ? 50 E8 ? ? ? ? 83 C4",
-			SigFollowMode::None,
-			nullptr,
-			"Patterns::CSteamEngine::Offset_ClientUtils"
-		};
+		// add r12, [rbp + disp32]: the CUser map offset is the disp32 at +3.
 		Pattern_t Offset_User
 		{
 			"CSteamEngine::m_pUser",
-			"8B 80 ? ? ? ? FF 75 ? 8D 34",
+			"4C 03 A5 ? ? ? ? 48 89 DF 4C 89 E2 E8 ? ? ? ? 49 8B 74 24",
 			SigFollowMode::None,
 			nullptr,
 			"Patterns::CSteamEngine::Offset_User"
@@ -867,29 +839,21 @@ namespace Patterns
 		Pattern_t CheckAppOwnership
 		{
 			"CUser::CheckAppOwnership",
-			"E8 ? ? ? ? 88 45 ? 83 C4 10 84 C0 0F 84 ? ? ? ? 8B 45 ? 80 7D ? 00",
-			SigFollowMode::Relative
+			"48 89 E8 31 ED",
+			SigFollowMode::PrologueUpwards,
+			std::vector<int16_t> { 0xD6, 0x89, 0x49, 0x56, 0x41, 0x57, 0x41 }
 		};
-		// Direct cdecl entry.  This was a call-site + Relative follow, but the
-		// caller restructured on a later client (the je flipped to a jne with a
-		// different body), so the call-site form drifted to zero matches.  The
-		// entry itself is stable across builds: the PIC-thunk prologue, then the
-		// (appList, size, flags) frame — movzx eax,[ebp+0x14], two null pushes,
-		// the [ebp-0x71] byte save, and the movdqa scratch init.  The two movdqa
-		// displacements are PIC-relative to a data symbol (location-only) and are
-		// masked; the whole form still has exactly one .text match on every
-		// inspected build.  The resolved target is the function entry either way,
-		// so moving from Relative to None does not change the hook placement.
 		Pattern_t GetSubscribedApps
 		{
 			"CUser::GetSubscribedApps",
-			"55 89 E5 57 56 E8 ? ? ? ? 81 C6 ? ? ? ? 53 83 C4 80 0F B6 45 14 6A 00 6A 00 88 45 8F 8D 45 D0 66 0F 6F 86 ? ? ? ? 50 89 45 80 0F 11 45 BC 66 0F 6F 86 ? ? ? ? 89 75 94 0F 29 45 A8",
-			SigFollowMode::None
+			"EB ? 41 8B 50",
+			SigFollowMode::PrologueUpwards,
+			std::vector<int16_t> { 0x55, 0x41, 0x56, 0x41, 0x57, 0x41 }
 		};
 		Pattern_t PostCallback
 		{
 			"CUser::PostCallback",
-			"E8 ? ? ? ? 8D 86 ? ? ? ? 83 C4 18 68 F6 01 00 00",
+			"E8 ? ? ? ? 4D 8B AE",
 			SigFollowMode::Relative,
 			nullptr,
 			"Patterns::CUser::PostCallback"
@@ -897,180 +861,70 @@ namespace Patterns
 		Pattern_t PostCallbackToAppId
 		{
 			"CUser::PostCallbackToAppId",
-			"84 C0 0F 45 F8 89 F8",
+			"44 3B 69 ? 41 89 C5",
 			SigFollowMode::PrologueUpwards,
-			std::vector<uint8_t> { 0xE8, 0x53, 0x56, 0x57, 0x55 }
+			std::vector<int16_t> { 0x55, 0x41, 0x56, 0x41, 0x57, 0x41 }
 		};
 		Pattern_t SpawnGameId
 		{
 			"CUser::SpawnGameId",
-			"80 FA 02 0F 44 85 ? ? ? ? 31 D2 3D 73 16 03 00 0F 84",
+			"31 C0 41 80 78",
 			SigFollowMode::PrologueUpwards,
-			std::vector<int16_t> { 0x53, 0x56, 0x57, 0xE5, 0x89, 0x55, -1, -1, -1, -1, 0x5, -1, -1, -1, -1, 0xE8}
+			std::vector<int16_t> { 0xE5, 0x89, 0x48, 0x55 }
 		};
 		Pattern_t UpdateAppOwnershipTicket
 		{
 			"CUser::UpdateAppOwnershipTicket",
-			"E8 ? ? ? ? E9 ? ? ? ? ? ? ? ? ? ? 8D 45 ? 89 45 ? EB",
-			SigFollowMode::Relative,
+			"41 89 CD 83 FD",
+			SigFollowMode::PrologueUpwards,
+			std::vector<int16_t> { 0x55, 0x41, 0x56, 0x41, 0x57, 0x41 },
 			nullptr,
 			"Patterns::CUser::UpdateAppOwnershipTicket"
 		};
-		// Current Linux i386 entry at RVA 0x0186BDC0.  Callers at
-		// 0x0187309x/0x018731ax push this/package-id/bool, and the body hashes
-		// the package id into the changed-license table.  This is a direct
-		// cdecl entry with a PIC thunk call; the full signature has one match in
-		// the inspected steamclient.so.
 		Pattern_t MarkLicenseAsChanged
 		{
 			"CUser::MarkLicenseAsChanged",
-			"55 57 56 53 E8 ? ? ? ? 81 C3 ? ? ? ? 83 EC 2C 8B 74 24 40 8B 44 24 48 8B BE ? ? 00 00 88 44 24 1C 8D 86 ? ? 00 00 89 44 24 0C 85 FF 0F 84 ? ? ? ?",
+			"",
 			SigFollowMode::None
 		};
-		// Current Linux i386 entry at RVA 0x0186C800.  Its cdecl receiver is
-		// read from [esp+0x40] after the saved-register prologue; it walks the
-		// pending-license vector, validates CAppData, and drives the downstream
-		// callback path containing callback 0xF90BE.  Caller 0x0187A67B passes
-		// the same local-user receiver.  The full direct-entry signature has one
-		// module match.
 		Pattern_t ProcessPendingLicenseUpdates
 		{
 			"CUser::ProcessPendingLicenseUpdates",
-			// The trailing `lea eax,[ebx+disp32]` reaches a data symbol through
-			// the PIC base, so its displacement tracks the GOT layout and moves
-			// on an unrelated client change (0x3B314 -> 0x3B714 between the
-			// 2026-08-03 and 2026-08-16 builds).  Nothing here reads it -- the
-			// hook only calls the resolved entry -- so it is location-only and
-			// stays wildcarded.  The two CUser member offsets loaded above
-			// (count near 0x1C7C, array base near 0x1C70) drifted by 4 on a
-			// later beta (0x1C7C->0x1C78, 0x1C70->0x1C6C), the same 4-byte layout
-			// shift seen on other members; the hook calls the resolved entry and
-			// never reads these values, so only their low byte is masked (the
-			// 0x1C high byte stays pinned) -- the relaxed form keeps one module
-			// match while self-healing across that layout drift.
-			"55 57 56 53 E8 ? ? ? ? 81 C3 ? ? ? ? 83 EC 2C 8B 44 24 40 8B 88 ? 1C 00 00 85 C9 0F 8E ? ? ? ? 05 ? 1C 00 00 89 44 24 18 8D 83 ? ? ? ? 8B 30",
+			"",
 			SigFollowMode::None
 		};
-		// CUser::<broadcast LicensesUpdated_t>(CUser* this)
-		//
-		// The license-update notifier: rebuilds the LicensesUpdated_t
-		// callback (callback id 0x7d) from the CUser's own license vector
-		// and posts it to every subscriber via the PostCallback dispatch.
-		// Used as the post-injection reconcile: after we append our
-		// AdditionalApps into package 0's AppIdVec, invoking this on the
-		// local CUser forces Steam's ownership/library layer to re-read
-		// licenses (and therefore package 0, now containing our appids),
-		// which breaks the cold-cache PICS product-info request loop.
-		//
-		// Positively identified via the RTTI string "17LicensesUpdated_t"
-		// referenced just before it posts callback 0x7d.  Single stack arg
-		// (`this`, read from [ebp+0x8]); standard cdecl, safe to call by
-		// resolved pointer with g_pLocalUser as `this`.
-		//
-		// Direct prologue match (push ebp / mov ebp,esp / push edi,esi,ebx
-		// / get_pc_thunk + add ebx / sub esp,0x1bc / mov edi,[ebp+0x8] /
-		// mov edi,[eax+<off>] / mov [ebp-0x1ac],ebx / test edi,edi).  The
-		// get_pc_thunk call rel, the PIC add immediate, the frame size, and
-		// the [ebp-0x1ac] spill offset are masked so local-frame reshuffles
-		// across builds stay compatible.  The member offset (`8B B8 ?? ?? 00
-		// 00` = mov edi,[eax+0x1bXX]) is ALSO masked: it is a CUser layout
-		// field whose value drifted 0x1b18 -> 0x1b14 on the 2026-06-23 client
-		// (a 4-byte shift; RequiresLegacyCDKey moved the same way).  SLSsteam
-		// only needs to LOCATE this function (it invokes it by pointer with
-		// g_pLocalUser as `this`); the offset value itself is internal to the
-		// function, so wildcarding it makes the signature self-heal across that
-		// class of layout drift while staying unique.
-		//
-		// A later beta drifted this further: the field load changed BOTH the
-		// destination register and the offset (mov edi,[eax+0x1b14] -> mov
-		// esi,[eax+0x1b10]), which also flipped the following `test edi,edi` to
-		// `test esi,esi`.  Both the modrm byte and the test are register-choice
-		// noise the hook never reads, so mask them (`8B ? ? 1B 00 00`, `85 ?`).
-		// To stay unique with the looser field load the signature now extends
-		// down to this function's defining act: rebuilding LicensesUpdated_t and
-		// posting callback id 0x7d (`... 83 EC 08 6A 7D 50` = sub esp,8; push
-		// 0x7d; push eax).  Verified: exactly 1 match on every inspected build.
 		Pattern_t NotifyLicensesUpdated
 		{
 			"CUser::NotifyLicensesUpdated",
-			"55 89 E5 57 56 53 E8 ? ? ? ? 81 C3 ? ? ? ? 81 EC BC 01 00 00 8B 45 08 8B ? ? 1B 00 00 89 9D 54 FE FF FF 85 ? 0F 8E ? ? ? ? 8D 83 ? ? ? ? 83 EC 08 6A 7D 50",
+			"",
 			SigFollowMode::None
-		};
-		Pattern_t m_OffsetClientUser
-		{
-			"CUser::m_ClientUser",
-			"2D ? ? ? ? C7 44 24 ? ? ? ? ? 81 E1",
-			SigFollowMode::None,
-			nullptr,
-			"Patterns::CUser::m_OffsetClientUser"
-		};
-		Pattern_t m_OffsetUserAppInfo
-		{
-			"CUser::m_UserAppInfo",
-			"8D 90 ? ? ? ? 8B 80 ? ? ? ? 6A ? 8D 4C 24",
-			SigFollowMode::None,
-			nullptr,
-			"Patterns::CUser::m_OffsetUserAppInfo"
-		};
-		Pattern_t m_OffsetUserAppManager
-		{
-			"CUser::m_UserAppmanager",
-			"8D 90 ? ? ? ? 8B 80 ? ? ? ? 68 ? ? ? ? 56",
-			SigFollowMode::None,
-			nullptr,
-			"Patterns::CUser::m_OffsetUserAppManager"
 		};
 	}
 
 	namespace CAppInfoCache
 	{
-		// Current Linux i386 cdecl entry at RVA 0x00FCA900.  The current
-		// module's GetOrAddAppData source assertion xref is inside this body;
-		// [ebp+8]/[ebp+0xc]/[ebp+0x10] are cache/appid/create and the returned
-		// node is consumed as CAppData by ProcessPendingLicenseUpdates.  The
-		// direct PIC-thunk prologue is the trampoline entry; one full match.
-		// The separate 0x00FD4070 regparm helper is a lookup path, not this
-		// cdecl GetOrAddAppData target.  The `mov eax,[eax+disp32]` right after
-		// the frame reads a PIC-relative global slot (near 0x8BC) that a later
-		// beta relocated to ~0xA90; the slot address is location-only, so both
-		// low displacement bytes are masked (high bytes stay 00 00) and the
-		// prologue keeps one .text match.
 		Pattern_t GetOrAddAppData
 		{
 			"CAppInfoCache::GetOrAddAppData",
-			"E8 ? ? ? ? 05 ? ? ? ? 55 89 E5 57 56 53 83 EC 2C 8B 75 0C 8B 7D 10 89 45 D0 8B 80 ? ? 00 00 8B 00 85 C0 0F 85 ? ? ? ?",
+			"",
 			SigFollowMode::None
 		};
-		// CAppInfoCache::ThreadedReadFromDisk is Steam's own background cache
-		// loader.  The current Linux i386 entry is RVA 0x00FC89F0 and takes the
-		// CAppInfoCache pointer as its sole cdecl argument.  The 0x110c-byte
-		// parser frame plus the saved cache argument makes this prologue unique
-		// in the current module (one full match); signed catalogs can replace the
-		// optional locator independently when a client update changes the frame.
 		Pattern_t ThreadedReadFromDisk
 		{
 			"CAppInfoCache::ThreadedReadFromDisk",
-			"55 89 E5 57 56 E8 ? ? ? ? 81 C6 ? ? ? ? 53 81 EC 0C 11 00 00 8B 45 08 89 85 0C EF FF FF",
+			"",
 			SigFollowMode::None
 		};
-		// Instruction site at RVA 0x0186C929: cmp byte ptr [esi+disp8],0
-		// tests the same CAppData returned by GetOrAddAppData.  None is
-		// intentional because AppDataLayout decodes this instruction in place;
-		// the full reference signature has one module match.
 		Pattern_t SkipFlagReference
 		{
 			"CAppInfoCache::SkipFlagReference",
-			"80 7E 10 00 0F 44 C8 88 4C 24 1E 8B 44 24 10 83 C7 01 3B 7D 44 8B 30 7C 9E",
+			"",
 			SigFollowMode::None
 		};
-		// Instruction site at RVA 0x0186C914: lea eax,[eax+disp8], using the
-		// GetOrAddAppData return while the preceding mov esi,eax preserves a copy
-		// for the later skip test.  A 20-byte SHA comparison follows.  None keeps
-		// the instruction address for runtime layout derivation; one full match.
 		Pattern_t ShaReference
 		{
 			"CAppInfoCache::ShaReference",
-			"8D 40 1C 50 E8 ? ? ? ? 83 C4 10 85 C0 75 10 0F B6 4C 24 1E 80 7E 10 00 0F 44 C8 88 4C 24 1E",
+			"",
 			SigFollowMode::None
 		};
 	}
@@ -1080,8 +934,9 @@ namespace Patterns
 		Pattern_t BuildDepotDependency
 		{
 			"CUserAppManager::BuildDepotDependency",
-			"E8 ? ? ? ? 88 45 A3 83 C4 ? 84 C0 74 ?",
-			SigFollowMode::Relative
+			"4D 85 FF 88 44 24",
+			SigFollowMode::PrologueUpwards,
+			std::vector<int16_t> { 0xCF, 0x89, 0x4D, 0x57, 0x41 }
 		};
 	}
 
@@ -1090,7 +945,7 @@ namespace Patterns
 		Pattern_t LoadPackage
 		{
 			"CPackageInfoCache::LoadPackage",
-			"E8 ? ? ? ? 83 C4 10 84 C0 0F 84 ? ? ? ? 8B 95 ? ? FF FF 8B 7A 18 83 FF FF",
+			"",
 			SigFollowMode::Relative
 		};
 	}
@@ -1100,128 +955,62 @@ namespace Patterns
 		Pattern_t Grow
 		{
 			"CUtlMemory::Grow",
-			"E8 ? ? ? ? 8B 85 ? ? FF FF 83 C4 10 8B 40 44 89 85 ? ? FF FF 83 C0 01 E9",
+			"",
 			SigFollowMode::Relative
 		};
 	}
 
 	namespace CDepotDownloadMgr
 	{
-		// Two cooperating hook points in CDepotDownloadMgr, both with the
-		// same 7-dword signature (context, ., appId, depotId, uint64 gid, .)
-		// and both self-contained PIC functions.
-		//
-		// (1) ProcessDepotManifest (the manifest-acquisition LEAF, 5 callers):
-		//     builds "<root>/depotcache/<depot>_<gid>.manifest" from its gid
-		//     arg, checks it on disk, and only calls BYldRequestDepotManifest
-		//     when missing.  Redirecting the gid here makes the on-disk check
-		//     find the locally-staged (zip) manifest and SKIP the request-code
-		//     fetch — this is what lets a providers-down install proceed past
-		//     "No internet connection".  PIC get_pc_thunk is the FIRST insn, so
-		//     fixPICThunkCall must repair the relocated thunk in the tramp.
-		//
-		// (2) PrepareDepotDownload (one of the 5 callers, a LATER pipeline
-		//     stage): after calling the leaf it looks the depot up in the
-		//     per-download table BY the gid it was called with and derefs the
-		//     per-manifest state pointer.  If the leaf was redirected to the
-		//     zip gid but this frame still looks up the public gid -> miss ->
-		//     NULL deref -> SIGSEGV at Reconfiguring (core-dump confirmed).
-		//     Redirecting the
-		//     gid here too keeps the leaf call and the table lookup consistent.
-		//     PIC get_pc_thunk is at +5 (after the 5-byte prologue we relocate)
-		//     so fixPICThunkCall is a harmless no-op for this hook point.
-		//
-		// Both verified: 1 match each in .text.
 		Pattern_t ProcessDepotManifest
 		{
 			"CDepotDownloadMgr::ProcessDepotManifest",
-			"E8 ? ? ? ? 05 ? ? ? ? 55 89 E5 57 56 53 83 EC 4C 8B 55 1C 89 45 C0 8B 45 18 89 55 CC 89 45 C8",
+			"",
 			SigFollowMode::None
 		};
-
 		Pattern_t PrepareDepotDownload
 		{
 			"CDepotDownloadMgr::PrepareDepotDownload",
-			"55 89 E5 57 56 E8 ? ? ? ? 81 C6 ? ? ? ? 53 83 EC 60 8B 7D 08 8B 45 18 8B 55 1C FF 75 20 89 45 98 52 50 FF 75 14 89 55 9C FF 75 10 FF 75 0C 57 E8 ? ? ? ? 8B 47 4C 83 C4 20 83 F8 FF",
+			"",
 			SigFollowMode::None
 		};
-
-		// (3) BuildDepotDependency (the install-plan CONSUMER, located via a
-		//     runtime stack trace).  The
-		//     per-app planner: receives an already-built CUtlVector<DepotEntry>
-		//     (arg2 = [ebp+0x10]; count @ +0xc, element base @ +0, stride 0x20)
-		//     and, per entry, copies ManifestGid (+0x8) into the context's
-		//     planned-gid vector (ctx+0x664) AND drives ProcessDepotManifest /
-		//     the shared-depot handler.  Patching depots[i].ManifestGid here
-		//     (before the original runs) is the LumaCore manifest-override
-		//     point: it mutates the SOURCE the commit reads from, not the
-		//     by-value gid the acquisition leaf gets (which the commit ignores).
-		//     PIC get_pc_thunk is the FIRST insn (like ProcessDepotManifest) ->
-		//     fixPICThunkCall repairs the relocated thunk in the tramp.
-		//     Reached through its first caller, the flag-0 call, because its
-		//     own frame changes between builds while that call site does not.
 		Pattern_t BuildDepotDependency
 		{
 			"CDepotDownloadMgr::BuildDepotDependency",
-			"E8 ? ? ? ? 8B 46 08 8D 9F ? ? ? ? 83 C4 10 89 5D AC 8B 10 8B 52 4C 39 DA 0F 85",
+			"",
 			SigFollowMode::Relative
 		};
-
-		// Structured chunk-completion callbacks. Steam reaches these before it
-		// formats the content_log line, with the unpack result still available as
-		// the final argument. There are two compiler-generated ABI variants for
-		// the same body: ordinary cdecl and regparm(3). Both are optional and
-		// independently hooked; a future signature drift disables quarantine
-		// detection rather than affecting the download pipeline.
 		Pattern_t OnChunkUnpackedStack
 		{
 			"CDepotDownloadMgr::OnChunkUnpacked[cdecl]",
-			"55 89 E5 57 56 E8 ? ? ? ? 81 C6 ? ? ? ? 53 81 EC 7C 04 00 00 8B 45 0C 8B 7D 08 89 85 90 FB FF FF 8B 45 10 89 85 8C FB FF FF",
+			"",
 			SigFollowMode::None,
 			nullptr,
 			"Patterns::CDepotDownloadMgr::OnChunkUnpackedStack"
 		};
-
 		Pattern_t OnChunkUnpackedReg
 		{
 			"CDepotDownloadMgr::OnChunkUnpacked[regparm3]",
-			"55 89 E5 57 E8 ? ? ? ? 81 C7 ? ? ? ? 56 89 C6 53 81 EC 7C 04 00 00 8B 45 0C 89 95 90 FB FF FF 89 8D 8C FB FF FF 89 85 94 FB FF FF",
+			"",
 			SigFollowMode::None,
 			nullptr,
 			"Patterns::CDepotDownloadMgr::OnChunkUnpackedReg"
 		};
-
-		// (4) EvaluateConfigChanges (the post-commit reconcile, located via
-		//     static RE).  Emits the
-		//     content_log "AppID %u ...config changed : added/removed/updated
-		//     depots %s" lines and decides "Update Required".  It diffs the
-		//     app's installed depot vector (ptr @ ctx+0x78, count @ ctx+0x84,
-		//     stride 0x20, ManifestGid @ +0x8) against an appinfo-derived
-		//     target list, flagging a depot "updated" when the two gids differ
-		//     (the movq/pxor compare at VA 0xfe4598).  THIS is what perpetually
-		//     re-flags a downgraded (pinned) install whose appinfo still
-		//     carries the public gid -> the loop.  Hook target for the (B) fix.
-		//     Calling convention: a global anchor/manager pointer comes in EAX
-		//     (used as both the manager object and the PIC string anchor); the
-		//     three args are on the stack (ctx @ ebp+0x8, appId @ ctx+0x8).
-		//     The prologue's first insn is `push ebp` (NOT a get_pc_thunk), so
-		//     no fixPICThunkCall is needed; a regparm(1) detour preserves EAX.
-		//     Verified: 1 match in .text (entry VA 0xfe425a on build
-		//     cfe99f0cc8fee644e2a8e3d1a0794e49).
 		Pattern_t EvaluateConfigChanges
 		{
 			"CDepotDownloadMgr::EvaluateConfigChanges",
-			"55 89 E5 57 56 53 81 EC DC 00 00 00 89 85 50 FF FF FF 8B 45 10 89 85 40 FF FF FF 8B 45 08 8B 40 04",
+			"",
 			SigFollowMode::None
 		};
 	}
 
 	namespace IClientUtils
 	{
+		// mov esi, [rdi + disp32]: the pipe index field offset is the disp32 at +2.
 		Pattern_t Offset_GetPipeIndex
 		{
 			"IClientUtils::m_PipeIndex",
-			"8B 91 ? ? ? ? 83 F8 FF 74 ? 8B 89 ? ? ? ? EB ? ? ? ? 8B 00 83 F8 FF 74 ? 8D 04 ? 8D 04 ? 3B 50",
+			"8B B7 ? ? ? ? 64 48 8B 1C 25 ? ? ? ? 48 89 5C 24 ? 48 89 FB 48 81 EF",
 			SigFollowMode::None,
 			nullptr,
 			"Patterns::IClientUtils::Offset_GetPipeIndex"
@@ -1233,9 +1022,9 @@ namespace Patterns
 		Pattern_t BBuildAndAsyncSendFrame
 		{
 			"CWebSocketConnection::BBuildAndAsyncSendFrame",
-			"89 C6 85 D2 78",
+			"45 31 F6 83 7F",
 			SigFollowMode::PrologueUpwards,
-			std::vector<int16_t> { 0xE8, 0x57, 0xE5, 0x89, 0x55 }
+			std::vector<int16_t> { 0x55, 0x41, 0x56, 0x41, 0x57, 0x41 }
 		};
 	}
 
@@ -1244,9 +1033,7 @@ namespace Patterns
 		Pattern_t BRouteMsgToJob
 		{
 			"CJobMgr::BRouteMsgToJob",
-			"55 89 E5 57 56 E8 ? ? ? ? 81 C6 ? ? ? ? 53 83 EC 7C "
-			"8B 45 08 8B 4D 14 89 45 90 8B 45 0C 89 4D A0 89 45 88 "
-			"8B 45 10 89 45 A4 65 8B 0D 14 00 00",
+			"",
 			SigFollowMode::None
 		};
 	}
@@ -1256,7 +1043,7 @@ namespace Patterns
 		Pattern_t BYldRequestDepotManifest
 		{
 			"CDepotDownloadMgr::BYldRequestDepotManifest",
-			"55 B9 FD FF FF FF 89 E5 57 E8 ? ? ? ? 81 C7 ? ? ? ? 56 53 83 EC 7C 8B 45 14 8B 55 18",
+			"",
 			SigFollowMode::None
 		};
 	}

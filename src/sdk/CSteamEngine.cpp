@@ -156,7 +156,7 @@ CServerPipe* CSteamEngine::getServerPipe(const HSteamPipe pipe)
 
 CUser* CSteamEngine::getUser(const uint32_t index)
 {
-	const static auto offset = *reinterpret_cast<lm_address_t*>(Patterns::CSteamEngine::Offset_User.address + 2);
+	const static auto offset = *reinterpret_cast<int32_t*>(Patterns::CSteamEngine::Offset_User.address + 3); //Offset is only 4 bytes
 	const auto vec = reinterpret_cast<const CUtlVector<CUser*>*>(this + offset);
 	if (!vec->memory.base || index >= vec->size)
 	{
@@ -172,8 +172,8 @@ IClientUtils* CSteamEngine::getUtils()
 	{
 		return nullptr;
 	}
-	const static lm_address_t offset = *reinterpret_cast<lm_address_t*>(Patterns::CSteamEngine::Offset_ClientUtils.address + 2);
-	return reinterpret_cast<IClientUtils*>(this + offset);
+	const static lm_address_t offset = MemHlp::searchOffsetByTypeName(this, "12CSteamEngine");
+	return offset == LM_ADDRESS_BAD ? nullptr : reinterpret_cast<IClientUtils*>(this + offset);
 }
 
 void CSteamEngine::setAppIdForCurrentPipe(const AppId_t appId)

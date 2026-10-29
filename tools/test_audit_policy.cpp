@@ -35,38 +35,38 @@ int main()
 	check(flagsForObject("/plugins/cloud_redirect.so", false) == both,
 	      "stats bridge is visible in narrowed audit mode");
 
-	check(flagsForObject("/lib/i386-linux-gnu/libc.so.6", false) == LA_FLG_BINDTO,
+	check(flagsForObject("/lib/x86_64-linux-gnu/libc.so.6", false) == LA_FLG_BINDTO,
 	      "libc is a binding target");
-	check(flagsForObject("/lib/i386-linux-gnu/libpthread.so.0", false) == LA_FLG_BINDTO,
+	check(flagsForObject("/lib/x86_64-linux-gnu/libpthread.so.0", false) == LA_FLG_BINDTO,
 	      "libpthread is a binding target");
-	check(flagsForObject("/steam/ubuntu12_32/crashhandler.so", false) == LA_FLG_BINDFROM,
+	check(flagsForObject("/steam/steamrt64/crashhandler.so", false) == LA_FLG_BINDFROM,
 	      "crashhandler is a binding source");
-	check(flagsForObject("/lib/i386-linux-gnu/libglib-2.0.so.0", false) == LA_FLG_BINDFROM,
+	check(flagsForObject("/lib/x86_64-linux-gnu/libglib-2.0.so.0", false) == LA_FLG_BINDFROM,
 	      "glib is a binding source");
-	check(flagsForObject("/steam/ubuntu12_32/steamui.so", false) == LA_FLG_BINDFROM,
+	check(flagsForObject("/steam/steamrt64/steamui.so", false) == LA_FLG_BINDFROM,
 	      "steamui is a binding source");
-	check(flagsForObject("/steam/ubuntu12_32/steamclient.so", false) == LA_FLG_BINDFROM,
+	check(flagsForObject("/steam/steamrt64/steamclient.so", false) == LA_FLG_BINDFROM,
 	      "steamclient remains a binding source");
-	check(flagsForObject("/steam/ubuntu12_32/steamservice.so", false) == LA_FLG_BINDFROM,
+	check(flagsForObject("/steam/steamrt64/steamservice.so", false) == LA_FLG_BINDFROM,
 	      "steamservice is a binding source");
-	check(flagsForObject("/steam/ubuntu12_32/libSDL3.so.0", false) == LA_FLG_BINDFROM,
+	check(flagsForObject("/steam/steamrt64/libSDL3.so.0", false) == LA_FLG_BINDFROM,
 	      "SDL3 is a binding source");
-	check(flagsForObject("/steam/ubuntu12_32/libvideo.so", false) == LA_FLG_BINDFROM,
+	check(flagsForObject("/steam/steamrt64/libvideo.so", false) == LA_FLG_BINDFROM,
 	      "video is a binding source");
-	check(flagsForObject("/steam/ubuntu12_32/gameoverlayrenderer.so", false) == LA_FLG_BINDFROM,
+	check(flagsForObject("/steam/steamrt64/gameoverlayrenderer.so", false) == LA_FLG_BINDFROM,
 	      "gameoverlayrenderer is a binding source");
-	check(flagsForObject("/steam/ubuntu12_32/steam_monitor", false) == LA_FLG_BINDFROM,
+	check(flagsForObject("/steam/steamrt64/steam_monitor", false) == LA_FLG_BINDFROM,
 	      "steam_monitor is a binding source");
-	check(flagsForObject("/steam/ubuntu12_32/libtier0_s.so", false) == LA_FLG_BINDFROM,
+	check(flagsForObject("/steam/steamrt64/libtier0_s.so", false) == LA_FLG_BINDFROM,
 	      "tier0 is a binding source");
 	check(flagsForObject("", false) == LA_FLG_BINDFROM,
 	      "main executable is a binding source");
-	check(flagsForObject("/lib/i386-linux-gnu/libm.so.6", false) == 0,
+	check(flagsForObject("/lib/x86_64-linux-gnu/libm.so.6", false) == 0,
 	      "unrelated object is not audited");
 	check(flagsForObject(nullptr, false) == 0,
 	      "unknown object is not audited");
 
-	check(flagsForObject("/lib/i386-linux-gnu/libm.so.6", true) == both,
+	check(flagsForObject("/lib/x86_64-linux-gnu/libm.so.6", true) == both,
 	      "bind-all override restores both flags");
 	check(AuditBinding::bindAllValueEnabled("1"), "bind-all accepts 1");
 	check(!AuditBinding::bindAllValueEnabled("0"), "bind-all rejects 0");
@@ -133,11 +133,11 @@ int main()
 	check(mainSource.is_open() && rawLogOpen != std::string::npos
 	          && setupLock != std::string::npos && rawLogOpen < setupLock,
 	      "raw audit log fd opens before the namespace setup lock");
-	// The wrapper runs SLSsteam as the only auditor (a second one makes our
-	// exceptions uncatchable), so the libcurl redirect must live here.
+	// The 64-bit client runs inside pressure-vessel, where the host's libcurl
+	// is not at the redirected paths: lookups stay with the loader.
 	check(mainText.find("extern \"C\" char* la_objsearch(") != std::string::npos
-	          && mainText.find("AuditBinding::systemLibraryFor(") != std::string::npos,
-	      "SLSsteam exports the libcurl lookup redirect");
+	          && mainText.find("AuditBinding::systemLibraryFor(") == std::string::npos,
+	      "library lookups are left to the loader");
 
 	const auto rawLogPath = mainText.find("g_rawLogPath");
 	std::ifstream auditLogSource("src/audit_log.hpp");

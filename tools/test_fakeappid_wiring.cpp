@@ -120,8 +120,8 @@ int main()
 	       "runIPCFrame resolves IClientUtils only for extended logging");
 	expect(run.find("if (!utils)") == std::string::npos,
 	       "logging lookup cannot suppress the AppID transition");
-	expect(process.find("cmdLine") != std::string::npos,
-	       "upstream process command-line state is retained");
+	expect(process.find("cmdLine") == std::string::npos,
+	       "procfs process state is gone (the client has its own user namespace)");
 	expect(ticket.find("g_processMap.at(pipe)") == std::string::npos,
 	       "ticket pipe connection tolerates an absent process mapping");
 	expect(ticket.find("g_processMap.at(utils->getCurrentSteamPipe())")

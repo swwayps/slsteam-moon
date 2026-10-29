@@ -48,13 +48,13 @@ bool mapModule(const char* path, const char* name, lm_module_t& mod)
 	auto* file = static_cast<unsigned char*>(mmap(nullptr, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0));
 	close(fd);
 	if (file == MAP_FAILED) return false;
-	auto* eh = reinterpret_cast<Elf32_Ehdr*>(file);
-	auto* ph = reinterpret_cast<Elf32_Phdr*>(file + eh->e_phoff);
-	std::uint32_t lo = UINT32_MAX, hi = 0;
+	auto* eh = reinterpret_cast<Elf64_Ehdr*>(file);
+	auto* ph = reinterpret_cast<Elf64_Phdr*>(file + eh->e_phoff);
+	std::uint64_t lo = UINT64_MAX, hi = 0;
 	for (int i = 0; i < eh->e_phnum; i++)
 	{
 		if (ph[i].p_type != PT_LOAD) continue;
-		lo = std::min(lo, ph[i].p_vaddr & ~0xfffu);
+		lo = std::min<std::uint64_t>(lo, ph[i].p_vaddr & ~std::uint64_t{0xfff});
 		hi = std::max(hi, ph[i].p_vaddr + ph[i].p_memsz);
 	}
 	auto* image = static_cast<unsigned char*>(mmap(nullptr, hi - lo, PROT_READ | PROT_WRITE,

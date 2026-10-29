@@ -294,7 +294,7 @@ run_wrapper
 # on the FIRST crash, not after MAX_FAILS. This is the post-update brick we
 # actually care about: making the user sit through 3 crash loops to get Steam
 # back makes no sense when the cause (a fresh client) is known. ---------------
-CLIENT="$HOME_DIR/.steam/steam/ubuntu12_32/steamclient.so"
+CLIENT="$HOME_DIR/.steam/steam/steamrt64/steamclient.so"
 mkdir -p "$(dirname "$CLIENT")"
 
 reset_state
@@ -407,9 +407,9 @@ case " $* " in
 esac
 PH
 chmod +x "$PATTERN_HELPER"
-mkdir -p "$HOME_DIR/.steam/steam/ubuntu12_32"
-printf 'client-pattern-fixture' > "$HOME_DIR/.steam/steam/ubuntu12_32/steamclient.so"
-printf 'ui-pattern-fixture' > "$HOME_DIR/.steam/steam/ubuntu12_32/steamui.so"
+mkdir -p "$HOME_DIR/.steam/steam/steamrt64"
+printf 'client-pattern-fixture' > "$HOME_DIR/.steam/steam/steamrt64/steamclient.so"
+printf 'ui-pattern-fixture' > "$HOME_DIR/.steam/steam/steamrt64/steamui.so"
 
 reset_state
 : > "$PATTERN_ORDER_LOG"

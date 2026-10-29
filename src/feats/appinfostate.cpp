@@ -24,7 +24,7 @@ using Store = HotReloadState::Store;
 using Layout = AppDataLayout::Layout;
 using PatchState = AppInfoState::PatchState;
 
-using GetOrAddAppDataFn = void* (__attribute__((cdecl))) (
+using GetOrAddAppDataFn = void*(
 	void*, std::uint32_t, bool
 );
 using GetOrAddAppDataPtr = GetOrAddAppDataFn*;
@@ -439,7 +439,7 @@ void discardAfterVerifiedRestoreLocked() noexcept
 	(void)releaseTrampolineLocked();
 }
 
-void* __attribute__((cdecl)) hkGetOrAddAppData(
+void* hkGetOrAddAppData(
 	void* cache,
 	std::uint32_t appId,
 	bool create

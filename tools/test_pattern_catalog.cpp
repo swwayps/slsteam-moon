@@ -40,7 +40,7 @@ namespace
 	{
 		return
 			"schema = 1\n"
-			"platform = \"linux32\"\n"
+			"platform = \"linux64\"\n"
 			"component = \"steamclient\"\n"
 			"module_name = \"steamclient.so\"\n"
 			"module_sha256 = \"" + std::string(64, 'a') + "\"\n"

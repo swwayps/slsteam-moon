@@ -52,9 +52,9 @@ namespace
 	// is &vec->memory.base because CUtlMemory's first member IS
 	// base) and a grow_size.  Returns void* (we don't use it).
 	using CUtlMemoryGrow_t = void*(*)(void* /*pMem*/, int /*growSize*/);
-	using MarkLicenseAsChanged_t = std::int64_t (__attribute__((cdecl)) *)(
+	using MarkLicenseAsChanged_t = std::int64_t (*)(
 		void*, std::uint32_t, bool);
-	using ProcessPendingLicenseUpdates_t = bool (__attribute__((cdecl)) *)(void*);
+	using ProcessPendingLicenseUpdates_t = bool (*)(void*);
 
 	LoadPackage_t      g_pOrigLoadPackage = nullptr;
 	CUtlMemoryGrow_t   g_pCUtlMemoryGrow  = nullptr;

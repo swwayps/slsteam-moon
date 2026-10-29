@@ -298,7 +298,7 @@ std::optional<PatternCatalog::Catalog> PatternCatalog::parseCanonical(
 	const auto minimumSchema = integerLine(lines, 9, "minimum_consumer_schema");
 	const auto revision = integerLine(lines, 10, "revision");
 	const auto source = stringLine(lines, 11, "source");
-	if (!schema || *schema != 1 || !platform || *platform != "linux32"
+	if (!schema || *schema != 1 || !platform || *platform != "linux64"
 	    || !component || *component != expected.component
 	    || !moduleName || *moduleName != expected.moduleName
 	    || !moduleSha || *moduleSha != expected.sha256 || !isLowerHex(*moduleSha, 64)

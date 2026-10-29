@@ -66,7 +66,6 @@ namespace Patterns
 		extern Pattern_t GetServerPipe;
 		extern Pattern_t SetAppIdForCurrentPipe;
 		extern Pattern_t ProcessIPCFrame;
-		extern Pattern_t Offset_ClientUtils;
 		extern Pattern_t Offset_User;
 	}
 
@@ -81,9 +80,6 @@ namespace Patterns
 		extern Pattern_t MarkLicenseAsChanged;
 		extern Pattern_t ProcessPendingLicenseUpdates;
 		extern Pattern_t NotifyLicensesUpdated;
-		extern Pattern_t m_OffsetClientUser;
-		extern Pattern_t m_OffsetUserAppInfo;
-		extern Pattern_t m_OffsetUserAppManager;
 	}
 
 	namespace CAppInfoCache

@@ -15,6 +15,7 @@ namespace DLC
 	bool userSubscribedInTicket(uint32_t appId);
 
 	uint32_t getDlcCount(uint32_t appId);
-	bool getDlcDataByIndex(uint32_t appId, int index, uint32_t* dlcId, bool* available, char* dlcName, size_t& dlcNameLen);
+	// dlcNameLen is Steam's 32-bit size type.
+	bool getDlcDataByIndex(uint32_t appId, uint32_t index, uint32_t* dlcId, bool* available, char* dlcName, uint32_t& dlcNameLen);
 	void makeDlcAvailable(uint32_t dlcId, bool* available);
 }

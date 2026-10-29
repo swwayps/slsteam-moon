@@ -116,8 +116,8 @@ namespace Hooks
 	typedef uint32_t(*CSteamEngine_ProcessIPCFrame_t)(void*, HSteamPipe, CUtlBuffer*, CUtlBuffer*);
 	typedef uint32_t(*CSteamEngine_SetAppIdForCurrentPipe_t)(void*, uint32_t, bool);
 
-	typedef gameserverdetails_t*(*CSteamMatchmakingServers_GetServerDetails_t)(void*, uint32_t, uint32_t);
-	typedef uint32_t(*CSteamMatchmakingServers_RequestInternetServerList_t)(void*, uint32_t, uint32_t, uint32_t, uint32_t);
+	typedef gameserverdetails_t*(*CSteamMatchmakingServers_GetServerDetails_t)(void*, HServerRequest, uint32_t);
+	typedef HServerRequest(*CSteamMatchmakingServers_RequestInternetServerList_t)(void*, AppId_t, void*, uint32_t, void*);
 
 	typedef bool(*CUser_CheckAppOwnership_t)(void*, uint32_t, AppOwnershipInfo_t*);
 	typedef uint32_t(*CUser_GetSubscribedApps_t)(void*, uint32_t*, uint32_t, uint8_t);
@@ -174,10 +174,10 @@ namespace Hooks
 	typedef bool(*IClientAppManager_BIsDlcEnabled_t)(void*, uint32_t, uint32_t, void*);
 	typedef bool(*IClientAppManager_GetAppUpdateInfo_t)(void*, uint32_t, uint32_t*);
 	typedef bool(*IClientAppManager_GetAppStateInfo_t)(void*, uint32_t, AppStateInfo_t*);
-	typedef void*(*IClientAppManager_LaunchApp_t)(void*, uint32_t*, void*, void*, void*);
+	typedef void*(*IClientAppManager_LaunchApp_t)(void*, GameId_t*, uint32_t, uint32_t, const char*);
 	typedef bool(*IClientAppManager_IsAppDlcInstalled_t)(void*, uint32_t, uint32_t);
 	typedef unsigned int(*IClientApps_GetDLCCount_t)(void*, uint32_t);
-	typedef bool(*IClientApps_GetDLCDataByIndex_t)(void*, uint32_t, int, uint32_t*, bool*, char*, size_t);
+	typedef bool(*IClientApps_GetDLCDataByIndex_t)(void*, uint32_t, uint32_t, uint32_t*, bool*, char*, steamsize_t);
 	typedef bool(*IClientRemoteStorage_IsCloudEnabledForApp_t)(void*, uint32_t);
 	typedef bool(*IClientCompat_BIsCompatLayerEnabled_t)(void*);
 	typedef bool(*IClientConfigStore_SetString_t)(void*, uint32_t, const char*, const char*);

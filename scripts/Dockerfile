@@ -10,19 +10,16 @@
 # this image only carries the toolchain.
 FROM ubuntu:22.04
 
-# Install 32-bit toolchain and the dev headers the Makefile links.
-# (-m32 builds; SLSsteam.so must match Steam's 32-bit ubuntu12_32 client.)
-RUN dpkg --add-architecture i386 && \
-    apt-get update && \
+# Install the x86-64 toolchain and the dev headers the Makefile links.
+# (SLSsteam.so must match the 64-bit client in steamrt64/.)
+RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get \
         -o Dpkg::Options::="--force-overwrite" \
         install -y --no-install-recommends \
         ca-certificates \
-        g++-multilib \
-        libcurl4-openssl-dev:amd64 \
-        libcurl4-openssl-dev:i386 \
-        libssl-dev:amd64 \
-        libssl-dev:i386 \
+        g++ \
+        libcurl4-openssl-dev \
+        libssl-dev \
         make \
         pkg-config && \
     rm -rf /var/lib/apt/lists/*
@@ -32,10 +29,10 @@ RUN dpkg --add-architecture i386 && \
 # layer above cached.
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-        libluajit-5.1-dev:i386 && \
+        libluajit-5.1-dev && \
     rm -rf /var/lib/apt/lists/*
 
-# 32-bit pkg-config search path (matches scripts/_build-host.sh).
-ENV PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig
+# x86-64 pkg-config search path.
+ENV PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig
 
 WORKDIR /build

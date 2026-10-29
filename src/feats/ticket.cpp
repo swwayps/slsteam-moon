@@ -5,7 +5,6 @@
 
 #include "../config.hpp"
 #include "../globals.hpp"
-#include "../process.hpp"
 
 #include "../sdk/CProtoBufMsgBase.hpp"
 #include "../sdk/CSteamEngine.hpp"
@@ -142,29 +141,6 @@ bool Ticket::saveTicketToCache(CMsgClientGetAppOwnershipTicketResponse* resp)
 	return true;
 }
 
-void Ticket::connectPipe(const HSteamPipe pipe)
-{
-	const auto process = g_processMap.find(pipe);
-	if (process == g_processMap.end())
-	{
-		return;
-	}
-	const auto& proc = process->second;
-
-	if (!proc.steamDRM)
-	{
-		return;
-	}
-
-	const SavedTicket ticket = getCachedTicket(proc.appId);
-	if (!ticket.isValid())
-	{
-		return;
-	}
-
-	oneTimeSteamIdSpoof[proc.appId] = ticket.steamId;
-}
-
 void Ticket::launchApp(uint32_t appId)
 {
 	auto ticket = getCachedTicket(appId);
@@ -183,39 +159,8 @@ void Ticket::launchApp(uint32_t appId)
 	g_pLog->infoOnce("Force loaded AppOwnershipTicket for %i\n", appId);
 }
 
-void Ticket::getEncryptedAppTicket(uint32_t appId)
-{
-	if (!(g_config.smartTickets.copy() & CConfig::k_ESmartTicketsDenuvo))
-	{
-		return;
-	}
-
-	const SavedTicket cached = Ticket::getCachedEncryptedTicket(appId);
-	if (!cached.isValid())
-	{
-		return;
-	}
-
-	oneTimeSteamIdSpoof[appId] = cached.steamId;
-}
-
 void Ticket::getTicketOwnershipExtendedData(uint32_t appId)
 {
-	if ((g_config.smartTickets.get() & CConfig::k_ESmartTicketsSteamDRM)
-		&& g_pSteamEngine)
-	{
-		const auto utils = g_pSteamEngine->getUtils();
-		const auto process = utils
-			? g_processMap.find(utils->getCurrentSteamPipe())
-			: g_processMap.end();
-		if (process != g_processMap.end() && process->second.steamDRM)
-		{
-			//Handled in connectPipe
-			//For other ticket requests we fall through to spoofing the next GetSteamID call
-			return;
-		}
-	}
-
 	const SavedTicket cached = Ticket::getCachedTicket(appId);
 	if (!cached.isValid())
 	{
@@ -237,9 +182,8 @@ Ticket::SavedTicket Ticket::getCachedEncryptedTicket(uint32_t appId)
 {
 	SavedTicket ticket {};
 	const AppId_t fakeAppId = FakeAppIds::getFakeAppId(appId);
-	const auto smartTickets = g_config.smartTickets.get();
 
-	if (!(smartTickets & CConfig::k_ESmartTicketsDenuvo) && appId && fakeAppId && fakeAppId != appId)
+	if (appId && fakeAppId && fakeAppId != appId)
 	{
 		g_pLog->infoOnce("Returning empty cached encrypted Ticket for %u because it's running as %u\n", appId, fakeAppId);
 		return ticket;

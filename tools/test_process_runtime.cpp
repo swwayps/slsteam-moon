@@ -6,7 +6,6 @@
 
 #include <cstdio>
 #include <cstring>
-#include <limits>
 #include <memory>
 
 std::unique_ptr<CLog> g_pLog;
@@ -18,10 +17,6 @@ LogLevel CLog::getMinLevel() { return LogLevel::None; }
 bool CLog::shouldNotify() { return false; }
 CConfig::~CConfig() = default;
 
-// hasSteamDRM() references this only for a non-empty ".bind" section; the
-// crafted fixtures below never reach it, so a stub keeps the linker happy
-// without dragging in the whole Utils translation unit.
-double Utils::calculateEntropy(const std::vector<uint8_t>&) { return 0.0; }
 
 namespace
 {
@@ -50,8 +45,8 @@ void writeFile(const char* path, const std::vector<uint8_t>& bytes)
 }
 
 // A valid-magic PE (machine i386) whose COFF header advertises zero sections.
-// parseSections() succeeds with an EMPTY section list, so hasSteamDRM() must
-// not index sections.at(size()-1) (a size_t underflow -> std::out_of_range).
+// parseSections() succeeds with an EMPTY section list, which readers must not
+// index (a size_t underflow -> std::out_of_range).
 std::vector<uint8_t> makeZeroSectionPe()
 {
 	std::vector<uint8_t> b(0x88, 0);
@@ -161,8 +156,8 @@ bool sectionNameStopsAtTableEnd(const char* path, const std::vector<uint8_t>& by
 	return false;
 }
 // A valid-magic i386 PE with a single ".bind" section whose size advertises
-// ~4 GiB. hasSteamDRM() reads the last section when it is named ".bind";
-// readSection() must not resize()/fread() a buffer sized past the file end.
+// ~4 GiB. readSection() must not resize()/fread() a buffer sized past the
+// file end.
 std::vector<uint8_t> makeHugeBindSectionPe()
 {
 	const size_t sectionHdrOffset = 0x80 + 0xf8; // e_lfanew + PE_HEADER32_SIZE
@@ -183,9 +178,9 @@ std::vector<uint8_t> makeHugeBindSectionPe()
 	return b;
 }
 
-// Runs hasSteamDRM() on a crafted file and reports whether it stayed alive
-// (returned without throwing). Returns true when the analyser survived.
-bool drmProbeSurvives(const char* path, const std::vector<uint8_t>& bytes)
+// Parses a crafted file and reads every section it reports. Returns true when
+// the parser stayed alive (returned without throwing).
+bool parserSurvives(const char* path, const std::vector<uint8_t>& bytes)
 {
 	writeFile(path, bytes);
 	try
@@ -195,7 +190,8 @@ bool drmProbeSurvives(const char* path, const std::vector<uint8_t>& bytes)
 		{
 			return true; // rejected outright is fine; the point is: no crash
 		}
-		(void)exe->hasSteamDRM();
+		for (const auto& section : exe->sections)
+			(void)exe->readSection(section);
 		return true;
 	}
 	catch (...)
@@ -209,56 +205,6 @@ int main()
 {
 	g_pLog = std::make_unique<CLog>("/dev/null");
 
-	Process_t vanished{};
-	vanished.pid = std::numeric_limits<pid_t>::max();
-	bool vanishedThrew = false;
-	std::filesystem::path vanishedExe;
-	try
-	{
-		vanishedExe = vanished.getRealExe();
-	}
-	catch (...)
-	{
-		vanishedThrew = true;
-	}
-	expect(!vanishedThrew && vanishedExe.empty(),
-	       "a vanished process is reported without throwing");
-
-	Process_t overflow{};
-	overflow.exe = "/tmp/game";
-	overflow.environ = "SteamAppId=999999999999999999999999999999";
-	bool overflowThrew = false;
-	AppId_t overflowAppId = 1;
-	try
-	{
-		overflowAppId = overflow.getAppIdFromEnv();
-	}
-	catch (...)
-	{
-		overflowThrew = true;
-	}
-	expect(!overflowThrew && overflowAppId == 0,
-	       "an overflowing SteamAppId is rejected without throwing");
-
-	Process_t valid{};
-	valid.exe = "/tmp/game";
-	valid.environ = "SteamAppId=480";
-	expect(valid.getAppIdFromEnv() == 480,
-	       "a valid SteamAppId is parsed unchanged");
-
-	Process_t embedded{};
-	embedded.exe = "/tmp/game";
-	embedded.environ = "NotSteamAppId=480\0SteamGameId=480";
-	expect(embedded.getAppIdFromEnv() == 0,
-	       "an embedded SteamAppId name is not accepted");
-
-	Process_t afterOtherVariable{};
-	afterOtherVariable.exe = "/tmp/game";
-	constexpr char environment[] = "SteamGameId=480\0SteamAppId=480";
-	afterOtherVariable.environ.assign(environment, sizeof(environment) - 1);
-	expect(afterOtherVariable.getAppIdFromEnv() == 480,
-	       "SteamAppId is found after another environment variable");
-
 	const auto currentExecutable = IExecutableFile::create("/proc/self/exe");
 	expect(currentExecutable != nullptr && !currentExecutable->sections.empty(),
 	       "the upstream executable analyser parses the running ELF image");
@@ -267,22 +213,20 @@ int main()
 	expect(missingExecutable == nullptr,
 	       "a disappearing open file degrades to an ignored debug result");
 
-	// SmartTickets DRM analysis runs on every process that connects to the
-	// Steam pipe (owned games included), with no exception barrier. A binary
-	// that parses with zero sections must not abort the whole Steam client.
-	g_config.smartTickets.set(CConfig::k_ESmartTicketsSteamDRM);
+	// The decompiler parses Steam's own modules with no exception barrier, so
+	// a hostile or truncated file must degrade instead of aborting the client.
 
-	expect(drmProbeSurvives("/tmp/slsteam_zero_section.pe", makeZeroSectionPe()),
-	       "a zero-section PE does not abort SteamDRM analysis");
+	expect(parserSurvives("/tmp/slsteam_zero_section.pe", makeZeroSectionPe()),
+	       "a zero-section PE does not abort the section parser");
 
-	expect(drmProbeSurvives("/tmp/slsteam_stripped.elf64", makeStrippedElf64()),
-	       "a section-header-stripped ELF does not abort SteamDRM analysis");
+	expect(parserSurvives("/tmp/slsteam_stripped.elf64", makeStrippedElf64()),
+	       "a section-header-stripped ELF does not abort the section parser");
 
-	expect(drmProbeSurvives("/tmp/slsteam_huge_strtab.elf64", makeHugeStringTableElf64()),
+	expect(parserSurvives("/tmp/slsteam_huge_strtab.elf64", makeHugeStringTableElf64()),
 	       "an ELF section string table larger than the file is rejected without a giant allocation");
 
-	expect(drmProbeSurvives("/tmp/slsteam_huge_bind.pe", makeHugeBindSectionPe()),
-	       "a .bind section larger than the file does not trigger a giant read");
+	expect(parserSurvives("/tmp/slsteam_huge_bind.pe", makeHugeBindSectionPe()),
+	       "a section larger than the file does not trigger a giant read");
 	expect(sectionNameStopsAtTableEnd("/tmp/slsteam_unterminated.elf32",
 	           makeUnterminatedNamesElf<Elf32_Ehdr, Elf32_Shdr>(ELFCLASS32, 0x3)),
 	       "an unterminated ELF32 section name stops at the string table end");

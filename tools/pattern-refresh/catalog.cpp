@@ -791,7 +791,7 @@ PatternRefresh::UrlPair PatternRefresh::makeUrls(
 	// `<sha256>.sig` peer instead 404s on both mirrors, which makes the
 	// consumer fail closed on every client build and never activate signed
 	// metadata at all.
-	const std::string stem = std::string(base) + "linux32/" + std::string(component) + "/"
+	const std::string stem = std::string(base) + "linux64/" + std::string(component) + "/"
 	                       + std::string(sha256);
 	const std::string catalog = stem + ".toml";
 	return {catalog, catalog + ".sig"};
@@ -1325,7 +1325,7 @@ int PatternRefresh::refreshInstallation(
 		modules[index] = inspectModule(
 			specifications[index].component,
 			specifications[index].moduleName,
-			steamRoot / "ubuntu12_32" / specifications[index].moduleName,
+			steamRoot / "steamrt64" / specifications[index].moduleName,
 			patternRoot / ".state"
 			    / (std::string(specifications[index].component) + ".module.state"),
 			{},

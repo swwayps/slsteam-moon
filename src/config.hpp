@@ -25,13 +25,6 @@ class CFileWatcher;
 
 class CConfig {
 public:
-	typedef unsigned int SmartTicketsFlags_t;
-
-	enum ESmartTickets : SmartTicketsFlags_t
-	{
-		k_ESmartTicketsSteamDRM = 1 << 0,
-		k_ESmartTicketsDenuvo = 1 << 1,
-	};
 
 	struct FakeGame_t
 	{
@@ -121,7 +114,6 @@ public:
 	MTVariable<bool> disableFamilyLock;
 	MTVariable<bool> disableParentalRestrictions;
 	MTVariable<bool> useWhiteList;
-	MTVariable<SmartTicketsFlags_t> smartTickets;
 	MTVariable<uint32_t> maxSchemaTries;
 	MTVariable<bool> notifications;
 	MTVariable<bool> notifyInit;

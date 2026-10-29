@@ -1,7 +1,6 @@
 #include "fakeappid.hpp"
 
 #include "../config.hpp"
-#include "../process.hpp"
 
 #include "../sdk/CNetPacket.hpp"
 #include "../sdk/CProtoBufMsgBase.hpp"
@@ -10,7 +9,10 @@
 #include "../sdk/CUser.hpp"
 #include "../sdk/IClientUtils.hpp"
 
-std::unordered_map<uint32_t, AppId_t> FakeAppIds::fakeAppIdMapServer = std::unordered_map<uint32_t, AppId_t>();
+
+GameId_t FakeAppIds::lastLaunchedGame = 0;
+std::unordered_map<HSteamPipe, AppId_t> FakeAppIds::fakeAppIdMap = std::unordered_map<HSteamPipe, AppId_t>();
+std::unordered_map<HServerRequest, AppId_t> FakeAppIds::fakeAppIdMapServer = std::unordered_map<HServerRequest, AppId_t>();
 std::unordered_map<uint64_t, AppId_t> FakeAppIds::fakeAppIdMapPings = std::unordered_map<uint64_t, AppId_t>();
 
 AppId_t FakeAppIds::getFakeAppId(const AppId_t appId)
@@ -33,15 +35,6 @@ AppId_t FakeAppIds::getFakeAppId(const AppId_t appId)
 	return 0;
 }
 
-AppId_t FakeAppIds::getRealAppIdFromEnv(const HSteamPipe pipe)
-{
-	if (g_processMap.contains(pipe))
-	{
-		return g_processMap.at(pipe).appId;
-	}
-	return 0;
-}
-
 AppId_t FakeAppIds::getRealAppIdForCurrentPipe(const bool fallback)
 {
 	if (!g_pSteamEngine)
@@ -54,10 +47,9 @@ AppId_t FakeAppIds::getRealAppIdForCurrentPipe(const bool fallback)
 		return 0;
 	}
 
-	const AppId_t appId = getRealAppIdFromEnv(utils->getCurrentSteamPipe());
-	if (appId)
+	if (fakeAppIdMap.contains(utils->getCurrentSteamPipe()))
 	{
-		return appId;
+		return fakeAppIdMap.at(utils->getCurrentSteamPipe());
 	}
 
 	if (fallback)
@@ -128,8 +120,33 @@ bool FakeAppIds::shouldUseRealAppIdForInterface(const EIPCInterface type)
 	}
 }
 
+void FakeAppIds::closePipe(const HSteamPipe pipe)
+{
+	if (fakeAppIdMap.contains(pipe))
+	{
+		fakeAppIdMap.erase(pipe);
+	}
+}
+
+void FakeAppIds::launchApp(const GameId_t gameId)
+{
+	lastLaunchedGame = gameId;
+}
+
 void FakeAppIds::setAppIdForCurrentPipe(AppId_t& appId)
 {
+	//Do not fill fakeAppIdMap with non-steam games
+	if (lastLaunchedGame & GAME_TYPE_SHORTCUT)
+	{
+		return;
+	}
+
+	const auto utils = g_pSteamEngine ? g_pSteamEngine->getUtils() : nullptr;
+	if (utils)
+	{
+		fakeAppIdMap[utils->getCurrentSteamPipe()] = static_cast<AppId_t>(lastLaunchedGame);
+	}
+
 	//Do not change Steam Client itself (AppId 0)
 	if (!appId)
 	{
@@ -172,14 +189,14 @@ void FakeAppIds::runIPCFrame(const bool post, const EIPCInterface interface)
 	g_pSteamEngine->setAppIdForCurrentPipe(appId);
 }
 
-void FakeAppIds::getServerDetails(uint32_t handle, gameserverdetails_t& details)
+void FakeAppIds::getServerDetails(const HServerRequest handle, gameserverdetails_t& details)
 {
 	if (!fakeAppIdMapServer.contains(handle))
 	{
 		return;
 	}
 
-	const AppId_t realAppId = fakeAppIdMapServer[handle];
+	const AppId_t realAppId = fakeAppIdMapServer.at(handle);
 	fakeAppIdMapPings[details.ip64] = realAppId;
 	details.appId = realAppId;
 
@@ -211,7 +228,7 @@ void FakeAppIds::pingResponse(gameserverdetails_t *details)
 		return;
 	}
 
-	details->appId = fakeAppIdMapPings[ip];
+	details->appId = fakeAppIdMapPings.at(ip);
 }
 
 void FakeAppIds::sendGamesPlayed(CNetPacket* packet)
@@ -233,7 +250,7 @@ void FakeAppIds::sendGamesPlayed(CNetPacket* packet)
 			continue;
 		}
 
-		LOG_DEBUG("Setting %llu to %u\n", gameId, fakeAppId);
+		LOG_DEBUG("Setting %lu to %u\n", gameId, fakeAppId);
 		game->set_game_id(fakeAppId);
 	}
 

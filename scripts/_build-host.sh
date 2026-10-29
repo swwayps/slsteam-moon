@@ -14,10 +14,7 @@ missing=()
 command -v g++  >/dev/null 2>&1 || missing+=("g++")
 command -v make >/dev/null 2>&1 || missing+=("make")
 
-# 32-bit headers are required (-m32). Sniff for either pkg-config layout.
-if ! [ -d /usr/lib/i386-linux-gnu/pkgconfig ] && ! [ -d /usr/lib32/pkgconfig ]; then
-	missing+=("32-bit dev libs (libssl-dev:i386, libcurl4-openssl-dev:i386, or distro equivalent)")
-fi
+command -v pkg-config >/dev/null 2>&1 || missing+=("pkg-config")
 
 if [ ${#missing[@]} -gt 0 ]; then
 	echo "missing dependencies:" >&2
@@ -25,23 +22,14 @@ if [ ${#missing[@]} -gt 0 ]; then
 	cat >&2 <<-EOF
 
 	Install on Ubuntu/Debian:
-	  sudo dpkg --add-architecture i386
-	  sudo apt update
-	  sudo apt install g++-multilib make libssl-dev:i386 libcurl4-openssl-dev:i386
+	  sudo apt install g++ make pkg-config libssl-dev libcurl4-openssl-dev
 
 	Install on Arch:
-	  sudo pacman -S multilib/lib32-gcc-libs multilib/lib32-openssl multilib/lib32-curl
+	  sudo pacman -S gcc make pkgconf openssl curl
 
 	Or build inside a container instead:  scripts/build.sh --portable
 	EOF
 	exit 1
-fi
-
-# Make sure 32-bit pkg-config sees our libs.
-if [ -d /usr/lib/i386-linux-gnu/pkgconfig ]; then
-	export PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig
-elif [ -d /usr/lib32/pkgconfig ]; then
-	export PKG_CONFIG_PATH=/usr/lib32/pkgconfig
 fi
 
 make clean

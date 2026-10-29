@@ -123,7 +123,7 @@ bool VFTableInfo_t::init()
 	}
 
 	address = funcs.at(index);
-	LOG_DEBUG("%s at index %u, address 0x%x\n", getPrintName().c_str(), index, address);
+	LOG_DEBUG("%s at index %u, address 0x%lx\n", getPrintName().c_str(), index, address);
 	return true;
 }
 
@@ -162,14 +162,15 @@ namespace VFTIndexes
 
 	namespace CSteamMatchmakingServers
 	{
-		// Neither function references a distinctive string; slot 8 does, and
-		// any shift that moves slot 0 or 7 moves it too.
+		// Neither function references a distinctive string; slot 18 (the
+		// typed server-list request) does, and any shift that moves slot 0
+		// or 7 moves it too.
 		VFTableInfo_t GetServerDetails
 		{
 			"24CSteamMatchMakingServers",
 			"GetServerDetails",
 			7,
-			{8, "Invalid server type"},
+			{18, "Invalid server type"},
 			true
 		};
 		VFTableInfo_t RequestInternetServerList
@@ -177,7 +178,7 @@ namespace VFTIndexes
 			"24CSteamMatchMakingServers",
 			"RequestInternetServerList",
 			0,
-			{8, "Invalid server type"},
+			{18, "Invalid server type"},
 			true
 		};
 	}

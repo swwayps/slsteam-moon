@@ -203,6 +203,7 @@ namespace MemHlp
 	bool fixPICThunkCall(const char* name, lm_address_t fn, lm_address_t tramp);
 
 	const char* getTypeName(void* pClass);
+	lm_address_t searchOffsetByTypeName(const void* object, const char* typeName, lm_size_t maxOffset = 0x10000);
 	
 	template<typename tFN, typename ...Args>
 	constexpr auto callVFunc(unsigned int index, void* thisPtr, Args... args)

@@ -25,15 +25,15 @@ enum EGameFlags
 SDK_Class CProtoBufMsgBase
 {
 public:
-	uint8_t __pad_0x0[0x14];	//0x0
-	ENetPacket type;			//0x14
-	uint8_t __pad_0x16[0x4];	//0x18
-	CMsgProtoBufHeader* header; //0x1C
-	void* __pBody;				//0x20
-	uint8_t __pad_0x24[0x8];	//0x24
+	uint8_t __pad0x8[0x28];			//0x0
+	uint32_t type;					//0x28 - It's actually EMsg, but those get genned as int which is unreliable at best
+	uint8_t __pad0x2C[0x4];			//0x2C
+	void* hdr;						//0x30
+	void* __pBody;					//0x38
+	uint8_t __pad0x40[0x10];		//0x40
 	
 	constexpr EMsg getProtoBufType() const
 	{
 		return static_cast<EMsg>(type & ~PROTOBUF_TYPE_MASK);
 	}
-}; //0x2C
+}; //0x50

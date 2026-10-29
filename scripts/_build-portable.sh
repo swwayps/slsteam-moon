@@ -33,18 +33,18 @@ if [ -z "$runtime" ]; then
 	exit 1
 fi
 
-echo "==> portable build (using $runtime, image slsteam-moon-builder)"
+echo "==> portable build (using $runtime, image slsteam-moon-x64-builder)"
 
 # Build (or reuse) the builder image. Tagging by name only, the layer cache
 # inside the runtime keeps rebuilds cheap.
-"$runtime" build -f scripts/Dockerfile -t slsteam-moon-builder . >&2
+"$runtime" build -f scripts/Dockerfile -t slsteam-moon-x64-builder . >&2
 
 # Run the build inside the container with the repo bind-mounted, so the
 # resulting bin/ lands on the host without needing a docker cp.
 "$runtime" run --rm \
 	-v "$PWD:/build:Z" \
 	-w /build \
-	slsteam-moon-builder \
+	slsteam-moon-x64-builder \
 	bash -c 'make clean && make'
 
 scripts/check-pattern-refresh-abi.sh bin/pattern-refresh

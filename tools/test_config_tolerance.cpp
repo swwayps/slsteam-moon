@@ -59,13 +59,15 @@ int main()
 
 	// Keys removed here or upstream: SafeMode and WarnHashMissmatch (SafeMode
 	// removal), PlayNotOwnedGames and AutoFilterList (upstream 84c3672,
-	// d5a17c7), LogLevels (upstream's logger, not taken).
+	// d5a17c7), LogLevels (upstream's logger, not taken), SmartTickets
+	// (upstream cb1ee2a, x86-64 port).
 	const std::vector<std::string> removed = {
 		"SafeMode", "WarnHashMissmatch", "PlayNotOwnedGames", "AutoFilterList", "LogLevels",
+		"SmartTickets",
 	};
 	std::string text = std::string(defaultConfig) +
 		"\nSafeMode: yes\nWarnHashMissmatch: yes\nPlayNotOwnedGames: yes\n"
-		"AutoFilterList: yes\nLogLevels: 255\n";
+		"AutoFilterList: yes\nLogLevels: 255\nSmartTickets: 2\n";
 	text.replace(text.find("FakeEmail: \"\""), std::string("FakeEmail: \"\"").size(),
 	             "FakeEmail: \"kept@example.invalid\"");
 	std::ofstream(configHome + "/SLSsteam/config.yaml") << text;
@@ -90,7 +92,6 @@ int main()
 			{"DisableFamilyShareLock", n(g_config.disableFamilyLock.get())},
 			{"DisableParentalRestrictions", n(g_config.disableParentalRestrictions.get())},
 			{"UseWhitelist", n(g_config.useWhiteList.get())},
-			{"SmartTickets", n(g_config.smartTickets.get())},
 			{"MaxSchemaTries", n(g_config.maxSchemaTries.get())},
 			{"Notifications", n(g_config.notifications.get())},
 			{"NotifyInit", n(g_config.notifyInit.get())},

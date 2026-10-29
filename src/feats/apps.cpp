@@ -265,7 +265,7 @@ void Apps::buildDepotDependency(uint32_t appId, CUtlVector<DepotInfo_t>* depots,
 
 		if (depotBlacklist.contains(depot->depotId))
 		{
-			LOG_DEBUG("Removing %u with %llu\n", depot->depotId, depot->manifestId);
+			LOG_DEBUG("Removing %u with %lu\n", depot->depotId, depot->manifestId);
 			// The last entry moves into slot i and is checked next.
 			depots->swap(i, depots->size - 1);
 			depots->size--;
@@ -285,18 +285,18 @@ void Apps::buildDepotDependency(uint32_t appId, CUtlVector<DepotInfo_t>* depots,
 			{
 				const uint64_t oldId = depot->manifestId;
 				depot->manifestId = manifestOverrides.at(depot->depotId);
-				g_pLog->debug("Overrode %u's manifest %llu with %llu\n", depot->depotId, oldId, depot->manifestId);
+				g_pLog->debug("Overrode %u's manifest %lu with %lu\n", depot->depotId, oldId, depot->manifestId);
 			}
 		}
 
-		LOG_DEBUG("Depot %u for %u -> %llu\n", depot->depotId, depot->appId, depot->manifestId);
+		LOG_DEBUG("Depot %u for %u -> %lu\n", depot->depotId, depot->appId, depot->manifestId);
 		i++;
 	}
 
 	for (unsigned int i = 0; i < sharedDepots->size; i++)
 	{
 		const auto depot = sharedDepots->at(i);
-		LOG_DEBUG("Shared Depot %u for %u -> %llu\n", depot->depotId, depot->appId, depot->manifestId);
+		LOG_DEBUG("Shared Depot %u for %u -> %lu\n", depot->depotId, depot->appId, depot->manifestId);
 	}
 
 }
@@ -458,7 +458,7 @@ void Apps::getLegacyCDKey(uint32_t appId)
 	}
 }
 
-void Apps::getSubscribedApps(uint32_t* appList, size_t size, uint32_t& count)
+void Apps::getSubscribedApps(uint32_t* appList, uint32_t size, uint32_t& count)
 {
 	const auto& added = g_config.addedAppIds.get();
 	if (!size || !appList)
@@ -630,7 +630,7 @@ void Apps::sendGamesPlayed(CNetPacket* pkt)
 		// Leave a non-Steam shortcut's title and 64-bit ID untouched.
 		if (gameId & GAME_TYPE_SHORTCUT)
 		{
-			LOG_DEBUG("Preserving non-Steam shortcut %llu\n", gameId);
+			LOG_DEBUG("Preserving non-Steam shortcut %lu\n", gameId);
 			continue;
 		}
 
@@ -668,7 +668,7 @@ void Apps::sendGamesPlayed(CNetPacket* pkt)
 
 		//msg->mutable_games_played(i)->ParseFromString(game.SerializeAsString());
 
-		LOG_DEBUG("Playing game %llu with flags %u & pid %u\n", gameId, game->game_flags(), game->process_id());
+		LOG_DEBUG("Playing game %lu with flags %u & pid %u\n", gameId, game->game_flags(), game->process_id());
 	}
 
 	if (msg.games_played_size() < 1)

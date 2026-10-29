@@ -63,7 +63,7 @@ FakeOffline:
 #Use 0 as a key to set for all unowned Apps
 #Do not run multiple apps under the same AppId simultaneously! It's possible but
 #will most likely cause undefined behaviour
-#Requires access to /proc to read processes' real AppId from their environment (most distros allow this by default)
+#The last app you launched will be used as the real appId
 FakeAppIds:
 
 #Override Depot manifest IDs
@@ -93,14 +93,6 @@ DenuvoGames:
 #Either set to SteamId or to 0 to use the SteamId in the cached AppOwnershipTicket
 SteamIdOverride:
 
-#Makes steamId spoofing a lot smarter than the default by analyzing
-#an executable that freshly connected to the Steamclient. This might slow down game
-#startup times on slower disks (less than 10ms for SteamDRM, up to 20-2000ms for Denuvo on my SSD)
-#Requires access to /proc/gamepid
-#Created the same way as LogLevels
-#SteamDRM = 0x1
-#Denuvo = 0x2
-SmartTickets: 0x1
 #How many recent reviewers of a game to try as its achievement-schema owner when
 #no AchievementOwnerId is set or it cannot read that game's schema. They are
 #looked up in the background (one store request per game, at most every 10

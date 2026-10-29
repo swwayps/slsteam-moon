@@ -1,7 +1,6 @@
 #pragma once
 
 #include "log.hpp"
-#include "sdk/types.hpp"
 
 #include <cstdint>
 #include <elf.h>
@@ -9,8 +8,6 @@
 #include <memory>
 #include <string>
 #include <sys/types.h>
-#include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 
@@ -39,9 +36,6 @@ public:
 
 	bool load(const std::string& filePath, LogLevel logErrorLevel = LogLevel::Warn);
 	std::vector<uint8_t> readSection(const SectionHdr_t& section);
-
-	bool hasSteamDRM();
-	bool hasDenuvo();
 
 	virtual bool checkMagic() = 0;
 	virtual bool parseSections() = 0;
@@ -98,29 +92,3 @@ public:
 	virtual bool checkMagic();
 	virtual bool parseSections();
 };
-
-struct Process_t
-{
-	pid_t pid = -1;
-	std::filesystem::path exe = "";
-	std::vector<std::string> cmdLine = { };
-	std::string environ = "";
-
-	AppId_t appId = 0;
-	HSteamPipe pipeHandle = 0x0;
-
-	bool steamDRM = false;
-	bool denuvo = false;
-
-	std::filesystem::path getPath(const char* fileName);
-	std::string readFile(const char* fileName);
-
-	AppId_t getAppIdFromEnv();
-	std::unordered_set<std::filesystem::path> getOpenFiles();
-	std::filesystem::path getRealExe();
-
-	bool analyse();
-	bool init(const pid_t pid, const HSteamPipe pipeHandle);
-};
-
-extern std::unordered_map<HSteamPipe, Process_t> g_processMap;

@@ -17,20 +17,20 @@ static_assert(sizeof(CUser) == 1);
 
 IClientAppManager* CUser::getAppManager()
 {
-	const static lm_address_t offset = *reinterpret_cast<lm_address_t*>(Patterns::CUser::m_OffsetUserAppManager.address + 2);
-	return reinterpret_cast<IClientAppManager*>(this + offset);
+	const static lm_address_t offset = MemHlp::searchOffsetByTypeName(this, "15CUserAppManager");
+	return offset == LM_ADDRESS_BAD ? nullptr : reinterpret_cast<IClientAppManager*>(this + offset);
 }
 
 IClientApps* CUser::getClientApps()
 {
-	const static lm_address_t offset = *reinterpret_cast<lm_address_t*>(Patterns::CUser::m_OffsetUserAppInfo.address + 2);
-	return reinterpret_cast<IClientApps*>(this + offset);
+	const static lm_address_t offset = MemHlp::searchOffsetByTypeName(this, "12CUserAppInfo");
+	return offset == LM_ADDRESS_BAD ? nullptr : reinterpret_cast<IClientApps*>(this + offset);
 }
 
 IClientUser* CUser::getClientUser()
 {
-	const static lm_address_t offset = *reinterpret_cast<lm_address_t*>(Patterns::CUser::m_OffsetClientUser.address + 1);
-	return reinterpret_cast<IClientUser*>(this + offset);
+	const static lm_address_t offset = MemHlp::searchOffsetByTypeName(this, "5CUser");
+	return offset == LM_ADDRESS_BAD ? nullptr : reinterpret_cast<IClientUser*>(this + offset);
 }
 
 bool CUser::checkAppOwnership(const AppId_t appId, AppOwnershipInfo_t* pInfo)

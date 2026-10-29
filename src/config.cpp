@@ -499,7 +499,6 @@ bool CConfig::loadSettings()
 	disableFamilyLock = getSetting<bool>(node, "DisableFamilyShareLock", true);
 	disableParentalRestrictions = getSetting<bool>(node, "DisableParentalRestrictions", false);
 	useWhiteList = getSetting<bool>(node, "UseWhitelist", false);
-	smartTickets = getSetting<SmartTicketsFlags_t>(node, "SmartTickets", 1);
 	maxSchemaTries = getSetting<uint32_t>(node, "MaxSchemaTries", 10);
 	notifications = getSetting<bool>(node, "Notifications", true);
 	notifyInit = getSetting<bool>(node, "NotifyInit", true);

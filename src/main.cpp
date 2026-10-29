@@ -130,7 +130,7 @@ static bool setupSuccess = false;
 // to claim its own hook-placement guard.
 static std::unique_ptr<ProcessLock::FileLock> g_setupLock;
 
-// CEF debug port chosen ONCE for this Steam-client session (see la_symbind32
+// CEF debug port chosen ONCE for this Steam-client session (see la_symbind64
 // block below). Picked in load() so it's decided in the long-lived client and
 // inherited by every webhelper-launching fork-child via fork() — the port then
 // stays stable across webhelper restarts (no re-pick, no bindability re-check),
@@ -164,6 +164,9 @@ static char g_rawLogPath[4096] = {};
 static std::atomic<bool> g_auditDiagnosticsEnabled{false};
 static std::atomic<bool> g_auditPolicyReady{false};
 static std::atomic<bool> g_auditBindAll{true};
+// Set once setup() decides this process is not the Steam client: from then on
+// the audit callbacks bind nothing and redirect nothing.
+static std::atomic<bool> g_auditInactive{false};
 
 static void setup()
 {
@@ -174,9 +177,15 @@ static void setup()
 		return;
 	}
 
-	//Do not do anything in other processes
-	if (strcmp(proc.name, "steam") != 0)
+	// The 64-bit client runs as the second `steam`, inside pressure-vessel:
+	// steam -> srt-client-container -> srt-bwrap -> pv-adverb -> steam. The
+	// first one only launches the container and must keep LD_AUDIT for it.
+	// Every other audited process (games, container tools) is left alone.
+	const char* container = std::getenv("container");
+	if (strcmp(proc.name, "steam") != 0
+	    || container == nullptr || strcmp(container, "pressure-vessel") != 0)
 	{
+		g_auditInactive.store(true, std::memory_order_release);
 		unload();
 		return;
 	}
@@ -536,7 +545,7 @@ static void load()
 
 	LOG_INFO
 	(
-		"steamclient.so loaded from %s/%s at 0x%x to 0x%x\n",
+		"steamclient.so loaded from %s/%s at 0x%lx to 0x%lx\n",
 		dir.filename().c_str(),
 		path.filename().c_str(),
 		g_modSteamClient.base,
@@ -544,7 +553,7 @@ static void load()
 	);
 	LOG_INFO
 	(
-		"steamui.so loaded at 0x%x to 0x%x\n",
+		"steamui.so loaded at 0x%lx to 0x%lx\n",
 		g_modSteamUI.base,
 		g_modSteamUI.end
 	);
@@ -796,19 +805,15 @@ extern "C" unsigned int la_version(unsigned int)
 	return LAV_CURRENT;
 }
 
-// Client-namespace libcurl lookups (CloudRedirect) get the host's 32-bit copy
-// instead of the runtime's pinned one. The loader never calls this for lookups
-// made by an audit module, so SLSsteam's own libcurl is unaffected. Callbacks
-// run under the loader's lock and it copies the result, so one buffer serves.
+// The i386 build pointed client-namespace libcurl lookups (the 32-bit
+// CloudRedirect) at the host's copy. The 64-bit client runs inside
+// pressure-vessel, where host libraries are not at those paths, so lookups are
+// left to the loader.
 extern "C" char* la_objsearch(const char* name,
                               __attribute__((unused)) uintptr_t* cookie,
-                              unsigned int flag)
+                              __attribute__((unused)) unsigned int flag)
 {
-	static char path[PATH_MAX];
-	if (flag != LA_SER_ORIG)
-		return const_cast<char*>(name);
-	return const_cast<char*>(AuditBinding::systemLibraryFor(
-		name, AuditBinding::systemLibraryDirs, path));
+	return const_cast<char*>(name);
 }
 
 // ───────────────────────────────────────────────────────────────────────
@@ -823,7 +828,7 @@ extern "C" char* la_objsearch(const char* name,
 // sidecar to read.
 //
 // Mechanism: rtld-audit symbol binding. la_objopen flags every object
-// BINDFROM|BINDTO so la_symbind32 is invoked for each binding; for the exec
+// BINDFROM|BINDTO so la_symbind64 is invoked for each binding; for the exec
 // family we return a wrapper that rewrites argv, otherwise the original
 // address (a no-op redirect). The client launches the webhelper via execv,
 // with the switch embedded inside a `sh -c "exec steamwebhelper.sh ..."`
@@ -892,7 +897,7 @@ namespace
 	                     uintptr_t* refcook,
 	                     uintptr_t* defcook) noexcept
 	{
-		// la_symbind32 is a loader callback: diagnostics use only a lock-free
+		// la_symbind64 is a loader callback: diagnostics use only a lock-free
 		// one-shot bit and write() to a descriptor opened by setup().  Never call
 		// CLog, getenv, std::string formatting, or allocation here.
 		if (!g_auditDiagnosticsEnabled.load(std::memory_order_acquire))
@@ -1048,22 +1053,20 @@ namespace
 	}
 }
 
-extern "C" uintptr_t la_symbind32(Elf32_Sym* sym,
-                                  __attribute__((unused)) unsigned int ndx,
-                                  uintptr_t* refcook,
-                                  uintptr_t* defcook,
-                                  __attribute__((unused)) unsigned int* flags,
-                                  const char* symname)
+// Body of la_symbind64 below (the i386 build entered through la_symbind32).
+static uintptr_t symbind(uintptr_t value, uintptr_t* refcook, uintptr_t* defcook,
+                         const char* symname)
 {
-	if (sym == nullptr)
-		return 0;
-
 	const AuditBinding::Symbol symbol = AuditBinding::classify(symname);
 	if (symbol == AuditBinding::Symbol::None)
-		return sym->st_value;
+		return value;
+	// Outside the client only the stats bridge stays bound.
+	if (symbol != AuditBinding::Symbol::LocalStatsEpoch
+	    && g_auditInactive.load(std::memory_order_acquire))
+		return value;
 
 	logAuditBinding(symbol, refcook, defcook);
-	const auto orig = static_cast<uintptr_t>(sym->st_value);
+	const auto orig = value;
 	switch (symbol)
 	{
 		case AuditBinding::Symbol::LocalStatsEpoch:
@@ -1089,7 +1092,17 @@ extern "C" uintptr_t la_symbind32(Elf32_Sym* sym,
 		case AuditBinding::Symbol::None:
 			break;
 	}
-	return sym->st_value;
+	return value;
+}
+
+extern "C" uintptr_t la_symbind64(Elf64_Sym* sym,
+                                  __attribute__((unused)) unsigned int ndx,
+                                  uintptr_t* refcook,
+                                  uintptr_t* defcook,
+                                  __attribute__((unused)) unsigned int* flags,
+                                  const char* symname)
+{
+	return sym ? symbind(static_cast<uintptr_t>(sym->st_value), refcook, defcook, symname) : 0;
 }
 
 // The decompiler reads link-time offsets out of .data.rel.ro, so each module is
@@ -1149,6 +1162,8 @@ extern "C" unsigned int la_objopen(struct link_map* map,
                                    __attribute__((unused)) Lmid_t lmid,
                                    __attribute__((unused)) uintptr_t* cookie)
 {
+	if (g_auditInactive.load(std::memory_order_acquire))
+		return 0;
 	if (map && map->l_name &&
 	    (AuditBinding::hasSuffix(map->l_name, "/steamclient.so") ||
 	     AuditBinding::hasSuffix(map->l_name, "/steamui.so")))

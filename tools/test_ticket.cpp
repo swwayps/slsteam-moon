@@ -26,10 +26,9 @@ namespace Ticket
 static_assert(std::is_same_v<decltype(&Ticket::forgetApp), bool (*)(uint32_t)>);
 static_assert(std::is_same_v<decltype(Ticket::SavedTicket::steamId), CSteamId>);
 static_assert(sizeof(CSteamId) == sizeof(uint64_t));
-static_assert(sizeof(CServerPipe) == 0x60);
-static_assert(offsetof(CServerPipe, pipeHandle) == 0x8);
-static_assert(offsetof(CServerPipe, pid) == 0x14);
-static_assert(offsetof(CServerPipe, userHandle) == 0x21);
+// x86-64 client layout (upstream dev-X86_64); the full size is not mapped.
+static_assert(offsetof(CServerPipe, pipeHandle) == 0x10);
+static_assert(offsetof(CServerPipe, pid) == 0x20);
 
 static int g_failures = 0;
 

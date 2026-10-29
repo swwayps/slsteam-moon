@@ -140,7 +140,7 @@ namespace
 	{
 		return
 			"schema = 1\n"
-			"platform = \"linux32\"\n"
+			"platform = \"linux64\"\n"
 			"component = \"" + module.component + "\"\n"
 			"module_name = \"" + module.moduleName + "\"\n"
 			"module_sha256 = \"" + module.sha256 + "\"\n"
@@ -400,7 +400,7 @@ int main()
 	expect(
 		github.catalog
 		== "https://raw.githubusercontent.com/swwayps/steam-monitor/main/"
-		   "linux32/steamclient/" + sha + ".toml",
+		   "linux64/steamclient/" + sha + ".toml",
 		"GitHub raw catalog URL is exact"
 	);
 	// The producer publishes the detached signature as a sibling of the catalog
@@ -413,7 +413,7 @@ int main()
 	expect(
 		cdn.catalog
 		== "https://cdn.jsdelivr.net/gh/swwayps/steam-monitor@main/"
-		   "linux32/steamui/" + sha + ".toml",
+		   "linux64/steamui/" + sha + ".toml",
 		"jsDelivr catalog URL is exact"
 	);
 	expect(cdn.signature == cdn.catalog + ".sig",
@@ -674,7 +674,7 @@ int main()
 			reinterpret_cast<const char*>(signature.data()), signature.size()
 		);
 		const std::string sha(64, 'a');
-		const std::string catalogPath = "/linux32/steamclient/" + sha + ".toml";
+		const std::string catalogPath = "/linux64/steamclient/" + sha + ".toml";
 		const std::string signaturePath = catalogPath + ".sig";
 		HttpServer server(
 			{
@@ -756,7 +756,7 @@ int main()
 			reinterpret_cast<const char*>(signature.data()), signature.size()
 		);
 		const std::string sha(64, 'a');
-		const std::string stem = "/linux32/steamclient/" + sha;
+		const std::string stem = "/linux64/steamclient/" + sha;
 		HttpServer fast(
 			{
 				{stem + ".toml", {200, catalog, "\"fast-catalog\""}},
@@ -839,17 +839,17 @@ int main()
 		TempDirectory temporary;
 		const auto steamRoot = temporary.path / "steam";
 		const auto configRoot = temporary.path / "config";
-		std::filesystem::create_directories(steamRoot / "ubuntu12_32");
-		writeBytes(steamRoot / "ubuntu12_32/steamclient.so", testElf());
-		writeBytes(steamRoot / "ubuntu12_32/steamui.so", testElf());
+		std::filesystem::create_directories(steamRoot / "steamrt64");
+		writeBytes(steamRoot / "steamrt64/steamclient.so", testElf());
+		writeBytes(steamRoot / "steamrt64/steamui.so", testElf());
 		const auto client = inspectModule(
 			"steamclient", "steamclient.so",
-			steamRoot / "ubuntu12_32/steamclient.so",
+			steamRoot / "steamrt64/steamclient.so",
 			temporary.path / "client.state"
 		);
 		const auto ui = inspectModule(
 			"steamui", "steamui.so",
-			steamRoot / "ubuntu12_32/steamui.so",
+			steamRoot / "steamrt64/steamui.so",
 			temporary.path / "ui.state"
 		);
 		expect(client.has_value() && ui.has_value(), "both test Steam modules are inspected");
@@ -863,8 +863,8 @@ int main()
 			{
 				return std::string(reinterpret_cast<const char*>(value.data()), value.size());
 			};
-			const std::string clientStem = "/linux32/steamclient/" + client->identity.sha256;
-			const std::string uiStem = "/linux32/steamui/" + ui->identity.sha256;
+			const std::string clientStem = "/linux64/steamclient/" + client->identity.sha256;
+			const std::string uiStem = "/linux64/steamui/" + ui->identity.sha256;
 			HttpServer server(
 				{
 					{"/github" + clientStem + ".toml", {200, clientBody, "\"c1\""}},
@@ -917,10 +917,10 @@ int main()
 		const auto steamRoot = temporary.path / "steam";
 		const auto configRoot = temporary.path / "config";
 		const auto stateRoot = configRoot / "SLSsteam/patterns/.state";
-		std::filesystem::create_directories(steamRoot / "ubuntu12_32");
+		std::filesystem::create_directories(steamRoot / "steamrt64");
 		std::filesystem::create_directories(stateRoot);
-		writeBytes(steamRoot / "ubuntu12_32/steamclient.so", testElf());
-		writeBytes(steamRoot / "ubuntu12_32/steamui.so", testElf());
+		writeBytes(steamRoot / "steamrt64/steamclient.so", testElf());
+		writeBytes(steamRoot / "steamrt64/steamui.so", testElf());
 		const auto lockPath = stateRoot / ".refresh.lock";
 		const int lockDescriptor = open(
 			lockPath.c_str(), O_CREAT | O_RDWR | O_CLOEXEC, 0600
@@ -954,12 +954,12 @@ int main()
 		TempDirectory temporary;
 		const auto steamRoot = temporary.path / "steam";
 		const auto configRoot = temporary.path / "config";
-		std::filesystem::create_directories(steamRoot / "ubuntu12_32");
-		writeBytes(steamRoot / "ubuntu12_32/steamclient.so", testElf());
-		writeBytes(steamRoot / "ubuntu12_32/steamui.so", testElf());
+		std::filesystem::create_directories(steamRoot / "steamrt64");
+		writeBytes(steamRoot / "steamrt64/steamclient.so", testElf());
+		writeBytes(steamRoot / "steamrt64/steamui.so", testElf());
 		const auto identity = inspectModule(
 			"steamclient", "steamclient.so",
-			steamRoot / "ubuntu12_32/steamclient.so",
+			steamRoot / "steamrt64/steamclient.so",
 			temporary.path / "deadline.state"
 		);
 		expect(identity.has_value(), "deadline fixture module is inspected");
@@ -971,7 +971,7 @@ int main()
 			{
 				for (const std::string component : {"steamclient", "steamui"})
 				{
-					const std::string stem = mirror + "/linux32/" + component + "/" + sha;
+					const std::string stem = mirror + "/linux64/" + component + "/" + sha;
 					routes.emplace(stem + ".toml", Route{200, "late", {}, 5000});
 					routes.emplace(stem + ".toml.sig",
 					               Route{200, std::string(64, 'x'), {}, 5000});

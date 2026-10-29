@@ -192,6 +192,7 @@ constexpr CPlayer_GetOwnedGames_Request::CPlayer_GetOwnedGames_Request(
   , include_played_free_games_(false)
   , include_free_sub_(false)
   , include_extended_appinfo_(false)
+  , include_family_licenses_(false)
   , skip_unvetted_apps_(true){}
 struct CPlayer_GetOwnedGames_RequestDefaultTypeInternal {
   constexpr CPlayer_GetOwnedGames_RequestDefaultTypeInternal()
@@ -220,8 +221,9 @@ constexpr CPlayer_GetOwnedGames_Response_Game::CPlayer_GetOwnedGames_Response_Ga
   , has_workshop_(false)
   , has_market_(false)
   , has_dlc_(false)
-  , has_leaderboards_(false)
   , playtime_disconnected_(0)
+  , has_leaderboards_(false)
+  , family_shared_(false)
   , playtime_deck_forever_(0){}
 struct CPlayer_GetOwnedGames_Response_GameDefaultTypeInternal {
   constexpr CPlayer_GetOwnedGames_Response_GameDefaultTypeInternal()
@@ -273,7 +275,8 @@ struct CPlayer_GetPlayNext_ResponseDefaultTypeInternal {
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT CPlayer_GetPlayNext_ResponseDefaultTypeInternal _CPlayer_GetPlayNext_Response_default_instance_;
 constexpr CPlayer_GetFriendsGameplayInfo_Request::CPlayer_GetFriendsGameplayInfo_Request(
   ::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized)
-  : appid_(0u){}
+  : appid_(0u)
+  , include_family_licenses_(false){}
 struct CPlayer_GetFriendsGameplayInfo_RequestDefaultTypeInternal {
   constexpr CPlayer_GetFriendsGameplayInfo_RequestDefaultTypeInternal()
     : _instance(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized{}) {}
@@ -895,7 +898,12 @@ constexpr CPlayer_GetAchievementsProgress_Response_AchievementProgress::CPlayer_
   , percentage_(0)
   , cache_time_(0u)
   , all_unlocked_(false)
-  , vetted_(false){}
+  , vetted_(false)
+  , groups_completed_base_(0u)
+  , groups_total_base_(0u)
+  , groups_completed_dlc_(0u)
+  , groups_total_dlc_(0u)
+  , base_game_total_(0u){}
 struct CPlayer_GetAchievementsProgress_Response_AchievementProgressDefaultTypeInternal {
   constexpr CPlayer_GetAchievementsProgress_Response_AchievementProgressDefaultTypeInternal()
     : _instance(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized{}) {}
@@ -1025,7 +1033,10 @@ PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT CPlayer_GetUserAchievements_Res
 constexpr CPlayer_GetUserAchievements_Response_Group::CPlayer_GetUserAchievements_Response_Group(
   ::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized)
   : groupid_(0u)
-  , completion_achievements_(0u){}
+  , completed_achievements_(0u)
+  , is_achievable_(false)
+  , is_completed_(false)
+  , time_completed_(0u){}
 struct CPlayer_GetUserAchievements_Response_GroupDefaultTypeInternal {
   constexpr CPlayer_GetUserAchievements_Response_GroupDefaultTypeInternal()
     : _instance(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized{}) {}
@@ -1050,13 +1061,65 @@ struct CPlayer_GetUserAchievements_ResponseDefaultTypeInternal {
   };
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT CPlayer_GetUserAchievements_ResponseDefaultTypeInternal _CPlayer_GetUserAchievements_Response_default_instance_;
+constexpr CPlayer_GetGlobalAchievementPercentages_Request::CPlayer_GetGlobalAchievementPercentages_Request(
+  ::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized)
+  : appid_(0u){}
+struct CPlayer_GetGlobalAchievementPercentages_RequestDefaultTypeInternal {
+  constexpr CPlayer_GetGlobalAchievementPercentages_RequestDefaultTypeInternal()
+    : _instance(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized{}) {}
+  ~CPlayer_GetGlobalAchievementPercentages_RequestDefaultTypeInternal() {}
+  union {
+    CPlayer_GetGlobalAchievementPercentages_Request _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT CPlayer_GetGlobalAchievementPercentages_RequestDefaultTypeInternal _CPlayer_GetGlobalAchievementPercentages_Request_default_instance_;
+constexpr CPlayer_GetGlobalAchievementPercentages_Response_Achievement::CPlayer_GetGlobalAchievementPercentages_Response_Achievement(
+  ::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized)
+  : internal_key_(0u)
+  , player_percent_unlocked_(0){}
+struct CPlayer_GetGlobalAchievementPercentages_Response_AchievementDefaultTypeInternal {
+  constexpr CPlayer_GetGlobalAchievementPercentages_Response_AchievementDefaultTypeInternal()
+    : _instance(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized{}) {}
+  ~CPlayer_GetGlobalAchievementPercentages_Response_AchievementDefaultTypeInternal() {}
+  union {
+    CPlayer_GetGlobalAchievementPercentages_Response_Achievement _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT CPlayer_GetGlobalAchievementPercentages_Response_AchievementDefaultTypeInternal _CPlayer_GetGlobalAchievementPercentages_Response_Achievement_default_instance_;
+constexpr CPlayer_GetGlobalAchievementPercentages_Response_Group::CPlayer_GetGlobalAchievementPercentages_Response_Group(
+  ::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized)
+  : groupid_(0u)
+  , player_percent_completed_(0){}
+struct CPlayer_GetGlobalAchievementPercentages_Response_GroupDefaultTypeInternal {
+  constexpr CPlayer_GetGlobalAchievementPercentages_Response_GroupDefaultTypeInternal()
+    : _instance(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized{}) {}
+  ~CPlayer_GetGlobalAchievementPercentages_Response_GroupDefaultTypeInternal() {}
+  union {
+    CPlayer_GetGlobalAchievementPercentages_Response_Group _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT CPlayer_GetGlobalAchievementPercentages_Response_GroupDefaultTypeInternal _CPlayer_GetGlobalAchievementPercentages_Response_Group_default_instance_;
+constexpr CPlayer_GetGlobalAchievementPercentages_Response::CPlayer_GetGlobalAchievementPercentages_Response(
+  ::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized)
+  : achievements_()
+  , groups_(){}
+struct CPlayer_GetGlobalAchievementPercentages_ResponseDefaultTypeInternal {
+  constexpr CPlayer_GetGlobalAchievementPercentages_ResponseDefaultTypeInternal()
+    : _instance(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized{}) {}
+  ~CPlayer_GetGlobalAchievementPercentages_ResponseDefaultTypeInternal() {}
+  union {
+    CPlayer_GetGlobalAchievementPercentages_Response _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT CPlayer_GetGlobalAchievementPercentages_ResponseDefaultTypeInternal _CPlayer_GetGlobalAchievementPercentages_Response_default_instance_;
 constexpr CPlayer_GetUserStats_Request::CPlayer_GetUserStats_Request(
   ::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized)
   : sha_schema_(&::PROTOBUF_NAMESPACE_ID::internal::fixed_address_empty_string)
   , steamid_(PROTOBUF_ULONGLONG(0))
   , appid_(0u)
   , crc_stats_(0u)
-  , crc_schema_(0u){}
+  , crc_schema_(0u)
+  , app_running_(false){}
 struct CPlayer_GetUserStats_RequestDefaultTypeInternal {
   constexpr CPlayer_GetUserStats_RequestDefaultTypeInternal()
     : _instance(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized{}) {}
@@ -2171,7 +2234,7 @@ struct CPlayer_PrivacySettingsChanged_NotificationDefaultTypeInternal {
   };
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT CPlayer_PrivacySettingsChanged_NotificationDefaultTypeInternal _CPlayer_PrivacySettingsChanged_Notification_default_instance_;
-static ::PROTOBUF_NAMESPACE_ID::Metadata file_level_metadata_steammessages_5fplayer_2esteamclient_2eproto[155];
+static ::PROTOBUF_NAMESPACE_ID::Metadata file_level_metadata_steammessages_5fplayer_2esteamclient_2eproto[159];
 static const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* file_level_enum_descriptors_steammessages_5fplayer_2esteamclient_2eproto[5];
 static constexpr ::PROTOBUF_NAMESPACE_ID::ServiceDescriptor const** file_level_service_descriptors_steammessages_5fplayer_2esteamclient_2eproto = nullptr;
 
@@ -2332,14 +2395,16 @@ const ::PROTOBUF_NAMESPACE_ID::uint32 TableStruct_steammessages_5fplayer_2esteam
   PROTOBUF_FIELD_OFFSET(::CPlayer_GetOwnedGames_Request, skip_unvetted_apps_),
   PROTOBUF_FIELD_OFFSET(::CPlayer_GetOwnedGames_Request, language_),
   PROTOBUF_FIELD_OFFSET(::CPlayer_GetOwnedGames_Request, include_extended_appinfo_),
+  PROTOBUF_FIELD_OFFSET(::CPlayer_GetOwnedGames_Request, include_family_licenses_),
   1,
   2,
   3,
   ~0u,
   4,
-  6,
+  7,
   0,
   5,
+  6,
   PROTOBUF_FIELD_OFFSET(::CPlayer_GetOwnedGames_Response_Game, _has_bits_),
   PROTOBUF_FIELD_OFFSET(::CPlayer_GetOwnedGames_Response_Game, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -2364,6 +2429,7 @@ const ::PROTOBUF_NAMESPACE_ID::uint32 TableStruct_steammessages_5fplayer_2esteam
   PROTOBUF_FIELD_OFFSET(::CPlayer_GetOwnedGames_Response_Game, has_leaderboards_),
   PROTOBUF_FIELD_OFFSET(::CPlayer_GetOwnedGames_Response_Game, content_descriptorids_),
   PROTOBUF_FIELD_OFFSET(::CPlayer_GetOwnedGames_Response_Game, playtime_disconnected_),
+  PROTOBUF_FIELD_OFFSET(::CPlayer_GetOwnedGames_Response_Game, family_shared_),
   4,
   0,
   5,
@@ -2373,16 +2439,17 @@ const ::PROTOBUF_NAMESPACE_ID::uint32 TableStruct_steammessages_5fplayer_2esteam
   7,
   8,
   9,
-  17,
+  18,
   10,
   2,
   3,
   12,
   13,
   14,
-  15,
-  ~0u,
   16,
+  ~0u,
+  15,
+  17,
   PROTOBUF_FIELD_OFFSET(::CPlayer_GetOwnedGames_Response, _has_bits_),
   PROTOBUF_FIELD_OFFSET(::CPlayer_GetOwnedGames_Response, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -2416,7 +2483,9 @@ const ::PROTOBUF_NAMESPACE_ID::uint32 TableStruct_steammessages_5fplayer_2esteam
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
   PROTOBUF_FIELD_OFFSET(::CPlayer_GetFriendsGameplayInfo_Request, appid_),
+  PROTOBUF_FIELD_OFFSET(::CPlayer_GetFriendsGameplayInfo_Request, include_family_licenses_),
   0,
+  1,
   PROTOBUF_FIELD_OFFSET(::CPlayer_GetFriendsGameplayInfo_Response_FriendsGameplayInfo, _has_bits_),
   PROTOBUF_FIELD_OFFSET(::CPlayer_GetFriendsGameplayInfo_Response_FriendsGameplayInfo, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -2862,6 +2931,11 @@ const ::PROTOBUF_NAMESPACE_ID::uint32 TableStruct_steammessages_5fplayer_2esteam
   PROTOBUF_FIELD_OFFSET(::CPlayer_GetAchievementsProgress_Response_AchievementProgress, all_unlocked_),
   PROTOBUF_FIELD_OFFSET(::CPlayer_GetAchievementsProgress_Response_AchievementProgress, cache_time_),
   PROTOBUF_FIELD_OFFSET(::CPlayer_GetAchievementsProgress_Response_AchievementProgress, vetted_),
+  PROTOBUF_FIELD_OFFSET(::CPlayer_GetAchievementsProgress_Response_AchievementProgress, groups_completed_base_),
+  PROTOBUF_FIELD_OFFSET(::CPlayer_GetAchievementsProgress_Response_AchievementProgress, groups_total_base_),
+  PROTOBUF_FIELD_OFFSET(::CPlayer_GetAchievementsProgress_Response_AchievementProgress, groups_completed_dlc_),
+  PROTOBUF_FIELD_OFFSET(::CPlayer_GetAchievementsProgress_Response_AchievementProgress, groups_total_dlc_),
+  PROTOBUF_FIELD_OFFSET(::CPlayer_GetAchievementsProgress_Response_AchievementProgress, base_game_total_),
   0,
   1,
   2,
@@ -2869,6 +2943,11 @@ const ::PROTOBUF_NAMESPACE_ID::uint32 TableStruct_steammessages_5fplayer_2esteam
   5,
   4,
   6,
+  7,
+  8,
+  9,
+  10,
+  11,
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::CPlayer_GetAchievementsProgress_Response, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -2987,9 +3066,15 @@ const ::PROTOBUF_NAMESPACE_ID::uint32 TableStruct_steammessages_5fplayer_2esteam
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
   PROTOBUF_FIELD_OFFSET(::CPlayer_GetUserAchievements_Response_Group, groupid_),
-  PROTOBUF_FIELD_OFFSET(::CPlayer_GetUserAchievements_Response_Group, completion_achievements_),
+  PROTOBUF_FIELD_OFFSET(::CPlayer_GetUserAchievements_Response_Group, is_achievable_),
+  PROTOBUF_FIELD_OFFSET(::CPlayer_GetUserAchievements_Response_Group, completed_achievements_),
+  PROTOBUF_FIELD_OFFSET(::CPlayer_GetUserAchievements_Response_Group, is_completed_),
+  PROTOBUF_FIELD_OFFSET(::CPlayer_GetUserAchievements_Response_Group, time_completed_),
   0,
+  2,
   1,
+  3,
+  4,
   PROTOBUF_FIELD_OFFSET(::CPlayer_GetUserAchievements_Response, _has_bits_),
   PROTOBUF_FIELD_OFFSET(::CPlayer_GetUserAchievements_Response, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -3003,6 +3088,38 @@ const ::PROTOBUF_NAMESPACE_ID::uint32 TableStruct_steammessages_5fplayer_2esteam
   0,
   1,
   ~0u,
+  PROTOBUF_FIELD_OFFSET(::CPlayer_GetGlobalAchievementPercentages_Request, _has_bits_),
+  PROTOBUF_FIELD_OFFSET(::CPlayer_GetGlobalAchievementPercentages_Request, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  PROTOBUF_FIELD_OFFSET(::CPlayer_GetGlobalAchievementPercentages_Request, appid_),
+  0,
+  PROTOBUF_FIELD_OFFSET(::CPlayer_GetGlobalAchievementPercentages_Response_Achievement, _has_bits_),
+  PROTOBUF_FIELD_OFFSET(::CPlayer_GetGlobalAchievementPercentages_Response_Achievement, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  PROTOBUF_FIELD_OFFSET(::CPlayer_GetGlobalAchievementPercentages_Response_Achievement, internal_key_),
+  PROTOBUF_FIELD_OFFSET(::CPlayer_GetGlobalAchievementPercentages_Response_Achievement, player_percent_unlocked_),
+  0,
+  1,
+  PROTOBUF_FIELD_OFFSET(::CPlayer_GetGlobalAchievementPercentages_Response_Group, _has_bits_),
+  PROTOBUF_FIELD_OFFSET(::CPlayer_GetGlobalAchievementPercentages_Response_Group, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  PROTOBUF_FIELD_OFFSET(::CPlayer_GetGlobalAchievementPercentages_Response_Group, groupid_),
+  PROTOBUF_FIELD_OFFSET(::CPlayer_GetGlobalAchievementPercentages_Response_Group, player_percent_completed_),
+  0,
+  1,
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::CPlayer_GetGlobalAchievementPercentages_Response, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  PROTOBUF_FIELD_OFFSET(::CPlayer_GetGlobalAchievementPercentages_Response, achievements_),
+  PROTOBUF_FIELD_OFFSET(::CPlayer_GetGlobalAchievementPercentages_Response, groups_),
   PROTOBUF_FIELD_OFFSET(::CPlayer_GetUserStats_Request, _has_bits_),
   PROTOBUF_FIELD_OFFSET(::CPlayer_GetUserStats_Request, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -3013,11 +3130,13 @@ const ::PROTOBUF_NAMESPACE_ID::uint32 TableStruct_steammessages_5fplayer_2esteam
   PROTOBUF_FIELD_OFFSET(::CPlayer_GetUserStats_Request, sha_schema_),
   PROTOBUF_FIELD_OFFSET(::CPlayer_GetUserStats_Request, crc_stats_),
   PROTOBUF_FIELD_OFFSET(::CPlayer_GetUserStats_Request, crc_schema_),
+  PROTOBUF_FIELD_OFFSET(::CPlayer_GetUserStats_Request, app_running_),
   1,
   2,
   0,
   3,
   4,
+  5,
   PROTOBUF_FIELD_OFFSET(::CPlayer_GetUserStats_Response_Unlock_Time, _has_bits_),
   PROTOBUF_FIELD_OFFSET(::CPlayer_GetUserStats_Response_Unlock_Time, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -3802,150 +3921,154 @@ static const ::PROTOBUF_NAMESPACE_ID::internal::MigrationSchema schemas[] PROTOB
   { 123, -1, sizeof(::CPlayer_GetMutualFriendsForIncomingInvites_Request)},
   { 128, 135, sizeof(::CPlayer_IncomingInviteMutualFriendList)},
   { 137, -1, sizeof(::CPlayer_GetMutualFriendsForIncomingInvites_Response)},
-  { 143, 156, sizeof(::CPlayer_GetOwnedGames_Request)},
-  { 164, 188, sizeof(::CPlayer_GetOwnedGames_Response_Game)},
-  { 207, 214, sizeof(::CPlayer_GetOwnedGames_Response)},
-  { 216, 223, sizeof(::CPlayer_GetPlayNext_Request)},
-  { 225, 232, sizeof(::CPlayer_GetPlayNext_Response)},
-  { 234, 240, sizeof(::CPlayer_GetFriendsGameplayInfo_Request)},
-  { 241, 249, sizeof(::CPlayer_GetFriendsGameplayInfo_Response_FriendsGameplayInfo)},
-  { 252, 262, sizeof(::CPlayer_GetFriendsGameplayInfo_Response_OwnGameplayInfo)},
-  { 267, 278, sizeof(::CPlayer_GetFriendsGameplayInfo_Response)},
-  { 284, 290, sizeof(::CPlayer_GetGameBadgeLevels_Request)},
-  { 291, 299, sizeof(::CPlayer_GetGameBadgeLevels_Response_Badge)},
-  { 302, 309, sizeof(::CPlayer_GetGameBadgeLevels_Response)},
-  { 311, 318, sizeof(::CPlayer_GetProfileBackground_Request)},
-  { 320, 327, sizeof(::ProfileItem_ProfileColor)},
-  { 329, 350, sizeof(::ProfileItem)},
-  { 366, 372, sizeof(::CPlayer_GetProfileBackground_Response)},
-  { 373, 379, sizeof(::CPlayer_SetProfileBackground_Request)},
-  { 380, -1, sizeof(::CPlayer_SetProfileBackground_Response)},
-  { 385, 392, sizeof(::CPlayer_GetMiniProfileBackground_Request)},
-  { 394, 400, sizeof(::CPlayer_GetMiniProfileBackground_Response)},
-  { 401, 407, sizeof(::CPlayer_SetMiniProfileBackground_Request)},
-  { 408, -1, sizeof(::CPlayer_SetMiniProfileBackground_Response)},
-  { 413, 420, sizeof(::CPlayer_GetAvatarFrame_Request)},
-  { 422, 428, sizeof(::CPlayer_GetAvatarFrame_Response)},
-  { 429, 435, sizeof(::CPlayer_SetAvatarFrame_Request)},
-  { 436, -1, sizeof(::CPlayer_SetAvatarFrame_Response)},
-  { 441, 448, sizeof(::CPlayer_GetAnimatedAvatar_Request)},
-  { 450, 456, sizeof(::CPlayer_GetAnimatedAvatar_Response)},
-  { 457, 463, sizeof(::CPlayer_SetAnimatedAvatar_Request)},
-  { 464, -1, sizeof(::CPlayer_SetAnimatedAvatar_Response)},
-  { 469, 476, sizeof(::CPlayer_GetSteamDeckKeyboardSkin_Request)},
-  { 478, 484, sizeof(::CPlayer_GetSteamDeckKeyboardSkin_Response)},
-  { 485, 491, sizeof(::CPlayer_SetSteamDeckKeyboardSkin_Request)},
-  { 492, -1, sizeof(::CPlayer_SetSteamDeckKeyboardSkin_Response)},
-  { 497, 504, sizeof(::CPlayer_GetProfileItemsOwned_Request)},
-  { 506, -1, sizeof(::CPlayer_GetProfileItemsOwned_Response)},
-  { 518, 525, sizeof(::CPlayer_GetProfileItemsEquipped_Request)},
-  { 527, 538, sizeof(::CPlayer_GetProfileItemsEquipped_Response)},
-  { 544, 551, sizeof(::CPlayer_SetEquippedProfileItemFlags_Request)},
-  { 553, -1, sizeof(::CPlayer_SetEquippedProfileItemFlags_Response)},
-  { 558, -1, sizeof(::CPlayer_GetEmoticonList_Request)},
-  { 563, 574, sizeof(::CPlayer_GetEmoticonList_Response_Emoticon)},
-  { 580, -1, sizeof(::CPlayer_GetEmoticonList_Response)},
-  { 586, 593, sizeof(::CPlayer_GetCommunityBadgeProgress_Request)},
-  { 595, 602, sizeof(::CPlayer_GetCommunityBadgeProgress_Response_Quest)},
-  { 604, -1, sizeof(::CPlayer_GetCommunityBadgeProgress_Response)},
-  { 610, 619, sizeof(::CPlayer_GetTopAchievementsForGames_Request)},
-  { 623, 636, sizeof(::CPlayer_GetTopAchievementsForGames_Response_Achievement)},
-  { 644, 652, sizeof(::CPlayer_GetTopAchievementsForGames_Response_Game)},
-  { 655, -1, sizeof(::CPlayer_GetTopAchievementsForGames_Response)},
-  { 661, 670, sizeof(::CPlayer_GetAchievementsProgress_Request)},
-  { 674, 686, sizeof(::CPlayer_GetAchievementsProgress_Response_AchievementProgress)},
-  { 693, -1, sizeof(::CPlayer_GetAchievementsProgress_Response)},
-  { 699, 707, sizeof(::CPlayer_GetGameAchievements_Request)},
-  { 710, 730, sizeof(::CPlayer_GetGameAchievements_Response_Achievement)},
-  { 745, 759, sizeof(::CPlayer_GetGameAchievements_Response_Group)},
-  { 768, 777, sizeof(::CPlayer_GetGameAchievements_Response)},
-  { 781, 788, sizeof(::CPlayer_GetUserAchievements_Request)},
-  { 790, 800, sizeof(::CPlayer_GetUserAchievements_Response_Achievement)},
-  { 805, 812, sizeof(::CPlayer_GetUserAchievements_Response_Group)},
-  { 814, 823, sizeof(::CPlayer_GetUserAchievements_Response)},
-  { 827, 837, sizeof(::CPlayer_GetUserStats_Request)},
-  { 842, 849, sizeof(::CPlayer_GetUserStats_Response_Unlock_Time)},
-  { 851, 859, sizeof(::CPlayer_GetUserStats_Response_Stats)},
-  { 862, 872, sizeof(::CPlayer_GetUserStats_Response)},
-  { 877, 883, sizeof(::CPlayer_GetFavoriteBadge_Request)},
-  { 884, 896, sizeof(::CPlayer_GetFavoriteBadge_Response)},
-  { 903, 910, sizeof(::CPlayer_SetFavoriteBadge_Request)},
-  { 912, -1, sizeof(::CPlayer_SetFavoriteBadge_Response)},
-  { 917, 925, sizeof(::CPlayer_GetProfileCustomization_Request)},
-  { 928, 947, sizeof(::ProfileCustomizationSlot)},
-  { 961, 973, sizeof(::ProfileCustomization)},
-  { 980, 987, sizeof(::ProfileTheme)},
-  { 989, 995, sizeof(::ProfilePreferences)},
-  { 996, 1004, sizeof(::CPlayer_GetProfileCustomization_Response_PurchasedCustomization)},
-  { 1007, 1017, sizeof(::CPlayer_GetProfileCustomization_Response)},
-  { 1022, 1028, sizeof(::CPlayer_GetPurchasedProfileCustomizations_Request)},
-  { 1029, 1036, sizeof(::CPlayer_GetPurchasedProfileCustomizations_Response_PurchasedCustomization)},
-  { 1038, -1, sizeof(::CPlayer_GetPurchasedProfileCustomizations_Response)},
-  { 1044, 1050, sizeof(::CPlayer_GetPurchasedAndUpgradedProfileCustomizations_Request)},
-  { 1051, 1058, sizeof(::CPlayer_GetPurchasedAndUpgradedProfileCustomizations_Response_PurchasedCustomization)},
-  { 1060, 1067, sizeof(::CPlayer_GetPurchasedAndUpgradedProfileCustomizations_Response_UpgradedCustomization)},
-  { 1069, -1, sizeof(::CPlayer_GetPurchasedAndUpgradedProfileCustomizations_Response)},
-  { 1076, -1, sizeof(::CPlayer_GetProfileThemesAvailable_Request)},
-  { 1081, -1, sizeof(::CPlayer_GetProfileThemesAvailable_Response)},
-  { 1087, 1093, sizeof(::CPlayer_SetProfileTheme_Request)},
-  { 1094, -1, sizeof(::CPlayer_SetProfileTheme_Response)},
-  { 1099, 1105, sizeof(::CPlayer_SetProfilePreferences_Request)},
-  { 1106, -1, sizeof(::CPlayer_SetProfilePreferences_Response)},
-  { 1111, 1118, sizeof(::CPlayer_PostStatusToFriends_Request)},
-  { 1120, -1, sizeof(::CPlayer_PostStatusToFriends_Response)},
-  { 1125, 1132, sizeof(::CPlayer_GetPostedStatus_Request)},
-  { 1134, 1144, sizeof(::CPlayer_GetPostedStatus_Response)},
-  { 1149, 1155, sizeof(::CPlayer_DeletePostedStatus_Request)},
-  { 1156, -1, sizeof(::CPlayer_DeletePostedStatus_Response)},
-  { 1161, 1167, sizeof(::CPlayer_GetLastPlayedTimes_Request)},
-  { 1168, 1191, sizeof(::CPlayer_GetLastPlayedTimes_Response_Game)},
-  { 1209, -1, sizeof(::CPlayer_GetLastPlayedTimes_Response)},
-  { 1215, -1, sizeof(::CPlayer_GetTimeSSAAccepted_Request)},
-  { 1220, 1228, sizeof(::CPlayer_GetTimeSSAAccepted_Response)},
-  { 1231, 1238, sizeof(::CPlayer_AcceptSSA_Request)},
-  { 1240, -1, sizeof(::CPlayer_AcceptSSA_Response)},
-  { 1245, -1, sizeof(::CPlayer_GetNicknameList_Request)},
-  { 1250, 1257, sizeof(::CPlayer_GetNicknameList_Response_PlayerNickname)},
-  { 1259, -1, sizeof(::CPlayer_GetNicknameList_Response)},
-  { 1265, -1, sizeof(::CPlayer_GetPerFriendPreferences_Request)},
-  { 1270, 1284, sizeof(::PerFriendPreferences)},
-  { 1293, -1, sizeof(::CPlayer_GetPerFriendPreferences_Response)},
-  { 1299, 1305, sizeof(::CPlayer_SetPerFriendPreferences_Request)},
-  { 1306, -1, sizeof(::CPlayer_SetPerFriendPreferences_Response)},
-  { 1311, 1317, sizeof(::CPlayer_AddFriend_Request)},
-  { 1318, 1326, sizeof(::CPlayer_AddFriend_Response)},
-  { 1329, 1335, sizeof(::CPlayer_RemoveFriend_Request)},
-  { 1336, 1342, sizeof(::CPlayer_RemoveFriend_Response)},
-  { 1343, 1350, sizeof(::CPlayer_IgnoreFriend_Request)},
-  { 1352, 1358, sizeof(::CPlayer_IgnoreFriend_Response)},
-  { 1359, -1, sizeof(::CPlayer_GetCommunityPreferences_Request)},
-  { 1364, 1374, sizeof(::CPlayer_CommunityPreferences)},
-  { 1379, 1386, sizeof(::CPlayer_GetCommunityPreferences_Response)},
-  { 1388, 1394, sizeof(::CPlayer_SetCommunityPreferences_Request)},
-  { 1395, -1, sizeof(::CPlayer_SetCommunityPreferences_Response)},
-  { 1400, -1, sizeof(::CPlayer_GetTextFilterWords_Request)},
-  { 1405, 1413, sizeof(::CPlayer_TextFilterWords)},
-  { 1416, 1422, sizeof(::CPlayer_GetTextFilterWords_Response)},
-  { 1423, 1429, sizeof(::CPlayer_GetNewSteamAnnouncementState_Request)},
-  { 1430, 1440, sizeof(::CPlayer_GetNewSteamAnnouncementState_Response)},
-  { 1445, 1452, sizeof(::CPlayer_UpdateSteamAnnouncementLastRead_Request)},
-  { 1454, -1, sizeof(::CPlayer_UpdateSteamAnnouncementLastRead_Response)},
-  { 1459, -1, sizeof(::CPlayer_GetPrivacySettings_Request)},
-  { 1464, 1475, sizeof(::CPrivacySettings)},
-  { 1481, 1487, sizeof(::CPlayer_GetPrivacySettings_Response)},
-  { 1488, 1494, sizeof(::CPlayer_GetDurationControl_Request)},
-  { 1495, 1508, sizeof(::CPlayer_GetDurationControl_Response)},
-  { 1516, 1526, sizeof(::CPlayer_RecordDisconnectedPlaytime_Request_PlayHistory)},
-  { 1531, -1, sizeof(::CPlayer_RecordDisconnectedPlaytime_Request)},
-  { 1537, -1, sizeof(::CPlayer_RecordDisconnectedPlaytime_Response)},
-  { 1542, -1, sizeof(::CPlayer_LastPlayedTimes_Notification)},
-  { 1548, 1556, sizeof(::CPlayer_FriendNicknameChanged_Notification)},
-  { 1559, 1565, sizeof(::CPlayer_FriendEquippedProfileItemsChanged_Notification)},
-  { 1566, 1576, sizeof(::CPlayer_NewSteamAnnouncementState_Notification)},
-  { 1581, 1588, sizeof(::CPlayer_CommunityPreferencesChanged_Notification)},
-  { 1590, 1596, sizeof(::CPlayer_TextFilterWordsChanged_Notification)},
-  { 1597, 1604, sizeof(::CPlayer_PerFriendPreferencesChanged_Notification)},
-  { 1606, 1612, sizeof(::CPlayer_PrivacySettingsChanged_Notification)},
+  { 143, 157, sizeof(::CPlayer_GetOwnedGames_Request)},
+  { 166, 191, sizeof(::CPlayer_GetOwnedGames_Response_Game)},
+  { 211, 218, sizeof(::CPlayer_GetOwnedGames_Response)},
+  { 220, 227, sizeof(::CPlayer_GetPlayNext_Request)},
+  { 229, 236, sizeof(::CPlayer_GetPlayNext_Response)},
+  { 238, 245, sizeof(::CPlayer_GetFriendsGameplayInfo_Request)},
+  { 247, 255, sizeof(::CPlayer_GetFriendsGameplayInfo_Response_FriendsGameplayInfo)},
+  { 258, 268, sizeof(::CPlayer_GetFriendsGameplayInfo_Response_OwnGameplayInfo)},
+  { 273, 284, sizeof(::CPlayer_GetFriendsGameplayInfo_Response)},
+  { 290, 296, sizeof(::CPlayer_GetGameBadgeLevels_Request)},
+  { 297, 305, sizeof(::CPlayer_GetGameBadgeLevels_Response_Badge)},
+  { 308, 315, sizeof(::CPlayer_GetGameBadgeLevels_Response)},
+  { 317, 324, sizeof(::CPlayer_GetProfileBackground_Request)},
+  { 326, 333, sizeof(::ProfileItem_ProfileColor)},
+  { 335, 356, sizeof(::ProfileItem)},
+  { 372, 378, sizeof(::CPlayer_GetProfileBackground_Response)},
+  { 379, 385, sizeof(::CPlayer_SetProfileBackground_Request)},
+  { 386, -1, sizeof(::CPlayer_SetProfileBackground_Response)},
+  { 391, 398, sizeof(::CPlayer_GetMiniProfileBackground_Request)},
+  { 400, 406, sizeof(::CPlayer_GetMiniProfileBackground_Response)},
+  { 407, 413, sizeof(::CPlayer_SetMiniProfileBackground_Request)},
+  { 414, -1, sizeof(::CPlayer_SetMiniProfileBackground_Response)},
+  { 419, 426, sizeof(::CPlayer_GetAvatarFrame_Request)},
+  { 428, 434, sizeof(::CPlayer_GetAvatarFrame_Response)},
+  { 435, 441, sizeof(::CPlayer_SetAvatarFrame_Request)},
+  { 442, -1, sizeof(::CPlayer_SetAvatarFrame_Response)},
+  { 447, 454, sizeof(::CPlayer_GetAnimatedAvatar_Request)},
+  { 456, 462, sizeof(::CPlayer_GetAnimatedAvatar_Response)},
+  { 463, 469, sizeof(::CPlayer_SetAnimatedAvatar_Request)},
+  { 470, -1, sizeof(::CPlayer_SetAnimatedAvatar_Response)},
+  { 475, 482, sizeof(::CPlayer_GetSteamDeckKeyboardSkin_Request)},
+  { 484, 490, sizeof(::CPlayer_GetSteamDeckKeyboardSkin_Response)},
+  { 491, 497, sizeof(::CPlayer_SetSteamDeckKeyboardSkin_Request)},
+  { 498, -1, sizeof(::CPlayer_SetSteamDeckKeyboardSkin_Response)},
+  { 503, 510, sizeof(::CPlayer_GetProfileItemsOwned_Request)},
+  { 512, -1, sizeof(::CPlayer_GetProfileItemsOwned_Response)},
+  { 524, 531, sizeof(::CPlayer_GetProfileItemsEquipped_Request)},
+  { 533, 544, sizeof(::CPlayer_GetProfileItemsEquipped_Response)},
+  { 550, 557, sizeof(::CPlayer_SetEquippedProfileItemFlags_Request)},
+  { 559, -1, sizeof(::CPlayer_SetEquippedProfileItemFlags_Response)},
+  { 564, -1, sizeof(::CPlayer_GetEmoticonList_Request)},
+  { 569, 580, sizeof(::CPlayer_GetEmoticonList_Response_Emoticon)},
+  { 586, -1, sizeof(::CPlayer_GetEmoticonList_Response)},
+  { 592, 599, sizeof(::CPlayer_GetCommunityBadgeProgress_Request)},
+  { 601, 608, sizeof(::CPlayer_GetCommunityBadgeProgress_Response_Quest)},
+  { 610, -1, sizeof(::CPlayer_GetCommunityBadgeProgress_Response)},
+  { 616, 625, sizeof(::CPlayer_GetTopAchievementsForGames_Request)},
+  { 629, 642, sizeof(::CPlayer_GetTopAchievementsForGames_Response_Achievement)},
+  { 650, 658, sizeof(::CPlayer_GetTopAchievementsForGames_Response_Game)},
+  { 661, -1, sizeof(::CPlayer_GetTopAchievementsForGames_Response)},
+  { 667, 676, sizeof(::CPlayer_GetAchievementsProgress_Request)},
+  { 680, 697, sizeof(::CPlayer_GetAchievementsProgress_Response_AchievementProgress)},
+  { 709, -1, sizeof(::CPlayer_GetAchievementsProgress_Response)},
+  { 715, 723, sizeof(::CPlayer_GetGameAchievements_Request)},
+  { 726, 746, sizeof(::CPlayer_GetGameAchievements_Response_Achievement)},
+  { 761, 775, sizeof(::CPlayer_GetGameAchievements_Response_Group)},
+  { 784, 793, sizeof(::CPlayer_GetGameAchievements_Response)},
+  { 797, 804, sizeof(::CPlayer_GetUserAchievements_Request)},
+  { 806, 816, sizeof(::CPlayer_GetUserAchievements_Response_Achievement)},
+  { 821, 831, sizeof(::CPlayer_GetUserAchievements_Response_Group)},
+  { 836, 845, sizeof(::CPlayer_GetUserAchievements_Response)},
+  { 849, 855, sizeof(::CPlayer_GetGlobalAchievementPercentages_Request)},
+  { 856, 863, sizeof(::CPlayer_GetGlobalAchievementPercentages_Response_Achievement)},
+  { 865, 872, sizeof(::CPlayer_GetGlobalAchievementPercentages_Response_Group)},
+  { 874, -1, sizeof(::CPlayer_GetGlobalAchievementPercentages_Response)},
+  { 881, 892, sizeof(::CPlayer_GetUserStats_Request)},
+  { 898, 905, sizeof(::CPlayer_GetUserStats_Response_Unlock_Time)},
+  { 907, 915, sizeof(::CPlayer_GetUserStats_Response_Stats)},
+  { 918, 928, sizeof(::CPlayer_GetUserStats_Response)},
+  { 933, 939, sizeof(::CPlayer_GetFavoriteBadge_Request)},
+  { 940, 952, sizeof(::CPlayer_GetFavoriteBadge_Response)},
+  { 959, 966, sizeof(::CPlayer_SetFavoriteBadge_Request)},
+  { 968, -1, sizeof(::CPlayer_SetFavoriteBadge_Response)},
+  { 973, 981, sizeof(::CPlayer_GetProfileCustomization_Request)},
+  { 984, 1003, sizeof(::ProfileCustomizationSlot)},
+  { 1017, 1029, sizeof(::ProfileCustomization)},
+  { 1036, 1043, sizeof(::ProfileTheme)},
+  { 1045, 1051, sizeof(::ProfilePreferences)},
+  { 1052, 1060, sizeof(::CPlayer_GetProfileCustomization_Response_PurchasedCustomization)},
+  { 1063, 1073, sizeof(::CPlayer_GetProfileCustomization_Response)},
+  { 1078, 1084, sizeof(::CPlayer_GetPurchasedProfileCustomizations_Request)},
+  { 1085, 1092, sizeof(::CPlayer_GetPurchasedProfileCustomizations_Response_PurchasedCustomization)},
+  { 1094, -1, sizeof(::CPlayer_GetPurchasedProfileCustomizations_Response)},
+  { 1100, 1106, sizeof(::CPlayer_GetPurchasedAndUpgradedProfileCustomizations_Request)},
+  { 1107, 1114, sizeof(::CPlayer_GetPurchasedAndUpgradedProfileCustomizations_Response_PurchasedCustomization)},
+  { 1116, 1123, sizeof(::CPlayer_GetPurchasedAndUpgradedProfileCustomizations_Response_UpgradedCustomization)},
+  { 1125, -1, sizeof(::CPlayer_GetPurchasedAndUpgradedProfileCustomizations_Response)},
+  { 1132, -1, sizeof(::CPlayer_GetProfileThemesAvailable_Request)},
+  { 1137, -1, sizeof(::CPlayer_GetProfileThemesAvailable_Response)},
+  { 1143, 1149, sizeof(::CPlayer_SetProfileTheme_Request)},
+  { 1150, -1, sizeof(::CPlayer_SetProfileTheme_Response)},
+  { 1155, 1161, sizeof(::CPlayer_SetProfilePreferences_Request)},
+  { 1162, -1, sizeof(::CPlayer_SetProfilePreferences_Response)},
+  { 1167, 1174, sizeof(::CPlayer_PostStatusToFriends_Request)},
+  { 1176, -1, sizeof(::CPlayer_PostStatusToFriends_Response)},
+  { 1181, 1188, sizeof(::CPlayer_GetPostedStatus_Request)},
+  { 1190, 1200, sizeof(::CPlayer_GetPostedStatus_Response)},
+  { 1205, 1211, sizeof(::CPlayer_DeletePostedStatus_Request)},
+  { 1212, -1, sizeof(::CPlayer_DeletePostedStatus_Response)},
+  { 1217, 1223, sizeof(::CPlayer_GetLastPlayedTimes_Request)},
+  { 1224, 1247, sizeof(::CPlayer_GetLastPlayedTimes_Response_Game)},
+  { 1265, -1, sizeof(::CPlayer_GetLastPlayedTimes_Response)},
+  { 1271, -1, sizeof(::CPlayer_GetTimeSSAAccepted_Request)},
+  { 1276, 1284, sizeof(::CPlayer_GetTimeSSAAccepted_Response)},
+  { 1287, 1294, sizeof(::CPlayer_AcceptSSA_Request)},
+  { 1296, -1, sizeof(::CPlayer_AcceptSSA_Response)},
+  { 1301, -1, sizeof(::CPlayer_GetNicknameList_Request)},
+  { 1306, 1313, sizeof(::CPlayer_GetNicknameList_Response_PlayerNickname)},
+  { 1315, -1, sizeof(::CPlayer_GetNicknameList_Response)},
+  { 1321, -1, sizeof(::CPlayer_GetPerFriendPreferences_Request)},
+  { 1326, 1340, sizeof(::PerFriendPreferences)},
+  { 1349, -1, sizeof(::CPlayer_GetPerFriendPreferences_Response)},
+  { 1355, 1361, sizeof(::CPlayer_SetPerFriendPreferences_Request)},
+  { 1362, -1, sizeof(::CPlayer_SetPerFriendPreferences_Response)},
+  { 1367, 1373, sizeof(::CPlayer_AddFriend_Request)},
+  { 1374, 1382, sizeof(::CPlayer_AddFriend_Response)},
+  { 1385, 1391, sizeof(::CPlayer_RemoveFriend_Request)},
+  { 1392, 1398, sizeof(::CPlayer_RemoveFriend_Response)},
+  { 1399, 1406, sizeof(::CPlayer_IgnoreFriend_Request)},
+  { 1408, 1414, sizeof(::CPlayer_IgnoreFriend_Response)},
+  { 1415, -1, sizeof(::CPlayer_GetCommunityPreferences_Request)},
+  { 1420, 1430, sizeof(::CPlayer_CommunityPreferences)},
+  { 1435, 1442, sizeof(::CPlayer_GetCommunityPreferences_Response)},
+  { 1444, 1450, sizeof(::CPlayer_SetCommunityPreferences_Request)},
+  { 1451, -1, sizeof(::CPlayer_SetCommunityPreferences_Response)},
+  { 1456, -1, sizeof(::CPlayer_GetTextFilterWords_Request)},
+  { 1461, 1469, sizeof(::CPlayer_TextFilterWords)},
+  { 1472, 1478, sizeof(::CPlayer_GetTextFilterWords_Response)},
+  { 1479, 1485, sizeof(::CPlayer_GetNewSteamAnnouncementState_Request)},
+  { 1486, 1496, sizeof(::CPlayer_GetNewSteamAnnouncementState_Response)},
+  { 1501, 1508, sizeof(::CPlayer_UpdateSteamAnnouncementLastRead_Request)},
+  { 1510, -1, sizeof(::CPlayer_UpdateSteamAnnouncementLastRead_Response)},
+  { 1515, -1, sizeof(::CPlayer_GetPrivacySettings_Request)},
+  { 1520, 1531, sizeof(::CPrivacySettings)},
+  { 1537, 1543, sizeof(::CPlayer_GetPrivacySettings_Response)},
+  { 1544, 1550, sizeof(::CPlayer_GetDurationControl_Request)},
+  { 1551, 1564, sizeof(::CPlayer_GetDurationControl_Response)},
+  { 1572, 1582, sizeof(::CPlayer_RecordDisconnectedPlaytime_Request_PlayHistory)},
+  { 1587, -1, sizeof(::CPlayer_RecordDisconnectedPlaytime_Request)},
+  { 1593, -1, sizeof(::CPlayer_RecordDisconnectedPlaytime_Response)},
+  { 1598, -1, sizeof(::CPlayer_LastPlayedTimes_Notification)},
+  { 1604, 1612, sizeof(::CPlayer_FriendNicknameChanged_Notification)},
+  { 1615, 1621, sizeof(::CPlayer_FriendEquippedProfileItemsChanged_Notification)},
+  { 1622, 1632, sizeof(::CPlayer_NewSteamAnnouncementState_Notification)},
+  { 1637, 1644, sizeof(::CPlayer_CommunityPreferencesChanged_Notification)},
+  { 1646, 1652, sizeof(::CPlayer_TextFilterWordsChanged_Notification)},
+  { 1653, 1660, sizeof(::CPlayer_PerFriendPreferencesChanged_Notification)},
+  { 1662, 1668, sizeof(::CPlayer_PrivacySettingsChanged_Notification)},
 };
 
 static ::PROTOBUF_NAMESPACE_ID::Message const * const file_default_instances[] = {
@@ -4021,6 +4144,10 @@ static ::PROTOBUF_NAMESPACE_ID::Message const * const file_default_instances[] =
   reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::_CPlayer_GetUserAchievements_Response_Achievement_default_instance_),
   reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::_CPlayer_GetUserAchievements_Response_Group_default_instance_),
   reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::_CPlayer_GetUserAchievements_Response_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::_CPlayer_GetGlobalAchievementPercentages_Request_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::_CPlayer_GetGlobalAchievementPercentages_Response_Achievement_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::_CPlayer_GetGlobalAchievementPercentages_Response_Group_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::_CPlayer_GetGlobalAchievementPercentages_Response_default_instance_),
   reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::_CPlayer_GetUserStats_Request_default_instance_),
   reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::_CPlayer_GetUserStats_Response_Unlock_Time_default_instance_),
   reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::_CPlayer_GetUserStats_Response_Stats_default_instance_),
@@ -4157,611 +4284,633 @@ const char descriptor_table_protodef_steammessages_5fplayer_2esteamclient_2eprot
   "(\r\"\214\001\n3CPlayer_GetMutualFriendsForIncomi"
   "ngInvites_Response\022U\n$incoming_invite_mu"
   "tual_friends_lists\030\001 \003(\0132\'.CPlayer_Incom"
-  "ingInviteMutualFriendList\"\363\001\n\035CPlayer_Ge"
+  "ingInviteMutualFriendList\"\224\002\n\035CPlayer_Ge"
   "tOwnedGames_Request\022\017\n\007steamid\030\001 \001(\004\022\027\n\017"
   "include_appinfo\030\002 \001(\010\022!\n\031include_played_"
   "free_games\030\003 \001(\010\022\025\n\rappids_filter\030\004 \003(\r\022"
   "\030\n\020include_free_sub\030\005 \001(\010\022 \n\022skip_unvett"
   "ed_apps\030\006 \001(\010:\004true\022\020\n\010language\030\007 \001(\t\022 \n"
-  "\030include_extended_appinfo\030\010 \001(\010\"\325\004\n\036CPla"
-  "yer_GetOwnedGames_Response\022\022\n\ngame_count"
-  "\030\001 \001(\r\0223\n\005games\030\002 \003(\0132$.CPlayer_GetOwned"
-  "Games_Response.Game\032\351\003\n\004Game\022\r\n\005appid\030\001 "
-  "\001(\005\022\014\n\004name\030\002 \001(\t\022\027\n\017playtime_2weeks\030\003 \001"
-  "(\005\022\030\n\020playtime_forever\030\004 \001(\005\022\024\n\014img_icon"
-  "_url\030\005 \001(\t\022#\n\033has_community_visible_stat"
-  "s\030\007 \001(\010\022 \n\030playtime_windows_forever\030\010 \001("
-  "\005\022\034\n\024playtime_mac_forever\030\t \001(\005\022\036\n\026playt"
-  "ime_linux_forever\030\n \001(\005\022\035\n\025playtime_deck"
-  "_forever\030\024 \001(\005\022\031\n\021rtime_last_played\030\013 \001("
-  "\r\022\030\n\020capsule_filename\030\014 \001(\t\022\017\n\007sort_as\030\r"
-  " \001(\t\022\024\n\014has_workshop\030\016 \001(\010\022\022\n\nhas_market"
-  "\030\017 \001(\010\022\017\n\007has_dlc\030\020 \001(\010\022\030\n\020has_leaderboa"
-  "rds\030\021 \001(\010\022\035\n\025content_descriptorids\030\022 \003(\r"
-  "\022\035\n\025playtime_disconnected\030\023 \001(\005\"M\n\033CPlay"
-  "er_GetPlayNext_Request\022\027\n\017max_age_second"
-  "s\030\001 \001(\r\022\025\n\rignore_appids\030\002 \003(\r\"H\n\034CPlaye"
-  "r_GetPlayNext_Response\022\030\n\020last_update_ti"
-  "me\030\001 \001(\r\022\016\n\006appids\030\002 \003(\r\"7\n&CPlayer_GetF"
-  "riendsGameplayInfo_Request\022\r\n\005appid\030\001 \001("
-  "\r\"\356\005\n\'CPlayer_GetFriendsGameplayInfo_Res"
-  "ponse\022K\n\tyour_info\030\001 \001(\01328.CPlayer_GetFr"
-  "iendsGameplayInfo_Response.OwnGameplayIn"
-  "fo\022M\n\007in_game\030\002 \003(\0132<.CPlayer_GetFriends"
-  "GameplayInfo_Response.FriendsGameplayInf"
-  "o\022U\n\017played_recently\030\003 \003(\0132<.CPlayer_Get"
-  "FriendsGameplayInfo_Response.FriendsGame"
-  "playInfo\022Q\n\013played_ever\030\004 \003(\0132<.CPlayer_"
-  "GetFriendsGameplayInfo_Response.FriendsG"
-  "ameplayInfo\022J\n\004owns\030\005 \003(\0132<.CPlayer_GetF"
-  "riendsGameplayInfo_Response.FriendsGamep"
-  "layInfo\022Q\n\013in_wishlist\030\006 \003(\0132<.CPlayer_G"
+  "\030include_extended_appinfo\030\010 \001(\010\022\037\n\027inclu"
+  "de_family_licenses\030\t \001(\010\"\354\004\n\036CPlayer_Get"
+  "OwnedGames_Response\022\022\n\ngame_count\030\001 \001(\r\022"
+  "3\n\005games\030\002 \003(\0132$.CPlayer_GetOwnedGames_R"
+  "esponse.Game\032\200\004\n\004Game\022\r\n\005appid\030\001 \001(\005\022\014\n\004"
+  "name\030\002 \001(\t\022\027\n\017playtime_2weeks\030\003 \001(\005\022\030\n\020p"
+  "laytime_forever\030\004 \001(\005\022\024\n\014img_icon_url\030\005 "
+  "\001(\t\022#\n\033has_community_visible_stats\030\007 \001(\010"
+  "\022 \n\030playtime_windows_forever\030\010 \001(\005\022\034\n\024pl"
+  "aytime_mac_forever\030\t \001(\005\022\036\n\026playtime_lin"
+  "ux_forever\030\n \001(\005\022\035\n\025playtime_deck_foreve"
+  "r\030\024 \001(\005\022\031\n\021rtime_last_played\030\013 \001(\r\022\030\n\020ca"
+  "psule_filename\030\014 \001(\t\022\017\n\007sort_as\030\r \001(\t\022\024\n"
+  "\014has_workshop\030\016 \001(\010\022\022\n\nhas_market\030\017 \001(\010\022"
+  "\017\n\007has_dlc\030\020 \001(\010\022\030\n\020has_leaderboards\030\021 \001"
+  "(\010\022\035\n\025content_descriptorids\030\022 \003(\r\022\035\n\025pla"
+  "ytime_disconnected\030\023 \001(\005\022\025\n\rfamily_share"
+  "d\030\025 \001(\010\"M\n\033CPlayer_GetPlayNext_Request\022\027"
+  "\n\017max_age_seconds\030\001 \001(\r\022\025\n\rignore_appids"
+  "\030\002 \003(\r\"H\n\034CPlayer_GetPlayNext_Response\022\030"
+  "\n\020last_update_time\030\001 \001(\r\022\016\n\006appids\030\002 \003(\r"
+  "\"X\n&CPlayer_GetFriendsGameplayInfo_Reque"
+  "st\022\r\n\005appid\030\001 \001(\r\022\037\n\027include_family_lice"
+  "nses\030\002 \001(\010\"\356\005\n\'CPlayer_GetFriendsGamepla"
+  "yInfo_Response\022K\n\tyour_info\030\001 \001(\01328.CPla"
+  "yer_GetFriendsGameplayInfo_Response.OwnG"
+  "ameplayInfo\022M\n\007in_game\030\002 \003(\0132<.CPlayer_G"
   "etFriendsGameplayInfo_Response.FriendsGa"
-  "meplayInfo\032^\n\023FriendsGameplayInfo\022\017\n\007ste"
-  "amid\030\001 \001(\006\022\026\n\016minutes_played\030\002 \001(\r\022\036\n\026mi"
-  "nutes_played_forever\030\003 \001(\r\032~\n\017OwnGamepla"
-  "yInfo\022\017\n\007steamid\030\001 \001(\006\022\026\n\016minutes_played"
-  "\030\002 \001(\r\022\036\n\026minutes_played_forever\030\003 \001(\r\022\023"
-  "\n\013in_wishlist\030\004 \001(\010\022\r\n\005owned\030\005 \001(\010\"3\n\"CP"
-  "layer_GetGameBadgeLevels_Request\022\r\n\005appi"
-  "d\030\001 \001(\r\"\265\001\n#CPlayer_GetGameBadgeLevels_R"
-  "esponse\022\024\n\014player_level\030\001 \001(\r\022:\n\006badges\030"
-  "\002 \003(\0132*.CPlayer_GetGameBadgeLevels_Respo"
-  "nse.Badge\032<\n\005Badge\022\r\n\005level\030\001 \001(\005\022\016\n\006ser"
-  "ies\030\002 \001(\005\022\024\n\014border_color\030\003 \001(\r\"I\n$CPlay"
-  "er_GetProfileBackground_Request\022\017\n\007steam"
-  "id\030\001 \001(\006\022\020\n\010language\030\002 \001(\t\"\251\003\n\013ProfileIt"
-  "em\022\027\n\017communityitemid\030\001 \001(\004\022\023\n\013image_sma"
-  "ll\030\002 \001(\t\022\023\n\013image_large\030\003 \001(\t\022\014\n\004name\030\004 "
-  "\001(\t\022\022\n\nitem_title\030\005 \001(\t\022\030\n\020item_descript"
-  "ion\030\006 \001(\t\022\r\n\005appid\030\007 \001(\r\022\021\n\titem_type\030\010 "
-  "\001(\r\022\022\n\nitem_class\030\t \001(\r\022\022\n\nmovie_webm\030\n "
-  "\001(\t\022\021\n\tmovie_mp4\030\013 \001(\t\022\030\n\020movie_webm_sma"
-  "ll\030\r \001(\t\022\027\n\017movie_mp4_small\030\016 \001(\t\022\026\n\016equ"
-  "ipped_flags\030\014 \001(\r\0221\n\016profile_colors\030\017 \003("
-  "\0132\031.ProfileItem.ProfileColor\022\r\n\005tiled\030\020 "
-  "\001(\010\0321\n\014ProfileColor\022\022\n\nstyle_name\030\001 \001(\t\022"
-  "\r\n\005color\030\002 \001(\t\"Q\n%CPlayer_GetProfileBack"
-  "ground_Response\022(\n\022profile_background\030\001 "
-  "\001(\0132\014.ProfileItem\"\?\n$CPlayer_SetProfileB"
-  "ackground_Request\022\027\n\017communityitemid\030\001 \001"
-  "(\004\"\'\n%CPlayer_SetProfileBackground_Respo"
-  "nse\"M\n(CPlayer_GetMiniProfileBackground_"
-  "Request\022\017\n\007steamid\030\001 \001(\006\022\020\n\010language\030\002 \001"
-  "(\t\"U\n)CPlayer_GetMiniProfileBackground_R"
-  "esponse\022(\n\022profile_background\030\001 \001(\0132\014.Pr"
-  "ofileItem\"C\n(CPlayer_SetMiniProfileBackg"
-  "round_Request\022\027\n\017communityitemid\030\001 \001(\004\"+"
-  "\n)CPlayer_SetMiniProfileBackground_Respo"
-  "nse\"C\n\036CPlayer_GetAvatarFrame_Request\022\017\n"
-  "\007steamid\030\001 \001(\006\022\020\n\010language\030\002 \001(\t\"E\n\037CPla"
-  "yer_GetAvatarFrame_Response\022\"\n\014avatar_fr"
-  "ame\030\001 \001(\0132\014.ProfileItem\"9\n\036CPlayer_SetAv"
-  "atarFrame_Request\022\027\n\017communityitemid\030\001 \001"
-  "(\004\"!\n\037CPlayer_SetAvatarFrame_Response\"F\n"
-  "!CPlayer_GetAnimatedAvatar_Request\022\017\n\007st"
-  "eamid\030\001 \001(\006\022\020\n\010language\030\002 \001(\t\"B\n\"CPlayer"
-  "_GetAnimatedAvatar_Response\022\034\n\006avatar\030\001 "
-  "\001(\0132\014.ProfileItem\"<\n!CPlayer_SetAnimated"
-  "Avatar_Request\022\027\n\017communityitemid\030\001 \001(\004\""
-  "$\n\"CPlayer_SetAnimatedAvatar_Response\"M\n"
-  "(CPlayer_GetSteamDeckKeyboardSkin_Reques"
-  "t\022\017\n\007steamid\030\001 \001(\006\022\020\n\010language\030\002 \001(\t\"[\n)"
-  "CPlayer_GetSteamDeckKeyboardSkin_Respons"
-  "e\022.\n\030steam_deck_keyboard_skin\030\001 \001(\0132\014.Pr"
-  "ofileItem\"C\n(CPlayer_SetSteamDeckKeyboar"
-  "dSkin_Request\022\027\n\017communityitemid\030\001 \001(\004\"+"
-  "\n)CPlayer_SetSteamDeckKeyboardSkin_Respo"
-  "nse\"_\n$CPlayer_GetProfileItemsOwned_Requ"
-  "est\022\020\n\010language\030\001 \001(\t\022%\n\007filters\030\002 \003(\0162\024"
-  ".ECommunityItemClass\"\332\002\n%CPlayer_GetProf"
-  "ileItemsOwned_Response\022)\n\023profile_backgr"
-  "ounds\030\001 \003(\0132\014.ProfileItem\022.\n\030mini_profil"
-  "e_backgrounds\030\002 \003(\0132\014.ProfileItem\022#\n\rava"
-  "tar_frames\030\003 \003(\0132\014.ProfileItem\022&\n\020animat"
-  "ed_avatars\030\004 \003(\0132\014.ProfileItem\022\'\n\021profil"
-  "e_modifiers\030\005 \003(\0132\014.ProfileItem\022/\n\031steam"
-  "_deck_keyboard_skins\030\006 \003(\0132\014.ProfileItem"
-  "\022/\n\031steam_deck_startup_movies\030\007 \003(\0132\014.Pr"
-  "ofileItem\"L\n\'CPlayer_GetProfileItemsEqui"
-  "pped_Request\022\017\n\007steamid\030\001 \001(\006\022\020\n\010languag"
-  "e\030\002 \001(\t\"\246\002\n(CPlayer_GetProfileItemsEquip"
-  "ped_Response\022(\n\022profile_background\030\001 \001(\013"
-  "2\014.ProfileItem\022-\n\027mini_profile_backgroun"
-  "d\030\002 \001(\0132\014.ProfileItem\022\"\n\014avatar_frame\030\003 "
-  "\001(\0132\014.ProfileItem\022%\n\017animated_avatar\030\004 \001"
-  "(\0132\014.ProfileItem\022&\n\020profile_modifier\030\005 \001"
-  "(\0132\014.ProfileItem\022.\n\030steam_deck_keyboard_"
-  "skin\030\006 \001(\0132\014.ProfileItem\"U\n+CPlayer_SetE"
-  "quippedProfileItemFlags_Request\022\027\n\017commu"
-  "nityitemid\030\001 \001(\004\022\r\n\005flags\030\002 \001(\r\".\n,CPlay"
-  "er_SetEquippedProfileItemFlags_Response\""
-  "!\n\037CPlayer_GetEmoticonList_Request\"\333\001\n C"
-  "Player_GetEmoticonList_Response\022=\n\temoti"
-  "cons\030\001 \003(\0132*.CPlayer_GetEmoticonList_Res"
-  "ponse.Emoticon\032x\n\010Emoticon\022\014\n\004name\030\001 \001(\t"
-  "\022\r\n\005count\030\002 \001(\005\022\026\n\016time_last_used\030\003 \001(\r\022"
-  "\021\n\tuse_count\030\004 \001(\r\022\025\n\rtime_received\030\005 \001("
-  "\r\022\r\n\005appid\030\006 \001(\r\"M\n)CPlayer_GetCommunity"
-  "BadgeProgress_Request\022\017\n\007steamid\030\001 \001(\004\022\017"
-  "\n\007badgeid\030\002 \001(\005\"\234\001\n*CPlayer_GetCommunity"
-  "BadgeProgress_Response\022A\n\006quests\030\001 \003(\01321"
-  ".CPlayer_GetCommunityBadgeProgress_Respo"
-  "nse.Quest\032+\n\005Quest\022\017\n\007questid\030\001 \001(\r\022\021\n\tc"
-  "ompleted\030\002 \001(\010\"y\n*CPlayer_GetTopAchievem"
-  "entsForGames_Request\022\017\n\007steamid\030\001 \001(\004\022\020\n"
-  "\010language\030\002 \001(\t\022\030\n\020max_achievements\030\003 \001("
-  "\r\022\016\n\006appids\030\004 \003(\r\"\216\003\n+CPlayer_GetTopAchi"
-  "evementsForGames_Response\022@\n\005games\030\001 \003(\013"
-  "21.CPlayer_GetTopAchievementsForGames_Re"
-  "sponse.Game\032\230\001\n\013Achievement\022\016\n\006statid\030\001 "
-  "\001(\r\022\013\n\003bit\030\002 \001(\r\022\014\n\004name\030\003 \001(\t\022\014\n\004desc\030\004"
-  " \001(\t\022\014\n\004icon\030\005 \001(\t\022\021\n\ticon_gray\030\006 \001(\t\022\016\n"
-  "\006hidden\030\007 \001(\010\022\037\n\027player_percent_unlocked"
-  "\030\010 \001(\t\032\201\001\n\004Game\022\r\n\005appid\030\001 \001(\r\022\032\n\022total_"
-  "achievements\030\002 \001(\r\022N\n\014achievements\030\003 \003(\013"
-  "28.CPlayer_GetTopAchievementsForGames_Re"
-  "sponse.Achievement\"{\n\'CPlayer_GetAchieve"
-  "mentsProgress_Request\022\017\n\007steamid\030\001 \001(\004\022\020"
-  "\n\010language\030\002 \001(\t\022\016\n\006appids\030\003 \003(\r\022\035\n\025incl"
-  "ude_unvetted_apps\030\004 \001(\010\"\235\002\n(CPlayer_GetA"
-  "chievementsProgress_Response\022[\n\024achievem"
-  "ent_progress\030\001 \003(\0132=.CPlayer_GetAchievem"
-  "entsProgress_Response.AchievementProgres"
-  "s\032\223\001\n\023AchievementProgress\022\r\n\005appid\030\001 \001(\r"
-  "\022\020\n\010unlocked\030\002 \001(\r\022\r\n\005total\030\003 \001(\r\022\022\n\nper"
-  "centage\030\004 \001(\002\022\024\n\014all_unlocked\030\005 \001(\010\022\022\n\nc"
-  "ache_time\030\006 \001(\r\022\016\n\006vetted\030\007 \001(\010\"Y\n#CPlay"
-  "er_GetGameAchievements_Request\022\r\n\005appid\030"
-  "\001 \001(\r\022\020\n\010language\030\002 \001(\t\022\021\n\thash_only\030\003 \001"
-  "(\010\"\245\006\n$CPlayer_GetGameAchievements_Respo"
-  "nse\022G\n\014achievements\030\001 \003(\01321.CPlayer_GetG"
-  "ameAchievements_Response.Achievement\022\026\n\016"
-  "schema_version\030\002 \001(\005\022;\n\006groups\030\003 \003(\0132+.C"
-  "Player_GetGameAchievements_Response.Grou"
-  "p\022\023\n\013schema_hash\030\004 \001(\r\032\375\002\n\013Achievement\022\025"
-  "\n\rinternal_name\030\001 \001(\t\022\026\n\016localized_name\030"
-  "\002 \001(\t\022\026\n\016localized_desc\030\003 \001(\t\022\014\n\004icon\030\004 "
-  "\001(\t\022\021\n\ticon_gray\030\005 \001(\t\022\016\n\006hidden\030\006 \001(\010\022\037"
-  "\n\027player_percent_unlocked\030\007 \001(\t\022\024\n\014inter"
-  "nal_key\030\010 \001(\r\022\030\n\020min_progress_int\030\t \001(\005\022"
-  "\030\n\020max_progress_int\030\n \001(\005\022\017\n\007groupid\030\013 \001"
-  "(\r\022\020\n\010archived\030\014 \001(\010\0220\n\rprogress_type\030\r "
-  "\001(\0162\031.EAchievementProgressType\022\032\n\022min_pr"
-  "ogress_float\030\016 \001(\002\022\032\n\022max_progress_float"
-  "\030\017 \001(\002\032\311\001\n\005Group\022\017\n\007groupid\030\001 \001(\r\022\026\n\016loc"
-  "alized_name\030\002 \001(\t\022\020\n\010dlcappid\030\003 \001(\r\022\020\n\010a"
-  "rchived\030\004 \001(\010\022\025\n\rdeveloperonly\030\005 \001(\010\022\r\n\005"
-  "order\030\006 \001(\r\022\020\n\010ispublic\030\007 \001(\010\022\032\n\022total_a"
-  "chievements\030\010 \001(\r\022\037\n\027completion_achievem"
-  "ents\030\t \001(\r\"E\n#CPlayer_GetUserAchievement"
-  "s_Request\022\017\n\007steamid\030\001 \001(\004\022\r\n\005appid\030\002 \001("
-  "\r\"\216\003\n$CPlayer_GetUserAchievements_Respon"
-  "se\022G\n\014achievements\030\001 \003(\01321.CPlayer_GetUs"
-  "erAchievements_Response.Achievement\022\026\n\016s"
-  "chema_version\030\002 \001(\005\022\023\n\013schema_hash\030\003 \001(\r"
-  "\022;\n\006groups\030\004 \003(\0132+.CPlayer_GetUserAchiev"
-  "ements_Response.Group\032x\n\013Achievement\022\024\n\014"
-  "internal_key\030\001 \001(\r\022\020\n\010unlocked\030\002 \001(\010\022\023\n\013"
-  "unlock_time\030\003 \001(\007\022\024\n\014progress_int\030\004 \001(\005\022"
-  "\026\n\016progress_float\030\005 \001(\002\0329\n\005Group\022\017\n\007grou"
-  "pid\030\001 \001(\r\022\037\n\027completion_achievements\030\003 \001"
-  "(\r\"y\n\034CPlayer_GetUserStats_Request\022\017\n\007st"
-  "eamid\030\001 \001(\004\022\r\n\005appid\030\002 \001(\r\022\022\n\nsha_schema"
-  "\030\003 \001(\014\022\021\n\tcrc_stats\030\004 \001(\r\022\022\n\ncrc_schema\030"
-  "\005 \001(\r\"\314\002\n\035CPlayer_GetUserStats_Response\022"
-  "\022\n\nsha_schema\030\001 \001(\014\022\021\n\tcrc_stats\030\002 \001(\r\022\016"
-  "\n\006schema\030\003 \001(\014\0223\n\005stats\030\004 \003(\0132$.CPlayer_"
-  "GetUserStats_Response.Stats\022\022\n\ncrc_schem"
-  "a\030\005 \001(\r\032;\n\013Unlock_Time\022\027\n\017achievement_bi"
-  "t\030\001 \001(\r\022\023\n\013unlock_time\030\002 \001(\007\032n\n\005Stats\022\017\n"
-  "\007stat_id\030\001 \001(\r\022\022\n\nstat_value\030\002 \001(\r\022@\n\014un"
-  "lock_times\030\003 \003(\0132*.CPlayer_GetUserStats_"
-  "Response.Unlock_Time\"3\n CPlayer_GetFavor"
-  "iteBadge_Request\022\017\n\007steamid\030\001 \001(\004\"\260\001\n!CP"
-  "layer_GetFavoriteBadge_Response\022\032\n\022has_f"
-  "avorite_badge\030\001 \001(\010\022\017\n\007badgeid\030\002 \001(\r\022\027\n\017"
-  "communityitemid\030\003 \001(\004\022\021\n\titem_type\030\004 \001(\r"
-  "\022\024\n\014border_color\030\005 \001(\r\022\r\n\005appid\030\006 \001(\r\022\r\n"
-  "\005level\030\007 \001(\r\"L\n CPlayer_SetFavoriteBadge"
-  "_Request\022\027\n\017communityitemid\030\001 \001(\004\022\017\n\007bad"
-  "geid\030\002 \001(\r\"#\n!CPlayer_SetFavoriteBadge_R"
-  "esponse\"\215\001\n\'CPlayer_GetProfileCustomizat"
-  "ion_Request\022\017\n\007steamid\030\001 \001(\006\022\'\n\037include_"
-  "inactive_customizations\030\002 \001(\010\022(\n include"
-  "_purchased_customizations\030\003 \001(\010\"\315\002\n\030Prof"
-  "ileCustomizationSlot\022\014\n\004slot\030\001 \001(\r\022\r\n\005ap"
-  "pid\030\002 \001(\r\022\027\n\017publishedfileid\030\003 \001(\004\022\024\n\014it"
-  "em_assetid\030\004 \001(\004\022\026\n\016item_contextid\030\005 \001(\004"
-  "\022\r\n\005notes\030\006 \001(\t\022\r\n\005title\030\007 \001(\t\022\021\n\taccoun"
-  "tid\030\010 \001(\r\022\017\n\007badgeid\030\t \001(\r\022\024\n\014border_col"
-  "or\030\n \001(\r\022\024\n\014item_classid\030\013 \001(\004\022\027\n\017item_i"
-  "nstanceid\030\014 \001(\004\0221\n\020ban_check_result\030\r \001("
-  "\0162\027.EBanContentCheckResult\022\023\n\013replay_yea"
-  "r\030\016 \001(\r\"\364\001\n\024ProfileCustomization\0226\n\022cust"
-  "omization_type\030\001 \001(\0162\032.EProfileCustomiza"
-  "tionType\022\r\n\005large\030\002 \001(\010\022(\n\005slots\030\003 \003(\0132\031"
-  ".ProfileCustomizationSlot\022\016\n\006active\030\004 \001("
-  "\010\0228\n\023customization_style\030\005 \001(\0162\033.EProfil"
-  "eCustomizationStyle\022\022\n\npurchaseid\030\006 \001(\004\022"
-  "\r\n\005level\030\007 \001(\r\"/\n\014ProfileTheme\022\020\n\010theme_"
-  "id\030\001 \001(\t\022\r\n\005title\030\002 \001(\t\"1\n\022ProfilePrefer"
-  "ences\022\033\n\023hide_profile_awards\030\001 \001(\010\"\243\003\n(C"
-  "Player_GetProfileCustomization_Response\022"
-  "-\n\016customizations\030\001 \003(\0132\025.ProfileCustomi"
-  "zation\022\027\n\017slots_available\030\002 \001(\r\022$\n\rprofi"
-  "le_theme\030\003 \001(\0132\r.ProfileTheme\022b\n\030purchas"
-  "ed_customizations\030\004 \003(\0132@.CPlayer_GetPro"
-  "fileCustomization_Response.PurchasedCust"
-  "omization\0220\n\023profile_preferences\030\005 \001(\0132\023"
-  ".ProfilePreferences\032s\n\026PurchasedCustomiz"
-  "ation\022\022\n\npurchaseid\030\001 \001(\004\0226\n\022customizati"
-  "on_type\030\002 \001(\0162\032.EProfileCustomizationTyp"
-  "e\022\r\n\005level\030\003 \001(\r\"D\n1CPlayer_GetPurchased"
-  "ProfileCustomizations_Request\022\017\n\007steamid"
-  "\030\001 \001(\006\"\210\002\n2CPlayer_GetPurchasedProfileCu"
-  "stomizations_Response\022l\n\030purchased_custo"
-  "mizations\030\001 \003(\0132J.CPlayer_GetPurchasedPr"
-  "ofileCustomizations_Response.PurchasedCu"
-  "stomization\032d\n\026PurchasedCustomization\022\022\n"
-  "\npurchaseid\030\001 \001(\004\0226\n\022customization_type\030"
-  "\002 \001(\0162\032.EProfileCustomizationType\"O\n<CPl"
-  "ayer_GetPurchasedAndUpgradedProfileCusto"
-  "mizations_Request\022\017\n\007steamid\030\001 \001(\006\"\360\003\n=C"
-  "Player_GetPurchasedAndUpgradedProfileCus"
-  "tomizations_Response\022w\n\030purchased_custom"
-  "izations\030\001 \003(\0132U.CPlayer_GetPurchasedAnd"
-  "UpgradedProfileCustomizations_Response.P"
-  "urchasedCustomization\022u\n\027upgraded_custom"
-  "izations\030\002 \003(\0132T.CPlayer_GetPurchasedAnd"
-  "UpgradedProfileCustomizations_Response.U"
-  "pgradedCustomization\032_\n\026PurchasedCustomi"
-  "zation\0226\n\022customization_type\030\001 \001(\0162\032.EPr"
-  "ofileCustomizationType\022\r\n\005count\030\002 \001(\r\032^\n"
-  "\025UpgradedCustomization\0226\n\022customization_"
-  "type\030\001 \001(\0162\032.EProfileCustomizationType\022\r"
-  "\n\005level\030\002 \001(\r\"+\n)CPlayer_GetProfileTheme"
-  "sAvailable_Request\"S\n*CPlayer_GetProfile"
-  "ThemesAvailable_Response\022%\n\016profile_them"
-  "es\030\001 \003(\0132\r.ProfileTheme\"3\n\037CPlayer_SetPr"
-  "ofileTheme_Request\022\020\n\010theme_id\030\001 \001(\t\"\"\n "
-  "CPlayer_SetProfileTheme_Response\"Y\n%CPla"
-  "yer_SetProfilePreferences_Request\0220\n\023pro"
-  "file_preferences\030\001 \001(\0132\023.ProfilePreferen"
-  "ces\"(\n&CPlayer_SetProfilePreferences_Res"
-  "ponse\"I\n#CPlayer_PostStatusToFriends_Req"
-  "uest\022\r\n\005appid\030\001 \001(\r\022\023\n\013status_text\030\002 \001(\t"
-  "\"&\n$CPlayer_PostStatusToFriends_Response"
-  "\"B\n\037CPlayer_GetPostedStatus_Request\022\017\n\007s"
-  "teamid\030\001 \001(\004\022\016\n\006postid\030\002 \001(\004\"z\n CPlayer_"
-  "GetPostedStatus_Response\022\021\n\taccountid\030\001 "
-  "\001(\r\022\016\n\006postid\030\002 \001(\004\022\023\n\013status_text\030\003 \001(\t"
-  "\022\017\n\007deleted\030\004 \001(\010\022\r\n\005appid\030\005 \001(\r\"4\n\"CPla"
-  "yer_DeletePostedStatus_Request\022\016\n\006postid"
-  "\030\001 \001(\004\"%\n#CPlayer_DeletePostedStatus_Res"
-  "ponse\"=\n\"CPlayer_GetLastPlayedTimes_Requ"
-  "est\022\027\n\017min_last_played\030\001 \001(\r\"\341\004\n#CPlayer"
-  "_GetLastPlayedTimes_Response\0228\n\005games\030\001 "
-  "\003(\0132).CPlayer_GetLastPlayedTimes_Respons"
-  "e.Game\032\377\003\n\004Game\022\r\n\005appid\030\001 \001(\005\022\025\n\rlast_p"
-  "laytime\030\002 \001(\r\022\027\n\017playtime_2weeks\030\003 \001(\005\022\030"
-  "\n\020playtime_forever\030\004 \001(\005\022\026\n\016first_playti"
-  "me\030\005 \001(\r\022 \n\030playtime_windows_forever\030\006 \001"
-  "(\005\022\034\n\024playtime_mac_forever\030\007 \001(\005\022\036\n\026play"
-  "time_linux_forever\030\010 \001(\005\022\035\n\025playtime_dec"
-  "k_forever\030\020 \001(\005\022\036\n\026first_windows_playtim"
-  "e\030\t \001(\r\022\032\n\022first_mac_playtime\030\n \001(\r\022\034\n\024f"
-  "irst_linux_playtime\030\013 \001(\r\022\033\n\023first_deck_"
-  "playtime\030\021 \001(\r\022\035\n\025last_windows_playtime\030"
-  "\014 \001(\r\022\031\n\021last_mac_playtime\030\r \001(\r\022\033\n\023last"
-  "_linux_playtime\030\016 \001(\r\022\032\n\022last_deck_playt"
-  "ime\030\022 \001(\r\022\035\n\025playtime_disconnected\030\017 \001(\r"
-  "\"$\n\"CPlayer_GetTimeSSAAccepted_Request\"z"
-  "\n#CPlayer_GetTimeSSAAccepted_Response\022\031\n"
-  "\021time_ssa_accepted\030\001 \001(\r\022\030\n\020time_ssa_upd"
-  "ated\030\002 \001(\r\022\036\n\026time_chinassa_accepted\030\003 \001"
-  "(\r\"]\n\031CPlayer_AcceptSSA_Request\022\'\n\016agree"
-  "ment_type\030\001 \001(\0162\017.EAgreementType\022\027\n\017time"
-  "_signed_utc\030\002 \001(\r\"\034\n\032CPlayer_AcceptSSA_R"
-  "esponse\"!\n\037CPlayer_GetNicknameList_Reque"
-  "st\"\236\001\n CPlayer_GetNicknameList_Response\022"
-  "C\n\tnicknames\030\001 \003(\01320.CPlayer_GetNickname"
-  "List_Response.PlayerNickname\0325\n\016PlayerNi"
-  "ckname\022\021\n\taccountid\030\001 \001(\007\022\020\n\010nickname\030\002 "
-  "\001(\t\")\n\'CPlayer_GetPerFriendPreferences_R"
-  "equest\"\271\003\n\024PerFriendPreferences\022\021\n\taccou"
-  "ntid\030\001 \001(\007\022\020\n\010nickname\030\002 \001(\t\0227\n\030notifica"
-  "tions_showingame\030\003 \001(\0162\025.ENotificationSe"
-  "tting\0227\n\030notifications_showonline\030\004 \001(\0162"
-  "\025.ENotificationSetting\0229\n\032notifications_"
-  "showmessages\030\005 \001(\0162\025.ENotificationSettin"
-  "g\0220\n\021sounds_showingame\030\006 \001(\0162\025.ENotifica"
-  "tionSetting\0220\n\021sounds_showonline\030\007 \001(\0162\025"
-  ".ENotificationSetting\0222\n\023sounds_showmess"
-  "ages\030\010 \001(\0162\025.ENotificationSetting\0227\n\030not"
-  "ifications_sendmobile\030\t \001(\0162\025.ENotificat"
-  "ionSetting\"V\n(CPlayer_GetPerFriendPrefer"
-  "ences_Response\022*\n\013preferences\030\001 \003(\0132\025.Pe"
-  "rFriendPreferences\"U\n\'CPlayer_SetPerFrie"
-  "ndPreferences_Request\022*\n\013preferences\030\001 \001"
-  "(\0132\025.PerFriendPreferences\"*\n(CPlayer_Set"
-  "PerFriendPreferences_Response\",\n\031CPlayer"
-  "_AddFriend_Request\022\017\n\007steamid\030\001 \001(\006\"^\n\032C"
-  "Player_AddFriend_Response\022\023\n\013invite_sent"
-  "\030\001 \001(\010\022\033\n\023friend_relationship\030\002 \001(\r\022\016\n\006r"
-  "esult\030\003 \001(\005\"/\n\034CPlayer_RemoveFriend_Requ"
-  "est\022\017\n\007steamid\030\001 \001(\006\"<\n\035CPlayer_RemoveFr"
-  "iend_Response\022\033\n\023friend_relationship\030\001 \001"
-  "(\r\"A\n\034CPlayer_IgnoreFriend_Request\022\017\n\007st"
-  "eamid\030\001 \001(\006\022\020\n\010unignore\030\002 \001(\010\"<\n\035CPlayer"
-  "_IgnoreFriend_Response\022\033\n\023friend_relatio"
-  "nship\030\001 \001(\r\")\n\'CPlayer_GetCommunityPrefe"
-  "rences_Request\"\340\001\n\034CPlayer_CommunityPref"
-  "erences\022%\n\026parenthesize_nicknames\030\004 \001(\010:"
-  "\005false\0220\n\023text_filter_setting\030\005 \001(\0162\023.ET"
-  "extFilterSetting\022(\n\032text_filter_ignore_f"
-  "riends\030\006 \001(\010:\004true\022\"\n\032text_filter_words_"
-  "revision\030\007 \001(\r\022\031\n\021timestamp_updated\030\003 \001("
-  "\r\"\251\001\n(CPlayer_GetCommunityPreferences_Re"
-  "sponse\0222\n\013preferences\030\001 \001(\0132\035.CPlayer_Co"
-  "mmunityPreferences\022I\n\036content_descriptor"
-  "_preferences\030\002 \001(\0132!.UserContentDescript"
-  "orPreferences\"]\n\'CPlayer_SetCommunityPre"
-  "ferences_Request\0222\n\013preferences\030\001 \001(\0132\035."
-  "CPlayer_CommunityPreferences\"*\n(CPlayer_"
-  "SetCommunityPreferences_Response\"$\n\"CPla"
-  "yer_GetTextFilterWords_Request\"\216\001\n\027CPlay"
-  "er_TextFilterWords\022\'\n\037text_filter_custom"
-  "_banned_words\030\001 \003(\t\022&\n\036text_filter_custo"
-  "m_clean_words\030\002 \003(\t\022\"\n\032text_filter_words"
-  "_revision\030\003 \001(\r\"N\n#CPlayer_GetTextFilter"
-  "Words_Response\022\'\n\005words\030\001 \001(\0132\030.CPlayer_"
-  "TextFilterWords\"@\n,CPlayer_GetNewSteamAn"
-  "nouncementState_Request\022\020\n\010language\030\001 \001("
-  "\005\"\303\001\n-CPlayer_GetNewSteamAnnouncementSta"
-  "te_Response\022*\n\005state\030\001 \001(\0162\033.ENewSteamAn"
-  "nouncementState\022\035\n\025announcement_headline"
-  "\030\002 \001(\t\022\030\n\020announcement_url\030\003 \001(\t\022\023\n\013time"
-  "_posted\030\004 \001(\r\022\030\n\020announcement_gid\030\005 \001(\004\""
-  "`\n/CPlayer_UpdateSteamAnnouncementLastRe"
-  "ad_Request\022\030\n\020announcement_gid\030\001 \001(\004\022\023\n\013"
-  "time_posted\030\002 \001(\r\"2\n0CPlayer_UpdateSteam"
-  "AnnouncementLastRead_Response\"$\n\"CPlayer"
-  "_GetPrivacySettings_Request\"\314\001\n\020CPrivacy"
-  "Settings\022\025\n\rprivacy_state\030\001 \001(\005\022\037\n\027priva"
-  "cy_state_inventory\030\002 \001(\005\022\033\n\023privacy_stat"
-  "e_gifts\030\003 \001(\005\022 \n\030privacy_state_ownedgame"
-  "s\030\004 \001(\005\022\036\n\026privacy_state_playtime\030\005 \001(\005\022"
-  "!\n\031privacy_state_friendslist\030\006 \001(\005\"R\n#CP"
-  "layer_GetPrivacySettings_Response\022+\n\020pri"
-  "vacy_settings\030\001 \001(\0132\021.CPrivacySettings\"3"
-  "\n\"CPlayer_GetDurationControl_Request\022\r\n\005"
-  "appid\030\001 \001(\r\"\360\001\n#CPlayer_GetDurationContr"
-  "ol_Response\022\022\n\nis_enabled\030\001 \001(\010\022\017\n\007secon"
-  "ds\030\002 \001(\005\022\025\n\rseconds_today\030\003 \001(\005\022\035\n\025is_st"
-  "eamchina_account\030\004 \001(\010\022\027\n\017is_age_verifie"
-  "d\030\005 \001(\010\022\035\n\025seconds_allowed_today\030\006 \001(\r\022 "
-  "\n\030age_verification_pending\030\007 \001(\010\022\024\n\014bloc"
-  "k_minors\030\010 \001(\010\"\347\001\n*CPlayer_RecordDisconn"
-  "ectedPlaytime_Request\022N\n\rplay_sessions\030\003"
-  " \003(\01327.CPlayer_RecordDisconnectedPlaytim"
-  "e_Request.PlayHistory\032i\n\013PlayHistory\022\r\n\005"
-  "appid\030\001 \001(\r\022\032\n\022session_time_start\030\002 \001(\r\022"
-  "\017\n\007seconds\030\003 \001(\r\022\017\n\007offline\030\004 \001(\010\022\r\n\005own"
-  "er\030\005 \001(\r\"-\n+CPlayer_RecordDisconnectedPl"
-  "aytime_Response\"`\n$CPlayer_LastPlayedTim"
-  "es_Notification\0228\n\005games\030\001 \003(\0132).CPlayer"
-  "_GetLastPlayedTimes_Response.Game\"j\n*CPl"
-  "ayer_FriendNicknameChanged_Notification\022"
-  "\021\n\taccountid\030\001 \001(\007\022\020\n\010nickname\030\002 \001(\t\022\027\n\017"
-  "is_echo_to_self\030\003 \001(\010\"K\n6CPlayer_FriendE"
-  "quippedProfileItemsChanged_Notification\022"
-  "\021\n\taccountid\030\001 \001(\007\"\304\001\n.CPlayer_NewSteamA"
-  "nnouncementState_Notification\022*\n\005state\030\001"
-  " \001(\0162\033.ENewSteamAnnouncementState\022\035\n\025ann"
-  "ouncement_headline\030\002 \001(\t\022\030\n\020announcement"
-  "_url\030\003 \001(\t\022\023\n\013time_posted\030\004 \001(\r\022\030\n\020annou"
-  "ncement_gid\030\005 \001(\004\"\261\001\n0CPlayer_CommunityP"
-  "referencesChanged_Notification\0222\n\013prefer"
-  "ences\030\001 \001(\0132\035.CPlayer_CommunityPreferenc"
-  "es\022I\n\036content_descriptor_preferences\030\002 \001"
-  "(\0132!.UserContentDescriptorPreferences\"V\n"
-  "+CPlayer_TextFilterWordsChanged_Notifica"
-  "tion\022\'\n\005words\030\001 \001(\0132\030.CPlayer_TextFilter"
-  "Words\"q\n0CPlayer_PerFriendPreferencesCha"
-  "nged_Notification\022\021\n\taccountid\030\001 \001(\007\022*\n\013"
-  "preferences\030\002 \001(\0132\025.PerFriendPreferences"
-  "\"Z\n+CPlayer_PrivacySettingsChanged_Notif"
-  "ication\022+\n\020privacy_settings\030\001 \001(\0132\021.CPri"
-  "vacySettings*\214\001\n\030EAchievementProgressTyp"
-  "e\022&\n\"k_EAchievementProgressType_Invalid\020"
-  "\000\022\"\n\036k_EAchievementProgressType_Int\020\001\022$\n"
-  " k_EAchievementProgressType_Float\020\002*\231\002\n\032"
-  "EProfileCustomizationStyle\022\'\n#k_EProfile"
-  "CustomizationStyleDefault\020\000\022(\n$k_EProfil"
-  "eCustomizationStyleSelected\020\001\022&\n\"k_EProf"
-  "ileCustomizationStyleRarest\020\002\022*\n&k_EProf"
-  "ileCustomizationStyleMostRecent\020\003\022&\n\"k_E"
-  "ProfileCustomizationStyleRandom\020\004\022,\n(k_E"
-  "ProfileCustomizationStyleHighestRated\020\005*"
-  "v\n\016EAgreementType\022%\n\030k_EAgreementType_In"
-  "valid\020\377\377\377\377\377\377\377\377\377\001\022\036\n\032k_EAgreementType_Glo"
-  "balSSA\020\000\022\035\n\031k_EAgreementType_ChinaSSA\020\001*"
-  "\205\001\n\024ENotificationSetting\022*\n&k_ENotificat"
-  "ionSettingNotifyUseDefault\020\000\022 \n\034k_ENotif"
-  "icationSettingAlways\020\001\022\037\n\033k_ENotificatio"
-  "nSettingNever\020\002*\260\001\n\022ETextFilterSetting\022("
-  "\n$k_ETextFilterSettingSteamLabOptedOut\020\000"
-  "\022\037\n\033k_ETextFilterSettingEnabled\020\001\022-\n)k_E"
-  "TextFilterSettingEnabledAllowProfanity\020\002"
-  "\022 \n\034k_ETextFilterSettingDisabled\020\0032\363-\n\006P"
-  "layer\022\216\001\n!GetRecentPlaytimeSessionsForCh"
-  "ild\0222.CPlayer_GetRecentPlaytimeSessionsF"
-  "orChild_Request\0323.CPlayer_GetRecentPlayt"
-  "imeSessionsForChild_Response\"\000\022g\n\024GetPla"
-  "yerLinkDetails\022%.CPlayer_GetPlayerLinkDe"
-  "tails_Request\032&.CPlayer_GetPlayerLinkDet"
-  "ails_Response\"\000\022\221\001\n\"GetMutualFriendsForI"
-  "ncomingInvites\0223.CPlayer_GetMutualFriend"
-  "sForIncomingInvites_Request\0324.CPlayer_Ge"
-  "tMutualFriendsForIncomingInvites_Respons"
-  "e\"\000\022R\n\rGetOwnedGames\022\036.CPlayer_GetOwnedG"
-  "ames_Request\032\037.CPlayer_GetOwnedGames_Res"
-  "ponse\"\000\022L\n\013GetPlayNext\022\034.CPlayer_GetPlay"
-  "Next_Request\032\035.CPlayer_GetPlayNext_Respo"
-  "nse\"\000\022m\n\026GetFriendsGameplayInfo\022\'.CPlaye"
-  "r_GetFriendsGameplayInfo_Request\032(.CPlay"
-  "er_GetFriendsGameplayInfo_Response\"\000\022a\n\022"
-  "GetGameBadgeLevels\022#.CPlayer_GetGameBadg"
-  "eLevels_Request\032$.CPlayer_GetGameBadgeLe"
-  "vels_Response\"\000\022g\n\024GetProfileBackground\022"
-  "%.CPlayer_GetProfileBackground_Request\032&"
-  ".CPlayer_GetProfileBackground_Response\"\000"
-  "\022g\n\024SetProfileBackground\022%.CPlayer_SetPr"
-  "ofileBackground_Request\032&.CPlayer_SetPro"
-  "fileBackground_Response\"\000\022s\n\030GetMiniProf"
-  "ileBackground\022).CPlayer_GetMiniProfileBa"
-  "ckground_Request\032*.CPlayer_GetMiniProfil"
-  "eBackground_Response\"\000\022s\n\030SetMiniProfile"
-  "Background\022).CPlayer_SetMiniProfileBackg"
-  "round_Request\032*.CPlayer_SetMiniProfileBa"
-  "ckground_Response\"\000\022U\n\016GetAvatarFrame\022\037."
-  "CPlayer_GetAvatarFrame_Request\032 .CPlayer"
-  "_GetAvatarFrame_Response\"\000\022U\n\016SetAvatarF"
-  "rame\022\037.CPlayer_SetAvatarFrame_Request\032 ."
-  "CPlayer_SetAvatarFrame_Response\"\000\022^\n\021Get"
-  "AnimatedAvatar\022\".CPlayer_GetAnimatedAvat"
-  "ar_Request\032#.CPlayer_GetAnimatedAvatar_R"
-  "esponse\"\000\022^\n\021SetAnimatedAvatar\022\".CPlayer"
-  "_SetAnimatedAvatar_Request\032#.CPlayer_Set"
-  "AnimatedAvatar_Response\"\000\022s\n\030GetSteamDec"
-  "kKeyboardSkin\022).CPlayer_GetSteamDeckKeyb"
-  "oardSkin_Request\032*.CPlayer_GetSteamDeckK"
-  "eyboardSkin_Response\"\000\022s\n\030SetSteamDeckKe"
-  "yboardSkin\022).CPlayer_SetSteamDeckKeyboar"
-  "dSkin_Request\032*.CPlayer_SetSteamDeckKeyb"
-  "oardSkin_Response\"\000\022g\n\024GetProfileItemsOw"
-  "ned\022%.CPlayer_GetProfileItemsOwned_Reque"
-  "st\032&.CPlayer_GetProfileItemsOwned_Respon"
-  "se\"\000\022p\n\027GetProfileItemsEquipped\022(.CPlaye"
-  "r_GetProfileItemsEquipped_Request\032).CPla"
-  "yer_GetProfileItemsEquipped_Response\"\000\022|"
-  "\n\033SetEquippedProfileItemFlags\022,.CPlayer_"
-  "SetEquippedProfileItemFlags_Request\032-.CP"
-  "layer_SetEquippedProfileItemFlags_Respon"
-  "se\"\000\022X\n\017GetEmoticonList\022 .CPlayer_GetEmo"
-  "ticonList_Request\032!.CPlayer_GetEmoticonL"
-  "ist_Response\"\000\022v\n\031GetCommunityBadgeProgr"
-  "ess\022*.CPlayer_GetCommunityBadgeProgress_"
-  "Request\032+.CPlayer_GetCommunityBadgeProgr"
-  "ess_Response\"\000\022y\n\032GetTopAchievementsForG"
-  "ames\022+.CPlayer_GetTopAchievementsForGame"
-  "s_Request\032,.CPlayer_GetTopAchievementsFo"
-  "rGames_Response\"\000\022p\n\027GetAchievementsProg"
-  "ress\022(.CPlayer_GetAchievementsProgress_R"
-  "equest\032).CPlayer_GetAchievementsProgress"
-  "_Response\"\000\022d\n\023GetGameAchievements\022$.CPl"
-  "ayer_GetGameAchievements_Request\032%.CPlay"
-  "er_GetGameAchievements_Response\"\000\022d\n\023Get"
-  "UserAchievements\022$.CPlayer_GetUserAchiev"
-  "ements_Request\032%.CPlayer_GetUserAchievem"
-  "ents_Response\"\000\022O\n\014GetUserStats\022\035.CPlaye"
-  "r_GetUserStats_Request\032\036.CPlayer_GetUser"
-  "Stats_Response\"\000\022[\n\020GetFavoriteBadge\022!.C"
-  "Player_GetFavoriteBadge_Request\032\".CPlaye"
-  "r_GetFavoriteBadge_Response\"\000\022[\n\020SetFavo"
-  "riteBadge\022!.CPlayer_SetFavoriteBadge_Req"
-  "uest\032\".CPlayer_SetFavoriteBadge_Response"
-  "\"\000\022p\n\027GetProfileCustomization\022(.CPlayer_"
-  "GetProfileCustomization_Request\032).CPlaye"
-  "r_GetProfileCustomization_Response\"\000\022\216\001\n"
-  "!GetPurchasedProfileCustomizations\0222.CPl"
-  "ayer_GetPurchasedProfileCustomizations_R"
-  "equest\0323.CPlayer_GetPurchasedProfileCust"
-  "omizations_Response\"\000\022\257\001\n,GetPurchasedAn"
-  "dUpgradedProfileCustomizations\022=.CPlayer"
-  "_GetPurchasedAndUpgradedProfileCustomiza"
-  "tions_Request\032>.CPlayer_GetPurchasedAndU"
-  "pgradedProfileCustomizations_Response\"\000\022"
-  "v\n\031GetProfileThemesAvailable\022*.CPlayer_G"
-  "etProfileThemesAvailable_Request\032+.CPlay"
-  "er_GetProfileThemesAvailable_Response\"\000\022"
-  "X\n\017SetProfileTheme\022 .CPlayer_SetProfileT"
-  "heme_Request\032!.CPlayer_SetProfileTheme_R"
-  "esponse\"\000\022j\n\025SetProfilePreferences\022&.CPl"
-  "ayer_SetProfilePreferences_Request\032\'.CPl"
-  "ayer_SetProfilePreferences_Response\"\000\022d\n"
-  "\023PostStatusToFriends\022$.CPlayer_PostStatu"
-  "sToFriends_Request\032%.CPlayer_PostStatusT"
-  "oFriends_Response\"\000\022X\n\017GetPostedStatus\022 "
-  ".CPlayer_GetPostedStatus_Request\032!.CPlay"
-  "er_GetPostedStatus_Response\"\000\022a\n\022DeleteP"
-  "ostedStatus\022#.CPlayer_DeletePostedStatus"
-  "_Request\032$.CPlayer_DeletePostedStatus_Re"
-  "sponse\"\000\022g\n\030ClientGetLastPlayedTimes\022#.C"
-  "Player_GetLastPlayedTimes_Request\032$.CPla"
-  "yer_GetLastPlayedTimes_Response\"\000\022a\n\022Get"
-  "TimeSSAAccepted\022#.CPlayer_GetTimeSSAAcce"
-  "pted_Request\032$.CPlayer_GetTimeSSAAccepte"
-  "d_Response\"\000\022F\n\tAcceptSSA\022\032.CPlayer_Acce"
-  "ptSSA_Request\032\033.CPlayer_AcceptSSA_Respon"
-  "se\"\000\022X\n\017GetNicknameList\022 .CPlayer_GetNic"
-  "knameList_Request\032!.CPlayer_GetNicknameL"
-  "ist_Response\"\000\022p\n\027GetPerFriendPreference"
-  "s\022(.CPlayer_GetPerFriendPreferences_Requ"
-  "est\032).CPlayer_GetPerFriendPreferences_Re"
-  "sponse\"\000\022p\n\027SetPerFriendPreferences\022(.CP"
-  "layer_SetPerFriendPreferences_Request\032)."
-  "CPlayer_SetPerFriendPreferences_Response"
-  "\"\000\022F\n\tAddFriend\022\032.CPlayer_AddFriend_Requ"
-  "est\032\033.CPlayer_AddFriend_Response\"\000\022O\n\014Re"
-  "moveFriend\022\035.CPlayer_RemoveFriend_Reques"
-  "t\032\036.CPlayer_RemoveFriend_Response\"\000\022O\n\014I"
-  "gnoreFriend\022\035.CPlayer_IgnoreFriend_Reque"
-  "st\032\036.CPlayer_IgnoreFriend_Response\"\000\022p\n\027"
-  "GetCommunityPreferences\022(.CPlayer_GetCom"
-  "munityPreferences_Request\032).CPlayer_GetC"
-  "ommunityPreferences_Response\"\000\022p\n\027SetCom"
-  "munityPreferences\022(.CPlayer_SetCommunity"
-  "Preferences_Request\032).CPlayer_SetCommuni"
-  "tyPreferences_Response\"\000\022a\n\022GetTextFilte"
-  "rWords\022#.CPlayer_GetTextFilterWords_Requ"
-  "est\032$.CPlayer_GetTextFilterWords_Respons"
-  "e\"\000\022\177\n\034GetNewSteamAnnouncementState\022-.CP"
-  "layer_GetNewSteamAnnouncementState_Reque"
-  "st\032..CPlayer_GetNewSteamAnnouncementStat"
-  "e_Response\"\000\022\210\001\n\037UpdateSteamAnnouncement"
-  "LastRead\0220.CPlayer_UpdateSteamAnnounceme"
-  "ntLastRead_Request\0321.CPlayer_UpdateSteam"
-  "AnnouncementLastRead_Response\"\000\022a\n\022GetPr"
-  "ivacySettings\022#.CPlayer_GetPrivacySettin"
-  "gs_Request\032$.CPlayer_GetPrivacySettings_"
-  "Response\"\000\022a\n\022GetDurationControl\022#.CPlay"
-  "er_GetDurationControl_Request\032$.CPlayer_"
-  "GetDurationControl_Response\"\000\022y\n\032RecordD"
-  "isconnectedPlaytime\022+.CPlayer_RecordDisc"
-  "onnectedPlaytime_Request\032,.CPlayer_Recor"
-  "dDisconnectedPlaytime_Response\"\0002\235\006\n\014Pla"
-  "yerClient\022M\n\025NotifyLastPlayedTimes\022%.CPl"
-  "ayer_LastPlayedTimes_Notification\032\013.NoRe"
-  "sponse\"\000\022Y\n\033NotifyFriendNicknameChanged\022"
-  "+.CPlayer_FriendNicknameChanged_Notifica"
-  "tion\032\013.NoResponse\"\000\022q\n\'NotifyFriendEquip"
-  "pedProfileItemsChanged\0227.CPlayer_FriendE"
-  "quippedProfileItemsChanged_Notification\032"
-  "\013.NoResponse\"\000\022a\n\037NotifyNewSteamAnnounce"
-  "mentState\022/.CPlayer_NewSteamAnnouncement"
-  "State_Notification\032\013.NoResponse\"\000\022e\n!Not"
-  "ifyCommunityPreferencesChanged\0221.CPlayer"
-  "_CommunityPreferencesChanged_Notificatio"
-  "n\032\013.NoResponse\"\000\022[\n\034NotifyTextFilterWord"
-  "sChanged\022,.CPlayer_TextFilterWordsChange"
-  "d_Notification\032\013.NoResponse\"\000\022e\n!NotifyP"
-  "erFriendPreferencesChanged\0221.CPlayer_Per"
-  "FriendPreferencesChanged_Notification\032\013."
-  "NoResponse\"\000\022b\n#NotifyPrivacyPrivacySett"
-  "ingsChanged\022,.CPlayer_PrivacySettingsCha"
-  "nged_Notification\032\013.NoResponse\"\000"
+  "meplayInfo\022U\n\017played_recently\030\003 \003(\0132<.CP"
+  "layer_GetFriendsGameplayInfo_Response.Fr"
+  "iendsGameplayInfo\022Q\n\013played_ever\030\004 \003(\0132<"
+  ".CPlayer_GetFriendsGameplayInfo_Response"
+  ".FriendsGameplayInfo\022J\n\004owns\030\005 \003(\0132<.CPl"
+  "ayer_GetFriendsGameplayInfo_Response.Fri"
+  "endsGameplayInfo\022Q\n\013in_wishlist\030\006 \003(\0132<."
+  "CPlayer_GetFriendsGameplayInfo_Response."
+  "FriendsGameplayInfo\032^\n\023FriendsGameplayIn"
+  "fo\022\017\n\007steamid\030\001 \001(\006\022\026\n\016minutes_played\030\002 "
+  "\001(\r\022\036\n\026minutes_played_forever\030\003 \001(\r\032~\n\017O"
+  "wnGameplayInfo\022\017\n\007steamid\030\001 \001(\006\022\026\n\016minut"
+  "es_played\030\002 \001(\r\022\036\n\026minutes_played_foreve"
+  "r\030\003 \001(\r\022\023\n\013in_wishlist\030\004 \001(\010\022\r\n\005owned\030\005 "
+  "\001(\010\"3\n\"CPlayer_GetGameBadgeLevels_Reques"
+  "t\022\r\n\005appid\030\001 \001(\r\"\265\001\n#CPlayer_GetGameBadg"
+  "eLevels_Response\022\024\n\014player_level\030\001 \001(\r\022:"
+  "\n\006badges\030\002 \003(\0132*.CPlayer_GetGameBadgeLev"
+  "els_Response.Badge\032<\n\005Badge\022\r\n\005level\030\001 \001"
+  "(\005\022\016\n\006series\030\002 \001(\005\022\024\n\014border_color\030\003 \001(\r"
+  "\"I\n$CPlayer_GetProfileBackground_Request"
+  "\022\017\n\007steamid\030\001 \001(\006\022\020\n\010language\030\002 \001(\t\"\251\003\n\013"
+  "ProfileItem\022\027\n\017communityitemid\030\001 \001(\004\022\023\n\013"
+  "image_small\030\002 \001(\t\022\023\n\013image_large\030\003 \001(\t\022\014"
+  "\n\004name\030\004 \001(\t\022\022\n\nitem_title\030\005 \001(\t\022\030\n\020item"
+  "_description\030\006 \001(\t\022\r\n\005appid\030\007 \001(\r\022\021\n\tite"
+  "m_type\030\010 \001(\r\022\022\n\nitem_class\030\t \001(\r\022\022\n\nmovi"
+  "e_webm\030\n \001(\t\022\021\n\tmovie_mp4\030\013 \001(\t\022\030\n\020movie"
+  "_webm_small\030\r \001(\t\022\027\n\017movie_mp4_small\030\016 \001"
+  "(\t\022\026\n\016equipped_flags\030\014 \001(\r\0221\n\016profile_co"
+  "lors\030\017 \003(\0132\031.ProfileItem.ProfileColor\022\r\n"
+  "\005tiled\030\020 \001(\010\0321\n\014ProfileColor\022\022\n\nstyle_na"
+  "me\030\001 \001(\t\022\r\n\005color\030\002 \001(\t\"Q\n%CPlayer_GetPr"
+  "ofileBackground_Response\022(\n\022profile_back"
+  "ground\030\001 \001(\0132\014.ProfileItem\"\?\n$CPlayer_Se"
+  "tProfileBackground_Request\022\027\n\017communityi"
+  "temid\030\001 \001(\004\"\'\n%CPlayer_SetProfileBackgro"
+  "und_Response\"M\n(CPlayer_GetMiniProfileBa"
+  "ckground_Request\022\017\n\007steamid\030\001 \001(\006\022\020\n\010lan"
+  "guage\030\002 \001(\t\"U\n)CPlayer_GetMiniProfileBac"
+  "kground_Response\022(\n\022profile_background\030\001"
+  " \001(\0132\014.ProfileItem\"C\n(CPlayer_SetMiniPro"
+  "fileBackground_Request\022\027\n\017communityitemi"
+  "d\030\001 \001(\004\"+\n)CPlayer_SetMiniProfileBackgro"
+  "und_Response\"C\n\036CPlayer_GetAvatarFrame_R"
+  "equest\022\017\n\007steamid\030\001 \001(\006\022\020\n\010language\030\002 \001("
+  "\t\"E\n\037CPlayer_GetAvatarFrame_Response\022\"\n\014"
+  "avatar_frame\030\001 \001(\0132\014.ProfileItem\"9\n\036CPla"
+  "yer_SetAvatarFrame_Request\022\027\n\017communityi"
+  "temid\030\001 \001(\004\"!\n\037CPlayer_SetAvatarFrame_Re"
+  "sponse\"F\n!CPlayer_GetAnimatedAvatar_Requ"
+  "est\022\017\n\007steamid\030\001 \001(\006\022\020\n\010language\030\002 \001(\t\"B"
+  "\n\"CPlayer_GetAnimatedAvatar_Response\022\034\n\006"
+  "avatar\030\001 \001(\0132\014.ProfileItem\"<\n!CPlayer_Se"
+  "tAnimatedAvatar_Request\022\027\n\017communityitem"
+  "id\030\001 \001(\004\"$\n\"CPlayer_SetAnimatedAvatar_Re"
+  "sponse\"M\n(CPlayer_GetSteamDeckKeyboardSk"
+  "in_Request\022\017\n\007steamid\030\001 \001(\006\022\020\n\010language\030"
+  "\002 \001(\t\"[\n)CPlayer_GetSteamDeckKeyboardSki"
+  "n_Response\022.\n\030steam_deck_keyboard_skin\030\001"
+  " \001(\0132\014.ProfileItem\"C\n(CPlayer_SetSteamDe"
+  "ckKeyboardSkin_Request\022\027\n\017communityitemi"
+  "d\030\001 \001(\004\"+\n)CPlayer_SetSteamDeckKeyboardS"
+  "kin_Response\"_\n$CPlayer_GetProfileItemsO"
+  "wned_Request\022\020\n\010language\030\001 \001(\t\022%\n\007filter"
+  "s\030\002 \003(\0162\024.ECommunityItemClass\"\332\002\n%CPlaye"
+  "r_GetProfileItemsOwned_Response\022)\n\023profi"
+  "le_backgrounds\030\001 \003(\0132\014.ProfileItem\022.\n\030mi"
+  "ni_profile_backgrounds\030\002 \003(\0132\014.ProfileIt"
+  "em\022#\n\ravatar_frames\030\003 \003(\0132\014.ProfileItem\022"
+  "&\n\020animated_avatars\030\004 \003(\0132\014.ProfileItem\022"
+  "\'\n\021profile_modifiers\030\005 \003(\0132\014.ProfileItem"
+  "\022/\n\031steam_deck_keyboard_skins\030\006 \003(\0132\014.Pr"
+  "ofileItem\022/\n\031steam_deck_startup_movies\030\007"
+  " \003(\0132\014.ProfileItem\"L\n\'CPlayer_GetProfile"
+  "ItemsEquipped_Request\022\017\n\007steamid\030\001 \001(\006\022\020"
+  "\n\010language\030\002 \001(\t\"\246\002\n(CPlayer_GetProfileI"
+  "temsEquipped_Response\022(\n\022profile_backgro"
+  "und\030\001 \001(\0132\014.ProfileItem\022-\n\027mini_profile_"
+  "background\030\002 \001(\0132\014.ProfileItem\022\"\n\014avatar"
+  "_frame\030\003 \001(\0132\014.ProfileItem\022%\n\017animated_a"
+  "vatar\030\004 \001(\0132\014.ProfileItem\022&\n\020profile_mod"
+  "ifier\030\005 \001(\0132\014.ProfileItem\022.\n\030steam_deck_"
+  "keyboard_skin\030\006 \001(\0132\014.ProfileItem\"U\n+CPl"
+  "ayer_SetEquippedProfileItemFlags_Request"
+  "\022\027\n\017communityitemid\030\001 \001(\004\022\r\n\005flags\030\002 \001(\r"
+  "\".\n,CPlayer_SetEquippedProfileItemFlags_"
+  "Response\"!\n\037CPlayer_GetEmoticonList_Requ"
+  "est\"\333\001\n CPlayer_GetEmoticonList_Response"
+  "\022=\n\temoticons\030\001 \003(\0132*.CPlayer_GetEmotico"
+  "nList_Response.Emoticon\032x\n\010Emoticon\022\014\n\004n"
+  "ame\030\001 \001(\t\022\r\n\005count\030\002 \001(\005\022\026\n\016time_last_us"
+  "ed\030\003 \001(\r\022\021\n\tuse_count\030\004 \001(\r\022\025\n\rtime_rece"
+  "ived\030\005 \001(\r\022\r\n\005appid\030\006 \001(\r\"M\n)CPlayer_Get"
+  "CommunityBadgeProgress_Request\022\017\n\007steami"
+  "d\030\001 \001(\004\022\017\n\007badgeid\030\002 \001(\005\"\234\001\n*CPlayer_Get"
+  "CommunityBadgeProgress_Response\022A\n\006quest"
+  "s\030\001 \003(\01321.CPlayer_GetCommunityBadgeProgr"
+  "ess_Response.Quest\032+\n\005Quest\022\017\n\007questid\030\001"
+  " \001(\r\022\021\n\tcompleted\030\002 \001(\010\"y\n*CPlayer_GetTo"
+  "pAchievementsForGames_Request\022\017\n\007steamid"
+  "\030\001 \001(\004\022\020\n\010language\030\002 \001(\t\022\030\n\020max_achievem"
+  "ents\030\003 \001(\r\022\016\n\006appids\030\004 \003(\r\"\216\003\n+CPlayer_G"
+  "etTopAchievementsForGames_Response\022@\n\005ga"
+  "mes\030\001 \003(\01321.CPlayer_GetTopAchievementsFo"
+  "rGames_Response.Game\032\230\001\n\013Achievement\022\016\n\006"
+  "statid\030\001 \001(\r\022\013\n\003bit\030\002 \001(\r\022\014\n\004name\030\003 \001(\t\022"
+  "\014\n\004desc\030\004 \001(\t\022\014\n\004icon\030\005 \001(\t\022\021\n\ticon_gray"
+  "\030\006 \001(\t\022\016\n\006hidden\030\007 \001(\010\022\037\n\027player_percent"
+  "_unlocked\030\010 \001(\t\032\201\001\n\004Game\022\r\n\005appid\030\001 \001(\r\022"
+  "\032\n\022total_achievements\030\002 \001(\r\022N\n\014achieveme"
+  "nts\030\003 \003(\01328.CPlayer_GetTopAchievementsFo"
+  "rGames_Response.Achievement\"{\n\'CPlayer_G"
+  "etAchievementsProgress_Request\022\017\n\007steami"
+  "d\030\001 \001(\004\022\020\n\010language\030\002 \001(\t\022\016\n\006appids\030\003 \003("
+  "\r\022\035\n\025include_unvetted_apps\030\004 \001(\010\"\250\003\n(CPl"
+  "ayer_GetAchievementsProgress_Response\022[\n"
+  "\024achievement_progress\030\001 \003(\0132=.CPlayer_Ge"
+  "tAchievementsProgress_Response.Achieveme"
+  "ntProgress\032\236\002\n\023AchievementProgress\022\r\n\005ap"
+  "pid\030\001 \001(\r\022\020\n\010unlocked\030\002 \001(\r\022\r\n\005total\030\003 \001"
+  "(\r\022\022\n\npercentage\030\004 \001(\002\022\024\n\014all_unlocked\030\005"
+  " \001(\010\022\022\n\ncache_time\030\006 \001(\r\022\016\n\006vetted\030\007 \001(\010"
+  "\022\035\n\025groups_completed_base\030\010 \001(\r\022\031\n\021group"
+  "s_total_base\030\t \001(\r\022\034\n\024groups_completed_d"
+  "lc\030\n \001(\r\022\030\n\020groups_total_dlc\030\013 \001(\r\022\027\n\017ba"
+  "se_game_total\030\014 \001(\r\"Y\n#CPlayer_GetGameAc"
+  "hievements_Request\022\r\n\005appid\030\001 \001(\r\022\020\n\010lan"
+  "guage\030\002 \001(\t\022\021\n\thash_only\030\003 \001(\010\"\245\006\n$CPlay"
+  "er_GetGameAchievements_Response\022G\n\014achie"
+  "vements\030\001 \003(\01321.CPlayer_GetGameAchieveme"
+  "nts_Response.Achievement\022\026\n\016schema_versi"
+  "on\030\002 \001(\005\022;\n\006groups\030\003 \003(\0132+.CPlayer_GetGa"
+  "meAchievements_Response.Group\022\023\n\013schema_"
+  "hash\030\004 \001(\r\032\375\002\n\013Achievement\022\025\n\rinternal_n"
+  "ame\030\001 \001(\t\022\026\n\016localized_name\030\002 \001(\t\022\026\n\016loc"
+  "alized_desc\030\003 \001(\t\022\014\n\004icon\030\004 \001(\t\022\021\n\ticon_"
+  "gray\030\005 \001(\t\022\016\n\006hidden\030\006 \001(\010\022\037\n\027player_per"
+  "cent_unlocked\030\007 \001(\t\022\024\n\014internal_key\030\010 \001("
+  "\r\022\030\n\020min_progress_int\030\t \001(\005\022\030\n\020max_progr"
+  "ess_int\030\n \001(\005\022\017\n\007groupid\030\013 \001(\r\022\020\n\010archiv"
+  "ed\030\014 \001(\010\0220\n\rprogress_type\030\r \001(\0162\031.EAchie"
+  "vementProgressType\022\032\n\022min_progress_float"
+  "\030\016 \001(\002\022\032\n\022max_progress_float\030\017 \001(\002\032\311\001\n\005G"
+  "roup\022\017\n\007groupid\030\001 \001(\r\022\026\n\016localized_name\030"
+  "\002 \001(\t\022\020\n\010dlcappid\030\003 \001(\r\022\020\n\010archived\030\004 \001("
+  "\010\022\025\n\rdeveloperonly\030\005 \001(\010\022\r\n\005order\030\006 \001(\r\022"
+  "\020\n\010ispublic\030\007 \001(\010\022\032\n\022total_achievements\030"
+  "\010 \001(\r\022\037\n\027completion_achievements\030\t \001(\r\"E"
+  "\n#CPlayer_GetUserAchievements_Request\022\017\n"
+  "\007steamid\030\001 \001(\004\022\r\n\005appid\030\002 \001(\r\"\322\003\n$CPlaye"
+  "r_GetUserAchievements_Response\022G\n\014achiev"
+  "ements\030\001 \003(\01321.CPlayer_GetUserAchievemen"
+  "ts_Response.Achievement\022\026\n\016schema_versio"
+  "n\030\002 \001(\005\022\023\n\013schema_hash\030\003 \001(\r\022;\n\006groups\030\004"
+  " \003(\0132+.CPlayer_GetUserAchievements_Respo"
+  "nse.Group\032x\n\013Achievement\022\024\n\014internal_key"
+  "\030\001 \001(\r\022\020\n\010unlocked\030\002 \001(\010\022\023\n\013unlock_time\030"
+  "\003 \001(\007\022\024\n\014progress_int\030\004 \001(\005\022\026\n\016progress_"
+  "float\030\005 \001(\002\032}\n\005Group\022\017\n\007groupid\030\001 \001(\r\022\025\n"
+  "\ris_achievable\030\002 \001(\010\022\036\n\026completed_achiev"
+  "ements\030\003 \001(\r\022\024\n\014is_completed\030\004 \001(\010\022\026\n\016ti"
+  "me_completed\030\t \001(\007\"@\n/CPlayer_GetGlobalA"
+  "chievementPercentages_Request\022\r\n\005appid\030\001"
+  " \001(\r\"\322\002\n0CPlayer_GetGlobalAchievementPer"
+  "centages_Response\022S\n\014achievements\030\001 \003(\0132"
+  "=.CPlayer_GetGlobalAchievementPercentage"
+  "s_Response.Achievement\022G\n\006groups\030\002 \003(\01327"
+  ".CPlayer_GetGlobalAchievementPercentages"
+  "_Response.Group\032D\n\013Achievement\022\024\n\014intern"
+  "al_key\030\001 \001(\r\022\037\n\027player_percent_unlocked\030"
+  "\002 \001(\002\032:\n\005Group\022\017\n\007groupid\030\001 \001(\r\022 \n\030playe"
+  "r_percent_completed\030\002 \001(\002\"\216\001\n\034CPlayer_Ge"
+  "tUserStats_Request\022\017\n\007steamid\030\001 \001(\004\022\r\n\005a"
+  "ppid\030\002 \001(\r\022\022\n\nsha_schema\030\003 \001(\014\022\021\n\tcrc_st"
+  "ats\030\004 \001(\r\022\022\n\ncrc_schema\030\005 \001(\r\022\023\n\013app_run"
+  "ning\030\006 \001(\010\"\314\002\n\035CPlayer_GetUserStats_Resp"
+  "onse\022\022\n\nsha_schema\030\001 \001(\014\022\021\n\tcrc_stats\030\002 "
+  "\001(\r\022\016\n\006schema\030\003 \001(\014\0223\n\005stats\030\004 \003(\0132$.CPl"
+  "ayer_GetUserStats_Response.Stats\022\022\n\ncrc_"
+  "schema\030\005 \001(\r\032;\n\013Unlock_Time\022\027\n\017achieveme"
+  "nt_bit\030\001 \001(\r\022\023\n\013unlock_time\030\002 \001(\007\032n\n\005Sta"
+  "ts\022\017\n\007stat_id\030\001 \001(\r\022\022\n\nstat_value\030\002 \001(\r\022"
+  "@\n\014unlock_times\030\003 \003(\0132*.CPlayer_GetUserS"
+  "tats_Response.Unlock_Time\"3\n CPlayer_Get"
+  "FavoriteBadge_Request\022\017\n\007steamid\030\001 \001(\004\"\260"
+  "\001\n!CPlayer_GetFavoriteBadge_Response\022\032\n\022"
+  "has_favorite_badge\030\001 \001(\010\022\017\n\007badgeid\030\002 \001("
+  "\r\022\027\n\017communityitemid\030\003 \001(\004\022\021\n\titem_type\030"
+  "\004 \001(\r\022\024\n\014border_color\030\005 \001(\r\022\r\n\005appid\030\006 \001"
+  "(\r\022\r\n\005level\030\007 \001(\r\"L\n CPlayer_SetFavorite"
+  "Badge_Request\022\027\n\017communityitemid\030\001 \001(\004\022\017"
+  "\n\007badgeid\030\002 \001(\r\"#\n!CPlayer_SetFavoriteBa"
+  "dge_Response\"\215\001\n\'CPlayer_GetProfileCusto"
+  "mization_Request\022\017\n\007steamid\030\001 \001(\006\022\'\n\037inc"
+  "lude_inactive_customizations\030\002 \001(\010\022(\n in"
+  "clude_purchased_customizations\030\003 \001(\010\"\315\002\n"
+  "\030ProfileCustomizationSlot\022\014\n\004slot\030\001 \001(\r\022"
+  "\r\n\005appid\030\002 \001(\r\022\027\n\017publishedfileid\030\003 \001(\004\022"
+  "\024\n\014item_assetid\030\004 \001(\004\022\026\n\016item_contextid\030"
+  "\005 \001(\004\022\r\n\005notes\030\006 \001(\t\022\r\n\005title\030\007 \001(\t\022\021\n\ta"
+  "ccountid\030\010 \001(\r\022\017\n\007badgeid\030\t \001(\r\022\024\n\014borde"
+  "r_color\030\n \001(\r\022\024\n\014item_classid\030\013 \001(\004\022\027\n\017i"
+  "tem_instanceid\030\014 \001(\004\0221\n\020ban_check_result"
+  "\030\r \001(\0162\027.EBanContentCheckResult\022\023\n\013repla"
+  "y_year\030\016 \001(\r\"\364\001\n\024ProfileCustomization\0226\n"
+  "\022customization_type\030\001 \001(\0162\032.EProfileCust"
+  "omizationType\022\r\n\005large\030\002 \001(\010\022(\n\005slots\030\003 "
+  "\003(\0132\031.ProfileCustomizationSlot\022\016\n\006active"
+  "\030\004 \001(\010\0228\n\023customization_style\030\005 \001(\0162\033.EP"
+  "rofileCustomizationStyle\022\022\n\npurchaseid\030\006"
+  " \001(\004\022\r\n\005level\030\007 \001(\r\"/\n\014ProfileTheme\022\020\n\010t"
+  "heme_id\030\001 \001(\t\022\r\n\005title\030\002 \001(\t\"1\n\022ProfileP"
+  "references\022\033\n\023hide_profile_awards\030\001 \001(\010\""
+  "\243\003\n(CPlayer_GetProfileCustomization_Resp"
+  "onse\022-\n\016customizations\030\001 \003(\0132\025.ProfileCu"
+  "stomization\022\027\n\017slots_available\030\002 \001(\r\022$\n\r"
+  "profile_theme\030\003 \001(\0132\r.ProfileTheme\022b\n\030pu"
+  "rchased_customizations\030\004 \003(\0132@.CPlayer_G"
+  "etProfileCustomization_Response.Purchase"
+  "dCustomization\0220\n\023profile_preferences\030\005 "
+  "\001(\0132\023.ProfilePreferences\032s\n\026PurchasedCus"
+  "tomization\022\022\n\npurchaseid\030\001 \001(\004\0226\n\022custom"
+  "ization_type\030\002 \001(\0162\032.EProfileCustomizati"
+  "onType\022\r\n\005level\030\003 \001(\r\"D\n1CPlayer_GetPurc"
+  "hasedProfileCustomizations_Request\022\017\n\007st"
+  "eamid\030\001 \001(\006\"\210\002\n2CPlayer_GetPurchasedProf"
+  "ileCustomizations_Response\022l\n\030purchased_"
+  "customizations\030\001 \003(\0132J.CPlayer_GetPurcha"
+  "sedProfileCustomizations_Response.Purcha"
+  "sedCustomization\032d\n\026PurchasedCustomizati"
+  "on\022\022\n\npurchaseid\030\001 \001(\004\0226\n\022customization_"
+  "type\030\002 \001(\0162\032.EProfileCustomizationType\"O"
+  "\n<CPlayer_GetPurchasedAndUpgradedProfile"
+  "Customizations_Request\022\017\n\007steamid\030\001 \001(\006\""
+  "\360\003\n=CPlayer_GetPurchasedAndUpgradedProfi"
+  "leCustomizations_Response\022w\n\030purchased_c"
+  "ustomizations\030\001 \003(\0132U.CPlayer_GetPurchas"
+  "edAndUpgradedProfileCustomizations_Respo"
+  "nse.PurchasedCustomization\022u\n\027upgraded_c"
+  "ustomizations\030\002 \003(\0132T.CPlayer_GetPurchas"
+  "edAndUpgradedProfileCustomizations_Respo"
+  "nse.UpgradedCustomization\032_\n\026PurchasedCu"
+  "stomization\0226\n\022customization_type\030\001 \001(\0162"
+  "\032.EProfileCustomizationType\022\r\n\005count\030\002 \001"
+  "(\r\032^\n\025UpgradedCustomization\0226\n\022customiza"
+  "tion_type\030\001 \001(\0162\032.EProfileCustomizationT"
+  "ype\022\r\n\005level\030\002 \001(\r\"+\n)CPlayer_GetProfile"
+  "ThemesAvailable_Request\"S\n*CPlayer_GetPr"
+  "ofileThemesAvailable_Response\022%\n\016profile"
+  "_themes\030\001 \003(\0132\r.ProfileTheme\"3\n\037CPlayer_"
+  "SetProfileTheme_Request\022\020\n\010theme_id\030\001 \001("
+  "\t\"\"\n CPlayer_SetProfileTheme_Response\"Y\n"
+  "%CPlayer_SetProfilePreferences_Request\0220"
+  "\n\023profile_preferences\030\001 \001(\0132\023.ProfilePre"
+  "ferences\"(\n&CPlayer_SetProfilePreference"
+  "s_Response\"I\n#CPlayer_PostStatusToFriend"
+  "s_Request\022\r\n\005appid\030\001 \001(\r\022\023\n\013status_text\030"
+  "\002 \001(\t\"&\n$CPlayer_PostStatusToFriends_Res"
+  "ponse\"B\n\037CPlayer_GetPostedStatus_Request"
+  "\022\017\n\007steamid\030\001 \001(\004\022\016\n\006postid\030\002 \001(\004\"z\n CPl"
+  "ayer_GetPostedStatus_Response\022\021\n\taccount"
+  "id\030\001 \001(\r\022\016\n\006postid\030\002 \001(\004\022\023\n\013status_text\030"
+  "\003 \001(\t\022\017\n\007deleted\030\004 \001(\010\022\r\n\005appid\030\005 \001(\r\"4\n"
+  "\"CPlayer_DeletePostedStatus_Request\022\016\n\006p"
+  "ostid\030\001 \001(\004\"%\n#CPlayer_DeletePostedStatu"
+  "s_Response\"=\n\"CPlayer_GetLastPlayedTimes"
+  "_Request\022\027\n\017min_last_played\030\001 \001(\r\"\341\004\n#CP"
+  "layer_GetLastPlayedTimes_Response\0228\n\005gam"
+  "es\030\001 \003(\0132).CPlayer_GetLastPlayedTimes_Re"
+  "sponse.Game\032\377\003\n\004Game\022\r\n\005appid\030\001 \001(\005\022\025\n\rl"
+  "ast_playtime\030\002 \001(\r\022\027\n\017playtime_2weeks\030\003 "
+  "\001(\005\022\030\n\020playtime_forever\030\004 \001(\005\022\026\n\016first_p"
+  "laytime\030\005 \001(\r\022 \n\030playtime_windows_foreve"
+  "r\030\006 \001(\005\022\034\n\024playtime_mac_forever\030\007 \001(\005\022\036\n"
+  "\026playtime_linux_forever\030\010 \001(\005\022\035\n\025playtim"
+  "e_deck_forever\030\020 \001(\005\022\036\n\026first_windows_pl"
+  "aytime\030\t \001(\r\022\032\n\022first_mac_playtime\030\n \001(\r"
+  "\022\034\n\024first_linux_playtime\030\013 \001(\r\022\033\n\023first_"
+  "deck_playtime\030\021 \001(\r\022\035\n\025last_windows_play"
+  "time\030\014 \001(\r\022\031\n\021last_mac_playtime\030\r \001(\r\022\033\n"
+  "\023last_linux_playtime\030\016 \001(\r\022\032\n\022last_deck_"
+  "playtime\030\022 \001(\r\022\035\n\025playtime_disconnected\030"
+  "\017 \001(\r\"$\n\"CPlayer_GetTimeSSAAccepted_Requ"
+  "est\"z\n#CPlayer_GetTimeSSAAccepted_Respon"
+  "se\022\031\n\021time_ssa_accepted\030\001 \001(\r\022\030\n\020time_ss"
+  "a_updated\030\002 \001(\r\022\036\n\026time_chinassa_accepte"
+  "d\030\003 \001(\r\"]\n\031CPlayer_AcceptSSA_Request\022\'\n\016"
+  "agreement_type\030\001 \001(\0162\017.EAgreementType\022\027\n"
+  "\017time_signed_utc\030\002 \001(\r\"\034\n\032CPlayer_Accept"
+  "SSA_Response\"!\n\037CPlayer_GetNicknameList_"
+  "Request\"\236\001\n CPlayer_GetNicknameList_Resp"
+  "onse\022C\n\tnicknames\030\001 \003(\01320.CPlayer_GetNic"
+  "knameList_Response.PlayerNickname\0325\n\016Pla"
+  "yerNickname\022\021\n\taccountid\030\001 \001(\007\022\020\n\010nickna"
+  "me\030\002 \001(\t\")\n\'CPlayer_GetPerFriendPreferen"
+  "ces_Request\"\271\003\n\024PerFriendPreferences\022\021\n\t"
+  "accountid\030\001 \001(\007\022\020\n\010nickname\030\002 \001(\t\0227\n\030not"
+  "ifications_showingame\030\003 \001(\0162\025.ENotificat"
+  "ionSetting\0227\n\030notifications_showonline\030\004"
+  " \001(\0162\025.ENotificationSetting\0229\n\032notificat"
+  "ions_showmessages\030\005 \001(\0162\025.ENotificationS"
+  "etting\0220\n\021sounds_showingame\030\006 \001(\0162\025.ENot"
+  "ificationSetting\0220\n\021sounds_showonline\030\007 "
+  "\001(\0162\025.ENotificationSetting\0222\n\023sounds_sho"
+  "wmessages\030\010 \001(\0162\025.ENotificationSetting\0227"
+  "\n\030notifications_sendmobile\030\t \001(\0162\025.ENoti"
+  "ficationSetting\"V\n(CPlayer_GetPerFriendP"
+  "references_Response\022*\n\013preferences\030\001 \003(\013"
+  "2\025.PerFriendPreferences\"U\n\'CPlayer_SetPe"
+  "rFriendPreferences_Request\022*\n\013preference"
+  "s\030\001 \001(\0132\025.PerFriendPreferences\"*\n(CPlaye"
+  "r_SetPerFriendPreferences_Response\",\n\031CP"
+  "layer_AddFriend_Request\022\017\n\007steamid\030\001 \001(\006"
+  "\"^\n\032CPlayer_AddFriend_Response\022\023\n\013invite"
+  "_sent\030\001 \001(\010\022\033\n\023friend_relationship\030\002 \001(\r"
+  "\022\016\n\006result\030\003 \001(\005\"/\n\034CPlayer_RemoveFriend"
+  "_Request\022\017\n\007steamid\030\001 \001(\006\"<\n\035CPlayer_Rem"
+  "oveFriend_Response\022\033\n\023friend_relationshi"
+  "p\030\001 \001(\r\"A\n\034CPlayer_IgnoreFriend_Request\022"
+  "\017\n\007steamid\030\001 \001(\006\022\020\n\010unignore\030\002 \001(\010\"<\n\035CP"
+  "layer_IgnoreFriend_Response\022\033\n\023friend_re"
+  "lationship\030\001 \001(\r\")\n\'CPlayer_GetCommunity"
+  "Preferences_Request\"\340\001\n\034CPlayer_Communit"
+  "yPreferences\022%\n\026parenthesize_nicknames\030\004"
+  " \001(\010:\005false\0220\n\023text_filter_setting\030\005 \001(\016"
+  "2\023.ETextFilterSetting\022(\n\032text_filter_ign"
+  "ore_friends\030\006 \001(\010:\004true\022\"\n\032text_filter_w"
+  "ords_revision\030\007 \001(\r\022\031\n\021timestamp_updated"
+  "\030\003 \001(\r\"\251\001\n(CPlayer_GetCommunityPreferenc"
+  "es_Response\0222\n\013preferences\030\001 \001(\0132\035.CPlay"
+  "er_CommunityPreferences\022I\n\036content_descr"
+  "iptor_preferences\030\002 \001(\0132!.UserContentDes"
+  "criptorPreferences\"]\n\'CPlayer_SetCommuni"
+  "tyPreferences_Request\0222\n\013preferences\030\001 \001"
+  "(\0132\035.CPlayer_CommunityPreferences\"*\n(CPl"
+  "ayer_SetCommunityPreferences_Response\"$\n"
+  "\"CPlayer_GetTextFilterWords_Request\"\216\001\n\027"
+  "CPlayer_TextFilterWords\022\'\n\037text_filter_c"
+  "ustom_banned_words\030\001 \003(\t\022&\n\036text_filter_"
+  "custom_clean_words\030\002 \003(\t\022\"\n\032text_filter_"
+  "words_revision\030\003 \001(\r\"N\n#CPlayer_GetTextF"
+  "ilterWords_Response\022\'\n\005words\030\001 \001(\0132\030.CPl"
+  "ayer_TextFilterWords\"@\n,CPlayer_GetNewSt"
+  "eamAnnouncementState_Request\022\020\n\010language"
+  "\030\001 \001(\005\"\303\001\n-CPlayer_GetNewSteamAnnounceme"
+  "ntState_Response\022*\n\005state\030\001 \001(\0162\033.ENewSt"
+  "eamAnnouncementState\022\035\n\025announcement_hea"
+  "dline\030\002 \001(\t\022\030\n\020announcement_url\030\003 \001(\t\022\023\n"
+  "\013time_posted\030\004 \001(\r\022\030\n\020announcement_gid\030\005"
+  " \001(\004\"`\n/CPlayer_UpdateSteamAnnouncementL"
+  "astRead_Request\022\030\n\020announcement_gid\030\001 \001("
+  "\004\022\023\n\013time_posted\030\002 \001(\r\"2\n0CPlayer_Update"
+  "SteamAnnouncementLastRead_Response\"$\n\"CP"
+  "layer_GetPrivacySettings_Request\"\314\001\n\020CPr"
+  "ivacySettings\022\025\n\rprivacy_state\030\001 \001(\005\022\037\n\027"
+  "privacy_state_inventory\030\002 \001(\005\022\033\n\023privacy"
+  "_state_gifts\030\003 \001(\005\022 \n\030privacy_state_owne"
+  "dgames\030\004 \001(\005\022\036\n\026privacy_state_playtime\030\005"
+  " \001(\005\022!\n\031privacy_state_friendslist\030\006 \001(\005\""
+  "R\n#CPlayer_GetPrivacySettings_Response\022+"
+  "\n\020privacy_settings\030\001 \001(\0132\021.CPrivacySetti"
+  "ngs\"3\n\"CPlayer_GetDurationControl_Reques"
+  "t\022\r\n\005appid\030\001 \001(\r\"\360\001\n#CPlayer_GetDuration"
+  "Control_Response\022\022\n\nis_enabled\030\001 \001(\010\022\017\n\007"
+  "seconds\030\002 \001(\005\022\025\n\rseconds_today\030\003 \001(\005\022\035\n\025"
+  "is_steamchina_account\030\004 \001(\010\022\027\n\017is_age_ve"
+  "rified\030\005 \001(\010\022\035\n\025seconds_allowed_today\030\006 "
+  "\001(\r\022 \n\030age_verification_pending\030\007 \001(\010\022\024\n"
+  "\014block_minors\030\010 \001(\010\"\347\001\n*CPlayer_RecordDi"
+  "sconnectedPlaytime_Request\022N\n\rplay_sessi"
+  "ons\030\003 \003(\01327.CPlayer_RecordDisconnectedPl"
+  "aytime_Request.PlayHistory\032i\n\013PlayHistor"
+  "y\022\r\n\005appid\030\001 \001(\r\022\032\n\022session_time_start\030\002"
+  " \001(\r\022\017\n\007seconds\030\003 \001(\r\022\017\n\007offline\030\004 \001(\010\022\r"
+  "\n\005owner\030\005 \001(\r\"-\n+CPlayer_RecordDisconnec"
+  "tedPlaytime_Response\"`\n$CPlayer_LastPlay"
+  "edTimes_Notification\0228\n\005games\030\001 \003(\0132).CP"
+  "layer_GetLastPlayedTimes_Response.Game\"j"
+  "\n*CPlayer_FriendNicknameChanged_Notifica"
+  "tion\022\021\n\taccountid\030\001 \001(\007\022\020\n\010nickname\030\002 \001("
+  "\t\022\027\n\017is_echo_to_self\030\003 \001(\010\"K\n6CPlayer_Fr"
+  "iendEquippedProfileItemsChanged_Notifica"
+  "tion\022\021\n\taccountid\030\001 \001(\007\"\304\001\n.CPlayer_NewS"
+  "teamAnnouncementState_Notification\022*\n\005st"
+  "ate\030\001 \001(\0162\033.ENewSteamAnnouncementState\022\035"
+  "\n\025announcement_headline\030\002 \001(\t\022\030\n\020announc"
+  "ement_url\030\003 \001(\t\022\023\n\013time_posted\030\004 \001(\r\022\030\n\020"
+  "announcement_gid\030\005 \001(\004\"\261\001\n0CPlayer_Commu"
+  "nityPreferencesChanged_Notification\0222\n\013p"
+  "references\030\001 \001(\0132\035.CPlayer_CommunityPref"
+  "erences\022I\n\036content_descriptor_preference"
+  "s\030\002 \001(\0132!.UserContentDescriptorPreferenc"
+  "es\"V\n+CPlayer_TextFilterWordsChanged_Not"
+  "ification\022\'\n\005words\030\001 \001(\0132\030.CPlayer_TextF"
+  "ilterWords\"q\n0CPlayer_PerFriendPreferenc"
+  "esChanged_Notification\022\021\n\taccountid\030\001 \001("
+  "\007\022*\n\013preferences\030\002 \001(\0132\025.PerFriendPrefer"
+  "ences\"Z\n+CPlayer_PrivacySettingsChanged_"
+  "Notification\022+\n\020privacy_settings\030\001 \001(\0132\021"
+  ".CPrivacySettings*\214\001\n\030EAchievementProgre"
+  "ssType\022&\n\"k_EAchievementProgressType_Inv"
+  "alid\020\000\022\"\n\036k_EAchievementProgressType_Int"
+  "\020\001\022$\n k_EAchievementProgressType_Float\020\002"
+  "*\231\002\n\032EProfileCustomizationStyle\022\'\n#k_EPr"
+  "ofileCustomizationStyleDefault\020\000\022(\n$k_EP"
+  "rofileCustomizationStyleSelected\020\001\022&\n\"k_"
+  "EProfileCustomizationStyleRarest\020\002\022*\n&k_"
+  "EProfileCustomizationStyleMostRecent\020\003\022&"
+  "\n\"k_EProfileCustomizationStyleRandom\020\004\022,"
+  "\n(k_EProfileCustomizationStyleHighestRat"
+  "ed\020\005*v\n\016EAgreementType\022%\n\030k_EAgreementTy"
+  "pe_Invalid\020\377\377\377\377\377\377\377\377\377\001\022\036\n\032k_EAgreementTyp"
+  "e_GlobalSSA\020\000\022\035\n\031k_EAgreementType_ChinaS"
+  "SA\020\001*\205\001\n\024ENotificationSetting\022*\n&k_ENoti"
+  "ficationSettingNotifyUseDefault\020\000\022 \n\034k_E"
+  "NotificationSettingAlways\020\001\022\037\n\033k_ENotifi"
+  "cationSettingNever\020\002*\260\001\n\022ETextFilterSett"
+  "ing\022(\n$k_ETextFilterSettingSteamLabOpted"
+  "Out\020\000\022\037\n\033k_ETextFilterSettingEnabled\020\001\022-"
+  "\n)k_ETextFilterSettingEnabledAllowProfan"
+  "ity\020\002\022 \n\034k_ETextFilterSettingDisabled\020\0032"
+  "\376.\n\006Player\022\216\001\n!GetRecentPlaytimeSessions"
+  "ForChild\0222.CPlayer_GetRecentPlaytimeSess"
+  "ionsForChild_Request\0323.CPlayer_GetRecent"
+  "PlaytimeSessionsForChild_Response\"\000\022g\n\024G"
+  "etPlayerLinkDetails\022%.CPlayer_GetPlayerL"
+  "inkDetails_Request\032&.CPlayer_GetPlayerLi"
+  "nkDetails_Response\"\000\022\221\001\n\"GetMutualFriend"
+  "sForIncomingInvites\0223.CPlayer_GetMutualF"
+  "riendsForIncomingInvites_Request\0324.CPlay"
+  "er_GetMutualFriendsForIncomingInvites_Re"
+  "sponse\"\000\022R\n\rGetOwnedGames\022\036.CPlayer_GetO"
+  "wnedGames_Request\032\037.CPlayer_GetOwnedGame"
+  "s_Response\"\000\022L\n\013GetPlayNext\022\034.CPlayer_Ge"
+  "tPlayNext_Request\032\035.CPlayer_GetPlayNext_"
+  "Response\"\000\022m\n\026GetFriendsGameplayInfo\022\'.C"
+  "Player_GetFriendsGameplayInfo_Request\032(."
+  "CPlayer_GetFriendsGameplayInfo_Response\""
+  "\000\022a\n\022GetGameBadgeLevels\022#.CPlayer_GetGam"
+  "eBadgeLevels_Request\032$.CPlayer_GetGameBa"
+  "dgeLevels_Response\"\000\022g\n\024GetProfileBackgr"
+  "ound\022%.CPlayer_GetProfileBackground_Requ"
+  "est\032&.CPlayer_GetProfileBackground_Respo"
+  "nse\"\000\022g\n\024SetProfileBackground\022%.CPlayer_"
+  "SetProfileBackground_Request\032&.CPlayer_S"
+  "etProfileBackground_Response\"\000\022s\n\030GetMin"
+  "iProfileBackground\022).CPlayer_GetMiniProf"
+  "ileBackground_Request\032*.CPlayer_GetMiniP"
+  "rofileBackground_Response\"\000\022s\n\030SetMiniPr"
+  "ofileBackground\022).CPlayer_SetMiniProfile"
+  "Background_Request\032*.CPlayer_SetMiniProf"
+  "ileBackground_Response\"\000\022U\n\016GetAvatarFra"
+  "me\022\037.CPlayer_GetAvatarFrame_Request\032 .CP"
+  "layer_GetAvatarFrame_Response\"\000\022U\n\016SetAv"
+  "atarFrame\022\037.CPlayer_SetAvatarFrame_Reque"
+  "st\032 .CPlayer_SetAvatarFrame_Response\"\000\022^"
+  "\n\021GetAnimatedAvatar\022\".CPlayer_GetAnimate"
+  "dAvatar_Request\032#.CPlayer_GetAnimatedAva"
+  "tar_Response\"\000\022^\n\021SetAnimatedAvatar\022\".CP"
+  "layer_SetAnimatedAvatar_Request\032#.CPlaye"
+  "r_SetAnimatedAvatar_Response\"\000\022s\n\030GetSte"
+  "amDeckKeyboardSkin\022).CPlayer_GetSteamDec"
+  "kKeyboardSkin_Request\032*.CPlayer_GetSteam"
+  "DeckKeyboardSkin_Response\"\000\022s\n\030SetSteamD"
+  "eckKeyboardSkin\022).CPlayer_SetSteamDeckKe"
+  "yboardSkin_Request\032*.CPlayer_SetSteamDec"
+  "kKeyboardSkin_Response\"\000\022g\n\024GetProfileIt"
+  "emsOwned\022%.CPlayer_GetProfileItemsOwned_"
+  "Request\032&.CPlayer_GetProfileItemsOwned_R"
+  "esponse\"\000\022p\n\027GetProfileItemsEquipped\022(.C"
+  "Player_GetProfileItemsEquipped_Request\032)"
+  ".CPlayer_GetProfileItemsEquipped_Respons"
+  "e\"\000\022|\n\033SetEquippedProfileItemFlags\022,.CPl"
+  "ayer_SetEquippedProfileItemFlags_Request"
+  "\032-.CPlayer_SetEquippedProfileItemFlags_R"
+  "esponse\"\000\022X\n\017GetEmoticonList\022 .CPlayer_G"
+  "etEmoticonList_Request\032!.CPlayer_GetEmot"
+  "iconList_Response\"\000\022v\n\031GetCommunityBadge"
+  "Progress\022*.CPlayer_GetCommunityBadgeProg"
+  "ress_Request\032+.CPlayer_GetCommunityBadge"
+  "Progress_Response\"\000\022y\n\032GetTopAchievement"
+  "sForGames\022+.CPlayer_GetTopAchievementsFo"
+  "rGames_Request\032,.CPlayer_GetTopAchieveme"
+  "ntsForGames_Response\"\000\022p\n\027GetAchievement"
+  "sProgress\022(.CPlayer_GetAchievementsProgr"
+  "ess_Request\032).CPlayer_GetAchievementsPro"
+  "gress_Response\"\000\022d\n\023GetGameAchievements\022"
+  "$.CPlayer_GetGameAchievements_Request\032%."
+  "CPlayer_GetGameAchievements_Response\"\000\022d"
+  "\n\023GetUserAchievements\022$.CPlayer_GetUserA"
+  "chievements_Request\032%.CPlayer_GetUserAch"
+  "ievements_Response\"\000\022\210\001\n\037GetGlobalAchiev"
+  "ementPercentages\0220.CPlayer_GetGlobalAchi"
+  "evementPercentages_Request\0321.CPlayer_Get"
+  "GlobalAchievementPercentages_Response\"\000\022"
+  "O\n\014GetUserStats\022\035.CPlayer_GetUserStats_R"
+  "equest\032\036.CPlayer_GetUserStats_Response\"\000"
+  "\022[\n\020GetFavoriteBadge\022!.CPlayer_GetFavori"
+  "teBadge_Request\032\".CPlayer_GetFavoriteBad"
+  "ge_Response\"\000\022[\n\020SetFavoriteBadge\022!.CPla"
+  "yer_SetFavoriteBadge_Request\032\".CPlayer_S"
+  "etFavoriteBadge_Response\"\000\022p\n\027GetProfile"
+  "Customization\022(.CPlayer_GetProfileCustom"
+  "ization_Request\032).CPlayer_GetProfileCust"
+  "omization_Response\"\000\022\216\001\n!GetPurchasedPro"
+  "fileCustomizations\0222.CPlayer_GetPurchase"
+  "dProfileCustomizations_Request\0323.CPlayer"
+  "_GetPurchasedProfileCustomizations_Respo"
+  "nse\"\000\022\257\001\n,GetPurchasedAndUpgradedProfile"
+  "Customizations\022=.CPlayer_GetPurchasedAnd"
+  "UpgradedProfileCustomizations_Request\032>."
+  "CPlayer_GetPurchasedAndUpgradedProfileCu"
+  "stomizations_Response\"\000\022v\n\031GetProfileThe"
+  "mesAvailable\022*.CPlayer_GetProfileThemesA"
+  "vailable_Request\032+.CPlayer_GetProfileThe"
+  "mesAvailable_Response\"\000\022X\n\017SetProfileThe"
+  "me\022 .CPlayer_SetProfileTheme_Request\032!.C"
+  "Player_SetProfileTheme_Response\"\000\022j\n\025Set"
+  "ProfilePreferences\022&.CPlayer_SetProfileP"
+  "references_Request\032\'.CPlayer_SetProfileP"
+  "references_Response\"\000\022d\n\023PostStatusToFri"
+  "ends\022$.CPlayer_PostStatusToFriends_Reque"
+  "st\032%.CPlayer_PostStatusToFriends_Respons"
+  "e\"\000\022X\n\017GetPostedStatus\022 .CPlayer_GetPost"
+  "edStatus_Request\032!.CPlayer_GetPostedStat"
+  "us_Response\"\000\022a\n\022DeletePostedStatus\022#.CP"
+  "layer_DeletePostedStatus_Request\032$.CPlay"
+  "er_DeletePostedStatus_Response\"\000\022g\n\030Clie"
+  "ntGetLastPlayedTimes\022#.CPlayer_GetLastPl"
+  "ayedTimes_Request\032$.CPlayer_GetLastPlaye"
+  "dTimes_Response\"\000\022a\n\022GetTimeSSAAccepted\022"
+  "#.CPlayer_GetTimeSSAAccepted_Request\032$.C"
+  "Player_GetTimeSSAAccepted_Response\"\000\022F\n\t"
+  "AcceptSSA\022\032.CPlayer_AcceptSSA_Request\032\033."
+  "CPlayer_AcceptSSA_Response\"\000\022X\n\017GetNickn"
+  "ameList\022 .CPlayer_GetNicknameList_Reques"
+  "t\032!.CPlayer_GetNicknameList_Response\"\000\022p"
+  "\n\027GetPerFriendPreferences\022(.CPlayer_GetP"
+  "erFriendPreferences_Request\032).CPlayer_Ge"
+  "tPerFriendPreferences_Response\"\000\022p\n\027SetP"
+  "erFriendPreferences\022(.CPlayer_SetPerFrie"
+  "ndPreferences_Request\032).CPlayer_SetPerFr"
+  "iendPreferences_Response\"\000\022F\n\tAddFriend\022"
+  "\032.CPlayer_AddFriend_Request\032\033.CPlayer_Ad"
+  "dFriend_Response\"\000\022O\n\014RemoveFriend\022\035.CPl"
+  "ayer_RemoveFriend_Request\032\036.CPlayer_Remo"
+  "veFriend_Response\"\000\022O\n\014IgnoreFriend\022\035.CP"
+  "layer_IgnoreFriend_Request\032\036.CPlayer_Ign"
+  "oreFriend_Response\"\000\022p\n\027GetCommunityPref"
+  "erences\022(.CPlayer_GetCommunityPreference"
+  "s_Request\032).CPlayer_GetCommunityPreferen"
+  "ces_Response\"\000\022p\n\027SetCommunityPreference"
+  "s\022(.CPlayer_SetCommunityPreferences_Requ"
+  "est\032).CPlayer_SetCommunityPreferences_Re"
+  "sponse\"\000\022a\n\022GetTextFilterWords\022#.CPlayer"
+  "_GetTextFilterWords_Request\032$.CPlayer_Ge"
+  "tTextFilterWords_Response\"\000\022\177\n\034GetNewSte"
+  "amAnnouncementState\022-.CPlayer_GetNewStea"
+  "mAnnouncementState_Request\032..CPlayer_Get"
+  "NewSteamAnnouncementState_Response\"\000\022\210\001\n"
+  "\037UpdateSteamAnnouncementLastRead\0220.CPlay"
+  "er_UpdateSteamAnnouncementLastRead_Reque"
+  "st\0321.CPlayer_UpdateSteamAnnouncementLast"
+  "Read_Response\"\000\022a\n\022GetPrivacySettings\022#."
+  "CPlayer_GetPrivacySettings_Request\032$.CPl"
+  "ayer_GetPrivacySettings_Response\"\000\022a\n\022Ge"
+  "tDurationControl\022#.CPlayer_GetDurationCo"
+  "ntrol_Request\032$.CPlayer_GetDurationContr"
+  "ol_Response\"\000\022y\n\032RecordDisconnectedPlayt"
+  "ime\022+.CPlayer_RecordDisconnectedPlaytime"
+  "_Request\032,.CPlayer_RecordDisconnectedPla"
+  "ytime_Response\"\0002\235\006\n\014PlayerClient\022M\n\025Not"
+  "ifyLastPlayedTimes\022%.CPlayer_LastPlayedT"
+  "imes_Notification\032\013.NoResponse\"\000\022Y\n\033Noti"
+  "fyFriendNicknameChanged\022+.CPlayer_Friend"
+  "NicknameChanged_Notification\032\013.NoRespons"
+  "e\"\000\022q\n\'NotifyFriendEquippedProfileItemsC"
+  "hanged\0227.CPlayer_FriendEquippedProfileIt"
+  "emsChanged_Notification\032\013.NoResponse\"\000\022a"
+  "\n\037NotifyNewSteamAnnouncementState\022/.CPla"
+  "yer_NewSteamAnnouncementState_Notificati"
+  "on\032\013.NoResponse\"\000\022e\n!NotifyCommunityPref"
+  "erencesChanged\0221.CPlayer_CommunityPrefer"
+  "encesChanged_Notification\032\013.NoResponse\"\000"
+  "\022[\n\034NotifyTextFilterWordsChanged\022,.CPlay"
+  "er_TextFilterWordsChanged_Notification\032\013"
+  ".NoResponse\"\000\022e\n!NotifyPerFriendPreferen"
+  "cesChanged\0221.CPlayer_PerFriendPreference"
+  "sChanged_Notification\032\013.NoResponse\"\000\022b\n#"
+  "NotifyPrivacyPrivacySettingsChanged\022,.CP"
+  "layer_PrivacySettingsChanged_Notificatio"
+  "n\032\013.NoResponse\"\000"
   ;
 static const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable*const descriptor_table_steammessages_5fplayer_2esteamclient_2eproto_deps[3] = {
   &::descriptor_table_enums_2eproto,
@@ -4770,8 +4919,8 @@ static const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable*const descriptor
 };
 static ::PROTOBUF_NAMESPACE_ID::internal::once_flag descriptor_table_steammessages_5fplayer_2esteamclient_2eproto_once;
 const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable descriptor_table_steammessages_5fplayer_2esteamclient_2eproto = {
-  false, false, 26192, descriptor_table_protodef_steammessages_5fplayer_2esteamclient_2eproto, "steammessages_player.steamclient.proto", 
-  &descriptor_table_steammessages_5fplayer_2esteamclient_2eproto_once, descriptor_table_steammessages_5fplayer_2esteamclient_2eproto_deps, 3, 155,
+  false, false, 27056, descriptor_table_protodef_steammessages_5fplayer_2esteamclient_2eproto, "steammessages_player.steamclient.proto", 
+  &descriptor_table_steammessages_5fplayer_2esteamclient_2eproto_once, descriptor_table_steammessages_5fplayer_2esteamclient_2eproto_deps, 3, 159,
   schemas, file_default_instances, TableStruct_steammessages_5fplayer_2esteamclient_2eproto::offsets,
   file_level_metadata_steammessages_5fplayer_2esteamclient_2eproto, file_level_enum_descriptors_steammessages_5fplayer_2esteamclient_2eproto, file_level_service_descriptors_steammessages_5fplayer_2esteamclient_2eproto,
 };
@@ -8274,13 +8423,16 @@ class CPlayer_GetOwnedGames_Request::_Internal {
     (*has_bits)[0] |= 16u;
   }
   static void set_has_skip_unvetted_apps(HasBits* has_bits) {
-    (*has_bits)[0] |= 64u;
+    (*has_bits)[0] |= 128u;
   }
   static void set_has_language(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
   }
   static void set_has_include_extended_appinfo(HasBits* has_bits) {
     (*has_bits)[0] |= 32u;
+  }
+  static void set_has_include_family_licenses(HasBits* has_bits) {
+    (*has_bits)[0] |= 64u;
   }
 };
 
@@ -8311,8 +8463,8 @@ void CPlayer_GetOwnedGames_Request::SharedCtor() {
 language_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
 ::memset(reinterpret_cast<char*>(this) + static_cast<size_t>(
     reinterpret_cast<char*>(&steamid_) - reinterpret_cast<char*>(this)),
-    0, static_cast<size_t>(reinterpret_cast<char*>(&include_extended_appinfo_) -
-    reinterpret_cast<char*>(&steamid_)) + sizeof(include_extended_appinfo_));
+    0, static_cast<size_t>(reinterpret_cast<char*>(&include_family_licenses_) -
+    reinterpret_cast<char*>(&steamid_)) + sizeof(include_family_licenses_));
 skip_unvetted_apps_ = true;
 }
 
@@ -8348,10 +8500,10 @@ void CPlayer_GetOwnedGames_Request::Clear() {
   if (cached_has_bits & 0x00000001u) {
     language_.ClearNonDefaultToEmpty();
   }
-  if (cached_has_bits & 0x0000007eu) {
+  if (cached_has_bits & 0x000000feu) {
     ::memset(&steamid_, 0, static_cast<size_t>(
-        reinterpret_cast<char*>(&include_extended_appinfo_) -
-        reinterpret_cast<char*>(&steamid_)) + sizeof(include_extended_appinfo_));
+        reinterpret_cast<char*>(&include_family_licenses_) -
+        reinterpret_cast<char*>(&steamid_)) + sizeof(include_family_licenses_));
     skip_unvetted_apps_ = true;
   }
   _has_bits_.Clear();
@@ -8440,6 +8592,14 @@ const char* CPlayer_GetOwnedGames_Request::_InternalParse(const char* ptr, ::PRO
           CHK_(ptr);
         } else goto handle_unusual;
         continue;
+      // optional bool include_family_licenses = 9;
+      case 9:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 72)) {
+          _Internal::set_has_include_family_licenses(&has_bits);
+          include_family_licenses_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
       default: {
       handle_unusual:
         if ((tag & 7) == 4 || tag == 0) {
@@ -8501,7 +8661,7 @@ failure:
   }
 
   // optional bool skip_unvetted_apps = 6 [default = true];
-  if (cached_has_bits & 0x00000040u) {
+  if (cached_has_bits & 0x00000080u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(6, this->_internal_skip_unvetted_apps(), target);
   }
@@ -8520,6 +8680,12 @@ failure:
   if (cached_has_bits & 0x00000020u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(8, this->_internal_include_extended_appinfo(), target);
+  }
+
+  // optional bool include_family_licenses = 9;
+  if (cached_has_bits & 0x00000040u) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(9, this->_internal_include_family_licenses(), target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -8548,7 +8714,7 @@ size_t CPlayer_GetOwnedGames_Request::ByteSizeLong() const {
   }
 
   cached_has_bits = _has_bits_[0];
-  if (cached_has_bits & 0x0000007fu) {
+  if (cached_has_bits & 0x000000ffu) {
     // optional string language = 7;
     if (cached_has_bits & 0x00000001u) {
       total_size += 1 +
@@ -8583,8 +8749,13 @@ size_t CPlayer_GetOwnedGames_Request::ByteSizeLong() const {
       total_size += 1 + 1;
     }
 
-    // optional bool skip_unvetted_apps = 6 [default = true];
+    // optional bool include_family_licenses = 9;
     if (cached_has_bits & 0x00000040u) {
+      total_size += 1 + 1;
+    }
+
+    // optional bool skip_unvetted_apps = 6 [default = true];
+    if (cached_has_bits & 0x00000080u) {
       total_size += 1 + 1;
     }
 
@@ -8622,7 +8793,7 @@ void CPlayer_GetOwnedGames_Request::MergeFrom(const CPlayer_GetOwnedGames_Reques
 
   appids_filter_.MergeFrom(from.appids_filter_);
   cached_has_bits = from._has_bits_[0];
-  if (cached_has_bits & 0x0000007fu) {
+  if (cached_has_bits & 0x000000ffu) {
     if (cached_has_bits & 0x00000001u) {
       _internal_set_language(from._internal_language());
     }
@@ -8642,6 +8813,9 @@ void CPlayer_GetOwnedGames_Request::MergeFrom(const CPlayer_GetOwnedGames_Reques
       include_extended_appinfo_ = from.include_extended_appinfo_;
     }
     if (cached_has_bits & 0x00000040u) {
+      include_family_licenses_ = from.include_family_licenses_;
+    }
+    if (cached_has_bits & 0x00000080u) {
       skip_unvetted_apps_ = from.skip_unvetted_apps_;
     }
     _has_bits_[0] |= cached_has_bits;
@@ -8673,8 +8847,8 @@ void CPlayer_GetOwnedGames_Request::InternalSwap(CPlayer_GetOwnedGames_Request* 
   appids_filter_.InternalSwap(&other->appids_filter_);
   language_.Swap(&other->language_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
-      PROTOBUF_FIELD_OFFSET(CPlayer_GetOwnedGames_Request, include_extended_appinfo_)
-      + sizeof(CPlayer_GetOwnedGames_Request::include_extended_appinfo_)
+      PROTOBUF_FIELD_OFFSET(CPlayer_GetOwnedGames_Request, include_family_licenses_)
+      + sizeof(CPlayer_GetOwnedGames_Request::include_family_licenses_)
       - PROTOBUF_FIELD_OFFSET(CPlayer_GetOwnedGames_Request, steamid_)>(
           reinterpret_cast<char*>(&steamid_),
           reinterpret_cast<char*>(&other->steamid_));
@@ -8719,7 +8893,7 @@ class CPlayer_GetOwnedGames_Response_Game::_Internal {
     (*has_bits)[0] |= 512u;
   }
   static void set_has_playtime_deck_forever(HasBits* has_bits) {
-    (*has_bits)[0] |= 131072u;
+    (*has_bits)[0] |= 262144u;
   }
   static void set_has_rtime_last_played(HasBits* has_bits) {
     (*has_bits)[0] |= 1024u;
@@ -8740,10 +8914,13 @@ class CPlayer_GetOwnedGames_Response_Game::_Internal {
     (*has_bits)[0] |= 16384u;
   }
   static void set_has_has_leaderboards(HasBits* has_bits) {
-    (*has_bits)[0] |= 32768u;
+    (*has_bits)[0] |= 65536u;
   }
   static void set_has_playtime_disconnected(HasBits* has_bits) {
-    (*has_bits)[0] |= 65536u;
+    (*has_bits)[0] |= 32768u;
+  }
+  static void set_has_family_shared(HasBits* has_bits) {
+    (*has_bits)[0] |= 131072u;
   }
 };
 
@@ -8849,13 +9026,13 @@ void CPlayer_GetOwnedGames_Response_Game::Clear() {
   }
   if (cached_has_bits & 0x0000ff00u) {
     ::memset(&playtime_mac_forever_, 0, static_cast<size_t>(
-        reinterpret_cast<char*>(&has_leaderboards_) -
-        reinterpret_cast<char*>(&playtime_mac_forever_)) + sizeof(has_leaderboards_));
+        reinterpret_cast<char*>(&playtime_disconnected_) -
+        reinterpret_cast<char*>(&playtime_mac_forever_)) + sizeof(playtime_disconnected_));
   }
-  if (cached_has_bits & 0x00030000u) {
-    ::memset(&playtime_disconnected_, 0, static_cast<size_t>(
+  if (cached_has_bits & 0x00070000u) {
+    ::memset(&has_leaderboards_, 0, static_cast<size_t>(
         reinterpret_cast<char*>(&playtime_deck_forever_) -
-        reinterpret_cast<char*>(&playtime_disconnected_)) + sizeof(playtime_deck_forever_));
+        reinterpret_cast<char*>(&has_leaderboards_)) + sizeof(playtime_deck_forever_));
   }
   _has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
@@ -9040,6 +9217,14 @@ const char* CPlayer_GetOwnedGames_Response_Game::_InternalParse(const char* ptr,
           CHK_(ptr);
         } else goto handle_unusual;
         continue;
+      // optional bool family_shared = 21;
+      case 21:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 168)) {
+          _Internal::set_has_family_shared(&has_bits);
+          family_shared_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
       default: {
       handle_unusual:
         if ((tag & 7) == 4 || tag == 0) {
@@ -9177,7 +9362,7 @@ failure:
   }
 
   // optional bool has_leaderboards = 17;
-  if (cached_has_bits & 0x00008000u) {
+  if (cached_has_bits & 0x00010000u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(17, this->_internal_has_leaderboards(), target);
   }
@@ -9189,15 +9374,21 @@ failure:
   }
 
   // optional int32 playtime_disconnected = 19;
-  if (cached_has_bits & 0x00010000u) {
+  if (cached_has_bits & 0x00008000u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteInt32ToArray(19, this->_internal_playtime_disconnected(), target);
   }
 
   // optional int32 playtime_deck_forever = 20;
-  if (cached_has_bits & 0x00020000u) {
+  if (cached_has_bits & 0x00040000u) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteInt32ToArray(20, this->_internal_playtime_deck_forever(), target);
+  }
+
+  // optional bool family_shared = 21;
+  if (cached_has_bits & 0x00020000u) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(21, this->_internal_family_shared(), target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -9326,22 +9517,27 @@ size_t CPlayer_GetOwnedGames_Response_Game::ByteSizeLong() const {
       total_size += 2 + 1;
     }
 
-    // optional bool has_leaderboards = 17;
-    if (cached_has_bits & 0x00008000u) {
-      total_size += 2 + 1;
-    }
-
-  }
-  if (cached_has_bits & 0x00030000u) {
     // optional int32 playtime_disconnected = 19;
-    if (cached_has_bits & 0x00010000u) {
+    if (cached_has_bits & 0x00008000u) {
       total_size += 2 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::Int32Size(
           this->_internal_playtime_disconnected());
     }
 
-    // optional int32 playtime_deck_forever = 20;
+  }
+  if (cached_has_bits & 0x00070000u) {
+    // optional bool has_leaderboards = 17;
+    if (cached_has_bits & 0x00010000u) {
+      total_size += 2 + 1;
+    }
+
+    // optional bool family_shared = 21;
     if (cached_has_bits & 0x00020000u) {
+      total_size += 2 + 1;
+    }
+
+    // optional int32 playtime_deck_forever = 20;
+    if (cached_has_bits & 0x00040000u) {
       total_size += 2 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::Int32Size(
           this->_internal_playtime_deck_forever());
@@ -9431,15 +9627,18 @@ void CPlayer_GetOwnedGames_Response_Game::MergeFrom(const CPlayer_GetOwnedGames_
       has_dlc_ = from.has_dlc_;
     }
     if (cached_has_bits & 0x00008000u) {
-      has_leaderboards_ = from.has_leaderboards_;
+      playtime_disconnected_ = from.playtime_disconnected_;
     }
     _has_bits_[0] |= cached_has_bits;
   }
-  if (cached_has_bits & 0x00030000u) {
+  if (cached_has_bits & 0x00070000u) {
     if (cached_has_bits & 0x00010000u) {
-      playtime_disconnected_ = from.playtime_disconnected_;
+      has_leaderboards_ = from.has_leaderboards_;
     }
     if (cached_has_bits & 0x00020000u) {
+      family_shared_ = from.family_shared_;
+    }
+    if (cached_has_bits & 0x00040000u) {
       playtime_deck_forever_ = from.playtime_deck_forever_;
     }
     _has_bits_[0] |= cached_has_bits;
@@ -10199,6 +10398,9 @@ class CPlayer_GetFriendsGameplayInfo_Request::_Internal {
   static void set_has_appid(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
   }
+  static void set_has_include_family_licenses(HasBits* has_bits) {
+    (*has_bits)[0] |= 2u;
+  }
 };
 
 CPlayer_GetFriendsGameplayInfo_Request::CPlayer_GetFriendsGameplayInfo_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena)
@@ -10211,12 +10413,17 @@ CPlayer_GetFriendsGameplayInfo_Request::CPlayer_GetFriendsGameplayInfo_Request(c
   : ::PROTOBUF_NAMESPACE_ID::Message(),
       _has_bits_(from._has_bits_) {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  appid_ = from.appid_;
+  ::memcpy(&appid_, &from.appid_,
+    static_cast<size_t>(reinterpret_cast<char*>(&include_family_licenses_) -
+    reinterpret_cast<char*>(&appid_)) + sizeof(include_family_licenses_));
   // @@protoc_insertion_point(copy_constructor:CPlayer_GetFriendsGameplayInfo_Request)
 }
 
 void CPlayer_GetFriendsGameplayInfo_Request::SharedCtor() {
-appid_ = 0u;
+::memset(reinterpret_cast<char*>(this) + static_cast<size_t>(
+    reinterpret_cast<char*>(&appid_) - reinterpret_cast<char*>(this)),
+    0, static_cast<size_t>(reinterpret_cast<char*>(&include_family_licenses_) -
+    reinterpret_cast<char*>(&appid_)) + sizeof(include_family_licenses_));
 }
 
 CPlayer_GetFriendsGameplayInfo_Request::~CPlayer_GetFriendsGameplayInfo_Request() {
@@ -10245,7 +10452,12 @@ void CPlayer_GetFriendsGameplayInfo_Request::Clear() {
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  appid_ = 0u;
+  cached_has_bits = _has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    ::memset(&appid_, 0, static_cast<size_t>(
+        reinterpret_cast<char*>(&include_family_licenses_) -
+        reinterpret_cast<char*>(&appid_)) + sizeof(include_family_licenses_));
+  }
   _has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
@@ -10263,6 +10475,14 @@ const char* CPlayer_GetFriendsGameplayInfo_Request::_InternalParse(const char* p
         if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 8)) {
           _Internal::set_has_appid(&has_bits);
           appid_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
+      // optional bool include_family_licenses = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 16)) {
+          _Internal::set_has_include_family_licenses(&has_bits);
+          include_family_licenses_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
           CHK_(ptr);
         } else goto handle_unusual;
         continue;
@@ -10302,6 +10522,12 @@ failure:
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteUInt32ToArray(1, this->_internal_appid(), target);
   }
 
+  // optional bool include_family_licenses = 2;
+  if (cached_has_bits & 0x00000002u) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(2, this->_internal_include_family_licenses(), target);
+  }
+
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
@@ -10318,14 +10544,21 @@ size_t CPlayer_GetFriendsGameplayInfo_Request::ByteSizeLong() const {
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  // optional uint32 appid = 1;
   cached_has_bits = _has_bits_[0];
-  if (cached_has_bits & 0x00000001u) {
-    total_size += 1 +
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::UInt32Size(
-        this->_internal_appid());
-  }
+  if (cached_has_bits & 0x00000003u) {
+    // optional uint32 appid = 1;
+    if (cached_has_bits & 0x00000001u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::UInt32Size(
+          this->_internal_appid());
+    }
 
+    // optional bool include_family_licenses = 2;
+    if (cached_has_bits & 0x00000002u) {
+      total_size += 1 + 1;
+    }
+
+  }
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
         _internal_metadata_, total_size, &_cached_size_);
@@ -10357,8 +10590,15 @@ void CPlayer_GetFriendsGameplayInfo_Request::MergeFrom(const CPlayer_GetFriendsG
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  if (from._internal_has_appid()) {
-    _internal_set_appid(from._internal_appid());
+  cached_has_bits = from._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    if (cached_has_bits & 0x00000001u) {
+      appid_ = from.appid_;
+    }
+    if (cached_has_bits & 0x00000002u) {
+      include_family_licenses_ = from.include_family_licenses_;
+    }
+    _has_bits_[0] |= cached_has_bits;
   }
 }
 
@@ -10384,7 +10624,12 @@ void CPlayer_GetFriendsGameplayInfo_Request::InternalSwap(CPlayer_GetFriendsGame
   using std::swap;
   _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
   swap(_has_bits_[0], other->_has_bits_[0]);
-  swap(appid_, other->appid_);
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(CPlayer_GetFriendsGameplayInfo_Request, include_family_licenses_)
+      + sizeof(CPlayer_GetFriendsGameplayInfo_Request::include_family_licenses_)
+      - PROTOBUF_FIELD_OFFSET(CPlayer_GetFriendsGameplayInfo_Request, appid_)>(
+          reinterpret_cast<char*>(&appid_),
+          reinterpret_cast<char*>(&other->appid_));
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata CPlayer_GetFriendsGameplayInfo_Request::GetMetadata() const {
@@ -22088,6 +22333,21 @@ class CPlayer_GetAchievementsProgress_Response_AchievementProgress::_Internal {
   static void set_has_vetted(HasBits* has_bits) {
     (*has_bits)[0] |= 64u;
   }
+  static void set_has_groups_completed_base(HasBits* has_bits) {
+    (*has_bits)[0] |= 128u;
+  }
+  static void set_has_groups_total_base(HasBits* has_bits) {
+    (*has_bits)[0] |= 256u;
+  }
+  static void set_has_groups_completed_dlc(HasBits* has_bits) {
+    (*has_bits)[0] |= 512u;
+  }
+  static void set_has_groups_total_dlc(HasBits* has_bits) {
+    (*has_bits)[0] |= 1024u;
+  }
+  static void set_has_base_game_total(HasBits* has_bits) {
+    (*has_bits)[0] |= 2048u;
+  }
 };
 
 CPlayer_GetAchievementsProgress_Response_AchievementProgress::CPlayer_GetAchievementsProgress_Response_AchievementProgress(::PROTOBUF_NAMESPACE_ID::Arena* arena)
@@ -22101,16 +22361,16 @@ CPlayer_GetAchievementsProgress_Response_AchievementProgress::CPlayer_GetAchieve
       _has_bits_(from._has_bits_) {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::memcpy(&appid_, &from.appid_,
-    static_cast<size_t>(reinterpret_cast<char*>(&vetted_) -
-    reinterpret_cast<char*>(&appid_)) + sizeof(vetted_));
+    static_cast<size_t>(reinterpret_cast<char*>(&base_game_total_) -
+    reinterpret_cast<char*>(&appid_)) + sizeof(base_game_total_));
   // @@protoc_insertion_point(copy_constructor:CPlayer_GetAchievementsProgress_Response.AchievementProgress)
 }
 
 void CPlayer_GetAchievementsProgress_Response_AchievementProgress::SharedCtor() {
 ::memset(reinterpret_cast<char*>(this) + static_cast<size_t>(
     reinterpret_cast<char*>(&appid_) - reinterpret_cast<char*>(this)),
-    0, static_cast<size_t>(reinterpret_cast<char*>(&vetted_) -
-    reinterpret_cast<char*>(&appid_)) + sizeof(vetted_));
+    0, static_cast<size_t>(reinterpret_cast<char*>(&base_game_total_) -
+    reinterpret_cast<char*>(&appid_)) + sizeof(base_game_total_));
 }
 
 CPlayer_GetAchievementsProgress_Response_AchievementProgress::~CPlayer_GetAchievementsProgress_Response_AchievementProgress() {
@@ -22140,10 +22400,15 @@ void CPlayer_GetAchievementsProgress_Response_AchievementProgress::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _has_bits_[0];
-  if (cached_has_bits & 0x0000007fu) {
+  if (cached_has_bits & 0x000000ffu) {
     ::memset(&appid_, 0, static_cast<size_t>(
-        reinterpret_cast<char*>(&vetted_) -
-        reinterpret_cast<char*>(&appid_)) + sizeof(vetted_));
+        reinterpret_cast<char*>(&groups_completed_base_) -
+        reinterpret_cast<char*>(&appid_)) + sizeof(groups_completed_base_));
+  }
+  if (cached_has_bits & 0x00000f00u) {
+    ::memset(&groups_total_base_, 0, static_cast<size_t>(
+        reinterpret_cast<char*>(&base_game_total_) -
+        reinterpret_cast<char*>(&groups_total_base_)) + sizeof(base_game_total_));
   }
   _has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
@@ -22210,6 +22475,46 @@ const char* CPlayer_GetAchievementsProgress_Response_AchievementProgress::_Inter
         if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 56)) {
           _Internal::set_has_vetted(&has_bits);
           vetted_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
+      // optional uint32 groups_completed_base = 8;
+      case 8:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 64)) {
+          _Internal::set_has_groups_completed_base(&has_bits);
+          groups_completed_base_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
+      // optional uint32 groups_total_base = 9;
+      case 9:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 72)) {
+          _Internal::set_has_groups_total_base(&has_bits);
+          groups_total_base_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
+      // optional uint32 groups_completed_dlc = 10;
+      case 10:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 80)) {
+          _Internal::set_has_groups_completed_dlc(&has_bits);
+          groups_completed_dlc_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
+      // optional uint32 groups_total_dlc = 11;
+      case 11:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 88)) {
+          _Internal::set_has_groups_total_dlc(&has_bits);
+          groups_total_dlc_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
+      // optional uint32 base_game_total = 12;
+      case 12:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 96)) {
+          _Internal::set_has_base_game_total(&has_bits);
+          base_game_total_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
           CHK_(ptr);
         } else goto handle_unusual;
         continue;
@@ -22285,6 +22590,36 @@ failure:
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(7, this->_internal_vetted(), target);
   }
 
+  // optional uint32 groups_completed_base = 8;
+  if (cached_has_bits & 0x00000080u) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteUInt32ToArray(8, this->_internal_groups_completed_base(), target);
+  }
+
+  // optional uint32 groups_total_base = 9;
+  if (cached_has_bits & 0x00000100u) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteUInt32ToArray(9, this->_internal_groups_total_base(), target);
+  }
+
+  // optional uint32 groups_completed_dlc = 10;
+  if (cached_has_bits & 0x00000200u) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteUInt32ToArray(10, this->_internal_groups_completed_dlc(), target);
+  }
+
+  // optional uint32 groups_total_dlc = 11;
+  if (cached_has_bits & 0x00000400u) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteUInt32ToArray(11, this->_internal_groups_total_dlc(), target);
+  }
+
+  // optional uint32 base_game_total = 12;
+  if (cached_has_bits & 0x00000800u) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteUInt32ToArray(12, this->_internal_base_game_total(), target);
+  }
+
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
@@ -22302,7 +22637,7 @@ size_t CPlayer_GetAchievementsProgress_Response_AchievementProgress::ByteSizeLon
   (void) cached_has_bits;
 
   cached_has_bits = _has_bits_[0];
-  if (cached_has_bits & 0x0000007fu) {
+  if (cached_has_bits & 0x000000ffu) {
     // optional uint32 appid = 1;
     if (cached_has_bits & 0x00000001u) {
       total_size += 1 +
@@ -22346,6 +22681,43 @@ size_t CPlayer_GetAchievementsProgress_Response_AchievementProgress::ByteSizeLon
       total_size += 1 + 1;
     }
 
+    // optional uint32 groups_completed_base = 8;
+    if (cached_has_bits & 0x00000080u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::UInt32Size(
+          this->_internal_groups_completed_base());
+    }
+
+  }
+  if (cached_has_bits & 0x00000f00u) {
+    // optional uint32 groups_total_base = 9;
+    if (cached_has_bits & 0x00000100u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::UInt32Size(
+          this->_internal_groups_total_base());
+    }
+
+    // optional uint32 groups_completed_dlc = 10;
+    if (cached_has_bits & 0x00000200u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::UInt32Size(
+          this->_internal_groups_completed_dlc());
+    }
+
+    // optional uint32 groups_total_dlc = 11;
+    if (cached_has_bits & 0x00000400u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::UInt32Size(
+          this->_internal_groups_total_dlc());
+    }
+
+    // optional uint32 base_game_total = 12;
+    if (cached_has_bits & 0x00000800u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::UInt32Size(
+          this->_internal_base_game_total());
+    }
+
   }
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
@@ -22379,7 +22751,7 @@ void CPlayer_GetAchievementsProgress_Response_AchievementProgress::MergeFrom(con
   (void) cached_has_bits;
 
   cached_has_bits = from._has_bits_[0];
-  if (cached_has_bits & 0x0000007fu) {
+  if (cached_has_bits & 0x000000ffu) {
     if (cached_has_bits & 0x00000001u) {
       appid_ = from.appid_;
     }
@@ -22400,6 +22772,24 @@ void CPlayer_GetAchievementsProgress_Response_AchievementProgress::MergeFrom(con
     }
     if (cached_has_bits & 0x00000040u) {
       vetted_ = from.vetted_;
+    }
+    if (cached_has_bits & 0x00000080u) {
+      groups_completed_base_ = from.groups_completed_base_;
+    }
+    _has_bits_[0] |= cached_has_bits;
+  }
+  if (cached_has_bits & 0x00000f00u) {
+    if (cached_has_bits & 0x00000100u) {
+      groups_total_base_ = from.groups_total_base_;
+    }
+    if (cached_has_bits & 0x00000200u) {
+      groups_completed_dlc_ = from.groups_completed_dlc_;
+    }
+    if (cached_has_bits & 0x00000400u) {
+      groups_total_dlc_ = from.groups_total_dlc_;
+    }
+    if (cached_has_bits & 0x00000800u) {
+      base_game_total_ = from.base_game_total_;
     }
     _has_bits_[0] |= cached_has_bits;
   }
@@ -22428,8 +22818,8 @@ void CPlayer_GetAchievementsProgress_Response_AchievementProgress::InternalSwap(
   _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
   swap(_has_bits_[0], other->_has_bits_[0]);
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
-      PROTOBUF_FIELD_OFFSET(CPlayer_GetAchievementsProgress_Response_AchievementProgress, vetted_)
-      + sizeof(CPlayer_GetAchievementsProgress_Response_AchievementProgress::vetted_)
+      PROTOBUF_FIELD_OFFSET(CPlayer_GetAchievementsProgress_Response_AchievementProgress, base_game_total_)
+      + sizeof(CPlayer_GetAchievementsProgress_Response_AchievementProgress::base_game_total_)
       - PROTOBUF_FIELD_OFFSET(CPlayer_GetAchievementsProgress_Response_AchievementProgress, appid_)>(
           reinterpret_cast<char*>(&appid_),
           reinterpret_cast<char*>(&other->appid_));
@@ -24987,8 +25377,17 @@ class CPlayer_GetUserAchievements_Response_Group::_Internal {
   static void set_has_groupid(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
   }
-  static void set_has_completion_achievements(HasBits* has_bits) {
+  static void set_has_is_achievable(HasBits* has_bits) {
+    (*has_bits)[0] |= 4u;
+  }
+  static void set_has_completed_achievements(HasBits* has_bits) {
     (*has_bits)[0] |= 2u;
+  }
+  static void set_has_is_completed(HasBits* has_bits) {
+    (*has_bits)[0] |= 8u;
+  }
+  static void set_has_time_completed(HasBits* has_bits) {
+    (*has_bits)[0] |= 16u;
   }
 };
 
@@ -25003,16 +25402,16 @@ CPlayer_GetUserAchievements_Response_Group::CPlayer_GetUserAchievements_Response
       _has_bits_(from._has_bits_) {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::memcpy(&groupid_, &from.groupid_,
-    static_cast<size_t>(reinterpret_cast<char*>(&completion_achievements_) -
-    reinterpret_cast<char*>(&groupid_)) + sizeof(completion_achievements_));
+    static_cast<size_t>(reinterpret_cast<char*>(&time_completed_) -
+    reinterpret_cast<char*>(&groupid_)) + sizeof(time_completed_));
   // @@protoc_insertion_point(copy_constructor:CPlayer_GetUserAchievements_Response.Group)
 }
 
 void CPlayer_GetUserAchievements_Response_Group::SharedCtor() {
 ::memset(reinterpret_cast<char*>(this) + static_cast<size_t>(
     reinterpret_cast<char*>(&groupid_) - reinterpret_cast<char*>(this)),
-    0, static_cast<size_t>(reinterpret_cast<char*>(&completion_achievements_) -
-    reinterpret_cast<char*>(&groupid_)) + sizeof(completion_achievements_));
+    0, static_cast<size_t>(reinterpret_cast<char*>(&time_completed_) -
+    reinterpret_cast<char*>(&groupid_)) + sizeof(time_completed_));
 }
 
 CPlayer_GetUserAchievements_Response_Group::~CPlayer_GetUserAchievements_Response_Group() {
@@ -25042,10 +25441,10 @@ void CPlayer_GetUserAchievements_Response_Group::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _has_bits_[0];
-  if (cached_has_bits & 0x00000003u) {
+  if (cached_has_bits & 0x0000001fu) {
     ::memset(&groupid_, 0, static_cast<size_t>(
-        reinterpret_cast<char*>(&completion_achievements_) -
-        reinterpret_cast<char*>(&groupid_)) + sizeof(completion_achievements_));
+        reinterpret_cast<char*>(&time_completed_) -
+        reinterpret_cast<char*>(&groupid_)) + sizeof(time_completed_));
   }
   _has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
@@ -25067,12 +25466,36 @@ const char* CPlayer_GetUserAchievements_Response_Group::_InternalParse(const cha
           CHK_(ptr);
         } else goto handle_unusual;
         continue;
-      // optional uint32 completion_achievements = 3;
+      // optional bool is_achievable = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 16)) {
+          _Internal::set_has_is_achievable(&has_bits);
+          is_achievable_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
+      // optional uint32 completed_achievements = 3;
       case 3:
         if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 24)) {
-          _Internal::set_has_completion_achievements(&has_bits);
-          completion_achievements_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          _Internal::set_has_completed_achievements(&has_bits);
+          completed_achievements_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
           CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
+      // optional bool is_completed = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 32)) {
+          _Internal::set_has_is_completed(&has_bits);
+          is_completed_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
+      // optional fixed32 time_completed = 9;
+      case 9:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 77)) {
+          _Internal::set_has_time_completed(&has_bits);
+          time_completed_ = ::PROTOBUF_NAMESPACE_ID::internal::UnalignedLoad<::PROTOBUF_NAMESPACE_ID::uint32>(ptr);
+          ptr += sizeof(::PROTOBUF_NAMESPACE_ID::uint32);
         } else goto handle_unusual;
         continue;
       default: {
@@ -25111,10 +25534,28 @@ failure:
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteUInt32ToArray(1, this->_internal_groupid(), target);
   }
 
-  // optional uint32 completion_achievements = 3;
+  // optional bool is_achievable = 2;
+  if (cached_has_bits & 0x00000004u) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(2, this->_internal_is_achievable(), target);
+  }
+
+  // optional uint32 completed_achievements = 3;
   if (cached_has_bits & 0x00000002u) {
     target = stream->EnsureSpace(target);
-    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteUInt32ToArray(3, this->_internal_completion_achievements(), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteUInt32ToArray(3, this->_internal_completed_achievements(), target);
+  }
+
+  // optional bool is_completed = 4;
+  if (cached_has_bits & 0x00000008u) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(4, this->_internal_is_completed(), target);
+  }
+
+  // optional fixed32 time_completed = 9;
+  if (cached_has_bits & 0x00000010u) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteFixed32ToArray(9, this->_internal_time_completed(), target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -25134,7 +25575,7 @@ size_t CPlayer_GetUserAchievements_Response_Group::ByteSizeLong() const {
   (void) cached_has_bits;
 
   cached_has_bits = _has_bits_[0];
-  if (cached_has_bits & 0x00000003u) {
+  if (cached_has_bits & 0x0000001fu) {
     // optional uint32 groupid = 1;
     if (cached_has_bits & 0x00000001u) {
       total_size += 1 +
@@ -25142,11 +25583,26 @@ size_t CPlayer_GetUserAchievements_Response_Group::ByteSizeLong() const {
           this->_internal_groupid());
     }
 
-    // optional uint32 completion_achievements = 3;
+    // optional uint32 completed_achievements = 3;
     if (cached_has_bits & 0x00000002u) {
       total_size += 1 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::UInt32Size(
-          this->_internal_completion_achievements());
+          this->_internal_completed_achievements());
+    }
+
+    // optional bool is_achievable = 2;
+    if (cached_has_bits & 0x00000004u) {
+      total_size += 1 + 1;
+    }
+
+    // optional bool is_completed = 4;
+    if (cached_has_bits & 0x00000008u) {
+      total_size += 1 + 1;
+    }
+
+    // optional fixed32 time_completed = 9;
+    if (cached_has_bits & 0x00000010u) {
+      total_size += 1 + 4;
     }
 
   }
@@ -25182,12 +25638,21 @@ void CPlayer_GetUserAchievements_Response_Group::MergeFrom(const CPlayer_GetUser
   (void) cached_has_bits;
 
   cached_has_bits = from._has_bits_[0];
-  if (cached_has_bits & 0x00000003u) {
+  if (cached_has_bits & 0x0000001fu) {
     if (cached_has_bits & 0x00000001u) {
       groupid_ = from.groupid_;
     }
     if (cached_has_bits & 0x00000002u) {
-      completion_achievements_ = from.completion_achievements_;
+      completed_achievements_ = from.completed_achievements_;
+    }
+    if (cached_has_bits & 0x00000004u) {
+      is_achievable_ = from.is_achievable_;
+    }
+    if (cached_has_bits & 0x00000008u) {
+      is_completed_ = from.is_completed_;
+    }
+    if (cached_has_bits & 0x00000010u) {
+      time_completed_ = from.time_completed_;
     }
     _has_bits_[0] |= cached_has_bits;
   }
@@ -25216,8 +25681,8 @@ void CPlayer_GetUserAchievements_Response_Group::InternalSwap(CPlayer_GetUserAch
   _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
   swap(_has_bits_[0], other->_has_bits_[0]);
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
-      PROTOBUF_FIELD_OFFSET(CPlayer_GetUserAchievements_Response_Group, completion_achievements_)
-      + sizeof(CPlayer_GetUserAchievements_Response_Group::completion_achievements_)
+      PROTOBUF_FIELD_OFFSET(CPlayer_GetUserAchievements_Response_Group, time_completed_)
+      + sizeof(CPlayer_GetUserAchievements_Response_Group::time_completed_)
       - PROTOBUF_FIELD_OFFSET(CPlayer_GetUserAchievements_Response_Group, groupid_)>(
           reinterpret_cast<char*>(&groupid_),
           reinterpret_cast<char*>(&other->groupid_));
@@ -25543,6 +26008,927 @@ void CPlayer_GetUserAchievements_Response::InternalSwap(CPlayer_GetUserAchieveme
 
 // ===================================================================
 
+class CPlayer_GetGlobalAchievementPercentages_Request::_Internal {
+ public:
+  using HasBits = decltype(std::declval<CPlayer_GetGlobalAchievementPercentages_Request>()._has_bits_);
+  static void set_has_appid(HasBits* has_bits) {
+    (*has_bits)[0] |= 1u;
+  }
+};
+
+CPlayer_GetGlobalAchievementPercentages_Request::CPlayer_GetGlobalAchievementPercentages_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
+  // @@protoc_insertion_point(arena_constructor:CPlayer_GetGlobalAchievementPercentages_Request)
+}
+CPlayer_GetGlobalAchievementPercentages_Request::CPlayer_GetGlobalAchievementPercentages_Request(const CPlayer_GetGlobalAchievementPercentages_Request& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      _has_bits_(from._has_bits_) {
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  appid_ = from.appid_;
+  // @@protoc_insertion_point(copy_constructor:CPlayer_GetGlobalAchievementPercentages_Request)
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Request::SharedCtor() {
+appid_ = 0u;
+}
+
+CPlayer_GetGlobalAchievementPercentages_Request::~CPlayer_GetGlobalAchievementPercentages_Request() {
+  // @@protoc_insertion_point(destructor:CPlayer_GetGlobalAchievementPercentages_Request)
+  SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Request::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Request::ArenaDtor(void* object) {
+  CPlayer_GetGlobalAchievementPercentages_Request* _this = reinterpret_cast< CPlayer_GetGlobalAchievementPercentages_Request* >(object);
+  (void)_this;
+}
+void CPlayer_GetGlobalAchievementPercentages_Request::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
+void CPlayer_GetGlobalAchievementPercentages_Request::SetCachedSize(int size) const {
+  _cached_size_.Set(size);
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Request::Clear() {
+// @@protoc_insertion_point(message_clear_start:CPlayer_GetGlobalAchievementPercentages_Request)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  appid_ = 0u;
+  _has_bits_.Clear();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* CPlayer_GetGlobalAchievementPercentages_Request::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  _Internal::HasBits has_bits{};
+  while (!ctx->Done(&ptr)) {
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
+    switch (tag >> 3) {
+      // optional uint32 appid = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 8)) {
+          _Internal::set_has_appid(&has_bits);
+          appid_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
+    }  // switch
+  }  // while
+success:
+  _has_bits_.Or(has_bits);
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto success;
+#undef CHK_
+}
+
+::PROTOBUF_NAMESPACE_ID::uint8* CPlayer_GetGlobalAchievementPercentages_Request::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:CPlayer_GetGlobalAchievementPercentages_Request)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  cached_has_bits = _has_bits_[0];
+  // optional uint32 appid = 1;
+  if (cached_has_bits & 0x00000001u) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteUInt32ToArray(1, this->_internal_appid(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:CPlayer_GetGlobalAchievementPercentages_Request)
+  return target;
+}
+
+size_t CPlayer_GetGlobalAchievementPercentages_Request::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:CPlayer_GetGlobalAchievementPercentages_Request)
+  size_t total_size = 0;
+
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // optional uint32 appid = 1;
+  cached_has_bits = _has_bits_[0];
+  if (cached_has_bits & 0x00000001u) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::UInt32Size(
+        this->_internal_appid());
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Request::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:CPlayer_GetGlobalAchievementPercentages_Request)
+  GOOGLE_DCHECK_NE(&from, this);
+  const CPlayer_GetGlobalAchievementPercentages_Request* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<CPlayer_GetGlobalAchievementPercentages_Request>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:CPlayer_GetGlobalAchievementPercentages_Request)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:CPlayer_GetGlobalAchievementPercentages_Request)
+    MergeFrom(*source);
+  }
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Request::MergeFrom(const CPlayer_GetGlobalAchievementPercentages_Request& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:CPlayer_GetGlobalAchievementPercentages_Request)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  if (from._internal_has_appid()) {
+    _internal_set_appid(from._internal_appid());
+  }
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Request::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:CPlayer_GetGlobalAchievementPercentages_Request)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Request::CopyFrom(const CPlayer_GetGlobalAchievementPercentages_Request& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:CPlayer_GetGlobalAchievementPercentages_Request)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool CPlayer_GetGlobalAchievementPercentages_Request::IsInitialized() const {
+  return true;
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Request::InternalSwap(CPlayer_GetGlobalAchievementPercentages_Request* other) {
+  using std::swap;
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  swap(_has_bits_[0], other->_has_bits_[0]);
+  swap(appid_, other->appid_);
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata CPlayer_GetGlobalAchievementPercentages_Request::GetMetadata() const {
+  return GetMetadataStatic();
+}
+
+
+// ===================================================================
+
+class CPlayer_GetGlobalAchievementPercentages_Response_Achievement::_Internal {
+ public:
+  using HasBits = decltype(std::declval<CPlayer_GetGlobalAchievementPercentages_Response_Achievement>()._has_bits_);
+  static void set_has_internal_key(HasBits* has_bits) {
+    (*has_bits)[0] |= 1u;
+  }
+  static void set_has_player_percent_unlocked(HasBits* has_bits) {
+    (*has_bits)[0] |= 2u;
+  }
+};
+
+CPlayer_GetGlobalAchievementPercentages_Response_Achievement::CPlayer_GetGlobalAchievementPercentages_Response_Achievement(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
+  // @@protoc_insertion_point(arena_constructor:CPlayer_GetGlobalAchievementPercentages_Response.Achievement)
+}
+CPlayer_GetGlobalAchievementPercentages_Response_Achievement::CPlayer_GetGlobalAchievementPercentages_Response_Achievement(const CPlayer_GetGlobalAchievementPercentages_Response_Achievement& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      _has_bits_(from._has_bits_) {
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::memcpy(&internal_key_, &from.internal_key_,
+    static_cast<size_t>(reinterpret_cast<char*>(&player_percent_unlocked_) -
+    reinterpret_cast<char*>(&internal_key_)) + sizeof(player_percent_unlocked_));
+  // @@protoc_insertion_point(copy_constructor:CPlayer_GetGlobalAchievementPercentages_Response.Achievement)
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Response_Achievement::SharedCtor() {
+::memset(reinterpret_cast<char*>(this) + static_cast<size_t>(
+    reinterpret_cast<char*>(&internal_key_) - reinterpret_cast<char*>(this)),
+    0, static_cast<size_t>(reinterpret_cast<char*>(&player_percent_unlocked_) -
+    reinterpret_cast<char*>(&internal_key_)) + sizeof(player_percent_unlocked_));
+}
+
+CPlayer_GetGlobalAchievementPercentages_Response_Achievement::~CPlayer_GetGlobalAchievementPercentages_Response_Achievement() {
+  // @@protoc_insertion_point(destructor:CPlayer_GetGlobalAchievementPercentages_Response.Achievement)
+  SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Response_Achievement::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Response_Achievement::ArenaDtor(void* object) {
+  CPlayer_GetGlobalAchievementPercentages_Response_Achievement* _this = reinterpret_cast< CPlayer_GetGlobalAchievementPercentages_Response_Achievement* >(object);
+  (void)_this;
+}
+void CPlayer_GetGlobalAchievementPercentages_Response_Achievement::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
+void CPlayer_GetGlobalAchievementPercentages_Response_Achievement::SetCachedSize(int size) const {
+  _cached_size_.Set(size);
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Response_Achievement::Clear() {
+// @@protoc_insertion_point(message_clear_start:CPlayer_GetGlobalAchievementPercentages_Response.Achievement)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  cached_has_bits = _has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    ::memset(&internal_key_, 0, static_cast<size_t>(
+        reinterpret_cast<char*>(&player_percent_unlocked_) -
+        reinterpret_cast<char*>(&internal_key_)) + sizeof(player_percent_unlocked_));
+  }
+  _has_bits_.Clear();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* CPlayer_GetGlobalAchievementPercentages_Response_Achievement::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  _Internal::HasBits has_bits{};
+  while (!ctx->Done(&ptr)) {
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
+    switch (tag >> 3) {
+      // optional uint32 internal_key = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 8)) {
+          _Internal::set_has_internal_key(&has_bits);
+          internal_key_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
+      // optional float player_percent_unlocked = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 21)) {
+          _Internal::set_has_player_percent_unlocked(&has_bits);
+          player_percent_unlocked_ = ::PROTOBUF_NAMESPACE_ID::internal::UnalignedLoad<float>(ptr);
+          ptr += sizeof(float);
+        } else goto handle_unusual;
+        continue;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
+    }  // switch
+  }  // while
+success:
+  _has_bits_.Or(has_bits);
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto success;
+#undef CHK_
+}
+
+::PROTOBUF_NAMESPACE_ID::uint8* CPlayer_GetGlobalAchievementPercentages_Response_Achievement::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:CPlayer_GetGlobalAchievementPercentages_Response.Achievement)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  cached_has_bits = _has_bits_[0];
+  // optional uint32 internal_key = 1;
+  if (cached_has_bits & 0x00000001u) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteUInt32ToArray(1, this->_internal_internal_key(), target);
+  }
+
+  // optional float player_percent_unlocked = 2;
+  if (cached_has_bits & 0x00000002u) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteFloatToArray(2, this->_internal_player_percent_unlocked(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:CPlayer_GetGlobalAchievementPercentages_Response.Achievement)
+  return target;
+}
+
+size_t CPlayer_GetGlobalAchievementPercentages_Response_Achievement::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:CPlayer_GetGlobalAchievementPercentages_Response.Achievement)
+  size_t total_size = 0;
+
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  cached_has_bits = _has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    // optional uint32 internal_key = 1;
+    if (cached_has_bits & 0x00000001u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::UInt32Size(
+          this->_internal_internal_key());
+    }
+
+    // optional float player_percent_unlocked = 2;
+    if (cached_has_bits & 0x00000002u) {
+      total_size += 1 + 4;
+    }
+
+  }
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Response_Achievement::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:CPlayer_GetGlobalAchievementPercentages_Response.Achievement)
+  GOOGLE_DCHECK_NE(&from, this);
+  const CPlayer_GetGlobalAchievementPercentages_Response_Achievement* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<CPlayer_GetGlobalAchievementPercentages_Response_Achievement>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:CPlayer_GetGlobalAchievementPercentages_Response.Achievement)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:CPlayer_GetGlobalAchievementPercentages_Response.Achievement)
+    MergeFrom(*source);
+  }
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Response_Achievement::MergeFrom(const CPlayer_GetGlobalAchievementPercentages_Response_Achievement& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:CPlayer_GetGlobalAchievementPercentages_Response.Achievement)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  cached_has_bits = from._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    if (cached_has_bits & 0x00000001u) {
+      internal_key_ = from.internal_key_;
+    }
+    if (cached_has_bits & 0x00000002u) {
+      player_percent_unlocked_ = from.player_percent_unlocked_;
+    }
+    _has_bits_[0] |= cached_has_bits;
+  }
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Response_Achievement::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:CPlayer_GetGlobalAchievementPercentages_Response.Achievement)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Response_Achievement::CopyFrom(const CPlayer_GetGlobalAchievementPercentages_Response_Achievement& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:CPlayer_GetGlobalAchievementPercentages_Response.Achievement)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool CPlayer_GetGlobalAchievementPercentages_Response_Achievement::IsInitialized() const {
+  return true;
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Response_Achievement::InternalSwap(CPlayer_GetGlobalAchievementPercentages_Response_Achievement* other) {
+  using std::swap;
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  swap(_has_bits_[0], other->_has_bits_[0]);
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(CPlayer_GetGlobalAchievementPercentages_Response_Achievement, player_percent_unlocked_)
+      + sizeof(CPlayer_GetGlobalAchievementPercentages_Response_Achievement::player_percent_unlocked_)
+      - PROTOBUF_FIELD_OFFSET(CPlayer_GetGlobalAchievementPercentages_Response_Achievement, internal_key_)>(
+          reinterpret_cast<char*>(&internal_key_),
+          reinterpret_cast<char*>(&other->internal_key_));
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata CPlayer_GetGlobalAchievementPercentages_Response_Achievement::GetMetadata() const {
+  return GetMetadataStatic();
+}
+
+
+// ===================================================================
+
+class CPlayer_GetGlobalAchievementPercentages_Response_Group::_Internal {
+ public:
+  using HasBits = decltype(std::declval<CPlayer_GetGlobalAchievementPercentages_Response_Group>()._has_bits_);
+  static void set_has_groupid(HasBits* has_bits) {
+    (*has_bits)[0] |= 1u;
+  }
+  static void set_has_player_percent_completed(HasBits* has_bits) {
+    (*has_bits)[0] |= 2u;
+  }
+};
+
+CPlayer_GetGlobalAchievementPercentages_Response_Group::CPlayer_GetGlobalAchievementPercentages_Response_Group(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
+  // @@protoc_insertion_point(arena_constructor:CPlayer_GetGlobalAchievementPercentages_Response.Group)
+}
+CPlayer_GetGlobalAchievementPercentages_Response_Group::CPlayer_GetGlobalAchievementPercentages_Response_Group(const CPlayer_GetGlobalAchievementPercentages_Response_Group& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      _has_bits_(from._has_bits_) {
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::memcpy(&groupid_, &from.groupid_,
+    static_cast<size_t>(reinterpret_cast<char*>(&player_percent_completed_) -
+    reinterpret_cast<char*>(&groupid_)) + sizeof(player_percent_completed_));
+  // @@protoc_insertion_point(copy_constructor:CPlayer_GetGlobalAchievementPercentages_Response.Group)
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Response_Group::SharedCtor() {
+::memset(reinterpret_cast<char*>(this) + static_cast<size_t>(
+    reinterpret_cast<char*>(&groupid_) - reinterpret_cast<char*>(this)),
+    0, static_cast<size_t>(reinterpret_cast<char*>(&player_percent_completed_) -
+    reinterpret_cast<char*>(&groupid_)) + sizeof(player_percent_completed_));
+}
+
+CPlayer_GetGlobalAchievementPercentages_Response_Group::~CPlayer_GetGlobalAchievementPercentages_Response_Group() {
+  // @@protoc_insertion_point(destructor:CPlayer_GetGlobalAchievementPercentages_Response.Group)
+  SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Response_Group::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Response_Group::ArenaDtor(void* object) {
+  CPlayer_GetGlobalAchievementPercentages_Response_Group* _this = reinterpret_cast< CPlayer_GetGlobalAchievementPercentages_Response_Group* >(object);
+  (void)_this;
+}
+void CPlayer_GetGlobalAchievementPercentages_Response_Group::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
+void CPlayer_GetGlobalAchievementPercentages_Response_Group::SetCachedSize(int size) const {
+  _cached_size_.Set(size);
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Response_Group::Clear() {
+// @@protoc_insertion_point(message_clear_start:CPlayer_GetGlobalAchievementPercentages_Response.Group)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  cached_has_bits = _has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    ::memset(&groupid_, 0, static_cast<size_t>(
+        reinterpret_cast<char*>(&player_percent_completed_) -
+        reinterpret_cast<char*>(&groupid_)) + sizeof(player_percent_completed_));
+  }
+  _has_bits_.Clear();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* CPlayer_GetGlobalAchievementPercentages_Response_Group::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  _Internal::HasBits has_bits{};
+  while (!ctx->Done(&ptr)) {
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
+    switch (tag >> 3) {
+      // optional uint32 groupid = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 8)) {
+          _Internal::set_has_groupid(&has_bits);
+          groupid_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
+      // optional float player_percent_completed = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 21)) {
+          _Internal::set_has_player_percent_completed(&has_bits);
+          player_percent_completed_ = ::PROTOBUF_NAMESPACE_ID::internal::UnalignedLoad<float>(ptr);
+          ptr += sizeof(float);
+        } else goto handle_unusual;
+        continue;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
+    }  // switch
+  }  // while
+success:
+  _has_bits_.Or(has_bits);
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto success;
+#undef CHK_
+}
+
+::PROTOBUF_NAMESPACE_ID::uint8* CPlayer_GetGlobalAchievementPercentages_Response_Group::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:CPlayer_GetGlobalAchievementPercentages_Response.Group)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  cached_has_bits = _has_bits_[0];
+  // optional uint32 groupid = 1;
+  if (cached_has_bits & 0x00000001u) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteUInt32ToArray(1, this->_internal_groupid(), target);
+  }
+
+  // optional float player_percent_completed = 2;
+  if (cached_has_bits & 0x00000002u) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteFloatToArray(2, this->_internal_player_percent_completed(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:CPlayer_GetGlobalAchievementPercentages_Response.Group)
+  return target;
+}
+
+size_t CPlayer_GetGlobalAchievementPercentages_Response_Group::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:CPlayer_GetGlobalAchievementPercentages_Response.Group)
+  size_t total_size = 0;
+
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  cached_has_bits = _has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    // optional uint32 groupid = 1;
+    if (cached_has_bits & 0x00000001u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::UInt32Size(
+          this->_internal_groupid());
+    }
+
+    // optional float player_percent_completed = 2;
+    if (cached_has_bits & 0x00000002u) {
+      total_size += 1 + 4;
+    }
+
+  }
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Response_Group::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:CPlayer_GetGlobalAchievementPercentages_Response.Group)
+  GOOGLE_DCHECK_NE(&from, this);
+  const CPlayer_GetGlobalAchievementPercentages_Response_Group* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<CPlayer_GetGlobalAchievementPercentages_Response_Group>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:CPlayer_GetGlobalAchievementPercentages_Response.Group)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:CPlayer_GetGlobalAchievementPercentages_Response.Group)
+    MergeFrom(*source);
+  }
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Response_Group::MergeFrom(const CPlayer_GetGlobalAchievementPercentages_Response_Group& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:CPlayer_GetGlobalAchievementPercentages_Response.Group)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  cached_has_bits = from._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    if (cached_has_bits & 0x00000001u) {
+      groupid_ = from.groupid_;
+    }
+    if (cached_has_bits & 0x00000002u) {
+      player_percent_completed_ = from.player_percent_completed_;
+    }
+    _has_bits_[0] |= cached_has_bits;
+  }
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Response_Group::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:CPlayer_GetGlobalAchievementPercentages_Response.Group)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Response_Group::CopyFrom(const CPlayer_GetGlobalAchievementPercentages_Response_Group& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:CPlayer_GetGlobalAchievementPercentages_Response.Group)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool CPlayer_GetGlobalAchievementPercentages_Response_Group::IsInitialized() const {
+  return true;
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Response_Group::InternalSwap(CPlayer_GetGlobalAchievementPercentages_Response_Group* other) {
+  using std::swap;
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  swap(_has_bits_[0], other->_has_bits_[0]);
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(CPlayer_GetGlobalAchievementPercentages_Response_Group, player_percent_completed_)
+      + sizeof(CPlayer_GetGlobalAchievementPercentages_Response_Group::player_percent_completed_)
+      - PROTOBUF_FIELD_OFFSET(CPlayer_GetGlobalAchievementPercentages_Response_Group, groupid_)>(
+          reinterpret_cast<char*>(&groupid_),
+          reinterpret_cast<char*>(&other->groupid_));
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata CPlayer_GetGlobalAchievementPercentages_Response_Group::GetMetadata() const {
+  return GetMetadataStatic();
+}
+
+
+// ===================================================================
+
+class CPlayer_GetGlobalAchievementPercentages_Response::_Internal {
+ public:
+};
+
+CPlayer_GetGlobalAchievementPercentages_Response::CPlayer_GetGlobalAchievementPercentages_Response(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena),
+  achievements_(arena),
+  groups_(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
+  // @@protoc_insertion_point(arena_constructor:CPlayer_GetGlobalAchievementPercentages_Response)
+}
+CPlayer_GetGlobalAchievementPercentages_Response::CPlayer_GetGlobalAchievementPercentages_Response(const CPlayer_GetGlobalAchievementPercentages_Response& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      achievements_(from.achievements_),
+      groups_(from.groups_) {
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  // @@protoc_insertion_point(copy_constructor:CPlayer_GetGlobalAchievementPercentages_Response)
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Response::SharedCtor() {
+}
+
+CPlayer_GetGlobalAchievementPercentages_Response::~CPlayer_GetGlobalAchievementPercentages_Response() {
+  // @@protoc_insertion_point(destructor:CPlayer_GetGlobalAchievementPercentages_Response)
+  SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Response::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Response::ArenaDtor(void* object) {
+  CPlayer_GetGlobalAchievementPercentages_Response* _this = reinterpret_cast< CPlayer_GetGlobalAchievementPercentages_Response* >(object);
+  (void)_this;
+}
+void CPlayer_GetGlobalAchievementPercentages_Response::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
+void CPlayer_GetGlobalAchievementPercentages_Response::SetCachedSize(int size) const {
+  _cached_size_.Set(size);
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Response::Clear() {
+// @@protoc_insertion_point(message_clear_start:CPlayer_GetGlobalAchievementPercentages_Response)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  achievements_.Clear();
+  groups_.Clear();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* CPlayer_GetGlobalAchievementPercentages_Response::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  while (!ctx->Done(&ptr)) {
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
+    switch (tag >> 3) {
+      // repeated .CPlayer_GetGlobalAchievementPercentages_Response.Achievement achievements = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 10)) {
+          ptr -= 1;
+          do {
+            ptr += 1;
+            ptr = ctx->ParseMessage(_internal_add_achievements(), ptr);
+            CHK_(ptr);
+            if (!ctx->DataAvailable(ptr)) break;
+          } while (::PROTOBUF_NAMESPACE_ID::internal::ExpectTag<10>(ptr));
+        } else goto handle_unusual;
+        continue;
+      // repeated .CPlayer_GetGlobalAchievementPercentages_Response.Group groups = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 18)) {
+          ptr -= 1;
+          do {
+            ptr += 1;
+            ptr = ctx->ParseMessage(_internal_add_groups(), ptr);
+            CHK_(ptr);
+            if (!ctx->DataAvailable(ptr)) break;
+          } while (::PROTOBUF_NAMESPACE_ID::internal::ExpectTag<18>(ptr));
+        } else goto handle_unusual;
+        continue;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
+    }  // switch
+  }  // while
+success:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto success;
+#undef CHK_
+}
+
+::PROTOBUF_NAMESPACE_ID::uint8* CPlayer_GetGlobalAchievementPercentages_Response::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:CPlayer_GetGlobalAchievementPercentages_Response)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // repeated .CPlayer_GetGlobalAchievementPercentages_Response.Achievement achievements = 1;
+  for (unsigned int i = 0,
+      n = static_cast<unsigned int>(this->_internal_achievements_size()); i < n; i++) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
+      InternalWriteMessage(1, this->_internal_achievements(i), target, stream);
+  }
+
+  // repeated .CPlayer_GetGlobalAchievementPercentages_Response.Group groups = 2;
+  for (unsigned int i = 0,
+      n = static_cast<unsigned int>(this->_internal_groups_size()); i < n; i++) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
+      InternalWriteMessage(2, this->_internal_groups(i), target, stream);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:CPlayer_GetGlobalAchievementPercentages_Response)
+  return target;
+}
+
+size_t CPlayer_GetGlobalAchievementPercentages_Response::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:CPlayer_GetGlobalAchievementPercentages_Response)
+  size_t total_size = 0;
+
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // repeated .CPlayer_GetGlobalAchievementPercentages_Response.Achievement achievements = 1;
+  total_size += 1UL * this->_internal_achievements_size();
+  for (const auto& msg : this->achievements_) {
+    total_size +=
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(msg);
+  }
+
+  // repeated .CPlayer_GetGlobalAchievementPercentages_Response.Group groups = 2;
+  total_size += 1UL * this->_internal_groups_size();
+  for (const auto& msg : this->groups_) {
+    total_size +=
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(msg);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Response::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:CPlayer_GetGlobalAchievementPercentages_Response)
+  GOOGLE_DCHECK_NE(&from, this);
+  const CPlayer_GetGlobalAchievementPercentages_Response* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<CPlayer_GetGlobalAchievementPercentages_Response>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:CPlayer_GetGlobalAchievementPercentages_Response)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:CPlayer_GetGlobalAchievementPercentages_Response)
+    MergeFrom(*source);
+  }
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Response::MergeFrom(const CPlayer_GetGlobalAchievementPercentages_Response& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:CPlayer_GetGlobalAchievementPercentages_Response)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  achievements_.MergeFrom(from.achievements_);
+  groups_.MergeFrom(from.groups_);
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Response::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:CPlayer_GetGlobalAchievementPercentages_Response)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Response::CopyFrom(const CPlayer_GetGlobalAchievementPercentages_Response& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:CPlayer_GetGlobalAchievementPercentages_Response)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool CPlayer_GetGlobalAchievementPercentages_Response::IsInitialized() const {
+  return true;
+}
+
+void CPlayer_GetGlobalAchievementPercentages_Response::InternalSwap(CPlayer_GetGlobalAchievementPercentages_Response* other) {
+  using std::swap;
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  achievements_.InternalSwap(&other->achievements_);
+  groups_.InternalSwap(&other->groups_);
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata CPlayer_GetGlobalAchievementPercentages_Response::GetMetadata() const {
+  return GetMetadataStatic();
+}
+
+
+// ===================================================================
+
 class CPlayer_GetUserStats_Request::_Internal {
  public:
   using HasBits = decltype(std::declval<CPlayer_GetUserStats_Request>()._has_bits_);
@@ -25560,6 +26946,9 @@ class CPlayer_GetUserStats_Request::_Internal {
   }
   static void set_has_crc_schema(HasBits* has_bits) {
     (*has_bits)[0] |= 16u;
+  }
+  static void set_has_app_running(HasBits* has_bits) {
+    (*has_bits)[0] |= 32u;
   }
 };
 
@@ -25579,8 +26968,8 @@ CPlayer_GetUserStats_Request::CPlayer_GetUserStats_Request(const CPlayer_GetUser
       GetArena());
   }
   ::memcpy(&steamid_, &from.steamid_,
-    static_cast<size_t>(reinterpret_cast<char*>(&crc_schema_) -
-    reinterpret_cast<char*>(&steamid_)) + sizeof(crc_schema_));
+    static_cast<size_t>(reinterpret_cast<char*>(&app_running_) -
+    reinterpret_cast<char*>(&steamid_)) + sizeof(app_running_));
   // @@protoc_insertion_point(copy_constructor:CPlayer_GetUserStats_Request)
 }
 
@@ -25588,8 +26977,8 @@ void CPlayer_GetUserStats_Request::SharedCtor() {
 sha_schema_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
 ::memset(reinterpret_cast<char*>(this) + static_cast<size_t>(
     reinterpret_cast<char*>(&steamid_) - reinterpret_cast<char*>(this)),
-    0, static_cast<size_t>(reinterpret_cast<char*>(&crc_schema_) -
-    reinterpret_cast<char*>(&steamid_)) + sizeof(crc_schema_));
+    0, static_cast<size_t>(reinterpret_cast<char*>(&app_running_) -
+    reinterpret_cast<char*>(&steamid_)) + sizeof(app_running_));
 }
 
 CPlayer_GetUserStats_Request::~CPlayer_GetUserStats_Request() {
@@ -25623,10 +27012,10 @@ void CPlayer_GetUserStats_Request::Clear() {
   if (cached_has_bits & 0x00000001u) {
     sha_schema_.ClearNonDefaultToEmpty();
   }
-  if (cached_has_bits & 0x0000001eu) {
+  if (cached_has_bits & 0x0000003eu) {
     ::memset(&steamid_, 0, static_cast<size_t>(
-        reinterpret_cast<char*>(&crc_schema_) -
-        reinterpret_cast<char*>(&steamid_)) + sizeof(crc_schema_));
+        reinterpret_cast<char*>(&app_running_) -
+        reinterpret_cast<char*>(&steamid_)) + sizeof(app_running_));
   }
   _has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
@@ -25677,6 +27066,14 @@ const char* CPlayer_GetUserStats_Request::_InternalParse(const char* ptr, ::PROT
         if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 40)) {
           _Internal::set_has_crc_schema(&has_bits);
           crc_schema_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
+      // optional bool app_running = 6;
+      case 6:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 48)) {
+          _Internal::set_has_app_running(&has_bits);
+          app_running_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
           CHK_(ptr);
         } else goto handle_unusual;
         continue;
@@ -25740,6 +27137,12 @@ failure:
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteUInt32ToArray(5, this->_internal_crc_schema(), target);
   }
 
+  // optional bool app_running = 6;
+  if (cached_has_bits & 0x00000020u) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(6, this->_internal_app_running(), target);
+  }
+
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
@@ -25757,7 +27160,7 @@ size_t CPlayer_GetUserStats_Request::ByteSizeLong() const {
   (void) cached_has_bits;
 
   cached_has_bits = _has_bits_[0];
-  if (cached_has_bits & 0x0000001fu) {
+  if (cached_has_bits & 0x0000003fu) {
     // optional bytes sha_schema = 3;
     if (cached_has_bits & 0x00000001u) {
       total_size += 1 +
@@ -25793,6 +27196,11 @@ size_t CPlayer_GetUserStats_Request::ByteSizeLong() const {
           this->_internal_crc_schema());
     }
 
+    // optional bool app_running = 6;
+    if (cached_has_bits & 0x00000020u) {
+      total_size += 1 + 1;
+    }
+
   }
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
@@ -25826,7 +27234,7 @@ void CPlayer_GetUserStats_Request::MergeFrom(const CPlayer_GetUserStats_Request&
   (void) cached_has_bits;
 
   cached_has_bits = from._has_bits_[0];
-  if (cached_has_bits & 0x0000001fu) {
+  if (cached_has_bits & 0x0000003fu) {
     if (cached_has_bits & 0x00000001u) {
       _internal_set_sha_schema(from._internal_sha_schema());
     }
@@ -25841,6 +27249,9 @@ void CPlayer_GetUserStats_Request::MergeFrom(const CPlayer_GetUserStats_Request&
     }
     if (cached_has_bits & 0x00000010u) {
       crc_schema_ = from.crc_schema_;
+    }
+    if (cached_has_bits & 0x00000020u) {
+      app_running_ = from.app_running_;
     }
     _has_bits_[0] |= cached_has_bits;
   }
@@ -25870,8 +27281,8 @@ void CPlayer_GetUserStats_Request::InternalSwap(CPlayer_GetUserStats_Request* ot
   swap(_has_bits_[0], other->_has_bits_[0]);
   sha_schema_.Swap(&other->sha_schema_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
-      PROTOBUF_FIELD_OFFSET(CPlayer_GetUserStats_Request, crc_schema_)
-      + sizeof(CPlayer_GetUserStats_Request::crc_schema_)
+      PROTOBUF_FIELD_OFFSET(CPlayer_GetUserStats_Request, app_running_)
+      + sizeof(CPlayer_GetUserStats_Request::app_running_)
       - PROTOBUF_FIELD_OFFSET(CPlayer_GetUserStats_Request, steamid_)>(
           reinterpret_cast<char*>(&steamid_),
           reinterpret_cast<char*>(&other->steamid_));
@@ -46280,6 +47691,18 @@ template<> PROTOBUF_NOINLINE ::CPlayer_GetUserAchievements_Response_Group* Arena
 }
 template<> PROTOBUF_NOINLINE ::CPlayer_GetUserAchievements_Response* Arena::CreateMaybeMessage< ::CPlayer_GetUserAchievements_Response >(Arena* arena) {
   return Arena::CreateMessageInternal< ::CPlayer_GetUserAchievements_Response >(arena);
+}
+template<> PROTOBUF_NOINLINE ::CPlayer_GetGlobalAchievementPercentages_Request* Arena::CreateMaybeMessage< ::CPlayer_GetGlobalAchievementPercentages_Request >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::CPlayer_GetGlobalAchievementPercentages_Request >(arena);
+}
+template<> PROTOBUF_NOINLINE ::CPlayer_GetGlobalAchievementPercentages_Response_Achievement* Arena::CreateMaybeMessage< ::CPlayer_GetGlobalAchievementPercentages_Response_Achievement >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::CPlayer_GetGlobalAchievementPercentages_Response_Achievement >(arena);
+}
+template<> PROTOBUF_NOINLINE ::CPlayer_GetGlobalAchievementPercentages_Response_Group* Arena::CreateMaybeMessage< ::CPlayer_GetGlobalAchievementPercentages_Response_Group >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::CPlayer_GetGlobalAchievementPercentages_Response_Group >(arena);
+}
+template<> PROTOBUF_NOINLINE ::CPlayer_GetGlobalAchievementPercentages_Response* Arena::CreateMaybeMessage< ::CPlayer_GetGlobalAchievementPercentages_Response >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::CPlayer_GetGlobalAchievementPercentages_Response >(arena);
 }
 template<> PROTOBUF_NOINLINE ::CPlayer_GetUserStats_Request* Arena::CreateMaybeMessage< ::CPlayer_GetUserStats_Request >(Arena* arena) {
   return Arena::CreateMessageInternal< ::CPlayer_GetUserStats_Request >(arena);

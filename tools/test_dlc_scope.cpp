@@ -136,7 +136,7 @@ int main()
 	std::uint32_t manualDlc = 0;
 	bool manualAvailable = false;
 	char manualName[32] = {};
-	std::size_t manualNameLen = sizeof(manualName);
+	std::uint32_t manualNameLen = sizeof(manualName);
 	CHECK(DLC::getDlcDataByIndex(
 	          kBaseApp, 0, &manualDlc, &manualAvailable,
 	          manualName, manualNameLen)
@@ -197,7 +197,7 @@ int main()
 		std::uint32_t dlc = 0;
 		bool dlcAvailable = false;
 		char name[32] = {};
-		std::size_t nameLen = sizeof(name);
+		std::uint32_t nameLen = sizeof(name);
 		g_allocations = 0;
 		g_countAllocations = true;
 		const auto count = DLC::getDlcCount(kBaseApp);

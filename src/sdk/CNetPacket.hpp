@@ -50,10 +50,10 @@ public:
 	// `size` field, not a real packet.
 	constexpr static uint32_t MAX_PLAUSIBLE_SIZE = 100u * 1024 * 1024;
 
-	// Base field offsets on the classic (stable) layout.
-	constexpr static std::size_t OFF_BODY = 0x4;
-	constexpr static std::size_t OFF_SIZE = 0x8;
-	constexpr static std::size_t OFF_ORIGBODY = 0x10;
+	// Field offsets on the x86-64 client (upstream dev-X86_64 layout).
+	constexpr static std::size_t OFF_BODY = 0x10;
+	constexpr static std::size_t OFF_SIZE = 0x18;
+	constexpr static std::size_t OFF_ORIGBODY = 0x20;
 
 	// Detected field shift (0 = classic layout), written once by detectLayout
 	// on the CM receive thread before s_layoutSettled is released; other
@@ -74,7 +74,7 @@ private:
 	// holds every field of both layouts (the highest is originalBody at
 	// 0x10 + 8 = 0x18, four bytes, ending at 0x1C); a Steam beta packet is
 	// larger still, and this only ever overlays it.
-	uint8_t raw_[0x20];
+	uint8_t raw_[0x58];
 
 	template <typename T>
 	T fieldGet(std::size_t off) const
@@ -94,7 +94,7 @@ private:
 	static bool plausibleBody(CNetPacketBody* body)
 	{
 		const auto address = reinterpret_cast<std::uintptr_t>(body);
-		return address >= 0x10000u && address < 0xFFFFF000u;
+		return address >= 0x10000u && address < (std::uintptr_t{1} << 47);
 	}
 
 public:
@@ -105,18 +105,16 @@ public:
 	void setSize(uint32_t value) { fieldSet<uint32_t>(OFF_SIZE, value); }
 	void setOriginalBody(CNetPacketBody* value) { fieldSet<CNetPacketBody*>(OFF_ORIGBODY, value); }
 
-	// Detect the field shift once from a live Steam-owned packet.  Tries the
-	// classic layout first so the stable client is unaffected, then the +8
-	// layout; a candidate is accepted only when `body` is a plausible pointer,
-	// `size` is sane, and the CNetPacketBody header fits inside the packet.  A
-	// packet that validates at neither shift leaves the current value untouched
-	// and stays undetected so a later packet can settle it.
+	// Validate the layout once from a live Steam-owned packet: `body` must be a
+	// plausible pointer, `size` sane, and the CNetPacketBody header must fit
+	// inside the packet.  A packet that fails leaves the layout undetected so a
+	// later packet can settle it.
 	static void detectLayout(const CNetPacket* packet)
 	{
 		if (layoutSettled() || packet == nullptr)
 			return;
 		const auto* base = reinterpret_cast<const uint8_t*>(packet);
-		for (const int shift : {0, 8})
+		for (const int shift : {0})
 		{
 			CNetPacketBody* body;
 			std::memcpy(&body, base + OFF_BODY + shift, sizeof(body));
@@ -282,6 +280,6 @@ public:
 	}
 
 	void free();
-}; //0x20
+}; //0x58
 
-static_assert(sizeof(CNetPacket) == 0x20);
+static_assert(sizeof(CNetPacket) == 0x58);

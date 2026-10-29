@@ -88,7 +88,7 @@ uint32_t DLC::getDlcCount(uint32_t appId)
 	return 0;
 }
 
-bool DLC::getDlcDataByIndex(uint32_t appId, int index, uint32_t* dlcId, bool* available, char* dlcName, size_t& dlcNameLen)
+bool DLC::getDlcDataByIndex(uint32_t appId, uint32_t index, uint32_t* dlcId, bool* available, char* dlcName, uint32_t& dlcNameLen)
 {
 	if (!dlcId || !available || !dlcName
 	    || !g_config.managedAppIds.contains(appId))
