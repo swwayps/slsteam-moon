@@ -174,7 +174,6 @@ int main(int argc, char** argv)
 
 	// i386 signatures that have no x86-64 counterpart yet (see
 	// .kiro/research/x86_64-port/STATE.md).
-	expectUnported(source, "CUser::ProcessPendingLicenseUpdates");
 	expectUnported(source, "CSteamApp::OwnershipFlagsReference");
 	expectUnported(source, "ParentalSignatureCheck");
 	// Upstream dev-X86_64: the GameID decode near the top of the function.
@@ -200,6 +199,14 @@ int main(int argc, char** argv)
 		"41 57 41 56 49 89 F6 41 55 41 54 55 53 48 89 FB 48 81 EC ? ? 00 00 4C 8B 25 ? ? ? ? 89 54 24 ? 48 63 69 10",
 		source);
 	(void)resolveUnique(client, "CUtlMemory::Grow", "E8 ? ? ? ? 8B 43 50 8D 70 01 EB", source);
+	// Runtime license refresh: mark package 0, process the pending set and
+	// broadcast LicensesUpdated_t.
+	(void)resolveUnique(client, "CUser::MarkLicenseAsChanged",
+		"41 57 48 8D 87 ? ? 00 00 41 89 F7 41 56 41 55 41 54 55 53 48 83 EC 28 88 54 24 18 8B 97 ? ? 00 00 89 74 24 1C", source);
+	(void)resolveUnique(client, "CUser::ProcessPendingLicenseUpdates",
+		"41 54 49 89 FC 55 53 8B 9F ? ? 00 00 83 EB 01 78 ? 48 63 C3 48 8D 2C 80 48 C1 E5 04 EB ? 90 83 EB 01 48 83 ED 50 83 FB FF 74 ? 49 8B 84 24 ? ? 00 00 48 01 E8 83 78 14 50", source);
+	(void)resolveUnique(client, "CUser::NotifyLicensesUpdated",
+		"41 57 41 56 41 55 41 54 55 53 48 81 EC ? ? 00 00 44 8B 8F ? ? 00 00 48 89 7C 24 28 64 48 8B 04 25 28 00 00 00 48 89 84 24 ? ? 00 00 31 C0 45 85 C9 0F 8E", source);
 	// ManifestBind: the depotcache check before a manifest request, and the
 	// download step that calls it with the same arguments.
 	(void)resolveUnique(

@@ -881,22 +881,34 @@ namespace Patterns
 			nullptr,
 			"Patterns::CUser::UpdateAppOwnershipTicket"
 		};
+		// x86-64 (beta 1793235415 0x18e4ee0): (CUser*, uint32 packageId,
+		// bool). Same body as the i386 function: the murmur3 finalizer of the
+		// package id indexes the changed-license table at this+0x2380.
 		Pattern_t MarkLicenseAsChanged
 		{
 			"CUser::MarkLicenseAsChanged",
-			"",
+			"41 57 48 8D 87 ? ? 00 00 41 89 F7 41 56 41 55 41 54 55 53 48 83 EC 28 88 54 24 18 8B 97 ? ? 00 00 89 74 24 1C",
 			SigFollowMode::None
 		};
+		// x86-64 (0x18e5920): (CUser*) -> bool. Walks the pending-license
+		// vector (base this+0x24b8, size +0x24c8, 0x50-byte entries), marks
+		// each through MarkLicenseAsChanged and, when the changed-license count
+		// at this+0x23c4 is positive, ends with NotifyLicensesUpdated and
+		// returns true.
 		Pattern_t ProcessPendingLicenseUpdates
 		{
 			"CUser::ProcessPendingLicenseUpdates",
-			"",
+			"41 54 49 89 FC 55 53 8B 9F ? ? 00 00 83 EB 01 78 ? 48 63 C3 48 8D 2C 80 48 C1 E5 04 EB ? 90 83 EB 01 48 83 ED 50 83 FB FF 74 ? 49 8B 84 24 ? ? 00 00 48 01 E8 83 78 14 50",
 			SigFollowMode::None
 		};
+		// x86-64 (0x18e5180): (CUser*). Tests the changed-license count at
+		// this+0x23c4 (CUser::BUpdateLicenses, named by its assert string,
+		// reads the same field), then posts callback 0x7d with the
+		// "17LicensesUpdated_t" type name, like the i386 function.
 		Pattern_t NotifyLicensesUpdated
 		{
 			"CUser::NotifyLicensesUpdated",
-			"",
+			"41 57 41 56 41 55 41 54 55 53 48 81 EC ? ? 00 00 44 8B 8F ? ? 00 00 48 89 7C 24 28 64 48 8B 04 25 28 00 00 00 48 89 84 24 ? ? 00 00 31 C0 45 85 C9 0F 8E",
 			SigFollowMode::None
 		};
 	}
