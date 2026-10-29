@@ -4,7 +4,9 @@
 // `--remote-debugging-port=8080` to a free loopback port in flight (via
 // la_symbind in main.cpp) and publishing it to a contract file Lumen reads.
 // These tests cover the parts independent of the exec call:
-//   - CefPort::rewritePortArg : argv string surgery (incl. the sh -c wrapper)
+//   - CefPort::rewritePortArgInto / rewriteArgv : argv surgery (incl. the sh -c
+//     wrapper), with no allocation
+//   - CefPort::prepareContract / publishPrepared : the contract file
 //   - CefPort::isBindable / pickFreePort / resolveSessionPortNoPersist : port selection
 //
 // Build (from repo root):
@@ -13,10 +15,14 @@
 #include "../src/feats/cefport.hpp"
 
 #include <csignal>
+#include <cstddef>
 #include <cstdio>
 #include <cstdint>
+#include <cstdlib>
 #include <fstream>
+#include <new>
 #include <string>
+#include <utility>
 #include <sys/resource.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -34,6 +40,19 @@ static int g_checks = 0;
 		if (!(cond)) { std::printf("FAIL: %s\n", msg); ++g_failures; }       \
 	} while (0)
 
+// Counts C++ allocations while set: the exec hook runs in a fork child, where
+// it must not allocate.
+static bool g_countAllocations = false;
+static int g_allocations = 0;
+void* operator new(std::size_t size)
+{
+	if (g_countAllocations) ++g_allocations;
+	if (void* p = std::malloc(size ? size : 1)) return p;
+	throw std::bad_alloc();
+}
+void operator delete(void* p) noexcept { std::free(p); }
+void operator delete(void* p, std::size_t) noexcept { std::free(p); }
+
 static std::string readLine(const std::string& p)
 {
 	std::ifstream f(p);
@@ -42,9 +61,27 @@ static std::string readLine(const std::string& p)
 	return s;
 }
 
+static bool publish(const std::string& path, uint16_t port, long pid, unsigned long long ticks)
+{
+	CefPort::PreparedContract contract;
+	return CefPort::prepareContract(contract, path, port, pid, ticks) &&
+	       CefPort::publishPrepared(contract);
+}
+
+// The string surgery on one argv element, through the allocation-free form.
+static std::pair<std::string, bool> rewritePortArg(const std::string& arg, uint16_t port)
+{
+	std::string out(arg.size() + 64, '\0');
+	bool changed = false;
+	const std::size_t n = CefPort::rewritePortArgInto(
+		arg.c_str(), port, out.data(), out.size(), changed);
+	if (n == CefPort::kNoFit) return {arg, false};
+	out.resize(n);
+	return {out, changed};
+}
+
 static void test_rewrite()
 {
-	using CefPort::rewritePortArg;
 
 	// Exact argv element, various port widths.
 	{
@@ -133,6 +170,43 @@ static void test_rewrite()
 		auto [o, c] = rewritePortArg("--remote-debugging-port=abc", 12345);
 		CHECK(!c && o == "--remote-debugging-port=abc", "prefix with non-digit untouched");
 	}
+	// A result that does not fit the buffer is refused, not truncated.
+	{
+		char small[16];
+		bool changed = false;
+		CHECK(CefPort::rewritePortArgInto("--remote-debugging-port=8080", 12345,
+		                                  small, sizeof(small), changed) == CefPort::kNoFit,
+		      "a rewrite larger than the buffer is refused");
+	}
+}
+
+// The whole argv is rewritten into static storage: nothing is allocated, the
+// elements without the switch are passed through as they are.
+static void test_rewrite_argv()
+{
+	static CefPort::ArgvArena arena;
+	char a0[] = "/bin/sh";
+	char a1[] = "-c";
+	char a2[] = "exec './steamwebhelper.sh' '--remote-debugging-port=8080' '--x'";
+	char* argv[] = {a0, a1, a2, nullptr};
+	g_allocations = 0;
+	g_countAllocations = true;
+	char** out = CefPort::rewriteArgv(argv, 49777, arena);
+	g_countAllocations = false;
+	CHECK(out != nullptr && g_allocations == 0, "argv rewrite allocates nothing");
+	CHECK(out && out[0] == a0 && out[1] == a1 && out[3] == nullptr &&
+	          std::string(out[2]) ==
+	              "exec './steamwebhelper.sh' '--remote-debugging-port=49777' '--x'",
+	      "only the element with the switch is rewritten");
+	char b0[] = "/usr/bin/true";
+	char* plain[] = {b0, nullptr};
+	CHECK(CefPort::rewriteArgv(plain, 49777, arena) == nullptr,
+	      "an argv without the switch is left alone");
+	std::string longArg = "--remote-debugging-port=8080 ";
+	longArg.append(sizeof(arena.bytes), 'x');
+	char* tooLong[] = {longArg.data(), nullptr};
+	CHECK(CefPort::rewriteArgv(tooLong, 49777, arena) == nullptr,
+	      "an argv that does not fit the arena is left alone");
 }
 
 static void test_ports()
@@ -174,7 +248,7 @@ static void test_ports()
 		const std::string dir = "/tmp/cefport_dir_" + tag + "/a/b";
 		const std::string path = dir + "/cef_port";
 		std::error_code ec; std::filesystem::remove_all("/tmp/cefport_dir_" + tag, ec);
-		CHECK(CefPort::writePortFile(path, 51234, 0, 0), "nested-dir write succeeds");
+		CHECK(publish(path, 51234, 0, 0), "nested-dir write succeeds");
 		CHECK(readLine(path) == "51234", "nested-dir write persisted (dir created)");
 		std::filesystem::remove_all("/tmp/cefport_dir_" + tag, ec);
 	}
@@ -288,7 +362,14 @@ static void test_contract_owner()
 	// first token) so the extra line cannot break the existing reader.
 	{
 		const std::string path = "/tmp/cefport_owner_" + std::to_string(getpid());
-		CHECK(CefPort::writePortFile(path, 51515, 4242, 987654), "contract: written");
+		CefPort::PreparedContract contract;
+		CHECK(CefPort::prepareContract(contract, path, 51515, 4242, 987654),
+		      "contract: prepared");
+		g_allocations = 0;
+		g_countAllocations = true;
+		const bool published = CefPort::publishPrepared(contract);
+		g_countAllocations = false;
+		CHECK(published && g_allocations == 0, "contract: published without allocating");
 		CHECK(readLine(path) == "51515", "contract: first line is the port");
 		CHECK(CefPort::readPortFile(path) == 51515, "contract: readPortFile still works");
 		// A write that fails part way (here the file size limit) reports false
@@ -299,7 +380,7 @@ static void test_contract_owner()
 			std::signal(SIGXFSZ, SIG_IGN);
 			const rlimit one{1, 1};
 			setrlimit(RLIMIT_FSIZE, &one);
-			_exit(CefPort::writePortFile(path, 52525, 4242, 987654) ? 1 : 0);
+			_exit(publish(path, 52525, 4242, 987654) ? 1 : 0);
 		}
 		int status = -1;
 		waitpid(child, &status, 0);
@@ -332,6 +413,7 @@ static void test_contract_owner()
 int main()
 {
 	test_rewrite();
+	test_rewrite_argv();
 	test_ports();
 	test_decky();
 	test_contract_owner();
