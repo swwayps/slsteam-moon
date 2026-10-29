@@ -835,7 +835,12 @@ bool Process_t::init(const pid_t pid, const HSteamPipe pipeHandle)
 			return false;
 		}
 
-		cmdLine = Utils::strsplit(const_cast<char*>(readFile("cmdline").c_str()), "\0");
+		cmdLine.clear();
+		std::istringstream args(readFile("cmdline"));
+		for (std::string arg; std::getline(args, arg, '\0');)
+		{
+			cmdLine.push_back(arg);
+		}
 		environ = readFile("environ");
 
 		if (!environ.size())

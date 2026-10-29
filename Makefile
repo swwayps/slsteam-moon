@@ -147,7 +147,7 @@ test-process-runtime:
 	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
 		-Wall -Wextra -Wpedantic \
 		-ffunction-sections -fdata-sections -I include -I src \
-		tools/test_process_runtime.cpp src/process.cpp \
+		tools/test_process_runtime.cpp src/process.cpp src/utils.cpp \
 		-Wl,--gc-sections -pthread -o /tmp/test_process_runtime
 	/tmp/test_process_runtime
 

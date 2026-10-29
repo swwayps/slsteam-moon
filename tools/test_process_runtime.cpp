@@ -4,10 +4,17 @@
 #include "../src/process.hpp"
 #include "../src/utils.hpp"
 
+#include <csignal>
 #include <cstdio>
 #include <cstring>
+#include <fstream>
+#include <iterator>
 #include <limits>
 #include <memory>
+#include <string>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <vector>
 
 std::unique_ptr<CLog> g_pLog;
 CConfig g_config;
@@ -18,14 +25,27 @@ LogLevel CLog::getMinLevel() { return LogLevel::None; }
 bool CLog::shouldNotify() { return false; }
 CConfig::~CConfig() = default;
 
-// hasSteamDRM() references this only for a non-empty ".bind" section; the
-// crafted fixtures below never reach it, so a stub keeps the linker happy
-// without dragging in the whole Utils translation unit.
-double Utils::calculateEntropy(const std::vector<uint8_t>&) { return 0.0; }
-
 namespace
 {
 int failures = 0;
+
+// Reads /proc/<pid>/cmdline until it holds `expected`, so a check does not
+// race the child's exec.
+bool waitForCmdline(pid_t pid, const std::string& expected)
+{
+	const std::string path = "/proc/" + std::to_string(pid) + "/cmdline";
+	for (int i = 0; i < 200; ++i)
+	{
+		std::ifstream in(path, std::ios::binary);
+		const std::string bytes((std::istreambuf_iterator<char>(in)), {});
+		if (bytes == expected)
+		{
+			return true;
+		}
+		usleep(10000);
+	}
+	return false;
+}
 
 void expect(bool condition, const char* message)
 {
@@ -266,6 +286,27 @@ int main()
 		"/proc/self/definitely-missing", LogLevel::Debug);
 	expect(missingExecutable == nullptr,
 	       "a disappearing open file degrades to an ignored debug result");
+
+	// /proc/<pid>/cmdline separates the arguments with NUL bytes.
+	const pid_t child = fork();
+	if (child == 0)
+	{
+		char* const argv[] = {const_cast<char*>("/bin/sleep"), const_cast<char*>("5"), nullptr};
+		char* const envp[] = {const_cast<char*>("SteamAppId=480"), nullptr};
+		execve("/bin/sleep", argv, envp);
+		_exit(127);
+	}
+	Process_t game{};
+	const bool initialised = child > 0
+		&& waitForCmdline(child, std::string("/bin/sleep\0" "5\0", 13))
+		&& game.init(child, 1);
+	if (child > 0)
+	{
+		kill(child, SIGKILL);
+		waitpid(child, nullptr, 0);
+	}
+	expect(initialised && game.cmdLine == std::vector<std::string>{"/bin/sleep", "5"},
+	       "each command line argument is its own field");
 
 	// SmartTickets DRM analysis runs on every process that connects to the
 	// Steam pipe (owned games included), with no exception barrier. A binary
