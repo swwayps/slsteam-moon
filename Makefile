@@ -57,7 +57,7 @@ endif
 .PHONY: uninstall clean-libs clean-tools schema-grabber ticket-grabber
 .PHONY: test-library-dates test-library-dates-hook test-depot-overrides
 .PHONY: test-vftableinfo-registry test-owner-frame-wiring
-.PHONY: test-achievements test-achievement-scope test-stats-audit
+.PHONY: test-achievements test-achievement-scope test-stats-audit test-parental
 .PHONY: test-stats-provenance
 .PHONY: test-manifestdonor test-manifestdonor-runtime test-manifestfetch
 .PHONY: test-reconcilepin-scan
@@ -845,6 +845,11 @@ test-log-rotate:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror -I src \
 		tools/test_log_rotate.cpp -o /tmp/test_log_rotate
 	/tmp/test_log_rotate
+
+test-parental:
+	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src \
+		tools/test_parental.cpp -o /tmp/test_parental
+	/tmp/test_parental
 
 test-log-format:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror -I src \
