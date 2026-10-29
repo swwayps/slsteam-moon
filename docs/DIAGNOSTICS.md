@@ -91,6 +91,13 @@ first CA file found in `SLSSTEAM_CA_BUNDLE`, `CURL_CA_BUNDLE`, `SSL_CERT_FILE`
 or the usual distro paths (`src/cainfo.hpp`). Set `SLSSTEAM_CA_BUNDLE` when the
 system bundle lives somewhere else; a path that does not exist is skipped.
 
+## CloudRedirect stats bridge
+
+CloudRedirect asks SLSsteam which apps keep local stats through the
+`slsteam_local_stats_epoch_v1` export (`src/feats/stats_policy.hpp`). Update
+the two together: a CloudRedirect build that does not find the export keeps
+every app on the official stats path.
+
 ## Teardown before any hook is placed
 
 `load()` runs once per audited module open. On the first `steamclient.so`
