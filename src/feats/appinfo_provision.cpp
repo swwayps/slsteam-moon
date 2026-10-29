@@ -3363,12 +3363,6 @@ void flushPendingProtonMappings()
 		(void)clearPendingProtonMappingsIfUnchanged(loaded.fileIds);
 }
 
-enum class RefreshWorkerStartResult
-{
-	Started,
-	NotStarted,
-};
-
 std::vector<std::uint32_t> publishRuntimeAppInfo(
     const std::string& appinfoVdfPath,
     const std::vector<RefreshRequest>& requested)
@@ -3744,12 +3738,11 @@ void refreshWorkerStartFailed() noexcept
 
 void finishRefresh(const std::string& completedPath, std::uint64_t token);
 
-RefreshWorkerStartResult startRefreshWorker(
+bool startRefreshWorker(
     const std::string& appinfoVdfPath, std::uint64_t token,
     const std::vector<RefreshRequest>& requests)
 {
-	bool workerMayStillExist = false;
-	const bool started = ThreadStart::startDetached(
+	return ThreadStart::startDetached(
 		[path = appinfoVdfPath, token, requests]
 		{
 			ThreadStart::runGuarded(
@@ -3767,29 +3760,12 @@ RefreshWorkerStartResult startRefreshWorker(
 				},
 				[path, token] { finishRefresh(path, token); });
 		},
-		[] { refreshWorkerStartFailed(); },
-		ThreadStart::NoopDetachFailure{},
-		ThreadStart::StdThreadDetacher{},
-		ThreadStart::StdThreadJoiner{},
-		[&workerMayStillExist] {
-			workerMayStillExist = true;
-			refreshWorkerStartFailed();
-		});
-	// A failed detach recovery may leave a live worker; it keeps the refresh
-	// gate and drains the queue itself, so it counts as started.
-	if (started || workerMayStillExist)
-		return RefreshWorkerStartResult::Started;
-
-	return RefreshWorkerStartResult::NotStarted;
+		[] { refreshWorkerStartFailed(); });
 }
 
 void retainRefreshAfterFailedStart(std::uint64_t token,
-                                   RefreshWorkerStartResult result,
                                    const std::vector<RefreshRequest>& requests)
 {
-	if (result != RefreshWorkerStartResult::NotStarted)
-		return;
-
 	// A known construction failure cannot safely recurse into another thread
 	// attempt: persistent resource pressure would otherwise create an
 	// unbounded retry loop. Keep the request dormant until the next PICS or
@@ -3818,8 +3794,8 @@ void finishRefresh(const std::string& completedPath, std::uint64_t token)
 		nextToken = ++g_refreshWorkerToken;
 	}
 
-	const auto startResult = startRefreshWorker(nextPath, nextToken, nextRequests);
-	retainRefreshAfterFailedStart(nextToken, startResult, nextRequests);
+	if (!startRefreshWorker(nextPath, nextToken, nextRequests))
+		retainRefreshAfterFailedStart(nextToken, nextRequests);
 }
 
 void refreshInBackground(
@@ -3838,8 +3814,8 @@ void refreshInBackground(
 		token = ++g_refreshWorkerToken;
 	}
 
-	const auto startResult = startRefreshWorker(appinfoVdfPath, token, batch);
-	retainRefreshAfterFailedStart(token, startResult, batch);
+	if (!startRefreshWorker(appinfoVdfPath, token, batch))
+		retainRefreshAfterFailedStart(token, batch);
 }
 
 DlcInjectionIds collectDlcAppIdsForAddedApps(bool* complete)

@@ -622,10 +622,6 @@ void warmupAsync()
 			g_warmupStarted.store(false, std::memory_order_release);
 			g_warmupDone.store(true, std::memory_order_release);
 			g_warmupCV.notify_all();
-		},
-		[]
-		{
-			g_pLog->warn("SteamStub: prewarm detach failed; joining worker\n");
 		});
 	if (!started)
 	{
