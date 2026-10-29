@@ -1,7 +1,7 @@
 #include "runtime_dependencies.hpp"
 
+#include "hostexec.hpp"
 #include "log.hpp"
-
 #include <cstdlib>
 #include <mutex>
 #include <string_view>
@@ -50,7 +50,11 @@ bool check()
 	static bool available = false;
 	std::call_once(once, []
 	{
-		const std::string missing = missingToolsOnPath(std::getenv("PATH"));
+		// Inside pressure-vessel the helpers run on the host, whose /usr the
+		// container sees under /run/host.
+		const std::string missing = missingToolsOnPath(HostExec::active()
+			? "/run/host/usr/local/bin:/run/host/usr/bin:/run/host/bin"
+			: std::getenv("PATH"));
 		available = missing.empty();
 		if (!available && g_pLog)
 		{

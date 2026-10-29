@@ -1,4 +1,5 @@
 #include "curl.hpp"
+#include "hostexec.hpp"
 #include "log.hpp"
 
 #include <cerrno>
@@ -34,9 +35,13 @@ int Curl::downloadString(const char* url, const std::vector<std::string>& header
 
 	LOG_DEBUG("Created pipe %i : %i\n", pipefd[0], pipefd[1]);
 
-	constexpr static const char* env[] =
+	// Inside pressure-vessel curl runs on the host (hostexec.hpp); the launch
+	// client then needs the session bus address.
+	const auto& host = HostExec::route();
+	const char* env[] =
 	{
 		"PATH=/usr/bin:/bin",
+		host.service.empty() ? nullptr : host.busAddress.c_str(),
 		nullptr
 	};
 
@@ -44,19 +49,22 @@ int Curl::downloadString(const char* url, const std::vector<std::string>& header
 	// stalled server must not hold the calling Steam thread. argv is built
 	// before fork(), the child only execs.
 	const std::string seconds = std::to_string(timeOut);
-	std::vector<const char*> args =
+	std::vector<std::string> command =
 	{
 		"curl",
 		"--silent",
-		"--connect-timeout", seconds.c_str(),
-		"--max-time", seconds.c_str(),
+		"--connect-timeout", seconds,
+		"--max-time", seconds,
 	};
 	for (const auto& header : headers)
 	{
-		args.push_back("-H");
-		args.push_back(header.c_str());
+		command.push_back("-H");
+		command.push_back(header);
 	}
-	args.push_back(url);
+	command.push_back(url);
+	const auto words = HostExec::argv(host.service, std::move(command));
+	std::vector<const char*> args;
+	for (const auto& word : words) args.push_back(word.c_str());
 	args.push_back(nullptr);
 
 	const pid_t pid = fork();
@@ -79,6 +87,11 @@ int Curl::downloadString(const char* url, const std::vector<std::string>& header
 			_exit(1);
 		}
 
+		if (!host.service.empty())
+		{
+			execve(HostExec::kLaunchClient, const_cast<char**>(args.data()), const_cast<char**>(env));
+			_exit(127);
+		}
 		execve("/bin/curl", const_cast<char**>(args.data()), const_cast<char**>(env));
 		execve("/usr/bin/curl", const_cast<char**>(args.data()), const_cast<char**>(env));
 		//NixOS

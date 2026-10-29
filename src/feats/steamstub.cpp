@@ -7,6 +7,7 @@
 #include "../ascii.hpp"
 #include "../config.hpp"
 #include "../globals.hpp"
+#include "../hostexec.hpp"
 #include "../log.hpp"
 #include "../thread_start.hpp"
 #include "steamstub_warmup.hpp"
@@ -265,6 +266,10 @@ namespace
 			std::this_thread::sleep_for(std::chrono::milliseconds(25));
 		}
 
+		// SIGTERM first: inside pressure-vessel the launch client forwards it
+		// to the helper on the host, which a SIGKILL would leave running.
+		if (kill(-pid, SIGTERM) != 0) (void)kill(pid, SIGTERM);
+		std::this_thread::sleep_for(std::chrono::seconds(2));
 		if (kill(-pid, SIGKILL) != 0) (void)kill(pid, SIGKILL);
 		while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {}
 		return HelperWait::Failed;
@@ -285,21 +290,26 @@ namespace
 				continue;
 			environment.emplace_back(variable);
 		}
-		environment.push_back("STEAMLESS_HOME=" + g_steamlessHome);
-		environment.push_back("QUIET=1");
+		const std::vector<std::string> helperEnv = {
+			"STEAMLESS_HOME=" + g_steamlessHome, "QUIET=1"};
+		environment.insert(environment.end(), helperEnv.begin(), helperEnv.end());
 		std::vector<char*> envp;
 		for (auto& variable : environment) envp.push_back(variable.data());
 		envp.push_back(nullptr);
-		std::string bash = "bash";
-		std::string script = g_helperScript;
-		std::string arg = argument;
-		char* const argv[] = {bash.data(), script.data(), arg.data(), nullptr};
+		// Inside pressure-vessel the helper runs on the host, where python3
+		// and Wine are (hostexec.hpp).
+		const std::string& service = HostExec::route().service;
+		auto words = HostExec::argv(service, {"bash", g_helperScript, argument}, helperEnv);
+		std::vector<char*> argv;
+		for (auto& word : words) argv.push_back(word.data());
+		argv.push_back(nullptr);
+		const char* program = service.empty() ? "/bin/bash" : HostExec::kLaunchClient;
 
 		const pid_t pid = fork();
 		if (pid == 0)
 		{
 			(void)setpgid(0, 0);
-			execve("/bin/bash", argv, envp.data());
+			execve(program, argv.data(), envp.data());
 			_exit(127);
 		}
 		if (pid > 0) (void)setpgid(pid, pid);

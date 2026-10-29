@@ -60,7 +60,7 @@ endif
 .PHONY: test-achievements test-achievement-scope test-stats-audit
 .PHONY: test-stats-provenance
 .PHONY: test-manifestdonor test-manifestdonor-runtime test-manifestfetch
-.PHONY: test-reconcilepin-scan
+.PHONY: test-reconcilepin-scan test-hostexec
 .PHONY: test-depotkey-recv-policy
 .PHONY: test-private-apps test-config-settings test-config-tolerance test-config-watch test-config-create test-plugin-config test-curl-child test-legacy-cdkey test-utils-number test-launch-options
 
@@ -445,6 +445,11 @@ test-audit-tier0: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
 	printf 'int main(void) { return 0; }\n' | $(CC) -x c - -o $(TIER0_TEST)/main0
 	test "$$(cd $(TIER0_TEST) && LD_LIBRARY_PATH=$(TIER0_TEST) TIER0_TEST_DIR=$(TIER0_TEST) \
 		LD_AUDIT=$(TIER0_TEST)/audit.so ./main0)" = "audit init-failed"
+
+test-hostexec:
+	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror -I src \
+		tools/test_hostexec.cpp -o /tmp/test_hostexec
+	/tmp/test_hostexec
 
 test-audit-policy:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src \

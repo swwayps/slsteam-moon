@@ -16,6 +16,7 @@
 #include "ownerwork.hpp"
 #include "patterns.hpp"
 #include "runtime_attestation.hpp"
+#include "hostexec.hpp"
 #include "runtime_dependencies.hpp"
 #include "utils.hpp"
 #include "utils/ManifestFetch.hpp"
@@ -189,7 +190,8 @@ static void setup()
 		unload();
 		return;
 	}
-
+	// Before anything can start a helper or raise a notification.
+	HostExec::init();
 	g_pLog = std::unique_ptr<CLog>(CLog::createDefaultLog());
 	//Won't happen, log throws a runtime exception when creation fails.
 	//But just in case I decide to refactor one day

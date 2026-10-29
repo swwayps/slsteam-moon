@@ -2,7 +2,7 @@
 #include "log_rotate.hpp"
 
 #include "config.hpp"
-
+#include "hostexec.hpp"
 #include <chrono>
 #include <cstdlib>
 #include <memory>
@@ -117,7 +117,7 @@ void CLog::notifyUser(UserMsg msg, const std::string& detail)
 	(void)Notify::enqueueGamepadEventForUser("SLSsteam-moon", shown, timeoutMs);
 	// In the background, so a notification daemon that does not answer never
 	// holds the Steam thread that raised the popup.
-	const int rc = system((cmd + " &").c_str());
+	const int rc = system((HostExec::shellPrefix(HostExec::route().service) + cmd + " &").c_str());
 	(void)rc; // best-effort popup; nothing actionable if notify-send is absent
 }
 
