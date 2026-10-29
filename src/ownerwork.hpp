@@ -22,9 +22,8 @@
 namespace OwnerWork
 {
 	// How long a pending command may sit unclaimed before the escape hatch
-	// runs it inline. Well above the measured owner cadence (~3.3-3.4 s on an
-	// idle client), so this is reached only when the owner thread has really
-	// stopped running IPC frames.
+	// runs it inline. An idle client runs IPC frames about every 3.3 s, so this
+	// is reached only when the owner thread has really stopped running them.
 	// Override with SLSSTEAM_OWNER_QUEUE_MAX_STALE_MS (0 = never escape).
 	inline constexpr unsigned int kDefaultMaxStaleMs = 30000;
 	inline constexpr unsigned int kMaxMaxStaleMs = 600000;
@@ -85,8 +84,8 @@ namespace OwnerWork
 	void init();
 
 	// Latch the owner IPC thread. Called from ProcessIPCFrame on IClientUtils
-	// calls — the dispatcher whose thread the VM run measured — and only the
-	// first call has an effect.
+	// calls, whose dispatcher thread is the owner, and only the first call has
+	// an effect.
 	void latchOwnerThread();
 
 	bool ownerLatched();

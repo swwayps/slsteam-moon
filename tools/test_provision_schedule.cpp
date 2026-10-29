@@ -1,4 +1,5 @@
-// TDD regression tests for Phase 4.5 provisioning scheduling.
+// Regression tests for the provisioning scheduling policy
+// (src/feats/provision_schedule.hpp).
 
 #include "feats/provision_schedule.hpp"
 

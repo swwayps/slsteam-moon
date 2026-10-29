@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-// Pure scheduling policy for Phase 4.5 provisioning.
+// Pure scheduling policy for appinfo provisioning: which refreshed apps are
+// published at runtime, and whether preinit provisions every managed app or
+// only those without a usable cache before the appinfo splice.
 
 #pragma once
 

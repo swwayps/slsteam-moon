@@ -293,9 +293,8 @@ namespace OwnerQueue
 
 		// Bounded-staleness escape hatch, for the case the owner never drains
 		// (client wedged, dispatcher thread gone, IPC stopped). Runs the WHOLE
-		// pending set inline, in FIFO order, on the calling thread — i.e. it
-		// deliberately degrades to the pre-existing off-owner execution site
-		// rather than letting a hot-add be lost.
+		// pending set inline, in FIFO order, on the calling thread: running off
+		// the owner thread is accepted here because losing a hot-add is worse.
 		//
 		// Takes nothing (returns 0) when the queue is empty, closed, already
 		// being executed, or the oldest entry is not yet stale. The caller can

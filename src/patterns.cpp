@@ -768,10 +768,11 @@ namespace Patterns
 		Pattern_t GetAppByID
 		{
 			"CSteamUIAppController::GetAppByID",
-			// The trailing `mov eax,[eax+disp32]` reads a controller member near
-			// 0x9E0 that a later client moved (~0xC38); it is location-only for
-			// this locator, so both low displacement bytes are masked while the
-			// high bytes stay 00 00 and the prologue keeps one steamui match.
+			// The trailing `mov eax,[eax+disp32]` reads a controller member
+			// whose offset varies between client builds (near 0x9E0 or 0xC38);
+			// it is location-only for this locator, so both low displacement
+			// bytes are masked while the high bytes stay 00 00 and the prologue
+			// keeps one steamui match.
 			"E8 ? ? ? ? 05 ? ? ? ? 55 89 E5 57 56 53 83 EC 4C 8B 5D 10 8B 75 08 89 45 C8 8B 80 ? ? 00 00",
 			SigFollowMode::None,
 			&g_modSteamUI,
@@ -782,9 +783,10 @@ namespace Patterns
 		Pattern_t MarkAppChange
 		{
 			"CUpdateManager::MarkAppChange",
-			// Same controller member load as GetAppByID (near 0x9E0 -> ~0xC38 on
-			// a later client); location-only, so mask its low displacement bytes
-			// (high bytes stay 00 00) while the distinct frame keeps one match.
+			// Same controller member load as GetAppByID, with the same
+			// build-dependent offset; location-only, so mask its low
+			// displacement bytes (high bytes stay 00 00) while the distinct
+			// frame keeps one match.
 			"E8 ? ? ? ? 05 ? ? ? ? 55 89 E5 57 56 53 83 EC 3C 8B 75 0C 8B 5D 10 89 45 D4 8B 80 ? ? 00 00",
 			SigFollowMode::None,
 			&g_modSteamUI,
@@ -799,15 +801,14 @@ namespace Patterns
 		// FillInAppOverview emits a run of fields that all share this shape
 		// (type check -> `mov eax,[app+disp8]` -> push value, push descriptor,
 		// push sink, call emitter), so the field displacement is what tells them
-		// apart and MUST stay pinned: ownership is 0x18 on both the 2026-08-03
-		// and the 2026-08-16 client, and the block right after it reads 0x50
-		// through a different emitter.  What actually drifted is only the
-		// register Steam parked the app pointer in (ecx -> edx), so the modrm
-		// byte is the wildcard.
+		// apart and MUST stay pinned: ownership is 0x18, and the block right
+		// after it reads 0x50 through a different emitter.  The register that
+		// holds the app pointer varies between builds (ecx or edx), so the
+		// modrm byte is the wildcard.
 		//
-		// Do NOT wildcard the displacement instead.  That also yields exactly
-		// one match on the newer client, but it is the neighbouring field, and
-		// LibraryRemoval would then flip hidden-ownership bits inside it.
+		// Do NOT wildcard the displacement instead.  That can also yield
+		// exactly one match, but on the neighbouring field, and LibraryRemoval
+		// would then flip hidden-ownership bits inside it.
 		Pattern_t OwnershipFlagsReference
 		{
 			"CSteamApp::OwnershipFlagsReference",
@@ -1076,23 +1077,24 @@ namespace Patterns
 		//     builds "<root>/depotcache/<depot>_<gid>.manifest" from its gid
 		//     arg, checks it on disk, and only calls BYldRequestDepotManifest
 		//     when missing.  Redirecting the gid here makes the on-disk check
-		//     find the locally-staged (zip) manifest and SKIP the request-code
-		//     fetch — this is what lets a providers-down install proceed past
-		//     "No internet connection".  PIC get_pc_thunk is the FIRST insn, so
-		//     fixPICThunkCall must repair the relocated thunk in the tramp.
+		//     find the manifest already staged for that depot and SKIP the
+		//     request-code fetch, which lets an install proceed past "No
+		//     internet connection" while the request-code providers are down.
+		//     PIC get_pc_thunk is the FIRST insn, so fixPICThunkCall must
+		//     repair the relocated thunk in the tramp.
 		//
 		// (2) PrepareDepotDownload (one of the 5 callers, a LATER pipeline
 		//     stage): after calling the leaf it looks the depot up in the
 		//     per-download table BY the gid it was called with and derefs the
-		//     per-manifest state pointer.  If the leaf was redirected to the
-		//     zip gid but this frame still looks up the public gid -> miss ->
-		//     NULL deref -> SIGSEGV at Reconfiguring (core-dump confirmed).
-		//     Redirecting the
-		//     gid here too keeps the leaf call and the table lookup consistent.
+		//     per-manifest state pointer.  If only the leaf is redirected to
+		//     the staged gid while this frame still looks up the public gid
+		//     -> miss -> NULL deref -> SIGSEGV at Reconfiguring.  Redirecting
+		//     the gid here too keeps the leaf call and the table lookup
+		//     consistent.
 		//     PIC get_pc_thunk is at +5 (after the 5-byte prologue we relocate)
 		//     so fixPICThunkCall is a harmless no-op for this hook point.
 		//
-		// Both verified: 1 match each in .text.
+		// Each signature has exactly one match in .text.
 		Pattern_t ProcessDepotManifest
 		{
 			"CDepotDownloadMgr::ProcessDepotManifest",
@@ -1107,8 +1109,7 @@ namespace Patterns
 			SigFollowMode::None
 		};
 
-		// (3) BuildDepotDependency (the install-plan CONSUMER, located via a
-		//     runtime stack trace).  The
+		// (3) BuildDepotDependency (the install-plan CONSUMER).  The
 		//     per-app planner: receives an already-built CUtlVector<DepotEntry>
 		//     (arg2 = [ebp+0x10]; count @ +0xc, element base @ +0, stride 0x20)
 		//     and, per entry, copies ManifestGid (+0x8) into the context's

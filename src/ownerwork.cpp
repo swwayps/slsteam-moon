@@ -221,8 +221,9 @@ namespace OwnerWork
 
 	void init()
 	{
-		// Inline runs on the submitting thread can deadlock the owner IPC
-		// thread, so the old off switch is ignored.
+		// Setting SLSSTEAM_OWNER_QUEUE only logs a warning; it cannot turn the
+		// queue off, because inline runs on the submitting thread can deadlock
+		// the owner IPC thread.
 		if (std::getenv("SLSSTEAM_OWNER_QUEUE") != nullptr)
 		{
 			g_pLog->warn("OwnerWork: SLSSTEAM_OWNER_QUEUE is no longer supported and "

@@ -455,11 +455,11 @@ namespace
 			    depotId, manifestId, manifestId, consumeFrozen);
 		}
 
-		// The planned gid is NOT in depotcache.  Case 1 (the common one,
-		// e.g. a Proton-switch after Steam purged the windows depot's
-		// manifest): we archived this EXACT gid earlier -> restore it from
-		// the store so Steam finds it on disk and skips the request-code
-		// fetch.  No redirect needed; Steam installs the gid it planned.
+		// The planned gid is NOT in depotcache.  If the store holds this EXACT
+		// gid (the common case, e.g. Steam purges the windows depot's manifest
+		// on a Proton switch), restore it so Steam finds it on disk and skips
+		// the request-code fetch.  No redirect is needed; Steam installs the
+		// gid it planned.
 		if (ManifestStore::restoreToDepotcache(depotId, manifestId))
 		{
 			ManifestStore::markPreferredGid(depotId, manifestId);

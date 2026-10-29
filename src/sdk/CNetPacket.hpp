@@ -30,8 +30,8 @@ public:
 // CNetPacket overlays a Steam-owned packet (in the CM/IPC receive hooks) or a
 // small SLSsteam-owned scratch buffer (outgoing-frame rewrites).  Steam has
 // shipped more than one field layout for it: on the classic layout `body` is at
-// +0x4, but a later client (a beta) inserted 8 bytes at the front, moving every
-// field +8 (body -> +0xC, size -> +0x10, refs -> +0x14, originalBody -> +0x18).
+// +0x4, and another layout has 8 more bytes at the front, moving every field
+// +8 (body -> +0xC, size -> +0x10, refs -> +0x14, originalBody -> +0x18).
 // Reading `body` at the wrong offset yields a 0xFFFFFFFF sentinel whose deref
 // segfaults the whole 32-bit client on the CM receive path.
 //

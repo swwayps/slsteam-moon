@@ -240,11 +240,11 @@ namespace
 		const auto* fn = reinterpret_cast<const uint8_t*>(evalAddr);
 		const size_t scanLen = ReconcilePin::detail::kBuilderCallOff
 		                     + ReconcilePin::detail::kBuilderCallWindow + 8;
-		// The RE'd call offset drifts when Steam recompiles the function (the
-		// beta client moved it), so locate the call instead of trusting a fixed
-		// offset. The call must reach the resolved builder (or, without that
-		// locator, be the only executable call nearby); on ambiguity/absence it
-		// degrades to the ctx-vector patch alone.
+		// The RE'd call offset drifts when Steam recompiles the function, so
+		// locate the call instead of trusting a fixed offset. The call must
+		// reach the resolved builder (or, without that locator, be the only
+		// executable call nearby); on ambiguity/absence it degrades to the
+		// ctx-vector patch alone.
 		const lm_address_t builder =
 		    Patterns::CUserAppManager::BuildDepotDependency.address;
 		const long callOff = ReconcilePin::detail::findBuilderCall(
@@ -346,9 +346,10 @@ namespace ReconcilePin
 {
 	bool setup()
 	{
-		// The gid rewrite (the loop fix) is DEFAULT ON now: it is driven by any
-		// configured ManifestPins entry, while lockedApps remains exclusively the
-		// update-suppression policy in Apps::shouldDisableUpdates.
+		// The gid rewrite (the loop fix) is on by default and is driven by any
+		// configured ManifestPins entry; SLSSTEAM_RECONCILE_PIN=0 turns it off.
+		// lockedApps does not gate it: it is only the update-suppression policy
+		// in Apps::shouldDisableUpdates.
 		g_pinActive = true;
 		if (const char* e = std::getenv("SLSSTEAM_RECONCILE_PIN"))
 		{

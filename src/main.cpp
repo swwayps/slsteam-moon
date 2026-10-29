@@ -272,19 +272,19 @@ static void setup()
 	// one that wins Steam's single-instance race goes on to spawn a webhelper.
 	// Writing the contract here would let the LOSING instance (which picks a
 	// different free port, then exits before launching anything) overwrite it
-	// with a port nothing ends up listening on — the Lumen sidecar would then
+	// with a port nothing ends up listening on; the Lumen sidecar would then
 	// connect to a dead port and never inject. So we only resolve the port now
 	// and publish it later, from the exec hook, when THIS tree actually launches
 	// the webhelper (see cefRewriteArgv). resolveSessionPortNoPersist reuses a
 	// still-bindable port from a previous session, else picks a fresh one.
 	//
-	// EXCEPTION — Decky coexistence: Decky Loader's injector is hard-coded to
+	// EXCEPTION (Decky coexistence): Decky Loader's injector is hard-coded to
 	// localhost:8080 and runs as a persistent daemon, so it can't follow our
 	// ephemeral port. When Decky is installed we leave CEF on 8080 (no rewrite,
-	// no contract) and let Lumen fall back to 8080; both share the endpoint
-	// (multiple CDP clients coexist on one CEF target — verified on Bazzite). We
-	// also drop any STALE contract from a previous ephemeral session so Lumen
-	// doesn't connect to a dead port instead of falling back to 8080.
+	// no contract) and let Lumen fall back to 8080; both share the endpoint,
+	// since several CDP clients can attach to one CEF target. We also drop any
+	// STALE contract from a previous ephemeral session so Lumen doesn't connect
+	// to a dead port instead of falling back to 8080.
 	if (CefPort::deckyPresent())
 	{
 		g_cefKeepDefaultPort = true;
@@ -352,8 +352,9 @@ static void setup()
 			if (preinitAction ==
 			    AppInfoProvision::PreinitProvisionAction::SynchronousProvision)
 			{
-				// The kill-switch restores the former synchronous behavior for
-				// field rollback: refresh every managed app before the splice.
+				// Async provisioning is off (AsyncProvision: no or
+				// SLSSTEAM_ASYNC_PROVISION=0): refresh every managed app
+				// before the splice.
 				DepotKey::importLuaScripts();
 				BootProf::Span provisionProfile(g_pLog.get(), "provision.sync_preinit");
 				AppInfoProvision::provisionAllAddedApps();
@@ -738,12 +739,11 @@ static void load()
 // invisible to the application, so they cannot interpose on the copies
 // Steam's own libraries resolve at runtime.
 //
-// We tried LD_PRELOAD instead; it puts those symbols in the process-global
+// LD_PRELOAD is not an option: it puts those symbols in the process-global
 // scope, Steam binds to OUR protobuf/std copies, and the resulting ABI
-// mismatch aborts Steam during store load (reproduced on Pop!_OS).  Hiding
-// the symbols isn't viable either: a `local:*` version script collapses
-// yaml-cpp's C++ vague-linkage and crashes config parsing.  LD_AUDIT is the
-// upstream-proven design and sidesteps the whole problem.
+// mismatch aborts Steam during store load.  Hiding the symbols isn't viable
+// either: a `local:*` version script collapses yaml-cpp's C++ vague-linkage
+// and crashes config parsing.  LD_AUDIT avoids both problems.
 //
 // la_objsearch/la_preinit/la_objopen run in every audited process; setup()
 // itself bails out unless the process is the main "steam" binary, so we do
@@ -1057,8 +1057,8 @@ extern "C" uintptr_t la_symbind32(Elf32_Sym* sym,
 }
 
 // The decompiler reads link-time offsets out of .data.rel.ro, so each module is
-// parsed from la_objopen, before the loader relocates it (upstream
-// 3e9dfdd/807e229). Only the vtables of the module just opened are analysed.
+// parsed from la_objopen, before the loader relocates it. Only the vtables of
+// the module just opened are analysed.
 static void decompileBeforeRelocation(const char* path)
 {
 	const bool client = AuditBinding::hasSuffix(path, "/steamclient.so");
@@ -1128,12 +1128,10 @@ extern "C" unsigned int la_objopen(struct link_map* map,
 		load();
 	}
 
-	// Keep the historical bind-all policy unless narrowing is explicitly
-	// enabled after its live importer/rewrite gates have been measured.
-	// SLSSTEAM_AUDIT_BINDALL=1 remains a visible rollback switch for a
-	// narrowed session, while the default is already the safe rollback.  The
-	// preinit-ready guard avoids getenv() in this loader callback; before setup
-	// publishes policy, bind-all is the conservative behavior.
+	// Bind-all is the default and the conservative behavior. Narrowing is
+	// opt-in through SLSSTEAM_AUDIT_NARROW=1; SLSSTEAM_AUDIT_BINDALL=1
+	// overrides it.  The policy-ready flag keeps getenv() out of this loader
+	// callback; until setup publishes the policy, every object gets bind-all.
 	const bool bindAll = !g_auditPolicyReady.load(std::memory_order_acquire)
 		|| g_auditBindAll.load(std::memory_order_acquire);
 	return AuditBinding::flagsForObject(map ? map->l_name : nullptr, bindAll);

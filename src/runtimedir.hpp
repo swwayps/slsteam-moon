@@ -23,9 +23,9 @@ namespace RuntimeDir
 	// resolveBase(xdgRuntimeDir, home) -> the directory that should hold our
 	// private files, or "" when neither input is usable.
 	//
-	// $XDG_RUNTIME_DIR is preferred. Its absence (a bare session, a container)
-	// falls back to a directory under $HOME — never /tmp, which is shared with
-	// every other local user and is the whole reason these files were reachable.
+	// Prefer $XDG_RUNTIME_DIR; without it (a bare session, a container) use
+	// $HOME/.cache. Never /tmp: it is shared with every other local user, so
+	// anyone could pre-create or replace these files there.
 	inline std::string resolveBase(const char* xdgRuntimeDir, const char* home)
 	{
 		if (xdgRuntimeDir != nullptr && xdgRuntimeDir[0] == '/')

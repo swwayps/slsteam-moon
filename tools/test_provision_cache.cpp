@@ -5,16 +5,16 @@
 // ---------------
 // AppInfoProvision::provisionApp issues one synchronous HTTP GET to
 // api.steamcmd.net per AdditionalApp, and Steam re-execs setup() several
-// times during a single cold boot (observed 4x on the Zorin VM), so the
-// startup cost is O(n_apps * n_setup_passes) network round-trips — it
-// grows with every game the user adds and stalls Steam's launch.
+// times during a single cold boot, so without a cache the startup cost is
+// O(n_apps * n_setup_passes) network round-trips; it grows with every game
+// the user adds and stalls Steam's launch.
 //
-// The fix: skip the fetch when a freshly-written picsbuffer_<appid>.bin
+// The cache skips the fetch when a freshly-written picsbuffer_<appid>.bin
 // is already on disk.  The freshness window (TTL) is short so the re-exec
 // storm of ONE boot reuses the buffer (near-instant), while a genuine
 // relaunch minutes/hours later (> TTL) still re-fetches the live gids
-// (the install-first-attempt fix depends on the staged gid matching what
-// Steam requests, so we must NOT serve a stale buffer across sessions).
+// (a first-attempt install depends on the staged gid matching what Steam
+// requests, so a stale buffer must NOT be served across sessions).
 //
 // This pins down the PURE decision: given the buffer's presence + mtime,
 // the current time and the TTL, do we reuse (skip the network)?  The

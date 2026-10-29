@@ -236,8 +236,8 @@ void handleSend_GetManifestRequestCode(const uint8_t* pBody, uint32_t cbBody,
 	             appId, static_cast<unsigned long long>(jobId));
 
 	// Stage the manifest from the archive so Steam finds it on disk and skips
-	// the request-code handshake entirely. We no longer answer that handshake
-	// ourselves (the archive is the manifest source).
+	// the request-code handshake entirely. Nothing here answers that
+	// handshake; the archive is the manifest source.
 	ManifestFetch::submitManifestBlob(
 		gid, appId, depotId,
 		ManifestFetch::isAnyManagedDownloadActive(appId));
@@ -558,9 +558,9 @@ bool hkBRouteMsgToJob(void* pJobMgr, void* arg2, void* pMsg, void* pJob)
 {
 	// Reject not just null but any implausible pointer before dereferencing.
 	// A Steam client ABI change can shift the message/job structs these offsets
-	// walk (a beta did), so a chained read (e.g. pInner = peek32(pMsg,0xc)) can
-	// yield a 0xFFFFFFFF sentinel instead of a real inner pointer; dereferencing
-	// it segfaults the whole client on the job-routing path.  Treat an
+	// walk, so a chained read (e.g. pInner = peek32(pMsg,0xc)) can yield a
+	// 0xFFFFFFFF sentinel instead of a real inner pointer; dereferencing it
+	// segfaults the whole client on the job-routing path.  Treat an
 	// implausible pointer as "no data" so this hook falls through to the
 	// original routing unchanged.
 	auto plausible = [](const void* p) -> bool {
@@ -594,7 +594,7 @@ bool hkBRouteMsgToJob(void* pJobMgr, void* arg2, void* pMsg, void* pJob)
 	// sentinel, which is non-null but derefs into unmapped memory (MsgHdr access
 	// below segfaults the client).  Require a plausible pointer and a sane
 	// buffer length so this whole interception falls through to the original
-	// routing on a layout we no longer parse, instead of crashing.
+	// routing on a layout this code does not recognize, instead of crashing.
 	if (!plausible(pBuf) || cbBuf < sizeof(MsgHdr) + 1 || cbBuf > (64u * 1024 * 1024))
 	{
 		return Hooks::CJobMgr_BRouteMsgToJob.tramp.fn(pJobMgr, arg2, pMsg, pJob);
@@ -624,9 +624,9 @@ bool hkBRouteMsgToJob(void* pJobMgr, void* arg2, void* pMsg, void* pJob)
 
 	const uint32_t bodyOffset = sizeof(MsgHdr) + cbProtoHdr;
 	// Feed the donor's own outstanding request-code sends (owned depots) so it
-	// can share the minted codes. We no longer inject a code into Steam's
-	// response — manifests are staged from the archive — so the message routes
-	// through unchanged.
+	// can share the minted codes. Manifests are staged from the archive, so no
+	// code is injected into Steam's response and the message routes through
+	// unchanged.
 	resolveDonorResponse(jobIdTarget, hdr, pBuf + bodyOffset, cbBuf - bodyOffset);
 	return Hooks::CJobMgr_BRouteMsgToJob.tramp.fn(pJobMgr, arg2, pMsg, pJob);
 }

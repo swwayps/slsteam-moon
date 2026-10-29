@@ -266,8 +266,8 @@ static void test_decky()
 }
 
 // The contract carries the owning client's identity so Lumen can tell a live
-// contract from one left behind by the previous session (which used to cost the
-// sidecar 4-8 s of polling a dead port at every boot).
+// contract from one left behind by the previous session, instead of polling a
+// dead port at boot.
 static void test_contract_owner()
 {
 	using CefPort::formatContract;

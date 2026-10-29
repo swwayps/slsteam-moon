@@ -6,9 +6,9 @@
 // cfe99f0c) — the post-commit reconcile that diffs an app's ACTIVE (installed)
 // depot config against its TARGET (appinfo) config and emits "config changed :
 // updated depots" / "Update Required".  It is invoked once per side; the ctx's
-// flag bit 0x8 marks the TARGET/appinfo side (confirmed live: active call
-// carried the installed gid, target call carried the public appinfo gid,
-// matching content_log "active: ... target: ...").
+// flag bit 0x8 marks the TARGET/appinfo side (the active call carries the
+// installed gid, the target call the public appinfo gid, as content_log's
+// "active: ... target: ..." lines show).
 //
 // The fix has TWO cooperating parts on the TARGET side. Managed size-zero
 // depots are removed wherever they appear; configured pins are applied to
@@ -66,7 +66,7 @@ namespace ReconcilePin
 	namespace detail
 	{
 		// RE'd offset of the target-vector builder `call rel32`, relative to the
-		// EvaluateConfigChanges entry (confirmed on build cfe99f0c).
+		// EvaluateConfigChanges entry on build cfe99f0c.
 		inline constexpr std::size_t kBuilderCallOff = 0x183;
 		// How far to look on either side of kBuilderCallOff when the function
 		// body was recompiled and the call moved.
@@ -75,8 +75,8 @@ namespace ReconcilePin
 		// Locate the `call rel32` (opcode 0xE8) to the target-vector builder.
 		//
 		// The exact offset drifts when Steam recompiles EvaluateConfigChanges
-		// (on the beta client the byte at kBuilderCallOff is no longer the
-		// call), so instead of giving up on any drift this searches around it.
+		// (the byte at kBuilderCallOff may not be the call), so instead of
+		// giving up on any drift this searches around it.
 		// `code`/`len` is the readable function prologue, `codeAddr` its runtime
 		// base (to decode the near-call target), and `targetExecutable(addr)`
 		// reports whether a decoded absolute target lands in executable memory
@@ -122,8 +122,8 @@ namespace ReconcilePin
 		}
 
 		// The builder is CUserAppManager::BuildDepotDependency. When that
-		// locator resolved (`builder` != 0) only a call to it qualifies: on the
-		// beta client a second executable call sits in the same window.
+		// locator resolved (`builder` != 0) only a call to it qualifies,
+		// because some builds have a second executable call in the same window.
 		template <typename TargetExecutable>
 		inline long findBuilderCall(
 			const std::uint8_t* code, std::size_t len, std::uintptr_t codeAddr,
