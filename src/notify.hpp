@@ -3,7 +3,7 @@
 // Pure, dependency-free desktop-notification command builder.
 //
 // Split out of log.hpp so the notify-send mapping is unit-testable without
-// dragging in openssl / config / the rest of the logger.  Owns the single
+// dragging in config / the rest of the logger.  Owns the single
 // definition of LogLevel (log.hpp includes this header for it).
 //
 // Note: urgency=critical notifications are "resident" in some desktop environments
@@ -22,7 +22,6 @@
 
 enum class LogLevel : unsigned int
 {
-	//TODO: Add Trace without breaking configs and without using -1 for Once
 	Once,
 	Debug,
 	Info,

@@ -12,7 +12,6 @@
 #include <fstream>
 #include <memory>
 #include <mutex>
-#include <openssl/sha.h>
 #include <shared_mutex>
 #include <sstream>
 #include <unordered_set>

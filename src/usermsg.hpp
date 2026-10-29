@@ -8,7 +8,7 @@
 // Those raw lines still go to ~/.SLSsteam.log for debugging; the screen only
 // ever shows the catalog text.
 //
-// The catalog is PURE (no openssl / config / logger), like notify.hpp, so it
+// The catalog is PURE (no config / logger), like notify.hpp, so it
 // is unit-testable in isolation (tools/test_usermsg.cpp).
 //
 // Adding a message:
