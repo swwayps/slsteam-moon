@@ -460,13 +460,13 @@ static void load()
 		return;
 	}
 
-	//This should never happen, but better be safe than sorry in case I refactor someday
+	// The i386 client maps steamclient.so first, the 64-bit one steamui.so:
+	// wait for the other module's la_objopen. Tearing down here stopped the
+	// manifest donor and hot reload for the whole session.
 	if (!LM_FindModule("steamclient.so", &g_modSteamClient))
 	{
-		unload();
 		return;
 	}
-	// steamui.so maps after steamclient.so; the next la_objopen retries.
 	if (!LM_FindModule("steamui.so", &g_modSteamUI))
 	{
 		return;

@@ -159,6 +159,14 @@ int main()
 	          && mainText.substr(steamUiWait, steamUiWaitEnd - steamUiWait)
 	                 .find("unload()") == std::string::npos,
 	      "load() waits for steamui.so without tearing anything down");
+	// The 64-bit client maps steamui.so first, so the same holds the other way.
+	const auto clientWait =
+		mainText.find("if (!LM_FindModule(\"steamclient.so\", &g_modSteamClient))");
+	const auto clientWaitEnd = mainText.find("return;", clientWait);
+	check(clientWait != std::string::npos && clientWaitEnd != std::string::npos
+	          && mainText.substr(clientWait, clientWaitEnd - clientWait)
+	                 .find("unload()") == std::string::npos,
+	      "load() waits for steamclient.so without tearing anything down");
 
 	const auto policyReady = mainText.find("g_auditPolicyReady.store(true");
 	check(policyReady != std::string::npos && setupLock != std::string::npos
