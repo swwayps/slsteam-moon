@@ -308,7 +308,6 @@ public:
 	}
 
 	bool isAddedAppId(uint32_t appId);
-	bool addAdditionalAppId(uint32_t appId);
 	// Lua plugin API: replace the active app set in memory, as upstream. Managed
 	// apps (stplug-in, luaappids.yaml) stay active; the next reload resets it.
 	void setAdditionalApps(const std::unordered_set<uint32_t>& appIds, bool firstLoad = false);

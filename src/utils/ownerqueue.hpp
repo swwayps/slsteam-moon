@@ -223,9 +223,9 @@ namespace OwnerQueue
 	// IS that thread. Everything else returns false, which is why the drain
 	// point is safe to call from every hooked dispatcher.
 	inline bool shouldDrain(long selfTid, long ownerTid, bool alreadyDraining,
-	                        std::size_t depthHint)
+	                        bool workPending)
 	{
-		return depthHint != 0
+		return workPending
 		    && !alreadyDraining
 		    && ownerTid != 0
 		    && selfTid == ownerTid;

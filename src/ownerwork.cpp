@@ -291,7 +291,7 @@ namespace OwnerWork
 			return;
 		if (!OwnerQueue::shouldDrain(cachedTid(),
 		                            g_ownerTid.load(std::memory_order_relaxed),
-		                            t_draining, depthHint == 0 ? 1 : depthHint))
+		                            t_draining, depthHint != 0 || resolvedHint || refreshPending))
 			return;
 
 		t_draining = true;

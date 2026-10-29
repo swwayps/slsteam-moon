@@ -348,13 +348,13 @@ YAML::Node CConfig::readTree()
 
 bool CConfig::init()
 {
-	const bool created = createFile();
+	const bool ok = createFile();
 	// Establish the first complete source union before the watcher can observe
 	// an event.  HotReload binds later, after hooks are placed, and reads this
 	// already-initialized value.
 	loadSettings();
 
-	if(created)
+	if (ok)
 	{
 		watcher = new CFileWatcher(onFileChange);
 		// The folder, not the files: a luaappids.yaml created after boot is
