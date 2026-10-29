@@ -1314,5 +1314,18 @@ XDG_DATA_HOME="$MIN_HOME/.local/share" XDG_DATA_DIRS="$TMP/minimal-empty" \
 check "post-bootstrap minimal entry becomes wrapped" "Exec=$MIN_WRAPPER %U" \
   "$(grep -m1 '^Exec=' "$MIN_APPS/steam.desktop")"
 
+# restore leaves other packages' symlinked entries alone (LibreOffice ships its
+# menu entries as symlinks), in the system and the user menu.
+HL="$TMP/homeL"; SYSL="$TMP/sysL"; mkdir -p "$HL/.local/share/applications" "$SYSL" "$TMP/xdgL"
+printf '[Desktop Entry]\nName=Writer\nExec=soffice --writer %%U\n' > "$TMP/xdgL/writer.desktop"
+ln -s "$TMP/xdgL/writer.desktop" "$SYSL/libreoffice-writer.desktop"
+ln -s "$TMP/xdgL/writer.desktop" "$HL/.local/share/applications/writer-link.desktop"
+DC_HOME="$HL" DC_BACKUP_ROOT="$HL/.local/share/SLSsteam/backup" DC_SYS_APPS="$SYSL" \
+  DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" dc_restore_all
+check "restore succeeds with foreign symlinked entries" "0" "$?"
+check "restore keeps a foreign system symlink" "yes" "$([ -L "$SYSL/libreoffice-writer.desktop" ] && echo yes || echo no)"
+check "restore keeps a foreign user symlink" "yes" \
+  "$([ -L "$HL/.local/share/applications/writer-link.desktop" ] && echo yes || echo no)"
+
 [ "$fail" = 0 ] && echo "ALL PASS" || echo "FAILURES"
 exit "$fail"

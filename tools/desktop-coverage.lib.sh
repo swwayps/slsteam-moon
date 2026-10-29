@@ -1560,14 +1560,15 @@ dc_restore_one() {
 		rm -f -- "$bak" "$f.slssteam-backup" "$f.slsteam-bak" 2>/dev/null
 		return 0
 	fi
+	# A link is ours only when we kept its backup; other packages ship symlinked
+	# entries (LibreOffice does) and those stay.
 	if [ -L "$f" ]; then
+		[ -f "$bak" ] || return 0
 		$S rm -f -- "$f" 2>/dev/null || return 1
-		if [ -f "$bak" ]; then
-			if $S cp -- "$bak" "$f" 2>/dev/null; then
-				rm -f -- "$bak" 2>/dev/null
-			else
-				return 1
-			fi
+		if $S cp -- "$bak" "$f" 2>/dev/null; then
+			rm -f -- "$bak" 2>/dev/null
+		else
+			return 1
 		fi
 		return 0
 	fi
