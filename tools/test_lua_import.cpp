@@ -45,6 +45,19 @@ int main()
 	setenv("XDG_CONFIG_HOME", configHome.c_str(), 1);
 	g_pLog = std::unique_ptr<CLog>(new CLog((root + "/test.log").c_str()));
 
+	// A cache entry the key index cannot stat (a symlink loop) skips only
+	// itself. This runs before any other key work loads the index.
+	std::filesystem::create_symlink("loop", configHome + "/SLSsteam/cache/loop");
+	std::ofstream(configHome + "/SLSsteam/cache/depotkey_4201.yaml")
+		<< "appId: 42\ndepotId: 4201\n"
+		<< "key: \"QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUE=\"\nmanaged: true\n";
+	bool indexThrew = false;
+	std::size_t indexedKey = 0;
+	try { indexedKey = DepotKey::getCachedKey(4201).key.size(); }
+	catch (...) { indexThrew = true; }
+	check(!indexThrew && indexedKey == 32,
+	      "a cache entry the key index cannot stat skips only itself");
+
 	const std::string key(64, 'a');
 	std::ofstream(steam + "/config/stplug-in/123.lua")
 		<< "addappid(123)\n"
