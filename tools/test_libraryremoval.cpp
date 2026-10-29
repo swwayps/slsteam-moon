@@ -45,6 +45,25 @@ int main()
 	      "a SIB-addressed read is rejected");
 	check(!LibraryRemovalPolicy::deriveOwnershipOffset(unalignedOffset),
 	      "unaligned ownership field is rejected");
+	// x86-64 beta: `mov edx,[r14+0x1c]`, the emitter's value argument.
+	constexpr std::array<std::uint8_t, 4> x64ReadR14{0x41, 0x8B, 0x56, 0x1C};
+	constexpr std::array<std::uint8_t, 4> x64ReadR13{0x41, 0x8B, 0x55, 0x1C};
+	constexpr std::array<std::uint8_t, 4> x64WrongDestination{0x41, 0x8B, 0x4E, 0x1C};
+	constexpr std::array<std::uint8_t, 4> x64Sib{0x41, 0x8B, 0x54, 0x1C};
+	constexpr std::array<std::uint8_t, 4> x64QwordRead{0x49, 0x8B, 0x56, 0x1C};
+	constexpr std::array<std::uint8_t, 3> x64Truncated{0x41, 0x8B, 0x56};
+	check(LibraryRemovalPolicy::deriveOwnershipOffset(x64ReadR14) == 0x1C,
+	      "x86-64 read through r14 derives the ownership offset");
+	check(LibraryRemovalPolicy::deriveOwnershipOffset(x64ReadR13) == 0x1C,
+	      "x86-64 read through r13 (rm=101 under REX.B) is a plain base");
+	check(!LibraryRemovalPolicy::deriveOwnershipOffset(x64WrongDestination),
+	      "an x86-64 read into another register is rejected");
+	check(!LibraryRemovalPolicy::deriveOwnershipOffset(x64Sib),
+	      "an x86-64 SIB-addressed read is rejected");
+	check(!LibraryRemovalPolicy::deriveOwnershipOffset(x64QwordRead),
+	      "a 64-bit read is rejected");
+	check(!LibraryRemovalPolicy::deriveOwnershipOffset(x64Truncated),
+	      "a truncated x86-64 read is rejected");
 	check(LibraryRemovalPolicy::hiddenOwnershipFlags(0x0803) == 0,
 	      "visual removal clears every ownership presentation flag");
 

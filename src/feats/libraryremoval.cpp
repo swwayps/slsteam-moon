@@ -44,9 +44,6 @@ std::size_t g_ownershipFlagsOffset = 0;
 Detour<MarkAppChangeFn> g_markAppChange;
 Detour<RunFrameFn> g_runFrame;
 
-// The SteamUI object layout below was derived on the Linux i386 client. The
-// x86-64 build ships the locators empty, so none of this runs until the
-// layout is derived again.
 template<typename Fn>
 void uninstall(Detour<Fn>& detour) noexcept
 {
@@ -162,7 +159,8 @@ void* hkRunFrame(void* controller)
 
 bool deriveOwnershipOffset(std::size_t& offset) noexcept
 {
-	std::array<std::uint8_t, 3> instruction{};
+	// Room for the x86-64 REX prefix; the i386 form is three bytes.
+	std::array<std::uint8_t, 4> instruction{};
 	if (LM_ReadMemory(
 		Patterns::SteamUI::OwnershipFlagsReference.address,
 		instruction.data(), instruction.size()) != instruction.size())

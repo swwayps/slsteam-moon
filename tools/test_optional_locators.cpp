@@ -8,9 +8,11 @@
 //   CUser::ProcessPendingLicenseUpdates  PackagePatch loses the runtime license
 //                                        refresh, so adding a game needs a
 //                                        Steam restart again.
-//   CSteamApp::OwnershipFlagsReference    LibraryRemoval cannot derive the
-//                                        ownership-flags field offset, so
-//                                        visual library removal turns off.
+//   SteamUI RunFrame/GetAppByID/         LibraryRemoval turns off, so a removed
+//   MarkAppChange/OwnershipFlagsReference game stays in the library until a
+//                                        restart.
+//   CAppInfoCache (4 locators)           AppInfoState turns off, so an added
+//                                        game needs a restart again.
 //   CUser::SpawnGameId                   LaunchOptions turns off.
 //   ParentalSignatureCheck               DisableParentalRestrictions turns off.
 //
@@ -174,7 +176,6 @@ int main(int argc, char** argv)
 
 	// i386 signatures that have no x86-64 counterpart yet (see
 	// .kiro/research/x86_64-port/STATE.md).
-	expectUnported(source, "CSteamApp::OwnershipFlagsReference");
 	expectUnported(source, "ParentalSignatureCheck");
 	// Upstream dev-X86_64: the GameID decode near the top of the function.
 	// PrologueUpwards then walks up to `push rbp; mov rbp, rsp`.
@@ -191,7 +192,29 @@ int main(int argc, char** argv)
 			std::cout << "CUser::SpawnGameId starts 0x" << std::hex << spawn - start
 			          << std::dec << " bytes above the match\n";
 	}
-	(void)ui; // the steamui.so locators checked here are all unported
+	// LibraryRemoval: the UI frame and change hooks, the app lookup and the
+	// ownership read whose displacement gives the field offset.
+	(void)resolveUnique(ui, "CSteamUIAppController::RunFrame",
+		"41 57 41 56 41 55 41 54 55 53 48 83 EC 38 64 48 8B 1C 25 28 00 00 00 48 89 5C 24 28 48 89 FB E8 ? ? ? ? 66 0F EF C9 66 0F EF D2 F2 0F 5A C0 F3 0F 5A D0 F3 0F 5A 8B ? ? 00 00", source);
+	(void)resolveUnique(ui, "CSteamUIAppController::GetAppByID",
+		"41 57 41 56 49 89 FE 41 55 41 54 55 53 48 83 EC 38 89 74 24 0C 89 54 24 08 64 48 8B 04 25 28 00 00 00 48 89 44 24 28 48 8B 05 ? ? ? ? 8B 00 85 C0 0F 85 ? ? ? ? 48 C7 44 24 10 00 00 00 00 85 F6 89 F5", source);
+	(void)resolveUnique(ui, "CUpdateManager::MarkAppChange",
+		"41 57 41 89 F7 41 56 41 55 41 54 55 48 89 FD 53 48 83 EC 28 48 8B 05 ? ? ? ? 64 48 8B 1C 25 28 00 00 00 48 89 5C 24 18 89 D3 8B 10 85 DB 0F 94 C0 85 F6 0F 94 C1", source);
+	const std::size_t ownership = resolveUnique(ui, "CSteamApp::OwnershipFlagsReference",
+		"41 8B ? 1C 48 8B BD ? ? ? ? 48 8D 35 ? ? ? ? E8", source);
+	expect(ownership == std::string::npos ||
+	       static_cast<std::uint8_t>(ui[ownership + 2]) == 0x56,
+	       "CSteamApp::OwnershipFlagsReference: expected mov edx,[r14+0x1c]");
+	// AppInfoState: live appinfo reload entry, disk reader call site and the
+	// two CAppData layout reads.
+	(void)resolveUnique(client, "CAppInfoCache::GetOrAddAppData",
+		"41 57 41 56 41 55 41 54 49 89 FC 55 89 F5 53 48 83 EC 18 48 8B 05 ? ? ? ? 64 48 8B 1C 25 28 00 00 00 48 89 5C 24 08 89 D3", source);
+	(void)resolveUnique(client, "CAppInfoCache::ThreadedReadFromDisk",
+		"E8 ? ? ? ? E8 ? ? ? ? 48 8B 14 24 48 89 44 24 08", source);
+	(void)resolveUnique(client, "CAppInfoCache::SkipFlagReference",
+		"0F B6 40 ? 48 83 C3 01 20 44 24 ? 39 5D ?", source);
+	(void)resolveUnique(client, "CAppInfoCache::ShaReference",
+		"48 39 70 ? 75 ? 48 8B 7A 08 48 39 78 ? 75 ? 8B 7A 10 39 78 ?", source);
 	// PackagePatch: LoadPackage's entry and the Grow call inside its AppIdVec
 	// append. Without them added apps own no depots and Steam plans nothing.
 	(void)resolveUnique(

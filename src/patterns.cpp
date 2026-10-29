@@ -762,34 +762,54 @@ namespace Patterns
 
 	namespace SteamUI
 	{
+		// x86-64 steamui.so (beta 1793235415 build-id 4089b816..., addresses
+		// below). Each signature has one match on that build, on 1792711043
+		// and on the 2026-10-21 stable x86-64 client. LibraryRemoval detours
+		// RunFrame and MarkAppChange; their first 14 bytes hold no
+		// RIP-relative operand, which libmem copies into the trampoline as is.
+		//
+		// Slot 3 of the 21CSteamUIAppController primary vtable (0x19d5300),
+		// as on i386: (this). It compares the frame time against members
+		// before the per-frame work.
 		Pattern_t AppControllerRunFrame
 		{
 			"CSteamUIAppController::RunFrame",
-			"",
+			"41 57 41 56 41 55 41 54 55 53 48 83 EC 38 64 48 8B 1C 25 28 00 00 00 48 89 5C 24 28 48 89 FB E8 ? ? ? ? 66 0F EF C9 66 0F EF D2 F2 0F 5A C0 F3 0F 5A D0 F3 0F 5A 8B ? ? 00 00",
 			SigFollowMode::None,
 			&g_modSteamUI,
 			"Patterns::SteamUI::AppControllerRunFrame"
 		};
+		// (controller, appid, create) at 0x19b80a0: the murmur3 hash lookup
+		// MarkAppChange calls with create=0. Called, never detoured.
 		Pattern_t GetAppByID
 		{
 			"CSteamUIAppController::GetAppByID",
-			"",
+			"41 57 41 56 49 89 FE 41 55 41 54 55 53 48 83 EC 38 89 74 24 0C 89 54 24 08 64 48 8B 04 25 28 00 00 00 48 89 44 24 28 48 8B 05 ? ? ? ? 8B 00 85 C0 0F 85 ? ? ? ? 48 C7 44 24 10 00 00 00 00 85 F6 89 F5",
 			SigFollowMode::None,
 			&g_modSteamUI,
 			"Patterns::SteamUI::GetAppByID"
 		};
+		// (source, appid, change_flags) at 0x1b1b100, the function that walks
+		// the "AppChangeNotification" listeners; it skips appid 7 and looks
+		// the app up through GetAppByID first, as on i386.
 		Pattern_t MarkAppChange
 		{
 			"CUpdateManager::MarkAppChange",
-			"",
+			"41 57 41 89 F7 41 56 41 55 41 54 55 48 89 FD 53 48 83 EC 28 48 8B 05 ? ? ? ? 64 48 8B 1C 25 28 00 00 00 48 89 5C 24 18 89 D3 8B 10 85 DB 0F 94 C0 85 F6 0F 94 C1",
 			SigFollowMode::None,
 			&g_modSteamUI,
 			"Patterns::SteamUI::MarkAppChange"
 		};
+		// FillInAppOverview's inlined OwnershipFlags read right before it
+		// emits "eAppOwnershipFlags": `mov edx,[r14+0x1c]` (0x19c1fde), then
+		// rdi=sink, rsi=name and the emitter call. The 0x1c displacement
+		// stays pinned for the same reason as on i386 (the neighbouring
+		// fields share the shape); the modrm byte is the wildcard and
+		// LibraryRemovalPolicy::deriveOwnershipOffset checks it.
 		Pattern_t OwnershipFlagsReference
 		{
 			"CSteamApp::OwnershipFlagsReference",
-			"",
+			"41 8B ? 1C 48 8B BD ? ? ? ? 48 8D 35 ? ? ? ? E8",
 			SigFollowMode::None,
 			&g_modSteamUI,
 			"Patterns::SteamUI::OwnershipFlagsReference"

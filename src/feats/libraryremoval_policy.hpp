@@ -24,17 +24,31 @@ inline constexpr std::uint32_t hiddenOwnershipFlags(
 inline std::optional<std::size_t> deriveOwnershipOffset(
 	std::span<const std::uint8_t> instruction) noexcept
 {
-	// `8B /r` with mod=01 (disp8) and reg=eax, i.e. `mov eax,[base+disp8]`.
+	// i386: `8B /r` with mod=01 (disp8) and reg=eax, i.e. `mov eax,[base+disp8]`.
 	// Steam's own register allocation for the app pointer is not stable across
 	// builds (ecx on 2026-08-03, edx on 2026-08-16), so accept either base while
 	// still refusing any other destination register, a SIB byte (rm=100), and
 	// [ebp+disp8] (rm=101), none of which are this read.
-	if (instruction.size() < 3 || instruction[0] != 0x8B ||
-		(instruction[1] != 0x41 && instruction[1] != 0x42))
+	// x86-64: `41 8B /r` with mod=01 and reg=edx, i.e. `mov edx,[r8-r15+disp8]`
+	// (r14 on the betas), which loads the emitter's value argument. Under
+	// REX.B rm=101 is r13, a plain base; rm=100 (r12) still takes a SIB byte.
+	std::size_t at = 0;
+	std::uint8_t destination = 0; // eax
+	if (!instruction.empty() && instruction[0] == 0x41)
+	{
+		at = 1;
+		destination = 2; // edx
+	}
+	if (instruction.size() < at + 3 || instruction[at] != 0x8B)
+		return std::nullopt;
+	const std::uint8_t modrm = instruction[at + 1];
+	const std::uint8_t rm = modrm & 0x07;
+	if ((modrm >> 6) != 1 || ((modrm >> 3) & 0x07) != destination || rm == 4 ||
+		(at == 0 && rm != 1 && rm != 2))
 	{
 		return std::nullopt;
 	}
-	const std::size_t offset = instruction[2];
+	const std::size_t offset = instruction[at + 2];
 	if (offset == 0 || offset > 0x100 || (offset % alignof(std::uint32_t)) != 0)
 		return std::nullopt;
 	return offset;
