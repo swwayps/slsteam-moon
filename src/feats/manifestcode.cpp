@@ -259,7 +259,7 @@ void dispatchSend(uint32_t eMsg,
 			pHdr, cbHdr, body.data(), static_cast<uint32_t>(body.size()));
 		return;
 	}
-	if (eMsg != kEMsgServiceMethodCallFromClient)
+	if (eMsg != k_EMsgServiceMethodCallFromClient)
 	{
 		return;
 	}
@@ -373,7 +373,7 @@ CodeRequest requestCode(uint32_t appId, uint32_t depotId, uint64_t gid)
 		if (headerSize > kMaxHdrSize || bodySize > kMaxBodySize) return fail();
 		frame.resize(sizeof(MsgHdr) + headerSize + bodySize);
 		auto* prefix = reinterpret_cast<MsgHdr*>(frame.data());
-		prefix->eMsg = kEMsgServiceMethodCallFromClient | kMsgHdrProtoFlag;
+		prefix->eMsg = k_EMsgServiceMethodCallFromClient | kMsgHdrProtoFlag;
 		prefix->headerLength = static_cast<uint32_t>(headerSize);
 		if (!header.SerializeToArray(frame.data() + sizeof(MsgHdr), headerSize) ||
 		    !body.SerializeToArray(
@@ -503,7 +503,7 @@ bool hkBBuildAndAsyncSendFrame(void* pConnection,
 					if (!g_DonorResetting)
 						contextGeneration = g_DonorContextGeneration;
 				}
-				if (eMsg == kEMsgServiceMethodCallFromClient &&
+				if (eMsg == k_EMsgServiceMethodCallFromClient &&
 				    cbHdr && cbHdr <= kMaxHdrSize)
 				{
 					CMsgProtoBufHeader header;
@@ -579,7 +579,7 @@ bool hkBRouteMsgToJob(void* pJobMgr, void* arg2, void* pMsg, void* pJob)
 	};
 
 	const uint32_t eMsg = peek32(pJob, 0x10);
-	if (eMsg != 0x93 /* k_EMsgServiceMethodResponse */)
+	if (eMsg != k_EMsgServiceMethodResponse)
 	{
 		return Hooks::CJobMgr_BRouteMsgToJob.tramp.fn(pJobMgr, arg2, pMsg, pJob);
 	}
