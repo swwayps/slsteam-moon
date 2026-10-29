@@ -1,11 +1,11 @@
-# Owner-thread handoff and its switches
+# Diagnostics and environment switches
 
-Everything here is at its default unless you set it. None of it changes what
-SLSsteam does, only *where* work runs.
+Everything here is at its default unless you set it.
 
 ## Owner-thread handoff for watcher-originated Steam calls
 
-The config watcher and the API watcher are plain inotify threads, but the work
+None of the switches in this section changes what SLSsteam does, only *where*
+work runs. The config watcher and the API watcher are plain inotify threads, but the work
 they trigger — appending to package 0 through the resolved `CUtlMemoryGrow`,
 broadcasting `NotifyLicensesUpdated`, and the app-manager install call — is
 Steam-owned. Those calls are handed to the thread Steam dispatches IPC frames
@@ -84,6 +84,13 @@ OwnerWork: watcher-originated Steam calls hand off to the owner IPC thread (non-
 HotReload: generation 3 dispatched queued-owner-thread (managed=12 added=1 removed=0 planner_apps=14 depots=31 metadata=complete)
 OwnerWork: drained 1 command(s) on the owner IPC thread
 ```
+
+## TLS certificate bundle
+
+SLSsteam's own HTTPS requests (product info, the CM socket, manifests) use the
+first CA file found in `SLSSTEAM_CA_BUNDLE`, `CURL_CA_BUNDLE`, `SSL_CERT_FILE`
+or the usual distro paths (`src/cainfo.hpp`). Set `SLSSTEAM_CA_BUNDLE` when the
+system bundle lives somewhere else; a path that does not exist is skipped.
 
 ## Teardown before any hook is placed
 

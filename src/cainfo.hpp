@@ -63,7 +63,6 @@ inline const std::vector<std::string>& caFileCandidates()
 		"/etc/pki/tls/cacert.pem",                       // older RHEL
 		"/etc/ssl/cert.pem",                             // Alpine/BSD (SteamOS alt symlink)
 		"/etc/ca-certificates/extracted/tls-ca-bundle.pem", // Arch/SteamOS real bundle
-		"/usr/local/share/certs/ca-root-nss.crt",        // FreeBSD
 	};
 	return v;
 }
