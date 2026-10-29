@@ -185,29 +185,51 @@ std::unordered_set<uint32_t> CConfig::loadLuaAppIdsYaml()
 	std::unordered_set<uint32_t> result;
 	const auto path = getLuaAppIdsPath();
 	std::error_code existsError;
-	if (!std::filesystem::exists(path, existsError)) return result;
-
-	try
+	const bool exists = std::filesystem::exists(path, existsError);
+	// A missing file, an empty document and a map without the key are an empty
+	// list. Anything else that does not read as a list keeps the last one.
+	bool readable = !exists && !existsError;
+	if (exists)
 	{
-		YAML::Node node = YAML::LoadFile(path);
-		if (node && node["AdditionalApps"])
+		try
 		{
-			for (auto subNode : node["AdditionalApps"])
+			const YAML::Node node = YAML::LoadFile(path);
+			const YAML::Node apps = node.IsMap() ? node["AdditionalApps"] : YAML::Node();
+			readable = node.IsNull() ||
+				(node.IsMap() && (!apps || apps.IsNull() || apps.IsSequence()));
+			if (readable && apps && apps.IsSequence())
 			{
-				try
+				for (const auto subNode : apps)
 				{
-					const uint32_t val = subNode.as<uint32_t>();
-					if (val != 0)
+					try
 					{
-						result.insert(val);
+						const uint32_t val = subNode.as<uint32_t>();
+						if (val != 0)
+						{
+							result.insert(val);
+						}
 					}
+					catch (...) {}
 				}
-				catch (...) {}
 			}
 		}
+		catch (...)
+		{
+			readable = false;
+		}
 	}
-	catch (...) {}
 
+	if (readable)
+	{
+		if (luaAppIdsUnreadable.exchange(false))
+			g_pLog->info("luaappids.yaml reads again (%zu apps)\n", result.size());
+		lastLuaAppIds.set(result);
+		return result;
+	}
+	result = lastLuaAppIds.get();
+	if (!luaAppIdsUnreadable.exchange(true))
+		g_pLog->warn("luaappids.yaml could not be read as a list of apps; keeping the "
+		             "%zu apps it listed until it reads again\n", result.size());
 	return result;
 }
 
