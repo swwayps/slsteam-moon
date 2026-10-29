@@ -36,22 +36,16 @@ namespace HotReloadPackage
 
 	namespace detail
 	{
+		// Hash when the range can: the package callers pass id sets, and a
+		// linear find per element made compaction quadratic.
 		template <typename Range>
 		inline bool contains(const Range& values, uint32_t id)
 		{
-			return std::find(std::begin(values), std::end(values), id) !=
-			       std::end(values);
-		}
-
-		inline bool containsLive(const uint32_t* data, uint32_t size,
-		                        uint32_t id)
-		{
-			if (!data) return false;
-			for (uint32_t index = 0; index < size; ++index)
-			{
-				if (data[index] == id) return true;
-			}
-			return false;
+			if constexpr (requires { values.count(id); })
+				return values.count(id) != 0;
+			else
+				return std::find(std::begin(values), std::end(values), id) !=
+				       std::end(values);
 		}
 	} // namespace detail
 
@@ -116,10 +110,12 @@ namespace HotReloadPackage
 	                                             uint32_t size,
 	                                             const Desired& desired)
 	{
+		// Read the live vector once instead of once per desired id.
+		const IdSet live = data ? IdSet(data, data + size) : IdSet();
 		std::set<uint32_t> missing;
 		for (const uint32_t id : desired)
 		{
-			if (!detail::containsLive(data, size, id)) missing.insert(id);
+			if (live.count(id) == 0) missing.insert(id);
 		}
 		return missing;
 	}

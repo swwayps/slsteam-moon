@@ -8,9 +8,11 @@
 #include "../src/feats/hotreload_types.hpp"
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <initializer_list>
+#include <iterator>
 #include <set>
 #include <unordered_set>
 #include <vector>
@@ -35,6 +37,31 @@ static std::vector<uint32_t> asVector(const uint32_t* data, uint32_t size)
 	if (!data || size == 0) return {};
 	return std::vector<uint32_t>(data, data + size);
 }
+
+// An id set that counts how many elements callers step over, so a lookup
+// that walks the set instead of hashing shows up as a count.
+struct CountingSet
+{
+	IdSet ids;
+	mutable std::size_t* steps;
+	struct Iter
+	{
+		IdSet::const_iterator it;
+		std::size_t* steps;
+		uint32_t operator*() const { return *it; }
+		Iter& operator++() { ++it; ++*steps; return *this; }
+		bool operator==(const Iter& other) const { return it == other.it; }
+		bool operator!=(const Iter& other) const { return it != other.it; }
+		using iterator_category = std::forward_iterator_tag;
+		using value_type = uint32_t;
+		using difference_type = std::ptrdiff_t;
+		using pointer = const uint32_t*;
+		using reference = uint32_t;
+	};
+	Iter begin() const { return {ids.begin(), steps}; }
+	Iter end() const { return {ids.end(), steps}; }
+	std::size_t count(uint32_t id) const { return ids.count(id); }
+};
 
 int main()
 {
@@ -232,6 +259,22 @@ int main()
 		      "accepted child requests remain deduplicated after completion");
 	}
 
+	{
+		// A library-sized vector: every id seeded and desired. Each lookup
+		// must hash, not walk the sets, and the live vector is read once.
+		constexpr uint32_t kIds = 24000;
+		std::size_t steps = 0;
+		CountingSet all{IdSet(), &steps};
+		std::vector<uint32_t> live;
+		for (uint32_t id = 1; id <= kIds; ++id) { all.ids.insert(id); live.push_back(id); }
+		uint32_t size = kIds;
+		compactInjected(live.data(), size, all, all);
+		CHECK(size == kIds && steps == 0,
+		      "compactInjected hashes its set lookups");
+		steps = 0;
+		CHECK(missingFromVector(live.data(), kIds, all).empty() && steps <= kIds,
+		      "missingFromVector walks the desired ids once");
+	}
 	if (g_failures == 0) { std::printf("\nALL PASS\n"); return 0; }
 	std::printf("\n%d CHECK(S) FAILED\n", g_failures);
 	return 1;
