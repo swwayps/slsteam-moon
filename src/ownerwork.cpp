@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-// Owner-IPC-thread execution site for watcher-originated Steam-owned work.
-// See ownerwork.hpp for scope, the fire-and-forget rationale, and the
-// staleness escape hatch.
+// Owner-IPC-thread execution site for Steam-owned work.
+// See ownerwork.hpp for the dispatch invariants.
 
 #include "ownerwork.hpp"
 
@@ -76,9 +75,8 @@ namespace
 		             reason, cmd.appId());
 	}
 
-	// Execute one command. This is the ONLY place the Steam-owned calls are
-	// reached from, whichever thread ends up running them, so the call set,
-	// inputs and order are identical in every mode.
+	// Execute one command. Every dispatch mode reaches the Steam-owned calls
+	// only through here.
 	void runCommand(const OwnerQueue::Command& cmd)
 	{
 		switch (cmd.kind())
@@ -180,8 +178,8 @@ namespace
 		// oldest-first.
 		OwnerWork::idleTick();
 
-		// No owner thread known yet (very early boot) — behave exactly as
-		// before rather than sit on work nobody will drain.
+		// No owner latched yet (early boot): run inline rather than queue work
+		// nobody drains.
 		if (!OwnerWork::ownerLatched())
 		{
 			runInline(batch, OwnerWork::Mode::NoOwner);
@@ -223,8 +221,9 @@ namespace OwnerWork
 
 	void init()
 	{
-		// Inline runs on the submitting thread can deadlock the owner IPC
-		// thread, so the old off switch is ignored.
+		// Setting SLSSTEAM_OWNER_QUEUE only logs a warning; it cannot turn the
+		// queue off, because inline runs on the submitting thread can deadlock
+		// the owner IPC thread.
 		if (std::getenv("SLSSTEAM_OWNER_QUEUE") != nullptr)
 		{
 			g_pLog->warn("OwnerWork: SLSSTEAM_OWNER_QUEUE is no longer supported and "
@@ -241,15 +240,6 @@ namespace OwnerWork
 			             "(expected 0-%u)\n", kMaxMaxStaleMs);
 		}
 		g_maxStaleMs.store(stale, std::memory_order_relaxed);
-
-		// The handoff no longer blocks, so a leftover deadline setting is
-		// reported rather than silently ignored.
-		if (std::getenv("SLSSTEAM_OWNER_QUEUE_DEADLINE_MS") != nullptr)
-		{
-			g_pLog->warn("OwnerWork: SLSSTEAM_OWNER_QUEUE_DEADLINE_MS is obsolete and "
-			             "ignored (the handoff no longer blocks); use "
-			             "SLSSTEAM_OWNER_QUEUE_MAX_STALE_MS\n");
-		}
 
 		g_pLog->info("OwnerWork: watcher-originated Steam calls hand off to the owner "
 		             "IPC thread (non-blocking; stale fallback %s)\n",
@@ -291,7 +281,7 @@ namespace OwnerWork
 			return;
 		if (!OwnerQueue::shouldDrain(cachedTid(),
 		                            g_ownerTid.load(std::memory_order_relaxed),
-		                            t_draining, depthHint == 0 ? 1 : depthHint))
+		                            t_draining, depthHint != 0 || resolvedHint || refreshPending))
 			return;
 
 		t_draining = true;

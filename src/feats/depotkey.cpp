@@ -239,7 +239,7 @@ bool saveKeyToCache(uint32_t appId, uint32_t depotId, const std::string& key, bo
 		}
 	}
 
-	g_pLog->infoOnce("DepotKey: cached key for app=%u depot=%u\n", finalAppId, depotId);
+	g_pLog->debugOnce("DepotKey: cached key for app=%u depot=%u\n", finalAppId, depotId);
 
 	SavedKey saved;
 	saved.appId = finalAppId;

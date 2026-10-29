@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-// Pure scheduling policy for Phase 4.5 provisioning.
+// Pure scheduling policy for appinfo provisioning: which refreshed apps are
+// published at runtime, and whether preinit provisions every managed app or
+// only those without a usable cache before the appinfo splice.
 
 #pragma once
 
@@ -16,14 +18,6 @@
 
 namespace AppInfoProvision
 {
-
-// A known startup failure leaves no worker to drain a queued request, so the
-// request must remain retryable. An uncertain detach recovery may still have
-// a live worker; that worker must retain the gate and drain the queue itself.
-inline bool shouldRequeueRefreshAfterStartFailure(bool workerMayStillExist)
-{
-	return !workerMayStillExist;
-}
 
 inline std::vector<std::uint32_t> selectRuntimePublishCandidates(
 	const std::vector<RefreshRequest>& requested,
@@ -71,14 +65,6 @@ inline PreinitProvisionAction preinitProvisionAction(bool asyncEnabled)
 		: PreinitProvisionAction::SynchronousProvision;
 }
 
-// PICS provisioning can be triggered for a game added after setup() as well
-// as for apps already managed at boot. Warm the loader unconditionally so a
-// later hot-add cannot become the first worker-thread dlopen.
-inline bool shouldWarmCurlBeforePics(bool /*hasManagedApps*/)
-{
-	return true;
-}
-
 // Resolve the config value and the optional field override. Invalid explicit
 // values fail closed: a field/debug typo must not silently enable a new
 // startup behavior in the field.
@@ -94,12 +80,5 @@ inline bool asyncProvisionEnabled(bool configEnabled, const char* envOverride)
 	return false;
 }
 
-// A cache accepted only as an explicit stale fallback must remain eligible for
-// a newer raw PICS response. Fresh/provider-normalized cold results can be
-// marked in-process so the callback does not race their publication.
-inline bool shouldMarkColdCacheSanitized(bool explicitFallback)
-{
-	return !explicitFallback;
-}
 
 } // namespace AppInfoProvision

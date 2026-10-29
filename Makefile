@@ -40,6 +40,11 @@ CXXFLAGS := -O3 -flto=auto -fPIC -std=c++20 \
 
 LDFLAGS := -shared -Wl,--no-undefined -lpthread -ldl
 
+# 64-bit file offsets and inode numbers on every compile line (a no-op on
+# x86-64; the i386 build needs it). Tests link our objects, so their own lines
+# need the same struct layouts.
+CXX += -D_FILE_OFFSET_BITS=64
+
 ifeq ($(shell echo $$NATIVE),1)
 	CXXFLAGS += -march=native
 endif
@@ -52,12 +57,12 @@ endif
 #	LDFLAGS += -fuse-ld=mold
 #endif
 
-.PHONY: all build rebuild clean install release test-ascii test-cmwire test-cmclient-loader test-cmclient-session test-provision-locks test-cmrecv-exceptions test-hook-placement test-cache-validation test-depot-prune test-offline-flags test-ticket-cache test-send-frame test-notify-async test-catalog-trust test-clientcompat test-dlcids test-dlc-scope test-dlc-metadata test-config-path test-config-discovery test-lua-import test-steamstub-launch test-ownerwork-policy test-filewatcher-burst test-provision-notice test-mtvar-contains test-synthmark test-appinfostate test-pattern-catalog test-pattern-cache test-pattern-refresh test-process-lock test-process-runtime test-atomic-file test-cache-pair test-appinfo-transaction test-appinfo-reload test-audit-symbols test-audit-eh test-audit-tier0 test-audit-policy test-memhlp-target test-memhlp-prologue test-memhlp-pic test-utils-sha test-provision-cache test-provision-refresh test-provision-result test-provision-terminal test-pending-proton test-provision-schedule test-provision-pass test-runtime-dependencies test-thread-start test-steamstub-warmup test-steamstub-launchopt test-boundedexecutor test-steamless-prewarm test-depotkey-scope test-curl-timeout test-manifest-index test-manifestselection test-manifeststore-io test-hotreload-inputs test-hotreload-package test-ownerqueue test-hotreload-capabilities test-libraryremoval test-pics test-yaml-runtime test-manifestpin-patterns test-optional-locators test-patternscan test-fakeappid-presence test-fakeappid-wiring test-ticket test-familyshare test-familyshare-wiring
+.PHONY: all build rebuild clean install release test-ascii test-cmwire test-cmclient-loader test-cmclient-session test-provision-locks test-cmrecv-exceptions test-hook-placement test-hotreload-prepared test-cache-validation test-depot-prune test-offline-flags test-ticket-cache test-send-frame test-notify-async test-log-once test-catalog-trust test-clientcompat test-dlcids test-dlc-scope test-dlc-metadata test-config-path test-config-discovery test-lua-import test-steamstub-launch test-ownerwork-policy test-filewatcher-burst test-provision-notice test-mtvar-contains test-synthmark test-appinfostate test-pattern-catalog test-pattern-cache test-pattern-refresh test-process-lock test-process-runtime test-atomic-file test-cache-pair test-appinfo-transaction test-appinfo-reload test-audit-symbols test-audit-eh test-audit-tier0 test-audit-policy test-memhlp-target test-memhlp-prologue test-memhlp-pic test-utils-sha test-provision-cache test-provision-refresh test-provision-result test-provision-terminal test-pending-proton test-provision-schedule test-provision-pass test-runtime-dependencies test-thread-start test-steamstub-warmup test-steamstub-launchopt test-boundedexecutor test-steamless-prewarm test-depotkey-scope test-curl-timeout test-manifest-index test-manifestselection test-manifeststore-io test-hotreload-inputs test-hotreload-package test-ownerqueue test-hotreload-capabilities test-libraryremoval test-pics test-yaml-runtime test-manifestpin-patterns test-optional-locators test-patternscan test-fakeappid-presence test-ticket test-familyshare
 .NOTPARALLEL: clean rebuild
 .PHONY: uninstall clean-libs clean-tools schema-grabber ticket-grabber
 .PHONY: test-library-dates test-library-dates-hook test-depot-overrides
 .PHONY: test-vftableinfo-registry test-owner-frame-wiring
-.PHONY: test-achievements test-achievement-scope test-stats-audit
+.PHONY: test-achievements test-achievement-scope test-stats-audit test-parental test-lfs
 .PHONY: test-stats-provenance
 .PHONY: test-manifestdonor test-manifestdonor-runtime test-manifestfetch
 .PHONY: test-reconcilepin-scan test-hostexec
@@ -99,12 +104,6 @@ test-familyshare: obj/sdk/protobufs/steammessages_base.pb.o
 		-Wl,--gc-sections -pthread -o /tmp/test_familyshare
 	/tmp/test_familyshare
 
-test-familyshare-wiring:
-	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror \
-		tools/test_familyshare_wiring.cpp -o /tmp/test_familyshare_wiring
-	/tmp/test_familyshare_wiring
-
-
 test-achievements:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror -isystem include -pthread tools/test_achievements.cpp -o /tmp/test_achievements
 	/tmp/test_achievements
@@ -132,11 +131,6 @@ test-fakeappid-presence: obj/sdk/protobufs/encrypted_app_ticket.pb.o \
 		-Wl,--gc-sections -pthread -o /tmp/test_fakeappid_presence
 	/tmp/test_fakeappid_presence
 
-test-fakeappid-wiring:
-	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror \
-		tools/test_fakeappid_wiring.cpp -o /tmp/test_fakeappid_wiring
-	/tmp/test_fakeappid_wiring
-
 test-ticket:
 	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
 		-Wall -Wextra -Wpedantic -Werror -I include -I src \
@@ -147,7 +141,7 @@ test-process-runtime:
 	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
 		-Wall -Wextra -Wpedantic \
 		-ffunction-sections -fdata-sections -I include -I src \
-		tools/test_process_runtime.cpp src/process.cpp \
+		tools/test_process_runtime.cpp src/process.cpp src/utils.cpp \
 		-Wl,--gc-sections -pthread -o /tmp/test_process_runtime
 	/tmp/test_process_runtime
 
@@ -271,6 +265,11 @@ test-cmrecv-exceptions: $(objs) $(libs)
 		-I include -isysteminclude tools/test_cmrecv_exceptions.cpp \
 		$(objs) $(libs) -lpthread -ldl -o /tmp/test_cmrecv_exceptions
 	/tmp/test_cmrecv_exceptions
+test-hotreload-prepared: $(objs) $(libs)
+	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
+		-I include -isysteminclude tools/test_hotreload_prepared.cpp \
+		$(objs) $(libs) -lpthread -ldl -o /tmp/test_hotreload_prepared
+	/tmp/test_hotreload_prepared
 test-hook-placement: $(objs) $(libs)
 	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
 		-I include -isysteminclude tools/test_hook_placement.cpp \
@@ -307,6 +306,11 @@ test-notify-async: $(objs) $(libs)
 		-I include -isysteminclude tools/test_notify_async.cpp \
 		$(objs) $(libs) -lpthread -ldl -o /tmp/test_notify_async
 	/tmp/test_notify_async
+test-log-once: $(objs) $(libs)
+	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
+		-I include -isysteminclude tools/test_log_once.cpp \
+		$(objs) $(libs) -lpthread -ldl -o /tmp/test_log_once
+	/tmp/test_log_once
 test-catalog-trust: $(objs) $(libs)
 	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
 		-I include -isysteminclude tools/test_catalog_trust.cpp \
@@ -845,6 +849,18 @@ test-log-rotate:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror -I src \
 		tools/test_log_rotate.cpp -o /tmp/test_log_rotate
 	/tmp/test_log_rotate
+
+# Our objects must call the 64-bit stat and readdir (see CXX above); the
+# vendored archives keep their own calls.
+test-lfs: $(objs)
+	@if nm -u $(objs) | grep -E ' (f|l)?stat(at)?$$| readdir$$'; then \
+		echo "FAIL: objects call the 32-bit stat or readdir"; exit 1; \
+	fi; echo "ok: objects use the 64-bit stat and readdir"
+
+test-parental:
+	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src \
+		tools/test_parental.cpp -o /tmp/test_parental
+	/tmp/test_parental
 
 test-log-format:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror -I src \

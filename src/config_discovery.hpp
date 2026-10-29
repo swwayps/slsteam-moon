@@ -1,29 +1,8 @@
 #pragma once
 
-// Discovery and classification helpers for config.cpp.
-//
-// Why this exists
-// ---------------
-// The managed-app set comes only from the numeric filename stem of each
-// `config/stplug-in/*.lua` script plus luaappids.yaml. A script is named
-// after its main app (e.g. `275850.lua`); its body lists that app's
-// depots/DLC via `addappid(...)`, which must NOT be treated as separate
-// main apps.
-//
-// A regression (commit 9d062c6) additionally rejected any discovered
-// main-app id whose numeric value ALSO carried a cached, managed depot key
-// (`!DepotKey::isManagedDepot(id)`). That is wrong: single-depot titles
-// reuse the app id as their own content depot id, so the script contains a
-// keyed `addappid(<appid>, 1, "<key>")` line for the app itself. No Man's
-// Sky (275850) is exactly this layout, whereas Green Hell (815370) keys
-// only its sibling depots (815371/815372). The guard therefore silently
-// dropped No Man's Sky from AdditionalApps and hid it from Steam's library
-// entirely, while Green Hell installed fine.
-//
-// The rule below pins the correct decision: a MAIN-app id (filename stem or
-// luaappids.yaml entry) is authoritative and is kept regardless of whether
-// the same id is also a managed depot. Managed-depot status only governs
-// depot-level manifest hooks; it is irrelevant to app installability.
+// Discovery and classification helpers for config.cpp. The managed-app set
+// comes from the numeric stem of each config/stplug-in/*.lua script plus
+// luaappids.yaml; the addappid(...) lines in a script are its depots and DLC.
 
 #include <algorithm>
 #include <cstdint>
@@ -130,19 +109,6 @@ inline uint32_t appIdFromScriptName(std::string_view filename)
 		if (v > 0xFFFFFFFFull) return 0;                // overflow guard
 	}
 	return static_cast<uint32_t>(v);
-}
-
-// Whether a MAIN-app id discovered from a stplug-in filename stem or from
-// luaappids.yaml must be registered in AdditionalApps.
-//
-// The id is authoritative: it is kept even when the same numeric id also
-// carries a cached managed depot key. `idIsAlsoManagedDepot` is accepted
-// only to document that it is DELIBERATELY IGNORED here — filtering on it
-// hides single-depot titles (e.g. No Man's Sky 275850) from the library.
-inline bool keepDiscoveredMainApp(uint32_t appId, bool idIsAlsoManagedDepot)
-{
-	(void)idIsAlsoManagedDepot;
-	return appId > 0;
 }
 
 // Return the ids present before a config reload but absent afterwards. A

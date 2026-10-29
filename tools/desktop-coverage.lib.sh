@@ -1435,7 +1435,8 @@ dc_guardian_run() {
 	uid="${UID:-$(id -u)}"
 	lock="${runtime%/}/slsteam-desktop-guardian-${uid}.lock"
 	command -v "$DC_FLOCK" >/dev/null 2>&1 || return 2
-	exec 9>"$lock" 2>/dev/null || return 2
+	# The braces keep the stderr redirect off the caller's shell.
+	{ exec 9>"$lock"; } 2>/dev/null || return 2
 	if ! "$DC_FLOCK" -n 9; then
 		exec 9>&-
 		return 0
@@ -1560,14 +1561,15 @@ dc_restore_one() {
 		rm -f -- "$bak" "$f.slssteam-backup" "$f.slsteam-bak" 2>/dev/null
 		return 0
 	fi
+	# A link is ours only when we kept its backup; other packages ship symlinked
+	# entries (LibreOffice does) and those stay.
 	if [ -L "$f" ]; then
+		[ -f "$bak" ] || return 0
 		$S rm -f -- "$f" 2>/dev/null || return 1
-		if [ -f "$bak" ]; then
-			if $S cp -- "$bak" "$f" 2>/dev/null; then
-				rm -f -- "$bak" 2>/dev/null
-			else
-				return 1
-			fi
+		if $S cp -- "$bak" "$f" 2>/dev/null; then
+			rm -f -- "$bak" 2>/dev/null
+		else
+			return 1
 		fi
 		return 0
 	fi

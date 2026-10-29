@@ -5,7 +5,7 @@
 // la_symbind in main.cpp) and publishing it to a contract file Lumen reads.
 // These tests cover the parts independent of the exec call:
 //   - CefPort::rewritePortArg : argv string surgery (incl. the sh -c wrapper)
-//   - CefPort::isBindable / pickFreePort / resolveSessionPort : port selection
+//   - CefPort::isBindable / pickFreePort / resolveSessionPortNoPersist : port selection
 //
 // Build (from repo root):
 //   g++ -std=c++20 -I include tools/test_cefport.cpp -o /tmp/test_cefport && /tmp/test_cefport
@@ -159,66 +159,30 @@ static void test_ports()
 
 	const std::string tag = std::to_string(getpid());
 
-	// Missing file -> fresh bindable port, persisted.
-	{
-		const std::string path = "/tmp/cefport_missing_" + tag;
-		::unlink(path.c_str());
-		const uint16_t p = CefPort::resolveSessionPort(path);
-		CHECK(p >= 1024 && CefPort::isBindable(p), "missing-file -> fresh bindable");
-		CHECK(readLine(path) == std::to_string(p), "missing-file -> persisted");
-		::unlink(path.c_str());
-	}
-
-	// Valid free port in file -> reused (session/restart stability).
-	{
-		const std::string path = "/tmp/cefport_reuse_" + tag;
-		const uint16_t free = CefPort::pickFreePort();
-		{ std::ofstream(path) << free << "\n"; }
-		CHECK(CefPort::resolveSessionPort(path) == free, "valid free port reused");
-		::unlink(path.c_str());
-	}
-
 	// Garbage / out-of-range in file -> fresh valid port.
 	for (const char* bad : { "not-a-port", "70000", "1023", "-5", "" })
 	{
 		const std::string path = "/tmp/cefport_bad_" + tag;
 		{ std::ofstream(path) << bad << "\n"; }
-		const uint16_t p = CefPort::resolveSessionPort(path);
+		const uint16_t p = CefPort::resolveSessionPortNoPersist(path);
 		CHECK(p >= 1024 && CefPort::isBindable(p), (std::string("garbage '") + bad + "' -> fresh").c_str());
 		::unlink(path.c_str());
 	}
 
-	// Occupied port in file -> rotates to a different bindable port.
-	{
-		const std::string path = "/tmp/cefport_busy_" + tag;
-		int s = ::socket(AF_INET, SOCK_STREAM, 0);
-		sockaddr_in a{}; a.sin_family = AF_INET; a.sin_addr.s_addr = htonl(INADDR_LOOPBACK); a.sin_port = 0;
-		::bind(s, (sockaddr*)&a, sizeof(a)); ::listen(s, 1);
-		socklen_t al = sizeof(a); ::getsockname(s, (sockaddr*)&a, &al);
-		const uint16_t busy = ntohs(a.sin_port);
-		{ std::ofstream(path) << busy << "\n"; }
-		const uint16_t p = CefPort::resolveSessionPort(path);
-		CHECK(p != busy && p >= 1024 && CefPort::isBindable(p), "occupied port rotates");
-		::close(s);
-		::unlink(path.c_str());
-	}
-
-	// Contract file in a not-yet-existing directory -> dir created, persisted.
+	// Contract file in a not-yet-existing directory -> dir created, written.
 	{
 		const std::string dir = "/tmp/cefport_dir_" + tag + "/a/b";
 		const std::string path = dir + "/cef_port";
 		std::error_code ec; std::filesystem::remove_all("/tmp/cefport_dir_" + tag, ec);
-		const uint16_t p = CefPort::resolveSessionPort(path);
-		CHECK(p >= 1024, "nested-dir resolve yields a port");
-		CHECK(readLine(path) == std::to_string(p), "nested-dir resolve persisted (dir created)");
+		CHECK(CefPort::writePortFile(path, 51234, 0, 0), "nested-dir write succeeds");
+		CHECK(readLine(path) == "51234", "nested-dir write persisted (dir created)");
 		std::filesystem::remove_all("/tmp/cefport_dir_" + tag, ec);
 	}
 
-	// Empty path (HOME unset case) -> still returns a usable port, no crash,
-	// just can't persist.
+	// Empty path (HOME unset case) -> still returns a usable port, no crash.
 	{
-		const uint16_t p = CefPort::resolveSessionPort("");
-		CHECK(p >= 1024 && CefPort::isBindable(p), "empty path -> port without persistence");
+		const uint16_t p = CefPort::resolveSessionPortNoPersist("");
+		CHECK(p >= 1024 && CefPort::isBindable(p), "empty path -> usable port");
 	}
 
 	// NoPersist variant: never writes the contract file (the client publishes it
@@ -302,8 +266,8 @@ static void test_decky()
 }
 
 // The contract carries the owning client's identity so Lumen can tell a live
-// contract from one left behind by the previous session (which used to cost the
-// sidecar 4-8 s of polling a dead port at every boot).
+// contract from one left behind by the previous session, instead of polling a
+// dead port at boot.
 static void test_contract_owner()
 {
 	using CefPort::formatContract;

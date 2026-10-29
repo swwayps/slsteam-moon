@@ -8,11 +8,9 @@
 #include <cstdint>
 #include <mutex>
 #include <optional>
-#include <signal.h>
 #include <string>
 #include <string_view>
 #include <sys/types.h>
-#include <sys/wait.h>
 #include <unistd.h>
 #include <vector>
 
@@ -170,13 +168,22 @@ namespace ManifestFetch
 			m_halfOpenToken = 0;
 		}
 
-		void cancelCurrentAttempt() noexcept
-		{
-			m_halfOpenInFlight = false;
-			m_halfOpenToken = 0;
-		}
 
 		bool open() const noexcept { return m_open; }
+		// Open and not yet due for its probe. Updates are held back only for
+		// this window: after it, the next update plan is the probe.
+		bool coolingDown(std::int64_t nowMs) const noexcept
+		{
+			return m_open && nowMs < m_retryAtMs;
+		}
+		void reset() noexcept
+		{
+			m_open = false;
+			m_halfOpenInFlight = false;
+			m_halfOpenToken = 0;
+			m_consecutiveTransportFailures = 0;
+			m_retryAtMs = 0;
+		}
 
 	private:
 		void openAt(std::int64_t nowMs)
@@ -219,40 +226,11 @@ namespace ManifestFetch
 				missing, candidate, std::memory_order_acq_rel);
 		}
 
-		// Kill the whole helper process group and always reap the child.  This
-		// is used on both timeout and waitpid-error paths so no unzip process
-		// can outlive the manifest job and write into a removed temp file.
-		inline void killAndReap(pid_t pid, int& status) noexcept
-		{
-			if (pid <= 0) return;
-			if (kill(-pid, SIGKILL) != 0) (void)kill(pid, SIGKILL);
-			while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {}
-		}
-
-		// The caller must hold the in-flight-job mutex while invoking this.
-		// Keeping registration beside lookup/creation prevents a last waiter
-		// from cancelling a job before a concurrent joiner is counted.
-		inline void registerWaiterLocked(std::atomic<int>& waiters) noexcept
-		{
-			waiters.fetch_add(1, std::memory_order_acq_rel);
-		}
-
-		inline bool releaseWaiterLocked(std::atomic<int>& waiters) noexcept
-		{
-			return waiters.fetch_sub(1, std::memory_order_acq_rel) == 1;
-		}
-		inline bool shouldCancelBlobJob(bool producerActive, bool lastWaiter,
-		                                bool cancelIfLast) noexcept
-		{
-			return cancelIfLast && lastWaiter && !producerActive;
-		}
-
 	} // namespace detail
 
-	// A blob job has one deadline shared by all callers. A fire-and-forget
-	// producer owns the job until completion; a caller timeout can cancel only
-	// after that producer has released ownership and the caller is last. Queued
-	// work also expires without ever entering a worker thread.
+	// A blob job has one deadline shared by all callers. A caller that times
+	// out leaves the job running so the manifest is staged for Steam's retry;
+	// queued work also expires without ever entering a worker thread.
 	struct JobBudget
 	{
 		explicit JobBudget(std::chrono::milliseconds duration)

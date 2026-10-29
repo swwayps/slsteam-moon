@@ -87,7 +87,7 @@ public:
 	//   usable() false -> there is no lock here we can trust (no private
 	//                     directory, open refused, or the file is not a private
 	//                     regular file of ours), so the caller MUST proceed.
-	// Skipping in the second case is what turned a lock file into an off switch.
+	// Skipping in the second case would make the lock file an off switch.
 	bool usable() const { return usable_; }
 	// The single question a caller of a guarded section should ask. Testing
 	// `!acquired()` conflates the two cases above, and answering "skip" for the
@@ -103,12 +103,13 @@ private:
 	bool usable_ = false;
 };
 
-// Per-process lock path inside the user's PRIVATE runtime directory.
+// Per-process lock path "<dir>/<prefix>.<pid>" inside the user's PRIVATE
+// runtime directory (RuntimeDir::resolveBase).
 //
-// This used to be "/tmp/<prefix>.<pid>", which any local process could
-// pre-create and hold an exclusive flock on. Since a caller that fails to
-// acquire treats it as "somebody else is doing this work" and skips that work,
-// a lock in a shared directory is a remote off switch for whatever it guards.
+// The lock must not live in a shared directory such as /tmp: any local process
+// could pre-create it and hold an exclusive flock on it, and since a caller
+// that fails to acquire treats it as "somebody else is doing this work" and
+// skips that work, such a lock is an off switch for whatever it guards.
 // Returns "" when no private directory can be prepared; callers must treat that
 // as "no lock available" and PROCEED rather than skip.
 inline std::string perProcessPath(const char* prefix, pid_t pid = ::getpid())

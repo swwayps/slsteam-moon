@@ -35,18 +35,17 @@ on; use the portable mode for anything you ship.
 Dependencies (Ubuntu/Debian):
 
 ```
-sudo dpkg --add-architecture i386
-sudo apt update
-sudo apt install g++-multilib make libssl-dev:i386 libcurl4-openssl-dev:i386
+sudo apt install g++ make pkg-config libcurl4-openssl-dev libssl-dev
 ```
 
 Arch:
 
 ```
-sudo pacman -S multilib/lib32-gcc-libs multilib/lib32-openssl multilib/lib32-curl
+sudo pacman -S gcc make pkgconf openssl curl
 ```
 
-The `--host` script sniffs for these and tells you what's missing.
+The `--host` script checks for g++, make and pkg-config, and prints these
+lines when one is missing.
 
 ### Portable build (`scripts/build.sh --portable`)
 
@@ -97,11 +96,14 @@ gh release upload vX.Y dist/slsteam-moon-linux-X.Y.zip --clobber
 ## Verifying a build
 
 ```
-scripts/check-compat.sh
+scripts/check-abi.sh bin/SLSsteam.so --x86-64
+scripts/check-abi.sh bin/pattern-refresh
+ldd --version | head -1
 ```
 
-Reports the binary's actual glibc minimum and whether it'll run on your
-current host. Useful before publishing a release.
+`check-abi.sh` fails when a binary needs a glibc newer than 2.34, the
+release floor (`scripts/package.sh` runs the same check). `ldd --version`
+prints the glibc of the current host.
 
 You can also check by hand:
 
@@ -121,12 +123,11 @@ slsteam-moon only hooks the 32-bit client; `setup.sh` handles this.
 newer system than the user's. Rebuild with `scripts/build.sh --portable`,
 or pick an older base image in `scripts/Dockerfile`.
 
-**`cannot open shared object file` for libssl/libcurl** — missing 32-bit
-runtime libraries on the host:
-
+**`cannot open shared object file` for libssl/libcurl** — missing runtime
+libraries on the host:
 ```
-sudo apt install libssl3:i386 libcurl4:i386      # Ubuntu/Debian
-sudo pacman -S lib32-openssl lib32-curl          # Arch
+sudo apt install libssl3 libcurl4      # Ubuntu/Debian
+sudo pacman -S openssl curl            # Arch
 ```
 
 **Docker permission denied** — add yourself to the docker group, or use
@@ -141,10 +142,9 @@ sudo usermod -aG docker $USER && newgrp docker
 From the Makefile:
 
 ```
--O3 -flto=auto -fPIC -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0
+-O3 -flto=auto -fPIC -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0
 ```
-
-- `-m32` — Steam's `ubuntu12_32` runtime is 32-bit.
+- 64-bit (no `-m32`) — this build targets the `steamrt64` client.
 - `-D_GLIBCXX_USE_CXX11_ABI=0` — old C++ ABI for compatibility with
   the system `libstdc++.so.6` Steam loads.
 - `-O3 -flto=auto` — size + speed.

@@ -12,7 +12,6 @@
 #include <fstream>
 #include <memory>
 #include <mutex>
-#include <openssl/sha.h>
 #include <shared_mutex>
 #include <sstream>
 #include <unordered_set>
@@ -105,17 +104,9 @@ class CLog
 			return;
 		}
 
-		if (lvl == LogLevel::Once)
+		if (lvl == LogLevel::Once && !msgHist.insert(formatted).second)
 		{
-			for(const auto& oldMsg : msgHist)
-			{
-				if (oldMsg == formatted)
-				{
-					return;
-				}
-			}
-
-			msgHist.emplace(formatted);
+			return;
 		}
 
 		ofstream << "[" << logLvlToStr(lvl) << "] " << formatted.c_str();
@@ -145,12 +136,18 @@ class CLog
 	// helpers below.  We can't piggy-back on msgHist because that
 	// set holds raw strings and is also touched by LogLevel::Once
 	// — we want suppression scoped to the helper, not to literal
-	// equality across levels.
+	// equality across levels. Many of these lines carry an app or change
+	// number, so the set starts over at 4096 keys; a line it forgot can be
+	// written once more.
 	std::unordered_set<std::string> dedupHist {};
 
 	bool seenBefore(LogLevel lvl, const std::string& formatted)
 	{
 		std::unique_lock lock(mutex);
+		if (dedupHist.size() >= 4096)
+		{
+			dedupHist.clear();
+		}
 		const std::string key =
 			std::string(logLvlToStr(lvl)) + "|" + formatted;
 		auto [_, inserted] = dedupHist.emplace(key);

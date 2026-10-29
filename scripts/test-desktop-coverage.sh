@@ -1314,5 +1314,29 @@ XDG_DATA_HOME="$MIN_HOME/.local/share" XDG_DATA_DIRS="$TMP/minimal-empty" \
 check "post-bootstrap minimal entry becomes wrapped" "Exec=$MIN_WRAPPER %U" \
   "$(grep -m1 '^Exec=' "$MIN_APPS/steam.desktop")"
 
+# restore leaves other packages' symlinked entries alone (LibreOffice ships its
+# menu entries as symlinks), in the system and the user menu.
+HL="$TMP/homeL"; SYSL="$TMP/sysL"; mkdir -p "$HL/.local/share/applications" "$SYSL" "$TMP/xdgL"
+printf '[Desktop Entry]\nName=Writer\nExec=soffice --writer %%U\n' > "$TMP/xdgL/writer.desktop"
+ln -s "$TMP/xdgL/writer.desktop" "$SYSL/libreoffice-writer.desktop"
+ln -s "$TMP/xdgL/writer.desktop" "$HL/.local/share/applications/writer-link.desktop"
+DC_HOME="$HL" DC_BACKUP_ROOT="$HL/.local/share/SLSsteam/backup" DC_SYS_APPS="$SYSL" \
+  DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" dc_restore_all
+check "restore succeeds with foreign symlinked entries" "0" "$?"
+check "restore keeps a foreign system symlink" "yes" "$([ -L "$SYSL/libreoffice-writer.desktop" ] && echo yes || echo no)"
+check "restore keeps a foreign user symlink" "yes" \
+  "$([ -L "$HL/.local/share/applications/writer-link.desktop" ] && echo yes || echo no)"
+
+# A guardian pass run in the installer's shell leaves its stderr open.
+HE="$TMP/homeE"; mkdir -p "$HE/data/applications" "$HE/runtime"
+stderrE=$( (XDG_DATA_HOME="$HE/data" XDG_DATA_DIRS="$TMP/emptyE" XDG_CONFIG_HOME="$HE/conf" \
+  XDG_STATE_HOME="$HE/state" XDG_RUNTIME_DIR="$HE/runtime" DC_HOME="$HE" \
+  DC_BACKUP_ROOT="$HE/backup" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" \
+  DC_SUDO="$SUDO_SHIM" DC_FLOCK="$FLOCK_SHIM" \
+  DC_UPDATE_DESKTOP_DATABASE="$UPDATE_SHIM" DC_KBUILDSYCOCA="$KBUILD_SHIM" \
+  dc_guardian_run >/dev/null; echo STDERR-MARK >&2) 2>&1 )
+check "guardian pass leaves the caller's stderr open" "yes" \
+  "$(case "$stderrE" in *STDERR-MARK*) echo yes ;; *) echo no ;; esac)"
+
 [ "$fail" = 0 ] && echo "ALL PASS" || echo "FAILURES"
 exit "$fail"

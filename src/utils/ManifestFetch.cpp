@@ -18,7 +18,6 @@
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
-#include <cstring>
 #include <fstream>
 #include <filesystem>
 #include <fcntl.h>
@@ -27,16 +26,12 @@
 #include <memory>
 #include <mutex>
 #include <set>
-#include <signal.h>
 #include <string>
 #include <string_view>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/wait.h>
-#include <thread>
 #include <unistd.h>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 
@@ -46,7 +41,6 @@ namespace ManifestFetch
 namespace
 {
 
-std::atomic<bool> g_providersOffline{false};
 std::atomic<uint64_t> g_sessionEpoch{1};
 
 void setOfflineStatus(bool offline)
@@ -105,7 +99,6 @@ void finishProviderAttempt(uint64_t sessionEpoch,
 		    attemptToken, steadyNowMs(), success, rateLimited, transportFailure);
 		nowOffline = g_providerCircuit.open();
 	}
-	g_providersOffline.store(nowOffline, std::memory_order_release);
 	setOfflineStatus(nowOffline);
 	if (!wasOffline && nowOffline)
 	{
@@ -271,9 +264,9 @@ HttpResponse httpGet(const std::string& url, const JobBudget* budget = nullptr,
 			return r;
 		}
 		if (remainingMs > timeoutMs) remainingMs = timeoutMs;
-		const long timeoutMs = static_cast<long>(remainingMs < 1 ? 1 : remainingMs);
-		const long connectMs = timeoutMs < 5000 ? timeoutMs : 5000;
-		curlApi()->easy_setopt(c, CURLOPT_TIMEOUT_MS, timeoutMs);
+		const long budgetMs = static_cast<long>(remainingMs < 1 ? 1 : remainingMs);
+		const long connectMs = budgetMs < 5000 ? budgetMs : 5000;
+		curlApi()->easy_setopt(c, CURLOPT_TIMEOUT_MS, budgetMs);
 		curlApi()->easy_setopt(c, CURLOPT_CONNECTTIMEOUT_MS, connectMs);
 	}
 	TransferControl control{budget, keepRunning};
@@ -510,11 +503,8 @@ bool isAnyManagedDownloadActive(uint32_t appIdHint)
 
 namespace
 {
-// Dedupe blob downloads by (gid, depotId).  All three call sites
-// (pics.cpp PICS recv, manifestcode.cpp Send/BYldRequestDepotManifest)
-// can race for the same depot+gid; without dedupe each spawned its own
-// thread and they raced over the same tmp file, causing the spurious
-// "bad magic 0x0" warn (popup) seen in the logs.
+// Jobs are deduplicated by (gid, depot): concurrent callers for the same
+// manifest share one download and one temporary file.
 struct BlobKey { uint64_t gid; uint32_t depotId; };
 struct BlobKeyHash
 {
@@ -536,13 +526,8 @@ struct BlobJob
 	std::shared_future<bool> future;
 	std::shared_ptr<JobBudget> budget;
 	uint64_t sessionEpoch = 0;
-	std::atomic<int> waiters{0};
 	std::atomic<uint32_t> appId{0};
 	std::atomic<bool> bypassArchiveMiss{false};
-	// A fire-and-forget submit owns the job independently of blocking
-	// waiters.  A timed-out waiter may leave, but must not cancel the producer
-	// while it is still staging the manifest in the background.
-	bool producerActive = true;
 };
 
 std::mutex g_blobLock;
@@ -559,7 +544,6 @@ BoundedExecutor& blobExecutor()
 std::shared_ptr<BlobJob> launchOrJoinBlob(uint64_t gid, uint32_t appId,
 	                                      uint32_t depotId,
                                           const std::string& depotcacheDir,
-                                          bool registerWaiter,
                                           bool bypassArchiveMiss)
 {
 	const BlobKey key{gid, depotId};
@@ -588,15 +572,11 @@ std::shared_ptr<BlobJob> launchOrJoinBlob(uint64_t gid, uint32_t appId,
 		{
 			const bool onDisk = ManifestStore::isInDepotcache(depotId, gid);
 			if (job->future.get() && onDisk)
-			{
-				if (registerWaiter) detail::registerWaiterLocked(job->waiters);
 				return job;
-			}
 			g_blobInflight.erase(it);
 		}
 		else
 		{
-			if (registerWaiter) detail::registerWaiterLocked(job->waiters);
 			return job;
 		}
 	}
@@ -610,7 +590,6 @@ std::shared_ptr<BlobJob> launchOrJoinBlob(uint64_t gid, uint32_t appId,
 	detail::promoteAppId(job->appId, appId);
 	detail::promoteArchiveMissBypass(job->bypassArchiveMiss,
 	                                bypassArchiveMiss);
-	if (registerWaiter) detail::registerWaiterLocked(job->waiters);
 	g_blobInflight.emplace(key, job);
 
 	const bool accepted = blobExecutor().submit(
@@ -626,17 +605,17 @@ std::shared_ptr<BlobJob> launchOrJoinBlob(uint64_t gid, uint32_t appId,
 	                {
 	                    // Do filesystem restoration and any network fetch on our
 	                    // executor, never on Steam's PICS/IPC worker.
-	                    const bool bypassArchiveMiss =
+	                    const bool bypass =
 	                        job->bypassArchiveMiss.load(std::memory_order_acquire);
 	                    const bool firstAttempt = !activeRetryDone;
-	                    if (bypassArchiveMiss) activeRetryDone = true;
+	                    if (bypass) activeRetryDone = true;
 	                    ok = (firstAttempt &&
 	                          ManifestStore::restoreToDepotcache(depotId, gid))
 	                         || fetchManifestBlob(
 	                             gid,
 	                             job->appId.load(std::memory_order_acquire),
 	                             depotId, depotcacheDir, job->budget,
-	                             bypassArchiveMiss, job->sessionEpoch);
+	                             bypass, job->sessionEpoch);
 	                }
 	            }
 	            catch (...)
@@ -651,49 +630,33 @@ std::shared_ptr<BlobJob> launchOrJoinBlob(uint64_t gid, uint32_t appId,
 	            // the lock, make one final archive-bypass attempt. A joiner that
 	            // arrives after this lock sees the completed job removed and
 	            // starts its own active attempt, so no promotion can be lost.
-	            std::unique_lock<std::mutex> lk(g_blobLock);
+	            std::unique_lock<std::mutex> lock(g_blobLock);
 	            if (!ok && !activeRetryDone && !job->budget->shouldStop() &&
 	                job->bypassArchiveMiss.load(std::memory_order_acquire))
 	            {
 	                activeRetryDone = true;
-	                lk.unlock();
+	                lock.unlock();
 	                continue;
 	            }
 	            try { completion->set_value(ok); } catch (...) {}
-	            job->producerActive = false;
-	            auto it = g_blobInflight.find(key);
-	            if (it != g_blobInflight.end() && it->second == job)
-	                g_blobInflight.erase(it);
+	            auto entry = g_blobInflight.find(key);
+	            if (entry != g_blobInflight.end() && entry->second == job)
+	                g_blobInflight.erase(entry);
 	            break;
 	        }
 	    });
 	if (!accepted)
 	{
-		g_pLog->info(
+		g_pLog->debug(
 		    "ManifestFetch: blob depot=%u gid=%llu executor queue unavailable\n",
 		    depotId, static_cast<unsigned long long>(gid));
 		job->budget->cancel();
 		try { completion->set_value(false); } catch (...) {}
-		job->producerActive = false;
 		g_blobInflight.erase(key);
 	}
 	return job;
 }
 
-void releaseBlobWaiter(const BlobKey& key, const std::shared_ptr<BlobJob>& job,
-                       bool cancelIfLast)
-{
-	std::lock_guard<std::mutex> lk(g_blobLock);
-	if (!detail::releaseWaiterLocked(job->waiters)) return;
-	if (!detail::shouldCancelBlobJob(
-		        job->producerActive, /*lastWaiter=*/true, cancelIfLast))
-		return;
-
-	auto it = g_blobInflight.find(key);
-	if (it != g_blobInflight.end() && it->second == job)
-		g_blobInflight.erase(it);
-	job->budget->cancel();
-}
 } // namespace
 
 
@@ -716,7 +679,7 @@ void submitManifestBlob(uint64_t manifestGid, uint32_t appId, uint32_t depotId,
 	}
 	const std::string depotcacheDir = steamRoot + "/depotcache";
 	(void)launchOrJoinBlob(manifestGid, appId, depotId, depotcacheDir,
-	                       /*registerWaiter=*/false, bypassArchiveMiss);
+	                       bypassArchiveMiss);
 }
 
 bool awaitManifestBlob(uint64_t manifestGid, uint32_t appId,
@@ -738,24 +701,18 @@ bool awaitManifestBlobFor(uint64_t manifestGid, uint32_t appId,
 	if (steamRoot.empty()) return false;
 	const std::string depotcacheDir = steamRoot + "/depotcache";
 	auto job = launchOrJoinBlob(manifestGid, appId, depotId, depotcacheDir,
-	                            /*registerWaiter=*/true,
 	                            /*bypassArchiveMiss=*/activeRequest);
 	if (timeoutMs < 0) timeoutMs = 0;
 	if (job->future.wait_for(std::chrono::milliseconds(timeoutMs)) !=
 	    std::future_status::ready)
 	{
-		releaseBlobWaiter(BlobKey{manifestGid, depotId}, job,
-		                   /*cancelIfLast=*/true);
-		g_pLog->info(
+		g_pLog->debug(
 		    "ManifestFetch: blob depot=%u gid=%llu await timed out after %dms\n",
 		    depotId, static_cast<unsigned long long>(manifestGid), timeoutMs);
 		if (notifyOnTimeout) g_pLog->notifyUser(UserMsg::DownloadTimedOut);
 		return false;
 	}
-	const bool result = job->future.get();
-	releaseBlobWaiter(BlobKey{manifestGid, depotId}, job,
-	                   /*cancelIfLast=*/false);
-	return result;
+	return job->future.get();
 }
 
 
@@ -783,8 +740,10 @@ void resetSessionState()
 	{
 		std::lock_guard circuitLock(g_circuitLock);
 		g_sessionEpoch.fetch_add(1, std::memory_order_acq_rel);
-		g_providerCircuit.cancelCurrentAttempt();
+		// A new session starts with the archive assumed reachable.
+		g_providerCircuit.reset();
 	}
+	setOfflineStatus(false);
 	{
 		std::lock_guard lock(g_missingNotifyLock);
 		g_missingNotified.clear();
@@ -799,7 +758,8 @@ void resetSessionState()
 
 bool areProvidersOffline()
 {
-	return g_providersOffline.load();
+	std::lock_guard<std::mutex> lock(g_circuitLock);
+	return g_providerCircuit.coolingDown(steadyNowMs());
 }
 
 HttpResponse archiveRequest(const std::string& method, const std::string& url,

@@ -18,11 +18,8 @@
 
 namespace SLSAPI
 {
-	// Resolved at init() from $XDG_RUNTIME_DIR (or $HOME as a fallback). This
-	// used to be the fixed "/tmp/SLSsteam.API": a control channel that installs
-	// apps, living in a directory every local user can write to, with no access
-	// control of its own. It is now a 0600 file inside a 0700 per-user directory.
-	std::string contractPath;
+	// A 0600 file in a 0700 per-user runtime directory, resolved at init().
+	static std::string contractPath;
 	const char* path = "";
 	std::fstream fstream;
 	CFileWatcher* watcher;

@@ -43,6 +43,21 @@ inline std::set<std::string> parsePlatformOsList(std::string_view text)
 	return out;
 }
 
+// Marks a depot without an oslist: Steam installs it on every platform.
+inline constexpr std::string_view kAnyPlatform = "*";
+
+// Record the platforms a content depot serves.
+inline void addDepotPlatforms(std::set<std::string>& out, std::string_view oslist)
+{
+	if (oslist.empty())
+	{
+		out.emplace(kAnyPlatform);
+		return;
+	}
+	const auto parsed = parsePlatformOsList(oslist);
+	out.insert(parsed.begin(), parsed.end());
+}
+
 // Decide whether an app with surviving content must be forced onto Proton.
 //
 // A per-depot oslist is unreliable for proving native Linux support:
@@ -66,12 +81,17 @@ inline bool requiresProtonMapping(
 
 	const auto commonOs = parsePlatformOsList(commonOsList);
 
+	const bool anyPlatform = depotOs.count(std::string(kAnyPlatform)) != 0;
+	const bool commonHasLinux = commonOs.count("linux") != 0;
+
 	// No per-depot platform info: fall back to the app-level list (and when
 	// that is also absent, nothing forces Proton).
-	if (depotOs.empty())
-		return !commonOs.empty() && commonOs.count("linux") == 0;
+	if (depotOs.size() == (anyPlatform ? 1u : 0u))
+		return !commonOs.empty() && !commonHasLinux;
 
-	const bool depotTargetsLinux = depotOs.count("linux") != 0;
+	// An untagged depot carries the Linux build only when the app declares one.
+	const bool depotTargetsLinux =
+		depotOs.count("linux") != 0 || (anyPlatform && commonHasLinux);
 	const bool nativeLinuxAvailable = commonOs.empty()
 		? depotTargetsLinux
 		: (depotTargetsLinux && commonOs.count("linux") != 0);

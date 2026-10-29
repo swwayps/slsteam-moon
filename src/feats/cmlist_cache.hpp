@@ -4,10 +4,8 @@
 //
 // Why this exists
 // ---------------
-// CmClient::fetchProductInfo fetches the websocket CM server list from
-// ISteamDirectory/GetCMListForConnect on every cold provisioning pass.
-// Measured on the Zorin VM that HTTP round-trip is ~400ms — a third of
-// the whole synchronous CM cost that delays Steam's splash.
+// CmClient::fetchProductInfoDetailed needs the websocket CM server list from
+// ISteamDirectory/GetCMListForConnect, an HTTP round-trip of about 400 ms.
 //
 // The CM list is stable bootstrap infrastructure (a flat list of
 // host:port endpoints), completely decoupled from per-app product-info.

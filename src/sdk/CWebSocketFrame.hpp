@@ -22,5 +22,3 @@ enum EWebSocketOpCode : uint32_t
 	k_eWebSocketOpCode_Ping         = 9,
 	k_eWebSocketOpCode_Pong         = 10,
 };
-
-constexpr uint32_t kEMsgServiceMethodCallFromClient = 151;

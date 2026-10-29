@@ -1,57 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-// Owner-IPC-thread execution site for watcher-originated Steam-owned work.
+// Runs Steam-owned work (package-0 sync, compatibility mapping) on the owner IPC
+// thread, the thread Steam dispatches IClientUtils calls on.
 //
-// SCOPE — this is HARDENING, not a cumulative-failure fix.
-// A controlled VM run proved that the inotify config-watcher pthread executed
-// Steam-owned calls itself (the resolved `CUtlMemoryGrow` while appending to
-// package 0's live CUtlVector, and Steam's license calls) while the latched
-// owner thread (the one dispatching IClientUtils IPC) was a different thread.
-// The same run did NOT reproduce any client failure and did NOT observe the
-// hypothesised overlap with an in-flight owner frame, so nothing here is
-// claimed to fix anything. What it does is remove an unwanted execution site:
-// Steam-owned state is mutated from the thread Steam dispatches on.
-//
-// SEMANTICS ARE PRESERVED. The same calls run with the same inputs in the same
-// order; only the thread changes. Every path that cannot use the owner thread
-// (no owner latched yet, queue full, teardown in progress) falls back to
-// exactly today's behaviour rather than dropping or reordering work.
-//
-// FIRE-AND-FORGET, AND WHY THE BLOCKING WAIT WAS REMOVED
-// -----------------------------------------------------
-// The first version made the watcher thread wait up to 1500 ms for the owner
-// to pick the work up. Guest measurements ruled that out: the owner-thread
-// wake cadence on an idle client was ~3.30 s and ~3.41 s (measured twice), and
-// adding five extra drain points did not shorten it (3.30 s -> 3.41 s), so
-// drain density is not the limiter. At 1500 ms the wait therefore ALWAYS
-// expired: the watcher paid 1.5 s of latency and then ran the work off-owner
-// anyway — the worst of both options.
-//
-// So the handoff is now fire-and-forget: `submitManagedState` and
-// `submitCompatReadiness` enqueue and return (microseconds), and the owner
-// thread drains whenever it next runs a frame. The hot-add is already
-// asynchronous from the user's point of view, so seconds of handoff latency
-// cost nothing.
-//
-// WHAT IF THE OWNER NEVER DRAINS?
-// -------------------------------
-// Two honest options: accept eventual execution (a hot-add could silently
-// never apply if the client's IPC stops or the dispatcher thread is replaced),
-// or keep a bounded staleness escape hatch. This picks the escape hatch,
-// because "the game never appears and nothing is logged" is a worse failure
-// than "the call ran on the watcher thread, as it always used to".
-//
-// The escape hatch is:
-//   * threshold `kDefaultMaxStaleMs` (30 s) — ~9x the measured 3.3-3.4 s
-//     cadence, so a normally-running client never reaches it;
-//   * evaluated by `idleTick()`, which the watcher loop already calls on its
-//     bounded poll timeout, plus once per submit — no new thread (spawning
-//     threads from the LD_AUDIT preinit path is a recorded anti-pattern);
-//   * runs the WHOLE pending set inline, in FIFO order, so total order is
-//     preserved;
-//   * reported as a warning in `~/.SLSsteam.log`, so it is never silent;
-//   * `SLSSTEAM_OWNER_QUEUE_MAX_STALE_MS=0` switches it off, i.e. explicitly
-//     chooses "accept eventual execution".
+//  * Fire-and-forget: a submit from another thread enqueues and returns; the
+//    owner drains on its next frame (an idle client runs one every few seconds).
+//  * Stale escape: work pending longer than kDefaultMaxStaleMs (30 s) runs inline
+//    in FIFO order with a warning, so a stalled owner cannot lose a hot-add.
+//  * Inline: the owner runs its own submits; other work runs inline when no owner
+//    is latched or the queue is full. A snapshot is never refused for capacity:
+//    it coalesces into one record, and inline it would run under HotReload's lock.
+//  * EnsureCompat runs only on the owner thread; any other runner re-queues it.
+//  * Teardown abandons pending work and refuses new work.
 #pragma once
 
 #include <cstddef>
@@ -62,9 +22,8 @@
 namespace OwnerWork
 {
 	// How long a pending command may sit unclaimed before the escape hatch
-	// runs it inline. Well above the measured owner cadence (~3.3-3.4 s on an
-	// idle client), so this is reached only when the owner thread has really
-	// stopped running IPC frames.
+	// runs it inline. An idle client runs IPC frames about every 3.3 s, so this
+	// is reached only when the owner thread has really stopped running them.
 	// Override with SLSSTEAM_OWNER_QUEUE_MAX_STALE_MS (0 = never escape).
 	inline constexpr unsigned int kDefaultMaxStaleMs = 30000;
 	inline constexpr unsigned int kMaxMaxStaleMs = 600000;
@@ -125,8 +84,8 @@ namespace OwnerWork
 	void init();
 
 	// Latch the owner IPC thread. Called from ProcessIPCFrame on IClientUtils
-	// calls — the dispatcher whose thread the VM run measured — and only the
-	// first call has an effect.
+	// calls, whose dispatcher thread is the owner, and only the first call has
+	// an effect.
 	void latchOwnerThread();
 
 	bool ownerLatched();

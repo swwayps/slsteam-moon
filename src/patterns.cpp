@@ -672,7 +672,7 @@ bool Patterns::init()
 	CUser::MarkLicenseAsChanged.optional = true;
 	CUser::ProcessPendingLicenseUpdates.optional = true;
 	CUser::NotifyLicensesUpdated.optional = true;
-	// LaunchOptions only; no match on the 2026-09 client yet.
+	// Only LaunchOptions depends on it.
 	CUser::SpawnGameId.optional = true;
 	CAppInfoCache::GetOrAddAppData.optional = true;
 	CAppInfoCache::ThreadedReadFromDisk.optional = true;

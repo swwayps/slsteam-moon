@@ -444,10 +444,8 @@ void emitNode(std::string& out, const YAML::Node& node, int depth)
 //   - Removes a DLC from extended.listofdlc when none of its content depots
 //     is keyed.  Otherwise PackagePatch advertises the DLC as owned and
 //     Steam independently plans the rejected encrypted content.
-//   - If the surviving set has at least one playable depot but the
-//     original "common.oslist" included an OS we just dropped, narrow
-//     "oslist" to the OSes we still have so Steam picks Proton (for
-//     "windows") rather than a phantom native binary.
+//   - Leaves "common.oslist" as upstream (see the NOTE at the end); the
+//     surviving depots' OSes only decide whether the app needs Proton.
 //
 // Mutates `body` in place.  `appId` is for log lines only.
 void pruneUnsupportedDepots(YAML::Node& body, uint32_t appId,
@@ -527,8 +525,8 @@ void pruneUnsupportedDepots(YAML::Node& body, uint32_t appId,
 				usableDlcAppIds.insert(dlcAppId);
 			}
 			++dropped;
-			g_pLog->info("AppInfoProvision: app=%u dropping empty depot %u "
-			             "(public manifest size 0)\n", appId, depotId);
+			g_pLog->debug("AppInfoProvision: app=%u dropping empty depot %u "
+			              "(public manifest size 0)\n", appId, depotId);
 			continue;
 		}
 
@@ -547,16 +545,17 @@ void pruneUnsupportedDepots(YAML::Node& body, uint32_t appId,
 			usableDlcAppIds.insert(dlcAppId);
 		}
 
-		// Track which OS this surviving depot supports so we can
-		// narrow common.oslist later.
-		if (depotNode.IsMap() && depotNode["config"] &&
-		    depotNode["config"]["oslist"])
+		// Track which OSes the surviving depots support for the Proton
+		// decision below; a depot without an oslist serves every platform.
+		if (!isVirtualDlc && depotNode.IsMap())
 		{
 			std::string osStr;
-			try { osStr = depotNode["config"]["oslist"].as<std::string>(); }
-			catch (...) {}
-			const auto parsed = parsePlatformOsList(osStr);
-			survivingOs.insert(parsed.begin(), parsed.end());
+			if (depotNode["config"] && depotNode["config"]["oslist"])
+			{
+				try { osStr = depotNode["config"]["oslist"].as<std::string>(); }
+				catch (...) {}
+			}
+			addDepotPlatforms(survivingOs, osStr);
 		}
 	}
 	std::string commonOsList;
@@ -621,8 +620,8 @@ void pruneUnsupportedDepots(YAML::Node& body, uint32_t appId,
 	}
 
 	body["depots"] = newDepots;
-	g_pLog->info("AppInfoProvision: app=%u dropped %d/%d unsupported depots (kept %d)\n",
-	             appId, dropped, totalNumeric, kept);
+	g_pLog->debug("AppInfoProvision: app=%u dropped %d/%d unsupported depots (kept %d)\n",
+	              appId, dropped, totalNumeric, kept);
 
 	// If none of the surviving depots target Linux natively, the app
 	// can only run through Proton.  Register it for a CompatToolMapping
@@ -806,7 +805,7 @@ SourceResult renderAppinfoBuffer(
 		}
 	}
 
-	// Strip depots we can't decrypt; narrow common.oslist accordingly.
+	// Strip depots we can't decrypt; common.oslist stays as upstream.
 	// Done here (post-envelope-strip, pre-emit) so the output Steam
 	// reads is consistent and the change is invisible to Steam beyond
 	// "the user only owns the windows depot".
@@ -1096,13 +1095,6 @@ bool persistBuffer(uint32_t appId, uint32_t changeNumber,
 
 	return memoizePublishedCachePairLocked(appId);
 }
-
-// ---------------------------------------------------------------------------
-// Decide whether a given appId already has depots in the on-disk
-// appinfo.vdf.  We don't fully parse v41 here — we only care about
-// finding the literal "depots" key inside that app's binary KV blob,
-// which is enough to skip already-rich entries.
-// ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
 // Parse SteamCMD JSON response and extract envelope fields.  YAML-cpp
@@ -1455,12 +1447,10 @@ bool requiresProtonFromBody(const YAML::Node& body) noexcept
 			const bool virtualDlc = depot["dlcappid"] && !depot["manifests"];
 			if (virtualDlc) continue;
 			++contentDepots;
-			if (depot["config"] && depot["config"]["oslist"])
-			{
-				const auto parsed = parsePlatformOsList(
-					depot["config"]["oslist"].as<std::string>(""));
-				depotOs.insert(parsed.begin(), parsed.end());
-			}
+			addDepotPlatforms(depotOs,
+				depot["config"] && depot["config"]["oslist"]
+					? depot["config"]["oslist"].as<std::string>("")
+					: std::string());
 		}
 
 		std::string commonOsList;
@@ -1805,15 +1795,13 @@ SourceResult renderAndPersist(uint32_t appId, const YAML::Node& appNode,
 			reason = "concrete depots are not usable";
 		else if (renderResult == SourceResult::VirtualDlc)
 			reason = "DLC has no usable content depots";
-		g_pLog->info("AppInfoProvision: app=%u render stopped (%s)\n", appId, reason);
+		g_pLog->debug("AppInfoProvision: app=%u render stopped (%s)\n", appId, reason);
 		return renderResult;
 	}
-	if (wire.find("\"depots\"") == std::string::npos)
-	{
-		g_pLog->info("AppInfoProvision: app=%u buffer has no depots, skipping\n", appId);
-		return SourceResult::IncompleteContent;
-	}
 
+	// Hash our own bytes, never the provider's `_sha`: the buffer drops or
+	// synthesizes depots, and AppInfoVdf::injectApp skips the rewrite when
+	// (appid, change number, sha) match the entry already on disk.
 	std::string sha20;
 	{
 		std::uint8_t tmp[20];
@@ -1828,8 +1816,8 @@ SourceResult renderAndPersist(uint32_t appId, const YAML::Node& appNode,
 		return SourceResult::LocalFailure;
 	}
 
-	g_pLog->infoOnce("AppInfoProvision: app=%u provisioned (change=%u, %zu bytes wire)\n",
-	             appId, changeNumber, wire.size());
+	g_pLog->debugOnce("AppInfoProvision: app=%u provisioned (change=%u, %zu bytes wire)\n",
+	                  appId, changeNumber, wire.size());
 	return SourceResult::Success;
 }
 
@@ -2562,18 +2550,37 @@ std::mutex& provisioningPassMutex()
 	return g_provisionPassMu;
 }
 
+// Ends an app's provisioning with a source result other than Success: records
+// the terminal verdict where one applies and maps the result to the outcome.
+ProvisionOutcome outcomeWithoutUpdate(uint32_t appId, SourceResult result,
+                                      uint32_t changeNumber,
+                                      const CachePublicationToken& publication)
+{
+	if (recordsTerminalVerdict(result))
+		noteTerminalProvisionResult(appId, result, changeNumber, publication);
+	switch (result)
+	{
+	case SourceResult::VirtualDlc:
+		return ProvisionOutcome::NotApplicable;
+	case SourceResult::NoUsableContent:
+		return ProvisionOutcome::NoUsableContent;
+	case SourceResult::LocalFailure:
+		return ProvisionOutcome::LocalFailure;
+	default:
+		return ProvisionOutcome::IncompleteContent;
+	}
+}
+
 
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
 ProvisionOutcome provisionAppDetailed(uint32_t appId,
-                                      const std::string& appinfoVdfPath,
                                       ProvisionPassState& pass,
                                       ProvisionPassContext& context,
                                       bool forceRefresh = false)
 {
-	(void)appinfoVdfPath;
 	if (appId == 0) return ProvisionOutcome::IncompleteContent;
 
 	auto publicationIt = context.cachePublications.find(appId);
@@ -2584,17 +2591,9 @@ ProvisionOutcome provisionAppDetailed(uint32_t appId,
 	}
 	const CachePublicationToken publication = publicationIt->second;
 
-	// Short-lived on-disk cache to tame startup cost.  Steam re-execs
-	// setup() several times during a single cold boot (observed 4x on
-	// the Zorin VM), and each pass would otherwise issue one synchronous
-	// HTTP GET per AddedApp — so the boot cost grew O(n_apps * n_passes)
-	// and stalled Steam's launch the more games the user added.
-	//
-	// If we already wrote picsbuffer_<appid>.bin within the short TTL,
-	// reuse it for this pass. Startup splice eligibility is decided separately
-	// by complete-pair validation; observed PICS change numbers schedule the
-	// precise background refresh. Install planning still chooses and freezes
-	// the exact public/local/archive manifest independently of this cache age.
+	// Reuse a validated pair written within the short TTL, so the repeated
+	// setup() passes of one boot do not refetch it. Splice eligibility, PICS
+	// refreshes and install planning do not depend on this cache age.
 	if (!forceRefresh &&
 	    cacheUseForApp(appId, false) == cache::CacheUse::Fresh)
 	{
@@ -2618,12 +2617,12 @@ ProvisionOutcome provisionAppDetailed(uint32_t appId,
 			    provisionAppFromCmBuffer(appId, it->second, cn, publication);
 			if (cmResult == SourceResult::Success)
 			{
-				g_pLog->info("AppInfoProvision: app=%u provisioned via CM\n", appId);
+				g_pLog->debug("AppInfoProvision: app=%u provisioned via CM\n", appId);
 				return ProvisionOutcome::Updated;
 			}
 			if (!shouldTryProviderFallback(cmResult))
 			{
-				g_pLog->info(
+				g_pLog->debug(
 				    "AppInfoProvision: app=%u CM result is terminal (%s); "
 				    "provider fallback suppressed\n", appId,
 				    cmResult == SourceResult::NoUsableContent
@@ -2633,15 +2632,7 @@ ProvisionOutcome provisionAppDetailed(uint32_t appId,
 				            : cmResult == SourceResult::IncompleteContent
 				                ? "no depot data available anonymously"
 				                : "local cache write failed");
-				if (recordsTerminalVerdict(cmResult))
-					noteTerminalProvisionResult(appId, cmResult, cn, publication);
-				if (cmResult == SourceResult::VirtualDlc)
-					return ProvisionOutcome::NotApplicable;
-				if (cmResult == SourceResult::NoUsableContent)
-					return ProvisionOutcome::NoUsableContent;
-				return cmResult == SourceResult::LocalFailure
-				    ? ProvisionOutcome::LocalFailure
-				    : ProvisionOutcome::IncompleteContent;
+				return outcomeWithoutUpdate(appId, cmResult, cn, publication);
 			}
 			g_pLog->info("AppInfoProvision: app=%u CM response %s, trying steamcmd\n",
 			             appId,
@@ -2669,15 +2660,10 @@ ProvisionOutcome provisionAppDetailed(uint32_t appId,
 	for (const auto& tmpl : providerChain())
 	{
 		url = expandUrl(tmpl, appId);
-		g_pLog->info("AppInfoProvision: app=%u GET %s\n", appId, url.c_str());
+		g_pLog->debug("AppInfoProvision: app=%u GET %s\n", appId, url.c_str());
 
-		// Retry transient failures (timeouts, 5xx, cold-network DNS) with
-		// a bounded linear backoff.  A single steamcmd.net timeout used to
-		// leave the app unprovisioned for the whole session unless Steam
-		// happened to re-exec setup(); the larger an app's product-info
-		// JSON is, the more likely the 30s total-transfer timeout trips on
-		// a slow first request (observed: Outlast 238320's 8-depot JSON
-		// timed out while the smaller 2262770 succeeded in the same pass).
+		// Retry transient failures (timeouts, 5xx, cold-network DNS) with a
+		// bounded linear backoff inside the pass's shared provider budget.
 		finalFailure = retryNetworkOperation(
 			[&] {
 				return httpGetJson(
@@ -2697,9 +2683,8 @@ ProvisionOutcome provisionAppDetailed(uint32_t appId,
 			break;
 		}
 
-		// Use info, not warn: warn fires a critical notify-send popup
-		// (CLog ctor configures urgency=critical for warn).  A single
-		// provider exhausting its retries isn't user-actionable noise.
+		// info, not warn: one provider failing is not actionable while the
+		// next provider or the cached pair can still serve the app.
 		g_pLog->info("AppInfoProvision: app=%u provider failed after retries (%s), trying next\n",
 		             appId, diag.c_str());
 		if (pass.providerBudgetExhausted()) break;
@@ -2728,98 +2713,11 @@ ProvisionOutcome provisionAppDetailed(uint32_t appId,
 		return ProvisionOutcome::IncompleteContent;
 	}
 	const uint32_t changeNumber = pickChangeNumber(appNode);
-
-	std::string wire;
-	bool synthesized = false;
-	const SourceResult renderResult = renderAppinfoBuffer(
-	    appNode, appId, wire, publication, &synthesized);
-	if (renderResult != SourceResult::Success)
-	{
-		const char* reason = "invalid response";
-		if (renderResult == SourceResult::IncompleteContent)
-			reason = "response contains no concrete depot data";
-		else if (renderResult == SourceResult::NoUsableContent)
-			reason = "concrete depots are not usable";
-		else if (renderResult == SourceResult::VirtualDlc)
-			reason = "DLC has no usable content depots";
-		g_pLog->info("AppInfoProvision: app=%u render stopped (%s)\n", appId, reason);
-		if (recordsTerminalVerdict(renderResult))
-			noteTerminalProvisionResult(
-				appId, renderResult, changeNumber, publication);
-		if (renderResult == SourceResult::VirtualDlc)
-			return ProvisionOutcome::NotApplicable;
-		if (renderResult == SourceResult::NoUsableContent)
-			return ProvisionOutcome::NoUsableContent;
-		return renderResult == SourceResult::LocalFailure
-		    ? ProvisionOutcome::LocalFailure
-		    : ProvisionOutcome::IncompleteContent;
-	}
-
-	// Spot-check: the wire must contain the depots block, otherwise the
-	// upstream JSON itself is stripped (rare, but happens for retired
-	// titles).  Skip the splice in that case rather than persist a
-	// useless entry.
-	if (wire.find("\"depots\"") == std::string::npos)
-	{
-		g_pLog->info("AppInfoProvision: app=%u JSON has no depots, skipping\n", appId);
-		return ProvisionOutcome::IncompleteContent;
-	}
-
-	// Manifest-GID pins are DELIBERATELY NOT applied to the provisioned wire
-	// buffer.
-	//
-	// We used to rewrite every provisioned buffer's public gid to the
-	// pinned gid.  That is structurally defeated by Steam: when the user
-	// clicks Install, Steam issues a `RequestAppInfoUpdate` that
-	// downloads fresh product-info over HTTP and OVERWRITES our
-	// appinfo.vdf entry with the live public gid (confirmed in
-	// appinfo_log.txt).  Steam then plans the install with the live
-	// public gid, not our pin.  So pinning the provisioned buffer only
-	// caused a mismatch: we pre-staged the pinned manifest, Steam asked
-	// for the live one, BYldRequestDepotManifest got called and returned
-	// "Access Denied" -> first-attempt "No connection".
-	//
-	// Depot decryption keys are per-DEPOT, not per-manifest, so the live
-	// public build decrypts and installs fine with the same key (verified
-	// on the VM: Gang Beasts depot 285903 committed successfully with the
-	// live gid).  Provisioning the live public gid therefore means the
-	// gid we pre-stage in PICS recv == the gid Steam requests == BYld is
-	// skipped == first-attempt install succeeds.
-	//
-	// ManifestPins are applied later, after Steam has built the plan:
-	// BuildDepotDependency rewrites each DepotEntry using its AppId, and
-	// ReconcilePin patches the in-memory TARGET vectors.  This applies to
-	// every configured app-scoped pin.  lockedApps remains separate and only
-	// controls update suppression in Apps::shouldDisableUpdates.
-
-	// Compute sha[20] over the FINAL wire buffer (after prune).
-	//
-	// We must NOT reuse SteamCMD's `_sha`: that hash describes the
-	// upstream, unmodified product-info, but we've dropped depots and
-	// repointed manifest GIDs.  AppInfoVdf::injectApp treats
-	// (appid, change_number, sha) as an idempotency key and skips the
-	// rewrite when all three match an existing entry.  If we kept the
-	// upstream sha, a previously-injected full-depot entry would never
-	// be replaced by our pruned one — the on-disk appinfo.vdf would
-	// keep stale depots and Steam would show 0 B.  Hashing our own
-	// bytes guarantees the key changes whenever our output changes.
-	std::string sha20;
-	{
-		std::uint8_t tmp[20];
-		Sha1::digest(wire.data(), wire.size(), tmp);
-		sha20.assign(reinterpret_cast<const char*>(tmp), 20);
-	}
-
-	if (!persistBuffer(appId, changeNumber, sha20, wire, publication,
-	                   synthesized))
-	{
-		g_pLog->info("AppInfoProvision: app=%u failed to persist buffer to cache\n", appId);
-		return ProvisionOutcome::LocalFailure;
-	}
-
-	g_pLog->infoOnce("AppInfoProvision: app=%u provisioned (change=%u, %zu bytes wire)\n",
-	             appId, changeNumber, wire.size());
-	return ProvisionOutcome::Updated;
+	const SourceResult result =
+	    renderAndPersist(appId, appNode, changeNumber, publication);
+	if (result == SourceResult::Success)
+		return ProvisionOutcome::Updated;
+	return outcomeWithoutUpdate(appId, result, changeNumber, publication);
 }
 
 std::vector<std::uint32_t> publishRuntimeAppInfo(
@@ -2830,8 +2728,7 @@ void enrichAndPublishDlcMetadata(
 	const std::string& appinfoVdfPath,
 	const std::vector<RefreshRequest>& publishedBases);
 
-int provisionAppsPass(const std::string& appinfoVdfPath,
-                       const std::unordered_set<uint32_t>& added,
+int provisionAppsPass(const std::unordered_set<uint32_t>& added,
                        bool onlyMissing, ProvisionPassContext& context,
 	                       std::unordered_set<uint32_t>* fallbackApps,
 	                       const char* origin)
@@ -2885,9 +2782,8 @@ int provisionAppsPass(const std::string& appinfoVdfPath,
 				continue;
 			if (onlyMissing)
 			{
-				// Runtime cold recovery already made a nonblocking readiness
-				// decision on the callback thread. Do not turn that path back into
-				// blocking cache validation here.
+				// The cold-start caller already found this app's cache pair
+				// missing or invalid; do not validate it again here.
 				toFetch.push_back(appId);
 			}
 			else if (cacheUseForApp(appId, false) != cache::CacheUse::Fresh)
@@ -2938,7 +2834,7 @@ int provisionAppsPass(const std::string& appinfoVdfPath,
 			: terminalProvisionResultKnown(
 				appId, observedChange, &outcome, archivedGids);
 		if (!terminalKnown)
-			outcome = provisionAppDetailed(appId, appinfoVdfPath, pass, context);
+			outcome = provisionAppDetailed(appId, pass, context);
 		if (fallbackApps && outcome == ProvisionOutcome::FallbackCache)
 			fallbackApps->insert(appId);
 		if (outcome == ProvisionOutcome::Updated) ++summary.updated;
@@ -3032,8 +2928,7 @@ int provisionAppsPass(const std::string& appinfoVdfPath,
 	return provisioned;
 }
 
-int provisionAllAddedApps(const std::string& appinfoVdfPath,
-                          bool allowConfigWrite)
+int provisionAllAddedApps()
 {
 	ProvisionPassCoordinator coordinator(g_provisionPassMu);
 	const auto added = coordinator.snapshot(
@@ -3042,25 +2937,17 @@ int provisionAllAddedApps(const std::string& appinfoVdfPath,
 
 	ProvisionPassContext context;
 	const int provisioned = provisionAppsPass(
-		appinfoVdfPath, added, false, context, nullptr, "startup");
+		added, false, context, nullptr, "startup");
 	coordinator.commit([&] {
-		if (allowConfigWrite)
-		{
-			if (!injectProtonMappings())
-				persistPendingProtonMappings(true);
-		}
-		else
-		{
-			persistPendingProtonMappings(false);
-		}
+		if (!injectProtonMappings())
+			persistPendingProtonMappings(true);
 	});
 	return provisioned;
 }
 
 ProvisionPassSummary provisionRequestedApps(
 	const std::string& appinfoVdfPath,
-	const std::vector<RefreshRequest>& requests,
-	bool allowConfigWrite)
+	const std::vector<RefreshRequest>& requests)
 {
 	ProvisionPassSummary summary;
 	if (requests.empty()) return summary;
@@ -3164,8 +3051,7 @@ ProvisionPassSummary provisionRequestedApps(
 		if (!terminalProvisionResultKnown(
 			request.appId, observed, &outcome, archived()))
 			outcome = provisionAppDetailed(
-				request.appId, appinfoVdfPath, pass, context,
-				request.forceRefresh);
+				request.appId, pass, context, request.forceRefresh);
 		if (outcome == ProvisionOutcome::Updated) ++summary.updated;
 		else if (outcome == ProvisionOutcome::FreshCache) ++summary.ready;
 		else if (outcome == ProvisionOutcome::FallbackCache) ++summary.fallback;
@@ -3184,11 +3070,7 @@ ProvisionPassSummary provisionRequestedApps(
 
 	std::vector<RefreshRequest> runtimePublished;
 	coordinator.commit([&] {
-		if (allowConfigWrite)
-		{
-			if (!injectProtonMappings()) persistPendingProtonMappings(true);
-		}
-		else persistPendingProtonMappings(false);
+		persistPendingProtonMappings(false);
 		std::vector<RefreshRequest> basePublish;
 		for (const auto& request : publish)
 		{
@@ -3233,13 +3115,8 @@ ProvisionPassSummary provisionRequestedApps(
 	return summary;
 }
 
-int provisionColdStartApps(const std::string& appinfoVdfPath,
-                           const std::unordered_set<uint32_t>& candidates,
-                           ColdStartMode mode,
-                           std::unordered_set<uint32_t>* sanitizedApps,
-                           bool allowConfigWrite)
+int provisionColdStartApps(const std::unordered_set<uint32_t>& candidates)
 {
-	if (sanitizedApps) sanitizedApps->clear();
 	std::unordered_set<uint32_t> fallbackApps;
 
 	ProvisionPassCoordinator coordinator(g_provisionPassMu);
@@ -3250,12 +3127,9 @@ int provisionColdStartApps(const std::string& appinfoVdfPath,
 			if (appId != 0 && managed.count(appId) != 0) scoped.insert(appId);
 		return scoped;
 	});
-	// Disk-aware terminal priming is allowed here only during startup. Build
-	// the manifest observation index once for the whole fleet; rebuilding it
-	// inside terminalProvisionResultKnown() for every app made a network-free
-	// startup scale with apps × archived manifests. Runtime callbacks remain
-	// strictly memo-only.
-	if (coldStartPrimesTerminalMemo(mode))
+	// Prime the terminal memo from disk. One manifest observation index for the
+	// whole fleet keeps a network-free startup from scaling with apps ×
+	// archived manifests, as rebuilding it per app would.
 	{
 		const auto archivedGids = ManifestStore::archivedGidIndex();
 		for (const uint32_t appId : managedApps)
@@ -3265,19 +3139,16 @@ int provisionColdStartApps(const std::string& appinfoVdfPath,
 			primeTerminalMemo(appId, fingerprint);
 		}
 	}
-	// Startup validates persisted pairs before accepting them for the splice;
-	// the PICS callback reads only its memo while the user is interacting.
-	// Both paths recover only missing or invalid pairs; a validated stale pair
-	// is already usable and must not trigger synchronous provider work.
+	// Validate persisted pairs and recover only missing or invalid ones; a
+	// validated stale pair is already usable and must not trigger synchronous
+	// provider work.
 	std::vector<std::pair<uint32_t, CacheReadiness>> probed;
 	probed.reserve(managedApps.size());
 	std::size_t skippedTerminal = 0;
 	for (const uint32_t appId : managedApps)
 	{
-		const CacheProbeMode probeMode = mode == ColdStartMode::StartupRequireUsablePair
-			? CacheProbeMode::BlockingValidate
-			: CacheProbeMode::NonBlockingMemoOnly;
-		const CacheProbe cacheProbe = probeCache(appId, probeMode);
+		const CacheProbe cacheProbe =
+			probeCache(appId, CacheProbeMode::BlockingValidate);
 		// Apps with a terminal content verdict can never satisfy this loop, so
 		// including them would refetch the same answer on every pass and keep
 		// the pass permanently incomplete.
@@ -3291,7 +3162,7 @@ int provisionColdStartApps(const std::string& appinfoVdfPath,
 		}
 		probed.emplace_back(appId, cacheProbe.readiness);
 	}
-	std::unordered_set<uint32_t> cold = selectColdStartApps(probed, mode);
+	std::unordered_set<uint32_t> cold = selectColdStartApps(probed);
 	for (auto it = cold.begin(); it != cold.end();)
 	{
 		if (coldRetryBlocked(*it)) it = cold.erase(it);
@@ -3312,8 +3183,7 @@ int provisionColdStartApps(const std::string& appinfoVdfPath,
 	             cold.size());
 	ProvisionPassContext context;
 	const int provisioned = provisionAppsPass(
-		appinfoVdfPath, cold, true, context, &fallbackApps,
-		allowConfigWrite ? "startup-cold" : "runtime-cold");
+		cold, true, context, &fallbackApps, "startup-cold");
 	std::size_t unresolvedCount = 0;
 	for (const uint32_t appId : cold)
 	{
@@ -3325,9 +3195,6 @@ int provisionColdStartApps(const std::string& appinfoVdfPath,
 			// (normalized=false), which must still be replaceable by a newer
 			// response. persistAppBuffer() applies the final provenance guard
 			// for normalized and legacy pairs.
-			if (sanitizedApps &&
-			    shouldMarkColdCacheSanitized(explicitFallback))
-				sanitizedApps->insert(appId);
 			noteColdRetryOutcome(appId, false);
 			continue;
 		}
@@ -3348,9 +3215,6 @@ int provisionColdStartApps(const std::string& appinfoVdfPath,
 			if (unresolved) ++unresolvedCount;
 			continue;
 		}
-		if (sanitizedApps &&
-		    shouldMarkColdCacheSanitized(explicitFallback))
-			sanitizedApps->insert(appId);
 		noteColdRetryOutcome(appId, false);
 	}
 	if (unresolvedCount != 0)
@@ -3362,15 +3226,8 @@ int provisionColdStartApps(const std::string& appinfoVdfPath,
 	}
 
 	coordinator.commit([&] {
-		if (allowConfigWrite)
-		{
-			if (!injectProtonMappings())
-				persistPendingProtonMappings(true);
-		}
-		else
-		{
-			persistPendingProtonMappings(false);
-		}
+		if (!injectProtonMappings())
+			persistPendingProtonMappings(true);
 	});
 	return provisioned;
 }
@@ -3424,13 +3281,6 @@ void flushPendingProtonMappings()
 	if (injectProtonMappings())
 		(void)clearPendingProtonMappingsIfUnchanged(loaded.fileIds);
 }
-
-enum class RefreshWorkerStartResult
-{
-	Started,
-	NotStarted,
-	Uncertain,
-};
 
 std::vector<std::uint32_t> publishRuntimeAppInfo(
     const std::string& appinfoVdfPath,
@@ -3807,12 +3657,11 @@ void refreshWorkerStartFailed() noexcept
 
 void finishRefresh(const std::string& completedPath, std::uint64_t token);
 
-RefreshWorkerStartResult startRefreshWorker(
+bool startRefreshWorker(
     const std::string& appinfoVdfPath, std::uint64_t token,
     const std::vector<RefreshRequest>& requests)
 {
-	bool workerMayStillExist = false;
-	const bool started = ThreadStart::startDetached(
+	return ThreadStart::startDetached(
 		[path = appinfoVdfPath, token, requests]
 		{
 			ThreadStart::runGuarded(
@@ -3820,7 +3669,7 @@ RefreshWorkerStartResult startRefreshWorker(
 				{
 					ScopedNotifySuppression suppression;
 					BootProf::Span profile(g_pLog.get(), "provision.async");
-					(void)provisionRequestedApps(path, requests, false);
+					(void)provisionRequestedApps(path, requests);
 				},
 				[]
 				{
@@ -3830,30 +3679,12 @@ RefreshWorkerStartResult startRefreshWorker(
 				},
 				[path, token] { finishRefresh(path, token); });
 		},
-		[] { refreshWorkerStartFailed(); },
-		ThreadStart::NoopDetachFailure{},
-		ThreadStart::StdThreadDetacher{},
-		ThreadStart::StdThreadJoiner{},
-		[&workerMayStillExist] {
-			workerMayStillExist = true;
-			refreshWorkerStartFailed();
-		});
-	if (started)
-		return RefreshWorkerStartResult::Started;
-	if (workerMayStillExist)
-		return RefreshWorkerStartResult::Uncertain;
-
-	return RefreshWorkerStartResult::NotStarted;
+		[] { refreshWorkerStartFailed(); });
 }
 
 void retainRefreshAfterFailedStart(std::uint64_t token,
-                                   RefreshWorkerStartResult result,
                                    const std::vector<RefreshRequest>& requests)
 {
-	if (result != RefreshWorkerStartResult::NotStarted ||
-	    !shouldRequeueRefreshAfterStartFailure(/*workerMayStillExist=*/false))
-		return;
-
 	// A known construction failure cannot safely recurse into another thread
 	// attempt: persistent resource pressure would otherwise create an
 	// unbounded retry loop. Keep the request dormant until the next PICS or
@@ -3882,8 +3713,8 @@ void finishRefresh(const std::string& completedPath, std::uint64_t token)
 		nextToken = ++g_refreshWorkerToken;
 	}
 
-	const auto startResult = startRefreshWorker(nextPath, nextToken, nextRequests);
-	retainRefreshAfterFailedStart(nextToken, startResult, nextRequests);
+	if (!startRefreshWorker(nextPath, nextToken, nextRequests))
+		retainRefreshAfterFailedStart(nextToken, nextRequests);
 }
 
 void refreshInBackground(
@@ -3902,8 +3733,8 @@ void refreshInBackground(
 		token = ++g_refreshWorkerToken;
 	}
 
-	const auto startResult = startRefreshWorker(appinfoVdfPath, token, batch);
-	retainRefreshAfterFailedStart(token, startResult, batch);
+	if (!startRefreshWorker(appinfoVdfPath, token, batch))
+		retainRefreshAfterFailedStart(token, batch);
 }
 
 DlcInjectionIds collectDlcAppIdsForAddedApps(bool* complete)

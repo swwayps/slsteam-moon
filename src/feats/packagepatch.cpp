@@ -77,11 +77,8 @@ namespace
 	std::unordered_set<uint32_t> g_seededAppIds;
 	std::unordered_set<uint32_t> g_seededDepotIds;
 
-	// Guards the post-injection license-reconcile so we broadcast a
-	// LicensesUpdated_t at most once per process.  Re-broadcasting on
-	// every LoadPackage(0) call would spam the client UI; one reconcile
-	// after the package-0 AppIdVec contains our apps is enough to break
-	// the cold-cache PICS loop.
+	// Broadcast latch: armed at boot (pre-snapshot path) and re-armed once per
+	// unprocessed boot generation, so LoadPackage(0) cannot spam LicensesUpdated_t.
 	std::atomic<bool> g_licenseReconciled{false};
 
 	// Set true once we've actually appended managed app ids into
@@ -141,20 +138,27 @@ namespace
 			return;
 		}
 
+		// Claim the broadcast: CheckAppOwnership calls this from several
+		// threads, and only one of them may post LicensesUpdated_t.
+		bool expected = false;
+		if (!g_licenseReconciled.compare_exchange_strong(
+			expected, true, std::memory_order_acq_rel))
+		{
+			return;
+		}
+
 		if (user->notifyLicensesUpdated())
 		{
-			g_licenseReconciled.store(true, std::memory_order_release);
 			g_pLog->info("PackagePatch: broadcast LicensesUpdated_t to reconcile package 0\n");
 		}
 		else
 		{
+			// Stays claimed, so this is not logged on every call.
 			g_pLog->warn
 			(
 				"PackagePatch: NotifyLicensesUpdated unavailable; "
 				"cold-cache reconcile skipped (warm cache still works)\n"
 			);
-			// Mark as done so we don't log this every call.
-			g_licenseReconciled.store(true, std::memory_order_release);
 		}
 	}
 
@@ -250,6 +254,9 @@ namespace
 	struct SnapshotApplyResult
 	{
 		bool available = false;
+		// Package 0 is not loaded or not Available yet; LoadPackage(0)
+		// applies the stored snapshot later.
+		bool notReady = false;
 		bool changed = false;
 		bool appAdded = false;
 		std::vector<std::uint32_t> appInfoRequestIds;
@@ -378,6 +385,7 @@ namespace
 		if (package == nullptr || package->PackageId != 0 ||
 			package->Status != EPackageStatus::Available)
 		{
+			result.notReady = true;
 			return result;
 		}
 
@@ -987,10 +995,7 @@ namespace PackagePatch
 
 	void tryReconcileLicenses()
 	{
-		// Cheap, lock-free retry entry point driven by a hook that
-		// reliably has a valid local user (CheckAppOwnership).  No-op
-		// after the one-shot broadcast has happened, or before package
-		// 0 has actually been injected.
+		// Lock-free; a no-op unless a broadcast is pending and package 0 is injected.
 		reconcileLicensesOnce();
 	}
 
@@ -1073,17 +1078,15 @@ namespace PackagePatch
 		}
 		if (!applied.available)
 		{
-			// The first snapshot is published during setup, before Steam loads
-			// package 0; LoadPackage(0) applies it. Only a loaded package that
-			// cannot take the snapshot is worth a warning.
-			if (g_pPackage0.load(std::memory_order_acquire) == nullptr)
+			// A package that is not loaded yet (setup, or still loading) takes
+			// the snapshot in LoadPackage(0); the other refusals warn where
+			// they happen.
+			if (applied.notReady)
 			{
 				g_pLog->debug(
 					"PackagePatch: runtime package generation %llu waits for LoadPackage(0)\n",
 					static_cast<unsigned long long>(snapshot.generation));
-				return;
 			}
-			logDeferredOnce(snapshot.generation, "package 0 is not ready");
 			return;
 		}
 

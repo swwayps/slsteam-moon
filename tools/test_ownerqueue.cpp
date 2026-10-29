@@ -637,11 +637,11 @@ static void test_owner_affinity_gate()
 	std::printf("[14] owner-thread affinity gate (pure)\n");
 	// Only the latched owner thread, with work pending and not already inside a
 	// drain, may run Steam-owned work.
-	CHECK(OwnerQueue::shouldDrain(100, 100, false, 1), "owner thread with work drains");
-	CHECK(!OwnerQueue::shouldDrain(100, 100, false, 0), "no work -> no drain");
-	CHECK(!OwnerQueue::shouldDrain(101, 100, false, 1), "non-owner thread never drains");
-	CHECK(!OwnerQueue::shouldDrain(100, 0, false, 1), "no owner latched -> no drain");
-	CHECK(!OwnerQueue::shouldDrain(100, 100, true, 1), "already draining -> no nested drain");
+	CHECK(OwnerQueue::shouldDrain(100, 100, false, true), "owner thread with work drains");
+	CHECK(!OwnerQueue::shouldDrain(100, 100, false, false), "no work -> no drain");
+	CHECK(!OwnerQueue::shouldDrain(101, 100, false, true), "non-owner thread never drains");
+	CHECK(!OwnerQueue::shouldDrain(100, 0, false, true), "no owner latched -> no drain");
+	CHECK(!OwnerQueue::shouldDrain(100, 100, true, true), "already draining -> no nested drain");
 	CHECK(OwnerWork::compatExecutionAllowed(true),
 	      "compatibility mapping may run on the owner thread");
 	CHECK(!OwnerWork::compatExecutionAllowed(false),

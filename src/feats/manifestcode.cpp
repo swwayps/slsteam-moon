@@ -236,8 +236,8 @@ void handleSend_GetManifestRequestCode(const uint8_t* pBody, uint32_t cbBody,
 	             appId, static_cast<unsigned long long>(jobId));
 
 	// Stage the manifest from the archive so Steam finds it on disk and skips
-	// the request-code handshake entirely. We no longer answer that handshake
-	// ourselves (the archive is the manifest source).
+	// the request-code handshake entirely. Nothing here answers that
+	// handshake; the archive is the manifest source.
 	ManifestFetch::submitManifestBlob(
 		gid, appId, depotId,
 		ManifestFetch::isAnyManagedDownloadActive(appId));
@@ -259,7 +259,7 @@ void dispatchSend(uint32_t eMsg,
 			pHdr, cbHdr, body.data(), static_cast<uint32_t>(body.size()));
 		return;
 	}
-	if (eMsg != kEMsgServiceMethodCallFromClient)
+	if (eMsg != k_EMsgServiceMethodCallFromClient)
 	{
 		return;
 	}
@@ -399,7 +399,7 @@ CodeRequest requestCode(uint32_t appId, uint32_t depotId, uint64_t gid)
 		if (headerSize > kMaxHdrSize || bodySize > kMaxBodySize) return fail();
 		frame.resize(sizeof(MsgHdr) + headerSize + bodySize);
 		auto* prefix = reinterpret_cast<MsgHdr*>(frame.data());
-		prefix->eMsg = kEMsgServiceMethodCallFromClient | kMsgHdrProtoFlag;
+		prefix->eMsg = k_EMsgServiceMethodCallFromClient | kMsgHdrProtoFlag;
 		prefix->headerLength = static_cast<uint32_t>(headerSize);
 		if (!header.SerializeToArray(frame.data() + sizeof(MsgHdr), headerSize) ||
 		    !body.SerializeToArray(
@@ -529,7 +529,7 @@ bool hkBBuildAndAsyncSendFrame(void* pConnection,
 					if (!g_DonorResetting)
 						contextGeneration = g_DonorContextGeneration;
 				}
-				if (eMsg == kEMsgServiceMethodCallFromClient &&
+				if (eMsg == k_EMsgServiceMethodCallFromClient &&
 				    cbHdr && cbHdr <= kMaxHdrSize)
 				{
 					CMsgProtoBufHeader header;
@@ -584,9 +584,9 @@ bool hkBRouteMsgToJob(void* pJobMgr, void* arg2, void* pMsg, void* pJob)
 {
 	// Reject not just null but any implausible pointer before dereferencing.
 	// A Steam client ABI change can shift the message/job structs these offsets
-	// walk (a beta did), so a chained read (e.g. pInner = peek32(pMsg,0xc)) can
-	// yield a 0xFFFFFFFF sentinel instead of a real inner pointer; dereferencing
-	// it segfaults the whole client on the job-routing path.  Treat an
+	// walk, so a chained read (e.g. pInner = peek32(pMsg,0xc)) can yield a
+	// 0xFFFFFFFF sentinel instead of a real inner pointer; dereferencing it
+	// segfaults the whole client on the job-routing path.  Treat an
 	// implausible pointer as "no data" so this hook falls through to the
 	// original routing unchanged.
 	auto plausible = [](const void* p) -> bool {
@@ -605,7 +605,7 @@ bool hkBRouteMsgToJob(void* pJobMgr, void* arg2, void* pMsg, void* pJob)
 	};
 
 	const uint32_t eMsg = peek32(pJob, 0x10);
-	if (eMsg != 0x93 /* k_EMsgServiceMethodResponse */)
+	if (eMsg != k_EMsgServiceMethodResponse)
 	{
 		return Hooks::CJobMgr_BRouteMsgToJob.tramp.fn(pJobMgr, arg2, pMsg, pJob);
 	}
@@ -620,7 +620,7 @@ bool hkBRouteMsgToJob(void* pJobMgr, void* arg2, void* pMsg, void* pJob)
 	// sentinel, which is non-null but derefs into unmapped memory (MsgHdr access
 	// below segfaults the client).  Require a plausible pointer and a sane
 	// buffer length so this whole interception falls through to the original
-	// routing on a layout we no longer parse, instead of crashing.
+	// routing on a layout this code does not recognize, instead of crashing.
 	if (!plausible(pBuf) || cbBuf < sizeof(MsgHdr) + 1 || cbBuf > (64u * 1024 * 1024))
 	{
 		return Hooks::CJobMgr_BRouteMsgToJob.tramp.fn(pJobMgr, arg2, pMsg, pJob);
@@ -650,20 +650,19 @@ bool hkBRouteMsgToJob(void* pJobMgr, void* arg2, void* pMsg, void* pJob)
 
 	const uint32_t bodyOffset = sizeof(MsgHdr) + cbProtoHdr;
 	// Feed the donor's own outstanding request-code sends (owned depots) so it
-	// can share the minted codes. We no longer inject a code into Steam's
-	// response — manifests are staged from the archive — so the message routes
-	// through unchanged.
+	// can share the minted codes. Manifests are staged from the archive, so no
+	// code is injected into Steam's response and the message routes through
+	// unchanged.
 	resolveDonorResponse(jobIdTarget, hdr, pBuf + bodyOffset, cbBuf - bodyOffset);
 	return Hooks::CJobMgr_BRouteMsgToJob.tramp.fn(pJobMgr, arg2, pMsg, pJob);
 }
 
 bool hkCDepotDownloadMgr_BYldRequestDepotManifest(void* pthis, uint32_t appId, uint32_t depotId, uint64_t manifestId, const char* branch, void* arg20)
 {
-	g_pLog->info("BYldRequestDepotManifest: app=%u depot=%u manifest=%llu branch=%s\n",
-	             appId, depotId, static_cast<unsigned long long>(manifestId), branch ? branch : "");
-
 	const bool inScope = DepotKey::manifestInManagedScope(
 	    appId, depotId, g_config.getManifestPinForPlanner(appId, depotId) != 0);
+	g_pLog->debug("BYldRequestDepotManifest: app=%u depot=%u manifest=%llu branch=%s\n",
+	              appId, depotId, static_cast<unsigned long long>(manifestId), branch ? branch : "");
 
 	if (!inScope)
 	{
@@ -715,8 +714,8 @@ bool hkCDepotDownloadMgr_BYldRequestDepotManifest(void* pthis, uint32_t appId, u
 				{
 					ManifestStore::markPreferredGid(depotId, manifestId);
 				}
-				g_pLog->info("BYldRequestDepotManifest: blob staged on disk for depot=%u gid=%llu; "
-				             "passing through to drive the request-code handshake\n",
+				g_pLog->info("BYldRequestDepotManifest: blob staged for depot=%u gid=%llu; "
+				             "calling Steam's request\n",
 				             depotId, static_cast<unsigned long long>(manifestId));
 			}
 			else

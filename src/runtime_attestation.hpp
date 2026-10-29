@@ -17,6 +17,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+// Runtime proof for the real-Steam candidate validator in
+// swwayps/steam-autorepair: autorepair/candidate_smoke.py sets
+// SLSSTEAM_ATTESTATION_FILE and SLSSTEAM_ATTESTATION_SESSION and checks the
+// events written here.
 namespace RuntimeAttestation
 {
 	struct Metadata

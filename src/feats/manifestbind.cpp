@@ -24,7 +24,6 @@
 #include "libmem/libmem.h"
 
 #include <algorithm>
-#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <cstdlib>
@@ -60,11 +59,10 @@ namespace
 	//
 	//   * ProcessDepotManifest — the manifest-acquisition LEAF: builds
 	//     "<steamRoot>/depotcache/<depot>_<gid>.manifest", checks it on disk,
-	//     calls BYldRequestDepotManifest only when missing.  Redirecting the
-	//     gid here makes the on-disk check find the locally-staged (zip)
-	//     manifest and skip the request-code fetch (lets a providers-down
-	//     install proceed).  5 callers go through it; hooking the leaf covers
-	//     them all for the BYld decision.
+	//     calls BYldRequestDepotManifest only when missing.  A planned gid that
+	//     cannot be staged is redirected to a local archived one, so an offline
+	//     install proceeds.  All 5 callers go through it, so the leaf covers
+	//     every BYld decision.
 	//
 	//   * PrepareDepotDownload — a LATER pipeline stage (one of those callers)
 	//     that, after the leaf returns, looks the depot up in the per-download
@@ -251,85 +249,6 @@ namespace
 		return chosenGid;
 	}
 
-	// --- DIAGNOSTIC: install-planner runtime trace (env SLSSTEAM_PLAN_TRACE) -
-	//
-	// Static analysis could not tie the
-	// depot-list BUILDER (the LumaCore `BuildDepotDependency` equivalent) back
-	// to an external caller — the consumer `sub_FDFD00` (VA 0xfdfd00) appears
-	// to have no static caller, no vtable slot, no GOT entry.  The unblocking
-	// move is to recover the dynamic CALL CHAIN at the two frames we already
-	// hook (ProcessDepotManifest @0xfa8b40, PrepareDepotDownload @0xfa9050).
-	//
-	// We do NOT use backtrace()/libgcc _Unwind: it SIGABRTs in this 32-bit
-	// client when invoked from inside a libmem trampoline (no eh_frame for the
-	// tramp frame -> unwinder aborts; confirmed: client Abort at the exact
-	// Reconfiguring tick the hook first fired).  Instead we scan our own stack
-	// for dwords that point INTO steamclient's mapped range AND are preceded by
-	// a `call` instruction (0xE8 rel32 at V-5, or 0xFF /2..3 at V-2/V-3) — a
-	// safe, allocation-free, unwinder-free "poor man's backtrace".  Each hit is
-	// logged as a steamclient-relative VA (V - base), directly comparable to
-	// the ELF VAs.  The consumer sub_FDFD00's frame and, crucially, ITS
-	// caller (the builder/scheduler) appear in the scan window.
-	//
-	// Gated behind the env var so a normal session pays nothing; capped per
-	// frame so a many-depot install doesn't flood ~/.SLSsteam.log.
-	bool g_planTrace = false;
-	std::atomic<int> g_traceLeftLeaf{12};
-	std::atomic<int> g_traceLeftPlanner{12};
-
-	// Is `v` a plausible return address: inside steamclient .text and preceded
-	// by a call instruction?  Reads only mapped code (safe).
-	bool looksLikeRetAddr(uintptr_t v, uintptr_t base, uintptr_t end)
-	{
-		if (v < base + 16 || v >= end) return false;
-		const uint8_t* p = reinterpret_cast<const uint8_t*>(v);
-		// call rel32: E8 xx xx xx xx  -> return addr is at insn+5
-		if (p[-5] == 0xE8) return true;
-		// call r/m32: FF /2 (modrm reg field == 2), 2- or 3-byte forms
-		if (p[-2] == 0xFF && ((p[-1] >> 3) & 7) == 2) return true;
-		if (p[-3] == 0xFF && ((p[-2] >> 3) & 7) == 2) return true;
-		// call r/m32 with disp8/disp32 + SIB: be lenient, accept FF in window
-		if (p[-6] == 0xFF && ((p[-5] >> 3) & 7) == 2) return true;
-		if (p[-7] == 0xFF && ((p[-6] >> 3) & 7) == 2) return true;
-		return false;
-	}
-
-	void logPlanStack(const char* tag, std::atomic<int>& budget,
-	                  uint32_t appId, uint32_t depotId, uint64_t gid)
-	{
-		if (!g_planTrace) return;
-		if (budget.fetch_sub(1) <= 0) return;
-
-		const auto base = reinterpret_cast<uintptr_t>(g_modSteamClient.base);
-		const auto end = reinterpret_cast<uintptr_t>(g_modSteamClient.end);
-
-		// Start just above our own frame and scan upward (stack grows down).
-		volatile int anchor = 0;
-		uintptr_t sp = reinterpret_cast<uintptr_t>(&anchor);
-		const uintptr_t scanWords = 320;  // ~1.25 KiB window
-
-		g_pLog->info("PlanTrace[%s]: app=%u depot=%u gid=%llu base=%p sp=%p\n",
-		             tag, appId, depotId,
-		             static_cast<unsigned long long>(gid),
-		             reinterpret_cast<void*>(g_modSteamClient.base), reinterpret_cast<void*>(sp));
-
-		int shown = 0;
-		for (uintptr_t i = 0; i < scanWords && shown < 24; ++i)
-		{
-			const uintptr_t slot = sp + i * sizeof(uintptr_t);
-			const uintptr_t v = *reinterpret_cast<volatile uintptr_t*>(slot);
-			if (looksLikeRetAddr(v, base, end))
-			{
-				g_pLog->info("PlanTrace[%s]:   +0x%lx  steamclient+0x%lx\n",
-				             tag,
-				             static_cast<unsigned long>(i * sizeof(uintptr_t)),
-				             static_cast<unsigned long>(v - base));
-				++shown;
-			}
-		}
-	}
-
-
 	std::string findSteamRoot()
 	{
 		const char* home = std::getenv("HOME");
@@ -469,32 +388,13 @@ namespace
 	uint64_t redirectGid(const char* site, uint32_t appId, uint32_t depotId,
 	                     uint64_t manifestId, bool consumeFrozen)
 	{
-		// Explicit pin: the pin is TARGET-ONLY.  Ensure the
-		// pinned manifest is STAGED on disk (so the patched plan and
-		// ReconcilePin's reconcile target can fetch it) but DO NOT redirect the
-		// gid here.
-		//
-		// Returning `pin` unconditionally (the old behaviour) contaminated the
-		// ACTIVE/installed manifest read: when Steam loads the installed
-		// (public) manifest to compute the public->pinned chunk delta, serving
-		// the pinned manifest instead made it diff pinned-vs-pinned -> 0 chunks
-		// -> a 0-file commit -> the real content (e.g. the build-locked exe a
-		// crack validates) was NEVER downloaded, even though Steam recorded the
-		// pinned gid and reported "Fully Installed" (confirmed in testing).  The pin belongs ONLY on the
-		// TARGET (FUNC_1141 plan DepotEntry + feats/reconcilepin.cpp's reconcile
-		// target pass), never on this acquisition/active path.  Leaving the
-		// real gid here lets Steam load the genuine public active manifest,
-		// compute a true delta against the pinned target, and download it.
+		// The pin is target-only (planner + ReconcilePin): stage the pinned manifest,
+		// but keep the planned gid so the active read computes a real delta to it.
 		const uint64_t pin = g_config.getManifestPin(appId, depotId);
 		if (pin)
 		{
-			// Stage the pinned manifest if absent (harmless when present: just
-			// an on-disk check).  Needed because a pinned build is commonly one
-			// the user never installed, so it is NOT in depotcache/the store
-			// yet, and Steam's own BYldRequestDepotManifest is "Access Denied"
-			// for a managed (non-purchased) app.  Restore from the persistent
-			// store if we archived it before, else fetch+stage via ManifestFetch
-			// (same request-code provider + CDN path pics.cpp uses) and persist.
+			// A pinned build is often not on disk, and Steam's own request is denied
+			// for a managed app: restore it from the store, else fetch and persist it.
 			const auto steamRoot = findSteamRoot();
 			if (!steamRoot.empty())
 			{
@@ -552,11 +452,11 @@ namespace
 			    depotId, manifestId, manifestId, consumeFrozen);
 		}
 
-		// The planned gid is NOT in depotcache.  Case 1 (the common one,
-		// e.g. a Proton-switch after Steam purged the windows depot's
-		// manifest): we archived this EXACT gid earlier -> restore it from
-		// the store so Steam finds it on disk and skips the request-code
-		// fetch.  No redirect needed; Steam installs the gid it planned.
+		// The planned gid is NOT in depotcache.  If the store holds this EXACT
+		// gid (the common case, e.g. Steam purges the windows depot's manifest
+		// on a Proton switch), restore it so Steam finds it on disk and skips
+		// the request-code fetch.  No redirect is needed; Steam installs the
+		// gid it planned.
 		if (ManifestStore::restoreToDepotcache(depotId, manifestId))
 		{
 			ManifestStore::markPreferredGid(depotId, manifestId);
@@ -656,7 +556,6 @@ namespace
 	void* hkProcessDepot(void* ctx, void* a0C, uint32_t appId,
 	                     uint32_t depotId, uint64_t manifestId, void* a20)
 	{
-		logPlanStack("leaf", g_traceLeftLeaf, appId, depotId, manifestId);
 		const uint64_t useGid =
 		    redirectGid("leaf", appId, depotId, manifestId, false);
 		return g_leaf.orig(ctx, a0C, appId, depotId, useGid, a20);
@@ -665,7 +564,6 @@ namespace
 	void* hkPrepareDepot(void* ctx, void* a0C, uint32_t appId,
 	                     uint32_t depotId, uint64_t manifestId, void* a20)
 	{
-		logPlanStack("plan", g_traceLeftPlanner, appId, depotId, manifestId);
 		const uint64_t useGid =
 		    redirectGid("plan", appId, depotId, manifestId, true);
 		return g_planner.orig(ctx, a0C, appId, depotId, useGid, a20);
@@ -742,7 +640,7 @@ namespace
 					if (ManagedDepotFilter::shouldDrop(
 					        *sizep, DepotKey::isManagedDepot(depotId)))
 					{
-						g_pLog->info(
+						g_pLog->infoOnce(
 						    "ManifestBind[build]: dropping empty depot %u (size 0) from plan\n",
 						    depotId);
 						continue;
@@ -750,7 +648,7 @@ namespace
 
 					if (DepotQuarantine::shouldDropManagedDlc(depotId, dlcAppId))
 					{
-						g_pLog->info(
+						g_pLog->infoOnce(
 						    "ManifestBind[build]: omitting quarantined DLC depot=%u "
 						    "dlcappid=%u on retry\n",
 						    depotId, dlcAppId);
@@ -931,11 +829,6 @@ namespace ManifestBind
 		if (const char* env = std::getenv("SLSSTEAM_MANIFEST_FALLBACK"))
 		{
 			g_fallbackEnabled = !(env[0] == '0' && env[1] == '\0');
-		}
-
-		if (const char* env = std::getenv("SLSSTEAM_PLAN_TRACE"))
-		{
-			g_planTrace = !(env[0] == '0' && env[1] == '\0');
 		}
 
 		// Both hooks cooperate; install independently so one missing

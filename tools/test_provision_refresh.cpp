@@ -30,32 +30,14 @@ int main()
 {
 	using namespace AppInfoProvision;
 
-	const std::vector<std::pair<std::uint32_t, CacheReadiness>> currentResponse{
-		{4496490, CacheReadiness::Missing},
-	};
-	CHECK(selectColdStartApps(currentResponse, ColdStartMode::RuntimeMissingOnly) ==
-	          std::unordered_set<std::uint32_t>{4496490},
-	      "runtime cold recovery contains only the current response app");
-
-	const std::vector<std::pair<std::uint32_t, CacheReadiness>> contention{
-		{420530, CacheReadiness::Busy},
-		{4496490, CacheReadiness::Unverified},
-	};
-	CHECK(selectColdStartApps(contention, ColdStartMode::RuntimeMissingOnly).empty(),
-	      "busy and unverified pairs never enter synchronous callback recovery");
-
 	const std::vector<std::pair<std::uint32_t, CacheReadiness>> startupCache{
 		{420530, CacheReadiness::ValidStale},
 		{4496490, CacheReadiness::Missing},
 		{1621690, CacheReadiness::Invalid},
 	};
-	CHECK((selectColdStartApps(startupCache, ColdStartMode::StartupRequireUsablePair) ==
+	CHECK((selectColdStartApps(startupCache) ==
 	          std::unordered_set<std::uint32_t>{4496490, 1621690}),
 	      "startup recovery retains only missing and invalid cache pairs");
-	CHECK(coldStartPrimesTerminalMemo(
-	          ColdStartMode::StartupRequireUsablePair) &&
-	      !coldStartPrimesTerminalMemo(ColdStartMode::RuntimeMissingOnly),
-	      "startup primes disk terminal state while runtime remains memo-only");
 
 	const std::vector<ObservedAppState> fleet{
 		{420530, 3, 10, 7, CacheReadiness::ValidStale, false, 0},

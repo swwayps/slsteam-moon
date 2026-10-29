@@ -156,7 +156,7 @@ void FakeAppIds::setAppIdForCurrentPipe(AppId_t& appId)
 	uint32_t newAppId = getFakeAppId(appId);
 	if (newAppId)
 	{
-		g_pLog->infoOnce("Changing AppId of %u\n", appId);
+		g_pLog->debugOnce("Changing AppId of %u\n", appId);
 		appId = newAppId;
 	}
 }

@@ -99,8 +99,23 @@ void enqueue(Job job)
 		g_active = true;
 	}
 	ThreadStart::startDetached(
-		[] { ThreadStart::runGuarded(runJobs, abandonQueued, [] {}); },
-		abandonQueued);
+		[]
+		{
+			ThreadStart::runGuarded(runJobs, []
+			{
+				if (g_pLog)
+					g_pLog->warn("Achievements: owner lookup worker failed; "
+					             "queued lookups are answered empty\n");
+				abandonQueued();
+			}, [] {});
+		},
+		[]
+		{
+			if (g_pLog)
+				g_pLog->warn("Achievements: owner lookup worker did not start; "
+				             "queued lookups are answered empty\n");
+			abandonQueued();
+		});
 }
 }
 

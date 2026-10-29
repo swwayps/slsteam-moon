@@ -389,11 +389,12 @@ bool publishPreparedBase(
 		std::unique_lock<std::mutex> passLock(
 			AppInfoProvision::provisioningPassMutex(), std::defer_lock);
 		if (!acquire(passLock)) return false;
-		const auto managed = g_config.managedAppIds.get();
-		if (managed != state.managedAppIds)
-			return reject("the managed set changed during preparation");
-		if (managed.count(baseAppId) == 0)
+		// A config reload may have published its set to g_config and not yet
+		// here; this snapshot keeps the published set, and that reload's own
+		// publication then carries the base as ready.
+		if (!g_config.managedAppIds.contains(baseAppId))
 			return reject("the app was removed during preparation");
+		const auto& managed = state.managedAppIds;
 		{
 			std::lock_guard<std::mutex> publicationLock(
 				AppInfoProvision::cachePublicationMutex());

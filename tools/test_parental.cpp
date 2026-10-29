@@ -1,5 +1,4 @@
-// Build:
-//   g++ -std=c++20 tools/test_parental.cpp -o /tmp/test_parental && /tmp/test_parental
+// Build: make test-parental
 
 #include "../src/feats/parental.hpp"
 

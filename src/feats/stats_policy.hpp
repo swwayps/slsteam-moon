@@ -126,5 +126,9 @@ uint64_t localEpoch(uint32_t app, uint32_t account, bool refresh = false);
 }
 
 // C-only ABI across the LD_AUDIT / LD_PRELOAD namespaces. 0 means passthrough.
+// The caller is cloudredirect-moon (stats_eligibility.cpp), whose weak
+// fallback returning 0 our la_symbind32 rebinds to this export. A signature
+// change takes a new _v2 name shipped in both; without this symbol
+// CloudRedirect stays on the official stats path.
 extern "C" uint64_t slsteam_local_stats_epoch_v1(uint32_t app, uint32_t account,
                                                 uint32_t refresh) noexcept;

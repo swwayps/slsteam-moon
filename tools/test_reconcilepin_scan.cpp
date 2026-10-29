@@ -1,12 +1,17 @@
-// Unit test for the drift-tolerant target-vector builder call locator
-// (ReconcilePin::detail::findBuilderCallRel32).
+// Unit test for the drift-tolerant ReconcilePin locators
+// (ReconcilePin::detail::findBuilderCallRel32 / findCtxDepotVectorOffset).
 //
 // The RE'd offset of the `call rel32` to the target-vector builder inside
 // EvaluateConfigChanges drifts when Steam recompiles the function (e.g. on the
 // beta client). The locator tolerates a small shift but must never hook a
-// guessed address: it uses the exact offset when it still holds, otherwise
-// accepts a nearby call ONLY when it is the unique executable-target call in
-// the window, and gives up (safe disable) on ambiguity or absence.
+// guessed address: a candidate must be a call whose caller then pops the
+// builder's eight stack arguments (`add esp,0x20`), the exact offset wins when
+// it still holds, otherwise a nearby candidate is accepted ONLY when it is the
+// unique one in the window, and ambiguity or absence gives up (safe disable).
+//
+// The content-update context's depot vector moves whenever Steam grows the
+// context struct, so its offset is decoded from EvaluateConfigChanges' own
+// per-entry loop instead of being pinned.
 //
 // Build: g++ -std=c++20 -I src tools/test_reconcilepin_scan.cpp -o /tmp/test_reconcilepin_scan && /tmp/test_reconcilepin_scan
 
@@ -27,17 +32,45 @@ static int g_failures = 0;
 
 using ReconcilePin::detail::findBuilderCall;
 using ReconcilePin::detail::findBuilderCallRel32;
+using ReconcilePin::detail::findCtxDepotVectorOffset;
 
 // Encode an `E8 rel32` at buf[off] whose near-call target is `targetAbs`,
-// given the buffer's runtime base address `base`.
+// given the buffer's runtime base address `base`.  `cleanup` appends the
+// caller's `add esp,0x20` that pops the builder's eight stack arguments.
 static void putCall(std::vector<uint8_t>& buf, std::size_t off,
-                    std::uintptr_t base, std::uintptr_t targetAbs)
+                    std::uintptr_t base, std::uintptr_t targetAbs,
+                    bool cleanup = true)
 {
 	buf[off] = 0xE8;
 	const int32_t rel = static_cast<int32_t>(
 	    static_cast<intptr_t>(targetAbs) -
 	    static_cast<intptr_t>(base + off + 5));
 	std::memcpy(buf.data() + off + 1, &rel, sizeof(rel));
+	if (cleanup)
+	{
+		buf[off + 5] = 0x83;
+		buf[off + 6] = 0xC4;
+		buf[off + 7] = 0x20;
+	}
+}
+
+// `mov edi,[ebp+8]; mov eax,esi; shl eax,5; add eax,[edi+disp]`: the
+// per-entry index into the context's DepotEntry vector.
+static void putDepotIndex(std::vector<uint8_t>& buf, std::size_t off,
+                          uint32_t disp, bool disp32)
+{
+	const uint8_t head[] = {0x8B, 0x7D, 0x08, 0x89, 0xF0, 0xC1, 0xE0, 0x05, 0x03};
+	std::memcpy(buf.data() + off, head, sizeof(head));
+	if (disp32)
+	{
+		buf[off + sizeof(head)] = 0x87;
+		std::memcpy(buf.data() + off + sizeof(head) + 1, &disp, sizeof(disp));
+	}
+	else
+	{
+		buf[off + sizeof(head)] = 0x47;
+		buf[off + sizeof(head) + 1] = static_cast<uint8_t>(disp);
+	}
 }
 
 int main()
@@ -72,7 +105,7 @@ int main()
 		putCall(b, EXP + 9, BASE, 0x18500);
 		putCall(b, EXP + 22, BASE, 0x18600);
 		const long r = findBuilderCallRel32(b.data(), b.size(), BASE, EXP, WIN, execOk);
-		CHECK(r == -1, "two candidate calls in the window are rejected as ambiguous");
+		CHECK(r == -2, "two candidate calls in the window are rejected as ambiguous");
 	}
 
 	// 4. A call whose target is not executable is not a candidate.
@@ -105,7 +138,7 @@ int main()
 		putCall(b, 0x1B6, BASE, 0x18600);
 		CHECK(findBuilderCall(b.data(), b.size(), BASE, 0x18500, execOk) == 0x186,
 		      "the resolved builder disambiguates two calls in the window");
-		CHECK(findBuilderCall(b.data(), b.size(), BASE, 0, execOk) == -1,
+		CHECK(findBuilderCall(b.data(), b.size(), BASE, 0, execOk) == -2,
 		      "without a resolved builder two calls stay ambiguous");
 	}
 
@@ -117,6 +150,67 @@ int main()
 		      "the RE'd offset is accepted only when it calls the builder");
 		CHECK(findBuilderCall(b.data(), b.size(), BASE, 0x18900, execOk) == -1,
 		      "no call to the resolved builder leaves the fix disabled");
+	}
+	// 9. The 2026-10 client: the builder call moved by three bytes and the
+	//    next call (two stack arguments, no 8-dword cleanup) now sits inside
+	//    the window too.  Only the eight-argument call is the builder.
+	{
+		auto b = nop; b[EXP] = 0xFF;
+		putCall(b, EXP + 3, BASE, 0x18500);
+		putCall(b, EXP + 0x33, BASE, 0x18600, /*cleanup=*/false);
+		const long r = findBuilderCallRel32(b.data(), b.size(), BASE, EXP, WIN, execOk);
+		CHECK(r == static_cast<long>(EXP + 3),
+		      "a call without the builder's 8-argument cleanup is not a candidate");
+	}
+
+	// 10. A call at the exact offset that does not pop eight arguments is a
+	//    different callee and must not be redirected.
+	{
+		auto b = nop; putCall(b, EXP, BASE, 0x18000, /*cleanup=*/false);
+		const long r = findBuilderCallRel32(b.data(), b.size(), BASE, EXP, WIN, execOk);
+		CHECK(r == -1, "the exact offset without the 8-argument cleanup is rejected");
+	}
+
+	// 11. Context depot vector: disp8 form (client before 2026-10, ctx+0x78).
+	{
+		auto b = nop; putDepotIndex(b, 0x25b - 5, 0x78, false);
+		CHECK(findCtxDepotVectorOffset(b.data(), b.size()) == 0x78,
+		      "the disp8 depot-vector index decodes the context offset");
+	}
+
+	// 12. Context depot vector: disp32 form (2026-10 client, ctx+0x90).
+	{
+		auto b = nop; putDepotIndex(b, 0x263 - 5, 0x90, true);
+		CHECK(findCtxDepotVectorOffset(b.data(), b.size()) == 0x90,
+		      "the disp32 depot-vector index decodes the context offset");
+	}
+
+	// 13. Absent or ambiguous index loads keep the context patch disabled.
+	{
+		CHECK(findCtxDepotVectorOffset(nop.data(), nop.size()) == -1,
+		      "no depot-vector index leaves the context patch disabled");
+		auto b = nop;
+		putDepotIndex(b, 0x40, 0x78, false);
+		putDepotIndex(b, 0x80, 0x90, true);
+		CHECK(findCtxDepotVectorOffset(b.data(), b.size()) == -1,
+		      "two depot-vector index loads are rejected as ambiguous");
+	}
+
+	// 14. A sequence cut off by the readable range is not decoded.
+	{
+		auto b = nop; putDepotIndex(b, 0x10, 0x90, true);
+		CHECK(findCtxDepotVectorOffset(b.data(), 0x10 + 11) == -1,
+		      "a truncated disp32 index is not decoded");
+	}
+
+	// 15. Implausible displacements are rejected.
+	{
+		auto b = nop; putDepotIndex(b, 0x10, 0x7A, false);
+		CHECK(findCtxDepotVectorOffset(b.data(), b.size()) == -1,
+		      "a misaligned context offset is rejected");
+		auto c = nop; putDepotIndex(c, 0x10, 0x20000, true);
+		CHECK(findCtxDepotVectorOffset(c.data(), c.size()) == -1,
+		      "an out-of-range context offset is rejected");
 	}
 
 	if (g_failures == 0) std::printf("\nall reconcilepin-scan checks passed\n");

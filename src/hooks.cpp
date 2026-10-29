@@ -591,13 +591,8 @@ static bool hkUser_CheckAppOwnership(void* pClientUser, uint32_t appId, AppOwner
 		ret
 	);
 
-	// Drive the one-shot package-0 license reconcile from here: this
-	// hook fires early and repeatedly with a valid pipe-0 CUser, so it
-	// is the reliable place to broadcast LicensesUpdated_t once the
-	// AdditionalApps have been injected into package 0 — even on a cold
-	// cache where the engine user map isn't populated when LoadPackage
-	// runs.  No-op until injection has happened and after the single
-	// broadcast.
+	// Fires early and often with a valid pipe-0 CUser: retries the pending license
+	// reconcile (pre-snapshot boot path, then once per unprocessed boot generation).
 	PackagePatch::tryReconcileLicenses();
 
 	if (Apps::checkAppOwnership(appId, pOwnershipInfo) || DLC::checkAppOwnership(appId, pOwnershipInfo))
@@ -838,7 +833,7 @@ static bool hkClientAppManager_GetUpdateInfo(void* pClientAppManager, uint32_t a
 
 	if (Apps::shouldDisableUpdates(appId))
 	{
-		g_pLog->infoOnce("Disabled updates for %u\n", appId);
+		g_pLog->debugOnce("Disabled updates for %u\n", appId);
 		return false;
 	}
 
@@ -952,7 +947,7 @@ static bool hkClientRemoteStorage_IsCloudEnabledForApp(void* pClientRemoteStorag
 
 	if (Apps::shouldDisableCloud(appId))
 	{
-		g_pLog->infoOnce("Disabled cloud for %u\n", appId);
+		g_pLog->debugOnce("Disabled cloud for %u\n", appId);
 		return false;
 	}
 
@@ -1618,10 +1613,8 @@ bool Hooks::setup()
 	if (!succeeded || !Hooks::place())
 		return false;
 
-	// AppInfoState keeps this non-owning Store* in its hot path.  The static
-	// lifetime is part of the manual-detour contract: it must outlive every
-	// installed or disabled-hooked detour and every in-flight reader.  Task 7's
-	// coordinator Store must provide the same lifetime before rebinding here.
+	// AppInfoState keeps a non-owning Store* on its hot path: this Store, and the
+	// one HotReload rebinds to, must outlive every detour and in-flight reader.
 	static HotReloadState::Store bootstrapStore;
 	(void)AppInfoState::setup(bootstrapStore);
 

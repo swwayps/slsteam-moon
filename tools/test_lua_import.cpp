@@ -62,6 +62,17 @@ int main()
 	check(DepotKey::getCachedKey(124).key.size() == 32,
 	      "the key line after the oversized one still imports");
 
+	// A script's stem is its main app id, even when that id is also one of
+	// its keyed depots (single-depot titles such as 275850).
+	std::ofstream(configHome + "/SLSsteam/config.yaml") << "Notifications: no\n";
+	std::ofstream(steam + "/config/stplug-in/275850.lua")
+		<< "addappid(275850, 1, \"" << key << "\")\n";
+	check(DepotKey::saveKeyToCache(275850, 275850, std::string(32, 'C'), true),
+	      "the main app's own depot key is saved");
+	check(g_config.loadSettings(), "settings load");
+	check(g_config.managedAppIds.get().count(275850) == 1,
+	      "a main app that is also its own keyed depot stays managed");
+
 	// A script folder that cannot be iterated (here: a file in its place, which
 	// fails like an unreadable folder) is skipped, not thrown into setup().
 	std::filesystem::remove_all(steam + "/config/stplug-in");

@@ -21,6 +21,9 @@ if [ ${#missing[@]} -gt 0 ]; then
 	for d in "${missing[@]}"; do echo "  - $d" >&2; done
 	cat >&2 <<-EOF
 
+	SLSsteam.so (64-bit, for the steamrt64 client) and bin/pattern-refresh
+	need the native toolchain and the curl and OpenSSL headers.
+
 	Install on Ubuntu/Debian:
 	  sudo apt install g++ make pkg-config libssl-dev libcurl4-openssl-dev
 

@@ -1,19 +1,23 @@
 // The config watcher reloads for config.yaml and luaappids.yaml, including a
 // luaappids.yaml first created after boot, and ignores every other file in the
-// config folder (make test-config-watch).
+// config folder (make test-config-watch). A config that does not parse and a
+// callback that throws do not end the watcher thread.
 #include "../src/config.hpp"
 #include "../src/config_default.hpp"
 #include "../src/feats/hotreload.hpp"
+#include "../src/filewatcher.hpp"
 #include "../src/feats/packagepatch.hpp"
 #include "../src/feats/ticket.hpp"
 #include "../src/log.hpp"
 #include "../src/sdk/IClientCompat.hpp"
+#include <atomic>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <mutex>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <unistd.h>
@@ -39,6 +43,12 @@ namespace
 {
 	std::mutex g_mutex;
 	std::vector<std::unordered_set<uint32_t>> g_published;
+	std::atomic<int> g_throwingCalls{0};
+	void throwingCallback()
+	{
+		++g_throwingCalls;
+		throw std::runtime_error("callback failed");
+	}
 }
 namespace HotReload
 {
@@ -130,6 +140,27 @@ int main()
 		check(reloadedAfter(seen, std::chrono::seconds(3)),
 		      "config.yaml replaced by rename reloads (round " + std::to_string(round) + ")");
 	}
+
+	seen = publishCount();
+	replaceFile(dir + "/config.yaml", "just text\n");
+	check(reloadedAfter(seen, std::chrono::seconds(3)), "a config.yaml that is not a map reloads");
+	seen = publishCount();
+	replaceFile(dir + "/config.yaml", text);
+	check(reloadedAfter(seen, std::chrono::seconds(3)), "the watcher still reloads after it");
+
+	const std::string watched = root + "/watched.txt";
+	std::ofstream(watched) << "0\n";
+	CFileWatcher watcher(&throwingCallback);
+	check(watcher.addFile(watched.c_str()) && watcher.start(), "a second watcher starts");
+	for (int round = 1; round <= 2; ++round)
+	{
+		std::ofstream(watched, std::ios::app) << round << "\n";
+		const auto end = std::chrono::steady_clock::now() + std::chrono::seconds(3);
+		while (g_throwingCalls < round && std::chrono::steady_clock::now() < end)
+			std::this_thread::sleep_for(std::chrono::milliseconds(20));
+	}
+	check(g_throwingCalls >= 2, "a callback that throws does not stop the watcher");
+	watcher.stop();
 
 	std::filesystem::remove_all(root);
 	std::printf("%s\n", failures == 0 ? "config watch: all passed" : "config watch: FAILED");

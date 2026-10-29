@@ -1,36 +1,9 @@
 #pragma once
 
-#include <memory>
 #include <thread>
 #include <utility>
 namespace ThreadStart
 {
-	struct NoopDetachFailure
-	{
-		void operator()() const noexcept {}
-	};
-
-	struct NoopRecoveryFailure
-	{
-		void operator()() const noexcept {}
-	};
-
-	struct StdThreadDetacher
-	{
-		void operator()(std::thread& worker) const
-		{
-			worker.detach();
-		}
-	};
-
-	struct StdThreadJoiner
-	{
-		void operator()(std::thread& worker) const
-		{
-			worker.join();
-		}
-	};
-
 	template <typename Callback>
 	void invokeNoThrow(Callback&& callback) noexcept
 	{
@@ -44,105 +17,21 @@ namespace ThreadStart
 		}
 	}
 
-	// Start a worker while retaining ownership of its std::thread object until
-	// detach succeeds.  If detach fails, signal the worker to stop, join it
-	// while the object is still alive, and then restore the caller's state.
-	template <typename Worker, typename OnFailure,
-	          typename OnDetachFailure = NoopDetachFailure,
-	          typename Detacher = StdThreadDetacher,
-	          typename Joiner = StdThreadJoiner,
-	          typename OnRecoveryFailure = NoopRecoveryFailure>
-	bool startDetached(Worker&& worker, OnFailure&& onFailure,
-	                   OnDetachFailure&& onDetachFailure = OnDetachFailure{},
-	                   Detacher&& detacher = Detacher{},
-	                   Joiner&& joiner = Joiner{},
-	                   OnRecoveryFailure&& onRecoveryFailure = OnRecoveryFailure{}) noexcept
+	// Start a detached worker without letting a failed start escape into
+	// Steam. onFailure restores the caller's state so a later attempt can
+	// retry and waiters cannot block forever. detach() cannot fail on a
+	// thread that was just created.
+	template <typename Worker, typename OnFailure>
+	bool startDetached(Worker&& worker, OnFailure&& onFailure) noexcept
 	{
-		std::unique_ptr<std::thread> workerThread;
 		try
 		{
-			workerThread = std::make_unique<std::thread>(std::forward<Worker>(worker));
+			std::thread(std::forward<Worker>(worker)).detach();
+			return true;
 		}
 		catch (...)
 		{
 			invokeNoThrow(std::forward<OnFailure>(onFailure));
-			return false;
-		}
-
-		try
-		{
-			detacher(*workerThread);
-			workerThread.release();
-			return true;
-		}
-		catch (...)
-		{
-			invokeNoThrow(std::forward<OnDetachFailure>(onDetachFailure));
-
-			bool joined = false;
-			try
-			{
-				if (workerThread && workerThread->joinable())
-				{
-					std::forward<Joiner>(joiner)(*workerThread);
-					joined = !workerThread->joinable();
-				}
-			}
-			catch (...)
-			{
-				// A failed join is recovered below with the same detacher
-				// seam.  It is not safe to reset caller state yet.
-			}
-
-			if (joined)
-			{
-				invokeNoThrow(std::forward<OnFailure>(onFailure));
-				return false;
-			}
-
-			bool detached = false;
-			try
-			{
-				if (workerThread && workerThread->joinable())
-				{
-					detacher(*workerThread);
-					detached = !workerThread->joinable();
-				}
-			}
-			catch (...)
-			{
-				// The wrapper is released below if it is still joinable so its
-				// destructor cannot call std::terminate.
-			}
-
-			if (!detached && workerThread && workerThread->joinable())
-				workerThread.release();
-			invokeNoThrow(std::forward<OnRecoveryFailure>(onRecoveryFailure));
-			return false;
-		}
-	}
-
-	// Run a detached-worker starter without allowing a construction failure to
-	// escape into Steam.  The failure callback restores the caller's state so
-	// a later attempt can retry and waiters cannot block forever.
-	template <typename Starter, typename OnFailure>
-	bool tryStart(Starter&& starter, OnFailure&& onFailure) noexcept
-	{
-		try
-		{
-			starter();
-			return true;
-		}
-		catch (...)
-		{
-			try
-			{
-				onFailure();
-			}
-			catch (...)
-			{
-				// State recovery must not rethrow from the worker-start boundary.
-			}
 			return false;
 		}
 	}

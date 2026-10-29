@@ -144,14 +144,11 @@ std::unordered_set<uint32_t> CConfig::discoverStPluginAppIds()
 		const auto& path = entry.path();
 		if (path.extension() != ".lua") continue;
 
-		// The filename stem is the authoritative main-app id and MUST be
-		// kept even when that same id is also one of the app's own keyed
-		// depots (single-depot layout, e.g. No Man's Sky 275850); filtering
-		// on managed-depot status here hides the game from the library.
+		// A script's stem is its main app id, even when that id is also one
+		// of its depots.
 		const uint32_t appIdStem =
 		    ConfigDiscovery::appIdFromScriptName(path.filename().string());
-		if (ConfigDiscovery::keepDiscoveredMainApp(
-		        appIdStem, /*idIsAlsoManagedDepot=*/false))
+		if (appIdStem != 0)
 		{
 			result.insert(appIdStem);
 		}
@@ -182,8 +179,7 @@ std::unordered_set<uint32_t> CConfig::discoverStPluginAppIds()
 // file is authored by the user or the LuaTools plugin; we only READ it (we
 // never mirror the discovered set back into it, which is what previously
 // let a bad pass persist as permanent pollution).  Entries are main-app
-// ids and are kept even when the id is also a managed depot (see
-// ConfigDiscovery::keepDiscoveredMainApp).
+// ids, even when an id is also a depot.
 std::unordered_set<uint32_t> CConfig::loadLuaAppIdsYaml()
 {
 	std::unordered_set<uint32_t> result;
@@ -201,8 +197,7 @@ std::unordered_set<uint32_t> CConfig::loadLuaAppIdsYaml()
 				try
 				{
 					const uint32_t val = subNode.as<uint32_t>();
-					if (ConfigDiscovery::keepDiscoveredMainApp(
-					        val, /*idIsAlsoManagedDepot=*/false))
+					if (val != 0)
 					{
 						result.insert(val);
 					}
@@ -348,13 +343,13 @@ YAML::Node CConfig::readTree()
 
 bool CConfig::init()
 {
-	const bool created = createFile();
+	const bool ok = createFile();
 	// Establish the first complete source union before the watcher can observe
 	// an event.  HotReload binds later, after hooks are placed, and reads this
 	// already-initialized value.
 	loadSettings();
 
-	if(created)
+	if (ok)
 	{
 		watcher = new CFileWatcher(onFileChange);
 		// The folder, not the files: a luaappids.yaml created after boot is
@@ -739,7 +734,7 @@ bool CConfig::loadSettings()
 					const std::string dlcName = dlc.second.as<std::string>();
 
 					data.dlcIds[dlcId] = dlcName;
-					g_pLog->info("DlcId %u -> %s\n", dlcId, dlcName.c_str());
+					g_pLog->debug("DlcId %u -> %s\n", dlcId, dlcName.c_str());
 				}
 
 				_dlcData[parentId] = data;
@@ -790,7 +785,7 @@ bool CConfig::loadSettings()
 					_denuvoGames[steamId].emplace(appId);
 
 					//Again, not loggin SteamId because of privacy
-					g_pLog->info("Added DenuvoGame %u\n", appId);
+					g_pLog->debug("Added DenuvoGame %u\n", appId);
 				}
 			}
 			catch (...)
@@ -841,7 +836,6 @@ bool CConfig::loadSettings()
 
 					ManifestPins::AppPins app;
 					app.locked = body["locked"].as<bool>(false);
-					app.buildId = body["build_id"].as<uint32_t>(0);
 
 					const auto depotsNode = body["depots"];
 					if (depotsNode.IsMap())
@@ -877,10 +871,15 @@ bool CConfig::loadSettings()
 		lockedApps.set(ManifestPins::lockedAppSet(pinMap));
 	}
 
+	// The watcher reloads on every game add: write the block again only when
+	// it changed. Loads are serialized, so the static needs no lock.
+	static std::string reportedErrors;
 	const auto errors = __loadErrors.get();
-	if (errors.size())
+	if (errors != reportedErrors)
 	{
-		g_pLog->notify("%s\n", errors.c_str());
+		reportedErrors = errors;
+		if (!errors.empty())
+			g_pLog->notify("%s\n", errors.c_str());
 	}
 
 	if (const auto loaded = pluginConfigLoaded.load())

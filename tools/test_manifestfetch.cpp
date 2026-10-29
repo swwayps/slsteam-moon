@@ -120,6 +120,20 @@ int main()
 		circuit.finishAttempt(second, 1, false, false, true);
 		CHECK(circuit.open(), "two consecutive transport failures open the circuit");
 	}
+	// Updates are held back only while the circuit cools down: the next update
+	// plan is the probe, and a new session starts closed.
+	{
+		ProviderCircuit circuit(2, 30000);
+		circuit.finishAttempt(circuit.beginAttempt(0), 0, false, true, false);
+		CHECK(circuit.coolingDown(29999), "an open circuit cools down");
+		CHECK(!circuit.coolingDown(30000), "the cooldown ends without another fetch");
+		const auto probe = circuit.beginAttempt(30000);
+		circuit.finishAttempt(probe, 30000, false, true, false);
+		CHECK(circuit.coolingDown(30001), "a failed probe starts a new cooldown");
+		circuit.reset();
+		CHECK(!circuit.open() && !circuit.coolingDown(30001) && circuit.beginAttempt(30001),
+		      "a reset circuit is closed");
+	}
 
 	{
 		ProviderCircuit circuit(2, 30000);

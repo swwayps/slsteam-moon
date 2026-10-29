@@ -59,5 +59,12 @@ int main()
 	      "each entry is registered once");
 	check(!VFTIndexes::init(),
 	      "init fails closed when no client vtable was parsed");
+	check(VFTIndexes::IClientUser::GetSteamID.typeName == "14IClientUserMap"
+	      && VFTIndexes::IClientUser::GetSteamID.functionName == "GetSteamID",
+	      "the SteamID slot is resolved by name from IClientUserMap");
+	check(VFTIndexes::IClientUser::GetEncryptedAppTicket.typeName == "14IClientUserMap"
+	      && VFTIndexes::IClientUser::GetEncryptedAppTicket.functionName
+	         == "GetEncryptedAppTicket",
+	      "the encrypted ticket slot is resolved by name from IClientUserMap");
 	return failures == 0 ? 0 : 1;
 }

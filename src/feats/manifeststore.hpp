@@ -7,15 +7,8 @@
 // published here before depotcache, and the download hooks restore the exact
 // planned gid on demand.
 //
-// The LuaTools per-game zip ships a manifest for every depot (linux + windows
-// + macos).  The plugin extracts them into depotcache, but Steam can purge
-// them at any time.  ManifestStore keeps a copy under
-// ~/.config/SLSsteam/manifests/<depot>_<gid>.manifest that Steam never
-// touches, and restores them into depotcache on demand — no network needed.
-//
-// ALL versions are kept (the archive is also the foundation for a future
-// manifest-pinning feature: the user picks any archived gid and the
-// CDepotDownloadMgr hooks redirect the planned gid to it).
+// Copies live in ~/.config/SLSsteam/manifests/<depot>_<gid>.manifest, which
+// Steam never touches. Every gid is kept, so a ManifestPins entry can name any.
 //
 // All functions resolve the Steam root internally and degrade to no-ops when
 // $HOME / the Steam root / the store dir can't be resolved.

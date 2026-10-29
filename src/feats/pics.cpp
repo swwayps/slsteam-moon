@@ -78,11 +78,8 @@ bool hasNormalizedCache(uint32_t appId)
 {
 	try
 	{
-		// This runs on the detached raw-cache worker. Do not invoke yaml-cpp
-		// here: its LoadFile error path cannot reliably unwind through the
-		// optimized portable build and a concurrently replaced metadata file
-		// can therefore abort Steam. The emitted cache format is deliberately
-		// small and already has a bounded, no-throw parser.
+		// Runs on the detached raw-cache worker: read the small metadata file
+		// with a size bound and the allocation-light parser, not yaml-cpp.
 		std::ifstream metadataInput(getMetaPath(appId),
 		                           std::ios::binary | std::ios::ate);
 		if (!metadataInput.is_open()) return false;
@@ -398,12 +395,16 @@ bool enqueueRawCacheItems(std::vector<RawCacheItem> items)
 			ThreadStart::runGuarded(
 				runRawCacheWorker,
 				[] {
+					// The batch is dropped; later product-info answers queue it again.
+					g_pLog->warn("PICS: raw cache worker failed; its batch waits "
+					             "for the next product-info answer\n");
 					std::lock_guard<std::mutex> lock(g_rawCacheQueueMu);
 					g_rawCacheWorkerActive = false;
 				},
 				[] {});
 		},
 		[] {
+			g_pLog->warn("PICS: raw cache worker did not start\n");
 			std::lock_guard<std::mutex> lock(g_rawCacheQueueMu);
 			g_rawCacheWorkerActive = false;
 		});
