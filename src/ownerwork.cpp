@@ -347,18 +347,44 @@ namespace OwnerWork
 		                            depthHint != 0 || resolvedHint || refreshPending || busyDue))
 			return;
 
+		// This runs inside Steam's IPC dispatch: nothing may unwind into Steam,
+		// and a failed frame must not leave later drains refused.
 		t_draining = true;
-		if (busyDue)
-			releaseBusy();
-		const std::size_t taken = queue().depthHint() == 0
-			? 0 : queue().drain(runCommand);
-		if (AppInfoState::takeResolvedDirty() ||
-			PackagePatch::runtimeRefreshPending())
-			PackagePatch::reprocessCurrentState();
-		t_draining = false;
+		try
+		{
+			if (busyDue)
+				releaseBusy();
+			const std::size_t taken = queue().depthHint() == 0
+				? 0 : queue().drain(runCommand);
+			if (AppInfoState::takeResolvedDirty() ||
+				PackagePatch::runtimeRefreshPending())
+				PackagePatch::reprocessCurrentState();
+			t_draining = false;
 
-		if (taken != 0)
-			g_pLog->info("OwnerWork: drained %zu command(s) on the owner IPC thread\n", taken);
+			if (taken != 0)
+				g_pLog->info("OwnerWork: drained %zu command(s) on the owner IPC thread\n", taken);
+		}
+		catch (...)
+		{
+			t_draining = false;
+			noteFrameFailure("owner work");
+		}
+	}
+
+	void noteFrameFailure(const char* stage) noexcept
+	{
+		static std::atomic<bool> logged{ false };
+		if (logged.exchange(true, std::memory_order_relaxed))
+			return;
+		try
+		{
+			if (g_pLog)
+				g_pLog->warn("OwnerWork: %s failed inside an IPC frame; Steam keeps "
+				             "dispatching\n", stage);
+		}
+		catch (...)
+		{
+		}
 	}
 
 	void idleTick()

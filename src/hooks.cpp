@@ -439,47 +439,66 @@ static uint32_t hkSteamEngine_ProcessIPCFrame(
 	const bool log = g_config.extendedLogging.get();
 	if (log)
 	{
-		g_pLog->debug(
-			"ProcessIPCFrame pipe %u command %s\n",
-			hPipe,
-			EIPCCmd_ToString(cmd).c_str());
+		try
+		{
+			g_pLog->debug(
+				"ProcessIPCFrame pipe %u command %s\n",
+				hPipe,
+				EIPCCmd_ToString(cmd).c_str());
+		}
+		catch (...)
+		{
+		}
 	}
 
 	uint32_t ret;
 	if (cmd == EIPCCmd::RunInterface && pBufIn->hasBytes(10))
 	{
-		Hooks::placeVFTHooks();
-
 		EIPCInterface interface{};
 		uint32_t function = 0;
 		std::memcpy(&interface, pBufIn->mem.base + 1, sizeof(interface));
 		std::memcpy(&function, pBufIn->mem.base + 6, sizeof(function));
-		// IClientUtils calls define the owner IPC thread: owner work queued
-		// by watcher threads only runs inside a frame on that thread, so it
-		// is serialised with Steam's dispatcher.
-		if (interface == EIPCInterface::Utils)
+		// Our work around Steam's dispatch must not unwind into Steam.
+		try
 		{
-			OwnerWork::latchOwnerThread();
+			Hooks::placeVFTHooks();
+			// IClientUtils calls define the owner IPC thread: owner work queued
+			// by watcher threads only runs inside a frame on that thread, so it
+			// is serialised with Steam's dispatcher.
+			if (interface == EIPCInterface::Utils)
+			{
+				OwnerWork::latchOwnerThread();
+			}
+			if (log)
+			{
+				const auto utils = g_pSteamEngine->getUtils();
+				g_pLog->debug(
+					"RunInterface %s %u for %u (%u)\n",
+					EIPCInterface_ToString(interface).c_str(),
+					function,
+					FakeAppIds::getRealAppIdForCurrentPipe(),
+					utils ? utils->getAppId() : 0);
+			}
+			FakeAppIds::runIPCFrame(false, interface);
 		}
-		if (log)
+		catch (...)
 		{
-			const auto utils = g_pSteamEngine->getUtils();
-			g_pLog->debug(
-				"RunInterface %s %u for %u (%u)\n",
-				EIPCInterface_ToString(interface).c_str(),
-				function,
-				FakeAppIds::getRealAppIdForCurrentPipe(),
-				utils ? utils->getAppId() : 0);
+			OwnerWork::noteFrameFailure("frame preparation");
 		}
-		FakeAppIds::runIPCFrame(false, interface);
 		OwnerWork::drainOnOwnerFrame();
 		ret = Hooks::CSteamEngine_ProcessIPCFrame.tramp.fn(
 			pSteamEngine, hPipe, pBufIn, pBufOut);
-		FakeAppIds::runIPCFrame(true, interface);
-
-		if (interface == EIPCInterface::Utils)
+		try
 		{
-			SLSAPI::runIPCFrame();
+			FakeAppIds::runIPCFrame(true, interface);
+			if (interface == EIPCInterface::Utils)
+			{
+				SLSAPI::runIPCFrame();
+			}
+		}
+		catch (...)
+		{
+			OwnerWork::noteFrameFailure("frame completion");
 		}
 	}
 	else
@@ -488,36 +507,43 @@ static uint32_t hkSteamEngine_ProcessIPCFrame(
 			pSteamEngine, hPipe, pBufIn, pBufOut);
 	}
 
-	if (cmd == EIPCCmd::ConnectPipe)
+	try
 	{
-		const auto serverPipe = g_pSteamEngine->getServerPipe(hPipe);
-		if (serverPipe)
+		if (cmd == EIPCCmd::ConnectPipe)
 		{
-			Process_t process{};
-			if (process.init(serverPipe->pid, serverPipe->pipeHandle))
+			const auto serverPipe = g_pSteamEngine->getServerPipe(hPipe);
+			if (serverPipe)
 			{
-				g_processMap.insert_or_assign(
-					serverPipe->pipeHandle, std::move(process));
-				Ticket::connectPipe(hPipe);
+				Process_t process{};
+				if (process.init(serverPipe->pid, serverPipe->pipeHandle))
+				{
+					g_processMap.insert_or_assign(
+						serverPipe->pipeHandle, std::move(process));
+					Ticket::connectPipe(hPipe);
+				}
+				else
+				{
+					g_processMap.erase(serverPipe->pipeHandle);
+				}
 			}
 			else
 			{
-				g_processMap.erase(serverPipe->pipeHandle);
+				g_processMap.erase(hPipe);
 			}
 		}
-		else
+
+		if (cmd == EIPCCmd::ClosePipe)
 		{
-			g_processMap.erase(hPipe);
+			if (g_processMap.contains(hPipe))
+			{
+				g_pLog->debug("Deleting g_processMap mapping %u for %u\n", g_processMap.at(hPipe).appId, hPipe);
+				g_processMap.erase(hPipe);
+			}
 		}
 	}
-
-	if (cmd == EIPCCmd::ClosePipe)
+	catch (...)
 	{
-		if (g_processMap.contains(hPipe))
-		{
-			g_pLog->debug("Deleting g_processMap mapping %u for %u\n", g_processMap.at(hPipe).appId, hPipe);
-			g_processMap.erase(hPipe);
-		}
+		OwnerWork::noteFrameFailure("pipe bookkeeping");
 	}
 	return ret;
 }
