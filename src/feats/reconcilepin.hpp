@@ -91,18 +91,19 @@ namespace ReconcilePin
 		inline long findBuilderCallRel32(
 			const std::uint8_t* code, std::size_t len, std::uintptr_t codeAddr,
 			std::size_t expectedOff, std::size_t window,
-			TargetExecutable targetExecutable)
+			TargetExecutable targetExecutable, bool requirePop = true)
 		{
 			// The builder takes eight stack dwords (hkBuildTarget's arity), so
-			// its caller pops them with `add esp,0x20` straight after the call.
-			// That rejects neighbouring calls with other arities, which the
-			// 2026-10 client moved into the window.
+			// without a resolved builder its caller is recognised by the
+			// `add esp,0x20` straight after the call. That rejects neighbouring
+			// calls with other arities, which the 2026-10 client moved into the
+			// window.
 			const auto callTargetOk = [&](std::size_t off) -> bool
 			{
 				if (off + 8 > len) return false;
 				if (code[off] != 0xE8) return false;
-				if (code[off + 5] != 0x83 || code[off + 6] != 0xC4
-				    || code[off + 7] != 0x20)
+				if (requirePop && (code[off + 5] != 0x83 || code[off + 6] != 0xC4
+				    || code[off + 7] != 0x20))
 					return false;
 				std::int32_t rel = 0;
 				std::memcpy(&rel, code + off + 1, sizeof(rel));
@@ -132,7 +133,9 @@ namespace ReconcilePin
 
 		// The builder is CUserAppManager::BuildDepotDependency. When that
 		// locator resolved (`builder` != 0) only a call to it qualifies,
-		// because some builds have a second executable call in the same window.
+		// because some builds have a second executable call in the same window;
+		// the call's target then decides alone, whatever the caller does with
+		// the result before popping the arguments.
 		template <typename TargetExecutable>
 		inline long findBuilderCall(
 			const std::uint8_t* code, std::size_t len, std::uintptr_t codeAddr,
@@ -143,7 +146,8 @@ namespace ReconcilePin
 				[&](std::uintptr_t target) {
 					return builder != 0 ? target == builder
 					                    : targetExecutable(target);
-				});
+				},
+				/*requirePop=*/builder == 0);
 		}
 
 		// Largest context offset accepted for the depot vector; the struct is
@@ -176,6 +180,8 @@ namespace ReconcilePin
 				std::uint32_t disp = 0;
 				if (code[modrm] == 0x47)
 				{
+					// disp8 is signed: 0x80 and up address below the context.
+					if (code[modrm + 1] >= 0x80) return -1;
 					disp = code[modrm + 1];
 				}
 				else if (code[modrm] == 0x87 && modrm + 5 <= len)

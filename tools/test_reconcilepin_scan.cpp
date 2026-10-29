@@ -213,6 +213,23 @@ int main()
 		      "an out-of-range context offset is rejected");
 	}
 
+	// 16. disp8 0x90 is [edi-0x70], not a field of the context.
+	{
+		auto b = nop; putDepotIndex(b, 0x10, 0x90, false);
+		CHECK(findCtxDepotVectorOffset(b.data(), b.size()) == -1,
+		      "a negative disp8 is not read as a context offset");
+	}
+	// 17. With the builder resolved its call is found even when the caller
+	//     stores the result before popping the arguments.
+	{
+		auto b = nop;
+		putCall(b, EXP + 3, BASE, 0x18500, /*cleanup=*/false);
+		const uint8_t storeThenPop[] = {0x88, 0x45, 0xA3, 0x83, 0xC4, 0x20};
+		std::memcpy(b.data() + EXP + 3 + 5, storeThenPop, sizeof(storeThenPop));
+		CHECK(findBuilderCall(b.data(), b.size(), BASE, 0x18500, execOk) ==
+		          static_cast<long>(EXP + 3),
+		      "a call to the resolved builder needs no adjacent argument pop");
+	}
 	if (g_failures == 0) std::printf("\nall reconcilepin-scan checks passed\n");
 	else                 std::printf("\n%d reconcilepin-scan check(s) FAILED\n", g_failures);
 	return g_failures == 0 ? 0 : 1;
