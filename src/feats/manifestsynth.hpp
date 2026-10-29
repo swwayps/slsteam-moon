@@ -32,6 +32,7 @@
 #pragma once
 
 #include "../ascii.hpp"
+#include "protowire.hpp"
 #include "yaml-cpp/yaml.h"
 
 #include <cstdint>
@@ -136,6 +137,29 @@ namespace ManifestSynth
 		return "";
 	}
 
+	// Find the section with `magic` in a depot manifest, a sequence of
+	// <uint32 magic LE><uint32 len LE><payload> sections. False when it is
+	// absent or a section runs past the end.
+	inline bool findManifestSection(const std::string& m, uint32_t magic,
+	                                size_t& offset, size_t& length)
+	{
+		auto u32le = [&](size_t off)
+		{
+			return static_cast<uint32_t>(static_cast<uint8_t>(m[off])) |
+			       (static_cast<uint32_t>(static_cast<uint8_t>(m[off + 1])) << 8) |
+			       (static_cast<uint32_t>(static_cast<uint8_t>(m[off + 2])) << 16) |
+			       (static_cast<uint32_t>(static_cast<uint8_t>(m[off + 3])) << 24);
+		};
+		for (size_t i = 0; i + 8 <= m.size();)
+		{
+			const uint32_t found = u32le(i), len = u32le(i + 4);
+			if (static_cast<uint64_t>(i) + 8 + len > m.size()) return false;
+			if (found == magic) { offset = i + 8; length = len; return true; }
+			i += 8 + len;
+		}
+		return false;
+	}
+
 	// Extract a depot's total sizes from its on-disk manifest so they can be
 	// emitted into the synthesized appinfo (without them Steam's install
 	// dialog shows "0 B").  A Steam depot manifest is a sequence of
@@ -151,69 +175,19 @@ namespace ManifestSynth
 	inline bool parseManifestSizes(const std::string& m,
 	                               uint64_t& sizeOut, uint64_t& downloadOut)
 	{
-		constexpr uint32_t kMetadataMagic = 0x1F4812BEu;
-
-		auto readU32le = [&](size_t off, uint32_t& out) -> bool
-		{
-			if (off + 4 > m.size()) return false;
-			out = static_cast<uint8_t>(m[off]) |
-			      (static_cast<uint32_t>(static_cast<uint8_t>(m[off + 1])) << 8) |
-			      (static_cast<uint32_t>(static_cast<uint8_t>(m[off + 2])) << 16) |
-			      (static_cast<uint32_t>(static_cast<uint8_t>(m[off + 3])) << 24);
-			return true;
-		};
-
-		// Locate the metadata section by walking the section framing.
-		size_t meta = std::string::npos, metaLen = 0;
-		for (size_t i = 0; i + 8 <= m.size();)
-		{
-			uint32_t magic = 0, len = 0;
-			if (!readU32le(i, magic) || !readU32le(i + 4, len)) break;
-			if (static_cast<uint64_t>(i) + 8 + len > m.size()) break; // truncated
-			if (magic == kMetadataMagic) { meta = i + 8; metaLen = len; break; }
-			i += 8 + len;
-		}
-		if (meta == std::string::npos) return false;
-
-		auto readVarint = [&](size_t& p, size_t end, uint64_t& out) -> bool
-		{
-			uint64_t r = 0; int shift = 0;
-			while (p < end)
-			{
-				const uint8_t b = static_cast<uint8_t>(m[p++]);
-				if (shift <= 63) r |= static_cast<uint64_t>(b & 0x7F) << shift;
-				shift += 7;
-				if (!(b & 0x80)) { out = r; return true; }
-				if (shift > 70) return false; // malformed
-			}
-			return false;
-		};
-
-		const size_t end = meta + metaLen;
+		size_t meta = 0, metaLen = 0;
+		if (!findManifestSection(m, 0x1F4812BEu, meta, metaLen)) return false;
+		const auto* data = reinterpret_cast<const uint8_t*>(m.data()) + meta;
 		bool gotSize = false, gotDownload = false;
-		for (size_t p = meta; p < end;)
+		ProtoWire::walk(data, metaLen, [&](const ProtoWire::Field& field)
 		{
-			uint64_t tag = 0;
-			if (!readVarint(p, end, tag)) break;
-			const uint32_t field = static_cast<uint32_t>(tag >> 3);
-			const uint32_t wire  = static_cast<uint32_t>(tag & 0x7);
-			if (wire == 0) // varint
-			{
-				uint64_t v = 0;
-				if (!readVarint(p, end, v)) break;
-				if (field == 5) { sizeOut = v; gotSize = true; }
-				else if (field == 6) { downloadOut = v; gotDownload = true; }
-			}
-			else if (wire == 2) // length-delimited: skip
-			{
-				uint64_t len = 0;
-				if (!readVarint(p, end, len) || p + len > end) break;
-				p += len;
-			}
-			else if (wire == 5) { p += 4; }
-			else if (wire == 1) { p += 8; }
-			else break; // unknown wire type
-		}
+			if (field.wireType != 0 || (field.number != 5 && field.number != 6)) return;
+			size_t pos = field.valueOff;
+			uint64_t value = 0;
+			if (!ProtoWire::readVarint(data, metaLen, pos, value)) return;
+			if (field.number == 5) { sizeOut = value; gotSize = true; }
+			else { downloadOut = value; gotDownload = true; }
+		});
 		return gotSize || gotDownload;
 	}
 
@@ -277,74 +251,23 @@ namespace ManifestSynth
 	// the section is absent or filenames are encrypted.
 	inline std::vector<std::string> extractManifestFilenames(const std::string& m)
 	{
-		constexpr uint32_t kPayloadMagic = 0x71F617D0u;
 		std::vector<std::string> out;
-
-		auto u32le = [&](size_t off, uint32_t& v) -> bool
+		size_t pl = 0, plLen = 0;
+		if (!findManifestSection(m, 0x71F617D0u, pl, plLen)) return out;
+		const auto* data = reinterpret_cast<const uint8_t*>(m.data()) + pl;
+		ProtoWire::walk(data, plLen, [&](const ProtoWire::Field& mapping)
 		{
-			if (off + 4 > m.size()) return false;
-			v = static_cast<uint8_t>(m[off]) |
-			    (static_cast<uint32_t>(static_cast<uint8_t>(m[off + 1])) << 8) |
-			    (static_cast<uint32_t>(static_cast<uint8_t>(m[off + 2])) << 16) |
-			    (static_cast<uint32_t>(static_cast<uint8_t>(m[off + 3])) << 24);
-			return true;
-		};
-
-		size_t pl = std::string::npos, plLen = 0;
-		for (size_t i = 0; i + 8 <= m.size();)
-		{
-			uint32_t magic = 0, len = 0;
-			if (!u32le(i, magic) || !u32le(i + 4, len)) break;
-			if (static_cast<uint64_t>(i) + 8 + len > m.size()) break;
-			if (magic == kPayloadMagic) { pl = i + 8; plLen = len; break; }
-			i += 8 + len;
-		}
-		if (pl == std::string::npos) return out;
-
-		auto varint = [&](size_t& p, size_t end, uint64_t& v) -> bool
-		{
-			uint64_t r = 0; int s = 0;
-			while (p < end)
-			{
-				const uint8_t b = static_cast<uint8_t>(m[p++]);
-				if (s <= 63) r |= static_cast<uint64_t>(b & 0x7F) << s;
-				s += 7;
-				if (!(b & 0x80)) { v = r; return true; }
-				if (s > 70) return false;
-			}
-			return false;
-		};
-
-		const size_t plEnd = pl + plLen;
-		for (size_t p = pl; p < plEnd;)
-		{
-			uint64_t tag = 0;
-			if (!varint(p, plEnd, tag)) break;
-			const uint32_t field = static_cast<uint32_t>(tag >> 3);
-			const uint32_t wire  = static_cast<uint32_t>(tag & 0x7);
-			if (wire == 2)
-			{
-				uint64_t len = 0;
-				if (!varint(p, plEnd, len) || p + len > plEnd) break;
-				if (field == 1) // a FileMapping submessage
-				{
-					// First field of FileMapping is the filename (1, wire 2).
-					size_t q = p, qEnd = p + len;
-					uint64_t ftag = 0;
-					if (varint(q, qEnd, ftag) && (ftag >> 3) == 1 && (ftag & 7) == 2)
-					{
-						uint64_t flen = 0;
-						if (varint(q, qEnd, flen) && q + flen <= qEnd)
-							out.emplace_back(m.substr(q, flen));
-					}
-				}
-				p += len;
-			}
-			else if (wire == 0) { uint64_t v; if (!varint(p, plEnd, v)) break; }
-			else if (wire == 5) { p += 4; }
-			else if (wire == 1) { p += 8; }
-			else break;
-		}
+			if (mapping.number != 1 || mapping.wireType != 2) return;
+			// The filename is the FileMapping's first field (1, wire 2).
+			const uint8_t* sub = data + mapping.valueOff;
+			size_t pos = 0;
+			uint64_t tag = 0, len = 0;
+			if (ProtoWire::readVarint(sub, mapping.valueLen, pos, tag) && tag == ((1u << 3) | 2u)
+			    && ProtoWire::readVarint(sub, mapping.valueLen, pos, len)
+			    && len <= mapping.valueLen - pos)
+				out.emplace_back(reinterpret_cast<const char*>(sub + pos),
+				                 static_cast<size_t>(len));
+		});
 		return out;
 	}
 
