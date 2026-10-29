@@ -31,6 +31,8 @@
 #include "feats/apps.hpp"
 #include "feats/cmrecv.hpp"
 #include "feats/depotkey.hpp"
+#include "feats/manifeststore.hpp"
+#include "utils/ManifestFetch.hpp"
 #include "feats/depotquarantine.hpp"
 #include "feats/dlc.hpp"
 #include "feats/manifestcode.hpp"
@@ -689,6 +691,24 @@ static bool hkUserAppManager_BuildDepotDependency
 	g_pLog->debug("%s(%p, %u) -> %i\n", Hooks::CUserAppManager_BuildDepotDependency.name.c_str(), pClientAppManager, appId, success);
 
 	Apps::buildDepotDependency(appId, depots, sharedDepots);
+
+	// Steam checks depotcache for each planned manifest about 15 s later and
+	// only requests a manifest code (Access Denied for added apps) when it is
+	// missing. The i386 build starts these fetches from
+	// CDepotDownloadMgr::BuildDepotDependency (ManifestBind), which has no
+	// x86-64 locator yet, so start them here. The fetch is deduplicated and
+	// runs on SLSsteam's executor; this hook does not wait for it.
+	for (uint32_t i = 0; depots && i < depots->size; i++)
+	{
+		const auto* depot = depots->at(i);
+		if (depot->manifestId
+		    && DepotKey::manifestInManagedScope(depot->appId, depot->depotId)
+		    && !ManifestStore::isInDepotcache(depot->depotId, depot->manifestId))
+		{
+			ManifestFetch::submitManifestBlob(depot->manifestId, depot->appId, depot->depotId,
+				ManifestFetch::isAnyManagedDownloadActive(depot->appId));
+		}
+	}
 
 	return success;
 }
