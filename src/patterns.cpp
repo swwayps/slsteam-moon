@@ -915,28 +915,43 @@ namespace Patterns
 
 	namespace CAppInfoCache
 	{
+		// x86-64 (beta 1793235415 0x1053f80): (rdi=cache, esi=appId,
+		// edx=create), one of three functions under the "GetOrAddAppData"
+		// VProf scope and the only one with the create flag. Its first three
+		// instructions are 2-byte pushes, which the appinfostate detour moves
+		// into its trampoline.
 		Pattern_t GetOrAddAppData
 		{
 			"CAppInfoCache::GetOrAddAppData",
-			"",
+			"41 57 41 56 41 55 41 54 49 89 FC 55 89 F5 53 48 83 EC 18 48 8B 05 ? ? ? ? 64 48 8B 1C 25 28 00 00 00 48 89 5C 24 08 89 D3",
 			SigFollowMode::None
 		};
+		// The CAppInfoCacheReadFromDiskThread body calls it with the cache
+		// (rdi=[thread+0x48]) between two clock reads; the reader (0x10550d0,
+		// "ThreadedReadFromDisk" VProf scope and log lines) shares its
+		// prologue with eleven other functions, so the call site locates it.
 		Pattern_t ThreadedReadFromDisk
 		{
 			"CAppInfoCache::ThreadedReadFromDisk",
-			"",
-			SigFollowMode::None
+			"E8 ? ? ? ? E8 ? ? ? ? 48 8B 14 24 48 89 44 24 08",
+			SigFollowMode::Relative
 		};
+		// CUser's license loop (0x18ec250) reads the CAppData that
+		// GetOrAddAppData returns: `movzx eax,byte [rax+0x14]` (the skip
+		// flag) after comparing the 20-byte SHA at +0x20 with
+		// `cmp [rax+0x20],rsi` / +0x28 / +0x30. AppDataLayout decodes both
+		// displacements in place. Both sites match once on the betas; the
+		// 2026-10-21 x86-64 build allocates other registers and stays off.
 		Pattern_t SkipFlagReference
 		{
 			"CAppInfoCache::SkipFlagReference",
-			"",
+			"0F B6 40 ? 48 83 C3 01 20 44 24 ? 39 5D ?",
 			SigFollowMode::None
 		};
 		Pattern_t ShaReference
 		{
 			"CAppInfoCache::ShaReference",
-			"",
+			"48 39 70 ? 75 ? 48 8B 7A 08 48 39 78 ? 75 ? 8B 7A 10 39 78 ?",
 			SigFollowMode::None
 		};
 	}

@@ -4,7 +4,6 @@
 
 #include "appinfostate.hpp"
 
-#include "../memhlp.hpp"
 #include "../patterns.hpp"
 
 #include "libmem/libmem.h"
@@ -31,7 +30,10 @@ using GetOrAddAppDataPtr = GetOrAddAppDataFn*;
 using ReadFromDiskPtr = AppInfoReload::ReadFromDiskFn;
 
 constexpr std::size_t kDetourBytes = PatchState::kDetourBytes;
+constexpr std::size_t kJumpBytes = 5; // jmp rel32
 constexpr std::size_t kTrampolineBytes = kDetourBytes * 2;
+// The two layout sites are read with room for a REX prefix and a disp32.
+constexpr std::size_t kLayoutSiteBytes = 8;
 constexpr unsigned int kMemoryRetryCount = 3;
 
 std::atomic<Store*> g_store{nullptr};
@@ -126,7 +128,7 @@ bool rel32Target(
 	const std::int64_t displacement =
 		static_cast<std::int32_t>(readU32(bytes.data() + 1));
 	const std::int64_t next =
-		static_cast<std::int64_t>(instruction + kDetourBytes);
+		static_cast<std::int64_t>(instruction + kJumpBytes);
 	const std::int64_t resolved = next + displacement;
 	if (resolved < 0 ||
 		static_cast<std::uint64_t>(resolved) >
@@ -146,7 +148,7 @@ bool buildRel32Jump(
 ) noexcept
 {
 	const std::int64_t next =
-		static_cast<std::int64_t>(from + kDetourBytes);
+		static_cast<std::int64_t>(from + kJumpBytes);
 	const std::int64_t delta =
 		static_cast<std::int64_t>(to) - next;
 	if (delta < std::numeric_limits<std::int32_t>::min() ||
@@ -162,6 +164,8 @@ bool buildRel32Jump(
 	output[2] = static_cast<std::uint8_t>(encoded >> 8);
 	output[3] = static_cast<std::uint8_t>(encoded >> 16);
 	output[4] = static_cast<std::uint8_t>(encoded >> 24);
+	for (std::size_t index = kJumpBytes; index < output.size(); ++index)
+		output[index] = 0xCC;
 	return true;
 }
 
@@ -189,49 +193,37 @@ bool sameBytes(
 	return true;
 }
 
-bool validateDirectPicThunkCall(
+// The patched bytes are copied into the trampoline unchanged, so they must be
+// whole instructions that do not depend on their address: GetOrAddAppData
+// starts with push r15 / push r14 / push r13 (41 57 41 56 41 55).
+bool validateMovablePrologue(
 	lm_address_t target,
 	const std::array<std::uint8_t, kDetourBytes>& original
 ) noexcept
 {
-	if (LM_CodeLength(target, kDetourBytes) != kDetourBytes ||
-		original[0] != 0xE8)
+	std::size_t offset = 0;
+	while (offset < kDetourBytes)
 	{
-		return false;
+		lm_inst_t instruction{};
+		if (!LM_Disassemble(target + offset, &instruction) ||
+			instruction.address != target + offset || instruction.size == 0 ||
+			instruction.size > kDetourBytes - offset ||
+			std::strcmp(instruction.mnemonic, "push") != 0 ||
+			!sameBytes(instruction.bytes, original.data() + offset, instruction.size))
+		{
+			return false;
+		}
+		offset += instruction.size;
 	}
-
-	lm_inst_t call{};
-	if (!LM_Disassemble(target, &call) || call.address != target ||
-		call.size != kDetourBytes || std::strcmp(call.mnemonic, "call") != 0 ||
-		!sameBytes(call.bytes, original.data(), original.size()))
-	{
-		return false;
-	}
-
-	lm_address_t thunk = LM_ADDRESS_BAD;
-	if (!rel32Target(target, original, thunk) ||
-		!validCodeRange(thunk, 1))
-	{
-		return false;
-	}
-
-	lm_inst_t thunkMove{};
-	if (!LM_Disassemble(thunk, &thunkMove) ||
-		std::strcmp(thunkMove.mnemonic, "mov") != 0 ||
-		thunkMove.size == 0 ||
-		!validCodeRange(thunk + thunkMove.size, 1))
-	{
-		return false;
-	}
-
-	lm_inst_t thunkReturn{};
-	return LM_Disassemble(thunk + thunkMove.size, &thunkReturn) &&
-		std::strcmp(thunkReturn.mnemonic, "ret") == 0;
+	return offset == kDetourBytes;
 }
 
+// The trampoline holds the original bytes followed by a jmp rel32 back to the
+// first instruction after them.
 bool validateTrampoline(
 	lm_address_t trampoline,
 	lm_address_t target,
+	const std::array<std::uint8_t, kDetourBytes>& original,
 	const std::array<std::uint8_t, kDetourBytes>& returnJump
 ) noexcept
 {
@@ -240,18 +232,9 @@ bool validateTrampoline(
 
 	std::array<std::uint8_t, kTrampolineBytes> bytes{};
 	if (!readExact(trampoline, bytes.data(), bytes.size()) ||
+		!sameBytes(bytes.data(), original.data(), original.size()) ||
 		!sameBytes(bytes.data() + kDetourBytes,
 			returnJump.data(), returnJump.size()))
-	{
-		return false;
-	}
-
-	lm_inst_t relocated{};
-	if (!LM_Disassemble(trampoline, &relocated) ||
-		relocated.address != trampoline || relocated.size != kDetourBytes ||
-		// A verified PIC thunk repair replaces the direct call in the copied
-		// prologue.  Leaving E8 here would execute the stale relative target.
-		relocated.bytes[0] == 0xE8)
 	{
 		return false;
 	}
@@ -259,7 +242,7 @@ bool validateTrampoline(
 	lm_inst_t jump{};
 	if (!LM_Disassemble(trampoline + kDetourBytes, &jump) ||
 		jump.address != trampoline + kDetourBytes ||
-		jump.size != kDetourBytes || std::strcmp(jump.mnemonic, "jmp") != 0 ||
+		jump.size != kJumpBytes || std::strcmp(jump.mnemonic, "jmp") != 0 ||
 		jump.bytes[0] != 0xE9)
 	{
 		return false;
@@ -471,10 +454,9 @@ void* hkGetOrAddAppData(
 		data, appId, create, read, authoritativeRead, layout);
 }
 
-// Deliberately not noexcept: PIC repair may allocate through libmem helpers.
-// This function reaches that potentially-throwing work before the lifecycle
-// is provisional and before any target byte is changed; setup's outer catch
-// reacquires the lifecycle mutex only after this scope has unwound.
+// Deliberately not noexcept: the layout decoder and libmem helpers run before
+// the lifecycle is provisional and before any target byte is changed; setup's
+// outer catch reacquires the lifecycle mutex only after this scope has unwound.
 bool installLocked(Store& store)
 {
 	const Pattern_t& functionPattern = Patterns::CAppInfoCache::GetOrAddAppData;
@@ -482,20 +464,21 @@ bool installLocked(Store& store)
 	const Pattern_t& skipPattern = Patterns::CAppInfoCache::SkipFlagReference;
 	const Pattern_t& shaPattern = Patterns::CAppInfoCache::ShaReference;
 	if (!validPattern(functionPattern, kDetourBytes) ||
-		!validPattern(skipPattern, 4) || !validPattern(shaPattern, 3))
+		!validPattern(skipPattern, kLayoutSiteBytes) ||
+		!validPattern(shaPattern, kLayoutSiteBytes))
 	{
 		discardBeforePatchLocked();
 		return false;
 	}
 
-	std::array<std::uint8_t, 4> skipInstruction{};
-	std::array<std::uint8_t, 3> shaInstruction{};
+	std::array<std::uint8_t, kLayoutSiteBytes> skipInstruction{};
+	std::array<std::uint8_t, kLayoutSiteBytes> shaInstruction{};
 	std::array<std::uint8_t, kDetourBytes> original{};
 	lm_prot_t baselineProtection = LM_PROT_NONE;
 	if (!readExact(skipPattern.address, skipInstruction.data(), skipInstruction.size()) ||
 		!readExact(shaPattern.address, shaInstruction.data(), shaInstruction.size()) ||
 		!readExact(functionPattern.address, original.data(), original.size()) ||
-		!validateDirectPicThunkCall(functionPattern.address, original) ||
+		!validateMovablePrologue(functionPattern.address, original) ||
 		!captureBaselineProtection(
 			functionPattern.address, kDetourBytes, baselineProtection))
 	{
@@ -555,9 +538,8 @@ bool installLocked(Store& store)
 		!sameBytes(copied.data(), original.data(), original.size()) ||
 		!sameBytes(copied.data() + kDetourBytes,
 			returnJump.data(), returnJump.size()) ||
-		!MemHlp::fixPICThunkCall(
-			functionPattern.name.c_str(), functionPattern.address, trampoline) ||
-		!validateTrampoline(trampoline, functionPattern.address, returnJump))
+		!validateTrampoline(
+			trampoline, functionPattern.address, original, returnJump))
 	{
 		discardBeforePatchLocked();
 		return false;

@@ -105,6 +105,47 @@ inline std::optional<std::int64_t> directDisplacement(
 	return displacement;
 }
 
+// x86-64 forms: an optional REX prefix, then `opcode` (one or two bytes) and
+// a [base+disp8/disp32] ModRM operand, as directDisplacement checks it.
+inline std::optional<std::int64_t> rexDisplacement(
+	std::span<const std::uint8_t> instruction,
+	std::span<const std::uint8_t> opcode,
+	bool requiresRexW
+) noexcept
+{
+	std::size_t at = 0;
+	bool rexW = false;
+	if (!instruction.empty() && (instruction[0] & 0xF0) == 0x40)
+	{
+		rexW = (instruction[0] & 0x08) != 0;
+		at = 1;
+	}
+	if (requiresRexW && !rexW)
+	{
+		return std::nullopt;
+	}
+	if (instruction.size() < at + opcode.size() + 1)
+	{
+		return std::nullopt;
+	}
+	for (std::size_t index = 0; index < opcode.size(); ++index)
+	{
+		if (instruction[at + index] != opcode[index])
+		{
+			return std::nullopt;
+		}
+	}
+	at += opcode.size();
+	const std::uint8_t modrm = instruction[at];
+	const std::uint8_t mod = static_cast<std::uint8_t>(modrm >> 6);
+	const std::uint8_t rm = static_cast<std::uint8_t>(modrm & 0x07);
+	if ((mod != 1 && mod != 2) || rm == 4)
+	{
+		return std::nullopt;
+	}
+	return readDisplacement(instruction, at + 1, mod == 1 ? 1 : 4);
+}
+
 inline bool inBounds(std::int64_t offset, std::size_t width) noexcept
 {
 	if (offset < 0 || width > kMaximumFieldEnd)
@@ -143,14 +184,26 @@ inline std::optional<Layout> derive(
 	std::span<const std::uint8_t> shaInstruction
 ) noexcept
 {
-	// cmp byte ptr [base+offset], 0: opcode 80, /7, direct disp8/disp32.
-	const auto skip = detail::directDisplacement(
+	// i386: cmp byte ptr [base+offset], 0 (80 /7 ib) reads the skip flag and
+	// lea register, [base+offset] (8d) takes the SHA address.
+	// x86-64: movzx r32, byte ptr [base+offset] (0f b6) reads the skip flag and
+	// cmp qword ptr [base+offset], r64 (REX.W 39) compares the first 8 SHA bytes.
+	static constexpr std::uint8_t kMovzxByte[] = {0x0F, 0xB6};
+	static constexpr std::uint8_t kCmpQword[] = {0x39};
+	auto skip = detail::directDisplacement(
 		skipInstruction, 0x80, std::uint8_t{7}, true
 	);
-	// lea register, [base+offset]: opcode 8d, direct disp8/disp32.
-	const auto sha = detail::directDisplacement(
+	if (!skip.has_value())
+	{
+		skip = detail::rexDisplacement(skipInstruction, kMovzxByte, false);
+	}
+	auto sha = detail::directDisplacement(
 		shaInstruction, 0x8D, std::nullopt, false
 	);
+	if (!sha.has_value())
+	{
+		sha = detail::rexDisplacement(shaInstruction, kCmpQword, true);
+	}
 	if (!skip.has_value() || !sha.has_value() ||
 		!detail::inBounds(*skip, 1) ||
 		!detail::inBounds(*sha, detail::kShaBytes) ||

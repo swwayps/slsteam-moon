@@ -63,7 +63,9 @@ enum class PatchResult : std::uint8_t
 class PatchState
 {
 public:
-	static constexpr std::size_t kDetourBytes = 5;
+	// Bytes patched at the target: a 5-byte jmp rel32 plus one int3 pad, as
+	// x86-64 GetOrAddAppData's first whole instructions span six bytes.
+	static constexpr std::size_t kDetourBytes = 6;
 	using Bytes = std::array<std::uint8_t, kDetourBytes>;
 
 	void configure(
