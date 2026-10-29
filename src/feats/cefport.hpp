@@ -16,7 +16,7 @@
 //
 // This header holds the parts worth unit-testing in isolation:
 //   - rewritePortArg : the string surgery on one argv element
-//   - isBindable / pickFreePort / resolveSessionPort : free-port selection
+//   - isBindable / pickFreePort / resolveSessionPortNoPersist : free-port selection
 //   - deckyPresent / removeContract : Decky-coexistence gate (keep 8080)
 // The actual exec interposition lives in main.cpp.
 //
@@ -157,24 +157,13 @@ namespace CefPort
 
 	// ── contract ownership ────────────────────────────────────────────────
 	//
-	// The contract file used to hold nothing but a port number, which made it
-	// impossible for Lumen to tell "the port this session is listening on" from
-	// "the port the PREVIOUS session listened on". Measured consequence: for the
-	// first 4-8 s of a boot the sidecar polls the dead port of the last session
-	// (it is only replaced when this client's exec hook fires), and a leftover
-	// contract from an injected session makes a later VANILLA Steam launch
-	// unreachable forever (Lumen never falls back to 8080).
-	//
-	// So the contract now carries the identity of the client that owns it:
-	//   line 1: <port>                      (unchanged — old Lumen still works)
-	//   line 2: owner <pid> <startTicks>    (optional; ignored by old Lumen)
+	// Contract format:
+	//   line 1: <port>                      (all an older Lumen reads)
+	//   line 2: owner <pid> <startTicks>    (optional)
 	// `startTicks` is field 22 of /proc/<pid>/stat, so pid reuse cannot make a
 	// stale contract look live. Lumen ignores a contract whose owner is gone.
-	//
-	// This is identity only: nothing here changes WHEN the contract is written.
-	// It is still published exclusively from the exec hook that launches the
-	// webhelper (never at preinit), which is what keeps a losing single-instance
-	// client from ever publishing a port nothing listens on.
+	// Written only from the exec hook that launches the webhelper (never at
+	// preinit), so a client that loses the single-instance race publishes nothing.
 	inline std::string formatContract(uint16_t port, long ownerPid,
 	                                  unsigned long long ownerStartTicks)
 	{
@@ -267,16 +256,11 @@ namespace CefPort
 		return AtomicFile::write(path, formatContract(port, ownerPid, ownerStartTicks), error);
 	}
 
-	inline bool writePortFile(const std::string& path, uint16_t port)
-	{
-		return writePortFile(path, port, 0, 0);
-	}
-
 	// Decide the port to use this session WITHOUT persisting it: reuse the
 	// file's port if it is a valid, currently-bindable port; otherwise pick a
 	// fresh free port. Returns 0 only if no port could be obtained at all.
 	//
-	// This is the variant the client uses at la_preinit (setup()) to choose the
+	// The client calls this at la_preinit (setup()) to choose the
 	// session port early, WITHOUT touching the contract file. The file is
 	// written later, only when this client tree actually launches the webhelper
 	// (see main.cpp). That matters at login autostart, where two Steam instances
@@ -293,26 +277,6 @@ namespace CefPort
 			return existing;
 		}
 		return pickFreePort();
-	}
-
-	// Resolve the port to use this session: reuse the file's port if it is a
-	// valid, currently-bindable port; otherwise pick a fresh free port and
-	// persist it. Returns 0 only if no port could be obtained at all (caller
-	// then leaves the argv untouched -> Steam keeps 8080).
-	inline uint16_t resolveSessionPort(const std::string& path)
-	{
-		const uint16_t existing = readPortFile(path);
-		if (existing != 0 && isBindable(existing))
-		{
-			return existing;
-		}
-
-		const uint16_t fresh = pickFreePort();
-		if (fresh != 0)
-		{
-			writePortFile(path, fresh);
-		}
-		return fresh;
 	}
 
 	// Contract file shared with the Lumen sidecar:
