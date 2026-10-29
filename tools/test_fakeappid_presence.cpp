@@ -12,6 +12,7 @@
 #include "../src/feats/fakeappid.hpp"
 #include "../src/sdk/CNetPacket.hpp"
 #include "../src/sdk/CProtoBufMsgBase.hpp"
+#include "../src/sdk/CSteamEngine.hpp"
 #include "../src/sdk/CUser.hpp"
 #include "../src/sdk/protobufs/steammessages_clientserver.pb.h"
 #include "../src/sdk/protobufs/steammessages_clientserver_2.pb.h"
@@ -128,6 +129,21 @@ void preserveShortcut(uint64_t gameId)
 	      "shortcut IDs are selected by their type bit, not exact low word");
 	packet.free();
 }
+
+// The IPC frame the app id handoff reads: a one-byte exit code, and a buffer
+// that is readable only up to its put offset.
+static_assert(sizeof(EIPCExitCode) == 1);
+void ipcBufferBounds()
+{
+	CUtlBuffer buffer{};
+	CHECK(!buffer.hasBytes(1), "a null IPC buffer has no readable bytes");
+	unsigned char bytes[10]{};
+	buffer.mem.base = bytes;
+	buffer.put = 9;
+	CHECK(!buffer.hasBytes(10), "a short IPC buffer is rejected");
+	buffer.put = 10;
+	CHECK(buffer.hasBytes(10), "a complete IPC buffer is readable");
+}
 }
 
 int main()
@@ -140,6 +156,8 @@ int main()
 	route(123, 0, 123);
 
 	preserveShortcut(0x1234567802000001ULL);
+
+	ipcBufferBounds();
 
 	return failures == 0 ? 0 : 1;
 }

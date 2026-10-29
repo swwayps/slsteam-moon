@@ -79,6 +79,11 @@ int main()
 	CHECK(!savedEncrypted.empty() && readAll(encryptedPath) == savedEncrypted,
 	      "a failed encrypted ticket write leaves the saved file intact");
 
+	bool connectThrew = false;
+	try { Ticket::connectPipe(7); }
+	catch (...) { connectThrew = true; }
+	CHECK(!connectThrew, "a pipe with no process entry is ignored");
+
 	const std::string log = readAll(logPath);
 	CHECK(log.find("[Info] Saved ticket for 42") == std::string::npos
 	      && log.find("[Info] Saved encrypted ticket for 43") == std::string::npos,
