@@ -97,11 +97,14 @@ gh release upload vX.Y dist/slsteam-moon-linux-X.Y.zip --clobber
 ## Verifying a build
 
 ```
-scripts/check-compat.sh
+scripts/check-abi.sh bin/SLSsteam.so --i386
+scripts/check-abi.sh bin/pattern-refresh
+ldd --version | head -1
 ```
 
-Reports the binary's actual glibc minimum and whether it'll run on your
-current host. Useful before publishing a release.
+`check-abi.sh` fails when a binary needs a glibc newer than 2.34, the
+release floor (`scripts/package.sh` runs the same check). `ldd --version`
+prints the glibc of the current host.
 
 You can also check by hand:
 
