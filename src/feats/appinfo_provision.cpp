@@ -3011,6 +3011,7 @@ ProvisionPassSummary provisionRequestedApps(
 		if (reasons & reasonMask(RefreshReason::ForceFull)) return "force-full";
 		if (reasons & reasonMask(RefreshReason::LocalInputs)) return "local-inputs";
 		if (reasons & reasonMask(RefreshReason::HotAdd)) return "hot-add";
+		if (reasons & reasonMask(RefreshReason::CacheRepair)) return "cache-repair";
 		if (reasons & reasonMask(RefreshReason::PicsChanges)) return "pics-changes";
 		return "pics-product";
 	};
@@ -3101,11 +3102,7 @@ ProvisionPassSummary provisionRequestedApps(
 				request.appId, request.managedGeneration);
 		}
 	}
-	const bool metadataOnly = std::any_of(
-		publish.begin(), publish.end(), [](const RefreshRequest& request) {
-			return (request.reasons & reasonMask(RefreshReason::DlcMetadata)) != 0;
-		});
-	if (!runtimePublished.empty() || metadataOnly)
+	if (dlcEnrichmentRuns(!runtimePublished.empty(), publish))
 		enrichAndPublishDlcMetadata(appinfoVdfPath, publish);
 	g_pLog->info(
 		"AppInfoProvision: pass origin=targeted requested=%zu fetched=%zu "

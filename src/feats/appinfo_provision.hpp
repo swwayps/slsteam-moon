@@ -40,6 +40,7 @@
 #include "provision_terminal.hpp"
 #include "../config_path.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -146,6 +147,21 @@ inline bool cachedRuntimePublicationAllowed(
 	if (nonMetadataReasons == 0) return false;
 	return readiness == CacheReadiness::Fresh ||
 		readiness == CacheReadiness::ValidStale;
+}
+
+// DLC enrichment follows a live base publication or a metadata repair. A
+// startup repair never publishes its base at runtime (the base has been in
+// the library since boot), and the enrichment completion is what takes it
+// out of the repair rotation.
+inline bool dlcEnrichmentRuns(bool basePublishedLive,
+	const std::vector<RefreshRequest>& publish) noexcept
+{
+	return basePublishedLive || std::any_of(publish.begin(), publish.end(),
+		[](const RefreshRequest& request) {
+			return (request.reasons & reasonMask(RefreshReason::DlcMetadata)) != 0 ||
+				(request.publishRuntime &&
+				 (request.reasons & reasonMask(RefreshReason::CacheRepair)) != 0);
+		});
 }
 
 inline std::unordered_set<std::uint32_t> selectColdStartApps(

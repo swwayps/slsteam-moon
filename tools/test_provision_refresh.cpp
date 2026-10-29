@@ -170,6 +170,18 @@ int main()
 	CHECK(queue.enqueue({}).action == RefreshQueueAction::Ignore,
 	      "an empty refresh request never starts a thread");
 
+	const RefreshRequest repair{
+		420530, 0, 2, reasonMask(RefreshReason::CacheRepair), false, true};
+	RefreshRequest hotAddNotLive = repair;
+	hotAddNotLive.reasons = reasonMask(RefreshReason::HotAdd);
+	CHECK(dlcEnrichmentRuns(false, {repair}),
+	      "a startup repair completes its DLC metadata without a live base publication");
+	CHECK(!dlcEnrichmentRuns(false, {hotAddNotLive}) &&
+	          dlcEnrichmentRuns(true, {hotAddNotLive}),
+	      "a hot-add enriches only after its base went live");
+	CHECK(dlcEnrichmentRuns(false, {metadataOnly}),
+	      "a metadata repair enriches without a base publication");
+
 	if (failures != 0)
 	{
 		std::printf("test_provision_refresh: %d failure(s)\n", failures);
