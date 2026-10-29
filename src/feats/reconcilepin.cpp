@@ -228,12 +228,35 @@ namespace
 		}
 	}
 
+	// Both hooks run on Steam's content thread: a failed patch is logged once
+	// and Steam goes on with the vector as it is.
+	void notePatchFailure() noexcept
+	{
+		static std::atomic<bool> logged{false};
+		if (logged.exchange(true, std::memory_order_relaxed)) return;
+		try
+		{
+			g_pLog->warn("%s", "ReconcilePin: a depot patch failed; Steam keeps "
+			                    "its own plan for that pass\n");
+		}
+		catch (...)
+		{
+		}
+	}
+
 	__attribute__((noinline))
 	void* hkBuildTarget(void* a0, uint32_t appId, void* a2, void* targetVec,
 	                    void* a4, void* ctx, void* a6, void* a7)
 	{
 		void* r = g_origBuild(a0, appId, a2, targetVec, a4, ctx, a6, a7);
-		if (targetVec) patchTargetVec(targetVec, appId);
+		try
+		{
+			if (targetVec) patchTargetVec(targetVec, appId);
+		}
+		catch (...)
+		{
+			notePatchFailure();
+		}
 		return r;
 	}
 
@@ -328,19 +351,26 @@ namespace
 	{
 		if (ctx)
 		{
-			const auto* c = reinterpret_cast<const uint8_t*>(ctx);
-			const uint32_t appId = *reinterpret_cast<const uint32_t*>(c + kCtxAppIdOff);
-			const uint32_t flags = *reinterpret_cast<const uint32_t*>(c + kCtxFlagsOff);
-
-			if (g_trace && g_ctxDepotVecOff != 0)
+			try
 			{
-				void* base =
-				    *reinterpret_cast<void* const*>(c + g_ctxDepotVecOff);
-				const int32_t count = *reinterpret_cast<const int32_t*>(
-				    c + g_ctxDepotVecOff + kCtxVecCountOff);
-				traceLog(appId, flags, base, count);
+				const auto* c = reinterpret_cast<const uint8_t*>(ctx);
+				const uint32_t appId = *reinterpret_cast<const uint32_t*>(c + kCtxAppIdOff);
+				const uint32_t flags = *reinterpret_cast<const uint32_t*>(c + kCtxFlagsOff);
+
+				if (g_trace && g_ctxDepotVecOff != 0)
+				{
+					void* base =
+					    *reinterpret_cast<void* const*>(c + g_ctxDepotVecOff);
+					const int32_t count = *reinterpret_cast<const int32_t*>(
+					    c + g_ctxDepotVecOff + kCtxVecCountOff);
+					traceLog(appId, flags, base, count);
+				}
+				patchTargetCtx(ctx, appId, flags);
 			}
-			patchTargetCtx(ctx, appId, flags);
+			catch (...)
+			{
+				notePatchFailure();
+			}
 		}
 		return g_orig(mgr, ctx, a1, a2);
 	}
