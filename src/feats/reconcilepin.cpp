@@ -16,6 +16,7 @@
 #include "libmem/libmem.h"
 
 #include <atomic>
+#include <cstdio>
 #include <climits>
 #include <cstdint>
 #include <cstdlib>
@@ -267,10 +268,17 @@ namespace
 		    });
 		if (callOff < 0)
 		{
-			g_pLog->warn("ReconcilePin: target-vector builder call not located "
-			             "near +0x%zx (byte 0x%02x); target-local fix disabled\n",
-			             ReconcilePin::detail::kBuilderCallOff,
-			             fn[ReconcilePin::detail::kBuilderCallOff]);
+			using ReconcilePin::detail::kBuilderCallOff;
+			using ReconcilePin::detail::kBuilderCallWindow;
+			char builderText[32] = "unresolved";
+			if (builder != LM_ADDRESS_BAD)
+				std::snprintf(builderText, sizeof(builderText), "%p",
+				              reinterpret_cast<void*>(builder));
+			g_pLog->warn("ReconcilePin: %s call to the builder (%s) in +0x%zx..+0x%zx; "
+			             "target-local fix disabled\n",
+			             callOff == -2 ? "more than one" : "no",
+			             builderText, kBuilderCallOff - kBuilderCallWindow,
+			             kBuilderCallOff + kBuilderCallWindow);
 			return false;
 		}
 		const auto* site = fn + callOff;

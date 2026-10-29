@@ -72,7 +72,7 @@ int main()
 		putCall(b, EXP + 9, BASE, 0x18500);
 		putCall(b, EXP + 22, BASE, 0x18600);
 		const long r = findBuilderCallRel32(b.data(), b.size(), BASE, EXP, WIN, execOk);
-		CHECK(r == -1, "two candidate calls in the window are rejected as ambiguous");
+		CHECK(r == -2, "two candidate calls in the window are rejected as ambiguous");
 	}
 
 	// 4. A call whose target is not executable is not a candidate.
@@ -105,7 +105,7 @@ int main()
 		putCall(b, 0x1B6, BASE, 0x18600);
 		CHECK(findBuilderCall(b.data(), b.size(), BASE, 0x18500, execOk) == 0x186,
 		      "the resolved builder disambiguates two calls in the window");
-		CHECK(findBuilderCall(b.data(), b.size(), BASE, 0, execOk) == -1,
+		CHECK(findBuilderCall(b.data(), b.size(), BASE, 0, execOk) == -2,
 		      "without a resolved builder two calls stay ambiguous");
 	}
 

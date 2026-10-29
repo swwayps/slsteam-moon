@@ -86,11 +86,9 @@ namespace ReconcilePin
 		// reports whether a decoded absolute target lands in executable memory
 		// (wired to LM_FindSegment by the caller).
 		//
-		// Returns the offset of the call, or -1 when it cannot be located
-		// UNAMBIGUOUSLY. Ambiguity (more than one candidate) or absence yields
-		// -1 so the caller keeps the target-local fix disabled — the same safe
-		// degradation as before, never a guessed-address hook that could
-		// corrupt the reconcile.
+		// Returns the offset of the call, -1 when no call qualifies, or -2 when
+		// more than one does. Either failure keeps the target-local fix off:
+		// a guessed-address hook could corrupt the reconcile.
 		template <typename TargetExecutable>
 		inline long findBuilderCallRel32(
 			const std::uint8_t* code, std::size_t len, std::uintptr_t codeAddr,
@@ -121,7 +119,7 @@ namespace ReconcilePin
 			{
 				if (off == expectedOff) continue;  // tried above, it failed
 				if (!callTargetOk(off)) continue;
-				if (found != -1) return -1;         // ambiguous
+				if (found != -1) return -2;         // ambiguous
 				found = static_cast<long>(off);
 			}
 			return found;
