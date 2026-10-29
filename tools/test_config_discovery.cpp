@@ -37,7 +37,6 @@ int main()
 	using ConfigDiscovery::classifyAppIds;
 	using ConfigDiscovery::classifyReloadRemovals;
 	using ConfigDiscovery::confirmInstalledApp;
-	using ConfigDiscovery::keepDiscoveredMainApp;
 	using ConfigDiscovery::recoverRacyScanDrops;
 	using ConfigDiscovery::scanInstalledApps;
 	using ConfigDiscovery::selectManagedSources;
@@ -60,22 +59,6 @@ int main()
 	      "missing extension rejected");
 	CHECK(appIdFromScriptName("99999999999.lua") == 0,
 	      "stem overflowing uint32 rejected");
-
-	// --- The core regression ----------------------------------------------
-	// No Man's Sky: base appid 275850 is ALSO a keyed depot in its script,
-	// so isManagedDepot(275850) is true. It MUST still be kept.
-	CHECK(keepDiscoveredMainApp(275850, /*idIsAlsoManagedDepot=*/true),
-	      "single-depot title kept even when its appid is a managed depot");
-
-	// Green Hell: base appid is not one of its keyed depots.
-	CHECK(keepDiscoveredMainApp(815370, /*idIsAlsoManagedDepot=*/false),
-	      "normal title kept");
-
-	// A zero id is never a real app.
-	CHECK(!keepDiscoveredMainApp(0, false),
-	      "zero id rejected");
-	CHECK(!keepDiscoveredMainApp(0, true),
-	      "zero id rejected regardless of managed flag");
 
 	// A source burst must not be allowed to expand package 0 without bound.
 	// Manual entries win, existing active entries stay stable across a reload,

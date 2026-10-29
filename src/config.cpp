@@ -144,14 +144,11 @@ std::unordered_set<uint32_t> CConfig::discoverStPluginAppIds()
 		const auto& path = entry.path();
 		if (path.extension() != ".lua") continue;
 
-		// The filename stem is the authoritative main-app id and MUST be
-		// kept even when that same id is also one of the app's own keyed
-		// depots (single-depot layout, e.g. No Man's Sky 275850); filtering
-		// on managed-depot status here hides the game from the library.
+		// A script's stem is its main app id, even when that id is also one
+		// of its depots.
 		const uint32_t appIdStem =
 		    ConfigDiscovery::appIdFromScriptName(path.filename().string());
-		if (ConfigDiscovery::keepDiscoveredMainApp(
-		        appIdStem, /*idIsAlsoManagedDepot=*/false))
+		if (appIdStem != 0)
 		{
 			result.insert(appIdStem);
 		}
@@ -182,8 +179,7 @@ std::unordered_set<uint32_t> CConfig::discoverStPluginAppIds()
 // file is authored by the user or the LuaTools plugin; we only READ it (we
 // never mirror the discovered set back into it, which is what previously
 // let a bad pass persist as permanent pollution).  Entries are main-app
-// ids and are kept even when the id is also a managed depot (see
-// ConfigDiscovery::keepDiscoveredMainApp).
+// ids, even when an id is also a depot.
 std::unordered_set<uint32_t> CConfig::loadLuaAppIdsYaml()
 {
 	std::unordered_set<uint32_t> result;
@@ -201,8 +197,7 @@ std::unordered_set<uint32_t> CConfig::loadLuaAppIdsYaml()
 				try
 				{
 					const uint32_t val = subNode.as<uint32_t>();
-					if (ConfigDiscovery::keepDiscoveredMainApp(
-					        val, /*idIsAlsoManagedDepot=*/false))
+					if (val != 0)
 					{
 						result.insert(val);
 					}
