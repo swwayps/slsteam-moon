@@ -13,10 +13,6 @@ class CFileWatcher;
 
 namespace SLSAPI
 {
-	// Resolved at init() inside the user's private runtime directory; empty (and
-	// `path` an empty string) until then.
-	extern std::string contractPath;
-
 	struct CompatOp_t
 	{
 		enum class OpType
@@ -44,6 +40,7 @@ namespace SLSAPI
 		uint32_t libraryIndex;
 	};
 
+	// The command file, set by init(); an empty string until then.
 	extern const char* path;
 	extern std::fstream fstream;
 	extern CFileWatcher* watcher;
