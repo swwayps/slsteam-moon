@@ -365,11 +365,21 @@ bool MemHlp::fixPICThunkCall(const char*, lm_address_t, lm_address_t)
 // Finds the offset of the member object whose vtable belongs to `typeName`
 // (Itanium mangled, e.g. "12CUserAppInfo") inside `object`. The x86-64 port
 // uses this where the i386 client exposed the offset as an instruction
-// immediate (upstream dev-X86_64 searchOffsetByTypeName). Every pointer
-// followed must point into steamclient.so, so a non-object word is skipped
-// without being dereferenced.
-lm_address_t MemHlp::searchOffsetByTypeName(const void* object, const char* typeName, const lm_size_t maxOffset)
+// immediate (upstream dev-X86_64 searchOffsetByTypeName). The scan stays
+// inside the mapping that holds `object`, and every pointer followed must
+// point into steamclient.so, so a non-object word is skipped without being
+// dereferenced.
+lm_address_t MemHlp::searchOffsetByTypeName(const void* object, const char* typeName, lm_size_t maxOffset)
 {
+	lm_segment_t segment {};
+	const auto objectAddress = reinterpret_cast<lm_address_t>(object);
+	if (!object || !LM_FindSegment(objectAddress, &segment)
+	    || segment.end - objectAddress < 2 * sizeof(lm_address_t))
+	{
+		g_pLog->warn("Failed to find a %s member: object %p is not mapped\n", typeName, object);
+		return LM_ADDRESS_BAD;
+	}
+	maxOffset = std::min<lm_size_t>(maxOffset, segment.end - objectAddress - sizeof(lm_address_t));
 	const lm_address_t moduleBase = g_modSteamClient.base;
 	const lm_address_t moduleEnd = g_modSteamClient.end;
 	const auto inModule = [&](const lm_address_t address, const lm_size_t bytes)
