@@ -16,6 +16,7 @@
 #include <sys/mman.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <vector>
 
 static int g_failures = 0;
 #define CHECK(cond, msg)                                               \
@@ -98,6 +99,31 @@ int main()
 		      return Hooks::setup();
 	      }),
 	      "an unresolved TraceIPC does not fail Hooks::setup()");
+
+	// The CM receive hook carries the Family Share choke and every CM message
+	// feature, so it is required like the others.
+	CHECK(inChild([code] {
+		      pointRequiredHooksAt(reinterpret_cast<lm_address_t>(code), 64);
+		      VFTIndexes::CCMInterface::RecvPkt.address = 0;
+		      return !Hooks::setup();
+	      }),
+	      "an unresolved CM receive hook fails Hooks::setup()");
+	CHECK(inChild([code, page] {
+		      pointRequiredHooksAt(reinterpret_cast<lm_address_t>(code), 64);
+		      VFTIndexes::CCMInterface::RecvPkt.address = reinterpret_cast<lm_address_t>(page);
+		      return !Hooks::setup();
+	      }),
+	      "a CM receive hook that cannot be patched fails Hooks::setup()");
+	CHECK(inChild([code] {
+		      pointRequiredHooksAt(reinterpret_cast<lm_address_t>(code), 64);
+		      const auto* bytes = static_cast<const unsigned char*>(code);
+		      const std::vector<unsigned char> before(bytes, bytes + 4096);
+		      if (!Hooks::setup()) return false;
+		      const bool patched = std::memcmp(bytes, before.data(), 4096) != 0;
+		      Hooks::remove();
+		      return patched && std::memcmp(bytes, before.data(), 4096) == 0;
+	      }),
+	      "Hooks::remove() restores every hook Hooks::setup() placed");
 
 	if (g_failures == 0) std::printf("\nall hook placement checks passed\n");
 	else std::printf("\n%d hook placement check(s) FAILED\n", g_failures);

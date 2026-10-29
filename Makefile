@@ -52,7 +52,7 @@ ifeq ($(shell type mold &> /dev/null && echo "found"),found)
 	LDFLAGS += -fuse-ld=mold
 endif
 
-.PHONY: all build rebuild clean install release test-ascii test-cmwire test-cmclient-loader test-cmclient-session test-provision-locks test-cmrecv-exceptions test-hook-placement test-cache-validation test-depot-prune test-offline-flags test-ticket-cache test-send-frame test-notify-async test-log-once test-catalog-trust test-clientcompat test-dlcids test-dlc-scope test-dlc-metadata test-config-path test-config-discovery test-lua-import test-steamstub-launch test-ownerwork-policy test-filewatcher-burst test-provision-notice test-mtvar-contains test-synthmark test-appinfostate test-pattern-catalog test-pattern-cache test-pattern-refresh test-process-lock test-process-runtime test-atomic-file test-cache-pair test-appinfo-transaction test-appinfo-reload test-audit-symbols test-audit-eh test-audit-tier0 test-audit-policy test-memhlp-target test-memhlp-prologue test-memhlp-pic test-utils-sha test-provision-cache test-provision-refresh test-provision-result test-provision-terminal test-pending-proton test-provision-schedule test-provision-pass test-runtime-dependencies test-thread-start test-steamstub-warmup test-steamstub-launchopt test-boundedexecutor test-steamless-prewarm test-depotkey-scope test-curl-timeout test-manifest-index test-manifestselection test-manifeststore-io test-hotreload-inputs test-hotreload-package test-ownerqueue test-hotreload-capabilities test-libraryremoval test-pics test-yaml-runtime test-manifestpin-patterns test-optional-locators test-patternscan test-fakeappid-presence test-fakeappid-wiring test-ticket test-familyshare test-familyshare-wiring
+.PHONY: all build rebuild clean install release test-ascii test-cmwire test-cmclient-loader test-cmclient-session test-provision-locks test-cmrecv-exceptions test-hook-placement test-cache-validation test-depot-prune test-offline-flags test-ticket-cache test-send-frame test-notify-async test-log-once test-catalog-trust test-clientcompat test-dlcids test-dlc-scope test-dlc-metadata test-config-path test-config-discovery test-lua-import test-steamstub-launch test-ownerwork-policy test-filewatcher-burst test-provision-notice test-mtvar-contains test-synthmark test-appinfostate test-pattern-catalog test-pattern-cache test-pattern-refresh test-process-lock test-process-runtime test-atomic-file test-cache-pair test-appinfo-transaction test-appinfo-reload test-audit-symbols test-audit-eh test-audit-tier0 test-audit-policy test-memhlp-target test-memhlp-prologue test-memhlp-pic test-utils-sha test-provision-cache test-provision-refresh test-provision-result test-provision-terminal test-pending-proton test-provision-schedule test-provision-pass test-runtime-dependencies test-thread-start test-steamstub-warmup test-steamstub-launchopt test-boundedexecutor test-steamless-prewarm test-depotkey-scope test-curl-timeout test-manifest-index test-manifestselection test-manifeststore-io test-hotreload-inputs test-hotreload-package test-ownerqueue test-hotreload-capabilities test-libraryremoval test-pics test-yaml-runtime test-manifestpin-patterns test-optional-locators test-patternscan test-fakeappid-presence test-fakeappid-wiring test-ticket test-familyshare
 .NOTPARALLEL: clean rebuild
 .PHONY: uninstall clean-libs clean-tools schema-grabber ticket-grabber
 .PHONY: test-library-dates test-library-dates-hook test-depot-overrides
@@ -98,12 +98,6 @@ test-familyshare: obj/sdk/protobufs/steammessages_base.pb.o
 		src/sdk/CNetPacket.cpp $^ lib/libprotobuf.a \
 		-Wl,--gc-sections -pthread -o /tmp/test_familyshare
 	/tmp/test_familyshare
-
-test-familyshare-wiring:
-	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror \
-		tools/test_familyshare_wiring.cpp -o /tmp/test_familyshare_wiring
-	/tmp/test_familyshare_wiring
-
 
 test-achievements:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror -isystem include -pthread tools/test_achievements.cpp -o /tmp/test_achievements
