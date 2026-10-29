@@ -34,6 +34,9 @@
 #include <unordered_map>
 #include <vector>
 
+#include <sys/uio.h>
+#include <unistd.h>
+
 
 namespace ManifestCode
 {
@@ -64,6 +67,10 @@ bool g_DonorDeferredReset = false;
 thread_local unsigned int t_DonorSendDepth = 0;
 uint64_t g_DonorContextGeneration = 1;
 void* g_DonorConnection = nullptr;
+// The captured connection's vtable pointer. Steam destroys the connection when
+// its CM socket drops (the vptr then reads CNetConnection's), and the capture
+// stays until the next logon response, so a send first checks the object.
+const void* g_DonorConnectionVptr = nullptr;
 std::vector<uint8_t> g_DonorHeader;
 uint64_t g_NextDonorJob = kDonorJobBase;
 std::unordered_map<uint64_t, DonorPending> g_DonorPending;
@@ -76,7 +83,18 @@ void clearDonorSessionLocked()
 	g_DonorPending.clear();
 	g_PassiveRequests.clear();
 	g_DonorConnection = nullptr;
+	g_DonorConnectionVptr = nullptr;
 	g_DonorHeader.clear();
+}
+
+// Reads the first word of an object that Steam may have released, without
+// faulting on an unmapped page.
+bool readVptr(const void* object, const void*& vptr) noexcept
+{
+	iovec local{&vptr, sizeof(vptr)};
+	iovec remote{const_cast<void*>(object), sizeof(vptr)};
+	return process_vm_readv(getpid(), &local, 1, &remote, 1, 0) ==
+		static_cast<ssize_t>(sizeof(vptr));
 }
 
 void prunePassiveRequestsLocked()
@@ -349,6 +367,13 @@ CodeRequest requestCode(uint32_t appId, uint32_t depotId, uint64_t gid)
 	uint64_t job = 0;
 	{
 		std::lock_guard lock(g_DonorLock);
+		const void* vptr = nullptr;
+		if (!g_DonorResetting && g_DonorConnection &&
+		    (!readVptr(g_DonorConnection, vptr) || vptr != g_DonorConnectionVptr))
+		{
+			g_pLog->info("Donor: Steam closed its CM connection; waiting for the next logon\n");
+			clearDonorSessionLocked();
+		}
 		if (g_DonorResetting || !g_DonorConnection || g_DonorHeader.empty() ||
 		    !Hooks::CWebSocketConnection_BBuildAndAsyncSendFrame.tramp.fn ||
 		    g_DonorPending.size() >= 128)
@@ -523,6 +548,8 @@ bool hkBBuildAndAsyncSendFrame(void* pConnection,
 						{
 							const bool first = g_DonorHeader.empty();
 							g_DonorConnection = pConnection;
+							g_DonorConnectionVptr =
+								*static_cast<const void* const*>(pConnection);
 							g_DonorHeader.assign(pHdr, pHdr + cbHdr);
 							if (first)
 								g_pLog->infoOnce(
