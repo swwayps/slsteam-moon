@@ -257,6 +257,9 @@ namespace
 	struct SnapshotApplyResult
 	{
 		bool available = false;
+		// Package 0 is not loaded or not Available yet; LoadPackage(0)
+		// applies the stored snapshot later.
+		bool notReady = false;
 		bool changed = false;
 		bool appAdded = false;
 		std::vector<std::uint32_t> appInfoRequestIds;
@@ -385,6 +388,7 @@ namespace
 		if (package == nullptr || package->PackageId != 0 ||
 			package->Status != EPackageStatus::Available)
 		{
+			result.notReady = true;
 			return result;
 		}
 
@@ -1080,17 +1084,15 @@ namespace PackagePatch
 		}
 		if (!applied.available)
 		{
-			// The first snapshot is published during setup, before Steam loads
-			// package 0; LoadPackage(0) applies it. Only a loaded package that
-			// cannot take the snapshot is worth a warning.
-			if (g_pPackage0.load(std::memory_order_acquire) == nullptr)
+			// A package that is not loaded yet (setup, or still loading) takes
+			// the snapshot in LoadPackage(0); the other refusals warn where
+			// they happen.
+			if (applied.notReady)
 			{
 				g_pLog->debug(
 					"PackagePatch: runtime package generation %llu waits for LoadPackage(0)\n",
 					static_cast<unsigned long long>(snapshot.generation));
-				return;
 			}
-			logDeferredOnce(snapshot.generation, "package 0 is not ready");
 			return;
 		}
 
