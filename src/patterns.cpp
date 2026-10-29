@@ -975,18 +975,32 @@ namespace Patterns
 
 	namespace CDepotDownloadMgr
 	{
+		// x86-64: (rdi=mgr, rsi=user, edx=appId, ecx=depotId, r8=gid,
+		// r9=branch). ProcessDepotManifest formats
+		// "%s/depotcache/%d_%llu.manifest" from ecx/r8 and, when the file is
+		// missing, calls BYldRequestDepotManifest(user+0x18b8, app, depot,
+		// gid, branch, mgr). PrepareDepotDownload saves the same registers,
+		// calls ProcessDepotManifest with them and then looks the gid up in
+		// the table at mgr+0x60/+0x78. Prologues saving those arguments match
+		// once on beta 1792711043, 1793235415 and the 2026-10-21 stable build.
 		Pattern_t ProcessDepotManifest
 		{
 			"CDepotDownloadMgr::ProcessDepotManifest",
-			"",
+			"41 57 41 56 41 89 CE 41 55 41 54 49 89 FC 55 53 4C 89 C3 48 83 EC 38 48 89 34 24 89 54 24 0C 4C 89 4C 24 10",
 			SigFollowMode::None
 		};
 		Pattern_t PrepareDepotDownload
 		{
 			"CDepotDownloadMgr::PrepareDepotDownload",
-			"",
+			"41 57 41 56 41 55 41 54 55 53 48 89 FB 48 83 EC 78 48 89 74 24 08 89 4C 24 04 64 4C 8B 24 25 28 00 00 00 4C 89 64 24 68 4D 89 C4 E8",
 			SigFollowMode::None
 		};
+		// Not ported: the x86-64 planner (the pair of calls with flag 0/1 into
+		// contentupdatecontext.cpp, e.g. 0x11fc8e0 on beta 1793235415) takes
+		// (ctx, flag, dword, vector) and walks 0x28-byte entries, while
+		// ManifestBind's builder hook expects the i386 (ctx, flag, vector, dword)
+		// and 0x20-byte DepotEntry layout. The leaf above already stages the
+		// manifests; manifest pins need the builder.
 		Pattern_t BuildDepotDependency
 		{
 			"CDepotDownloadMgr::BuildDepotDependency",

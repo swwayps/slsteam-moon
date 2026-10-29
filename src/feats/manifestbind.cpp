@@ -55,9 +55,8 @@ namespace
 		}
 	}
 	// Two cooperating detours in CDepotDownloadMgr (see patterns.cpp
-	// CDepotDownloadMgr for the full RE).  Both share this 7-dword cdecl
-	// signature:
-	//   (ctx, a0C, appId, depotId, uint64 manifestId, a20) -> (eax)
+	// CDepotDownloadMgr for the full RE).  Both share this x86-64 signature:
+	//   (mgr, user, appId, depotId, uint64 manifestId, branch) -> rax
 	//
 	//   * ProcessDepotManifest — the manifest-acquisition LEAF: builds
 	//     "<steamRoot>/depotcache/<depot>_<gid>.manifest", checks it on disk,
@@ -73,12 +72,10 @@ namespace
 	//     state pointer.  Must be redirected too, else it looks up the public
 	//     gid the leaf no longer staged -> NULL deref -> SIGSEGV.
 	//
-	// Both are self-contained PIC.  ProcessDepotManifest's get_pc_thunk is its
-	// first instruction (in the relocated tramp -> fixPICThunkCall repairs
-	// it); PrepareDepotDownload's is at +5 (not relocated -> fixPICThunkCall
-	// is a harmless no-op).
-	using DepotFn_t = void*(*)(void*, uint32_t, uint32_t, uint32_t,
-	                           uint64_t, uint32_t);
+	// PrepareDepotDownload passes its arguments to ProcessDepotManifest
+	// unchanged, so both detours see the same gid.
+	using DepotFn_t = void*(*)(void*, void*, uint32_t, uint32_t,
+	                           uint64_t, void*);
 
 	// FUNC_1141 / CDepotDownloadMgr::BuildDepotDependency — the install-plan
 	// consumer.  cdecl, 4 dwords:
@@ -656,8 +653,8 @@ namespace
 		    depotId, manifestId, decision.gid, consumeFrozen);
 	}
 
-	void* hkProcessDepot(void* ctx, uint32_t a0C, uint32_t appId,
-	                     uint32_t depotId, uint64_t manifestId, uint32_t a20)
+	void* hkProcessDepot(void* ctx, void* a0C, uint32_t appId,
+	                     uint32_t depotId, uint64_t manifestId, void* a20)
 	{
 		logPlanStack("leaf", g_traceLeftLeaf, appId, depotId, manifestId);
 		const uint64_t useGid =
@@ -665,8 +662,8 @@ namespace
 		return g_leaf.orig(ctx, a0C, appId, depotId, useGid, a20);
 	}
 
-	void* hkPrepareDepot(void* ctx, uint32_t a0C, uint32_t appId,
-	                     uint32_t depotId, uint64_t manifestId, uint32_t a20)
+	void* hkPrepareDepot(void* ctx, void* a0C, uint32_t appId,
+	                     uint32_t depotId, uint64_t manifestId, void* a20)
 	{
 		logPlanStack("plan", g_traceLeftPlanner, appId, depotId, manifestId);
 		const uint64_t useGid =

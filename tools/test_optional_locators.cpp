@@ -200,6 +200,16 @@ int main(int argc, char** argv)
 		"41 57 41 56 49 89 F6 41 55 41 54 55 53 48 89 FB 48 81 EC ? ? 00 00 4C 8B 25 ? ? ? ? 89 54 24 ? 48 63 69 10",
 		source);
 	(void)resolveUnique(client, "CUtlMemory::Grow", "E8 ? ? ? ? 8B 43 50 8D 70 01 EB", source);
+	// ManifestBind: the depotcache check before a manifest request, and the
+	// download step that calls it with the same arguments.
+	(void)resolveUnique(
+		client, "CDepotDownloadMgr::ProcessDepotManifest",
+		"41 57 41 56 41 89 CE 41 55 41 54 49 89 FC 55 53 4C 89 C3 48 83 EC 38 48 89 34 24 89 54 24 0C 4C 89 4C 24 10",
+		source);
+	(void)resolveUnique(
+		client, "CDepotDownloadMgr::PrepareDepotDownload",
+		"41 57 41 56 41 55 41 54 55 53 48 89 FB 48 83 EC 78 48 89 74 24 08 89 4C 24 04 64 4C 8B 24 25 28 00 00 00 4C 89 64 24 68 4D 89 C4 E8",
+		source);
 	if (failures != 0)
 	{
 		std::cerr << failures << " optional locator check(s) failed\n";
