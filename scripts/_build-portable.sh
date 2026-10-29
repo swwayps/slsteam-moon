@@ -47,6 +47,6 @@ echo "==> portable build (using $runtime, image slsteam-moon-builder)"
 	slsteam-moon-builder \
 	bash -c 'make clean && make'
 
-scripts/check-pattern-refresh-abi.sh bin/pattern-refresh
+scripts/check-abi.sh bin/pattern-refresh
 
 echo "==> built: bin/SLSsteam.so, bin/pattern-refresh"

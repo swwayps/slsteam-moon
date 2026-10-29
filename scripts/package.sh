@@ -93,14 +93,14 @@ check_binary_freshness() {
 }
 check_binary_freshness bin/SLSsteam.so SLSsteam.so \
 	src include lib res Makefile scripts/build.sh scripts/_build-host.sh \
-	scripts/_build-portable.sh scripts/Dockerfile scripts/check-sls-abi.sh embed-config.sh
+	scripts/_build-portable.sh scripts/Dockerfile scripts/check-abi.sh embed-config.sh
 check_binary_freshness bin/pattern-refresh pattern-refresh \
 	tools/pattern-refresh src/pattern_catalog.cpp src/pattern_catalog.hpp \
 	src/utils/process_lock.hpp res/pattern-public-key.hex Makefile \
 	scripts/build.sh scripts/_build-host.sh scripts/_build-portable.sh scripts/Dockerfile
 
-scripts/check-sls-abi.sh bin/SLSsteam.so
-scripts/check-pattern-refresh-abi.sh bin/pattern-refresh
+scripts/check-abi.sh bin/SLSsteam.so --i386
+scripts/check-abi.sh bin/pattern-refresh
 
 PKG_DIR="dist/slsteam-moon-${VERSION}"
 ZIP_PATH="dist/slsteam-moon-linux-${VERSION}.zip"

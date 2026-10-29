@@ -74,7 +74,7 @@ case "$*" in
             "$version"
         ;;
     *-h*)
-        printf '  Class:                             ELF32\n'
+        printf '  Class:                             %s\n' "${TEST_ELF_CLASS:-ELF32}"
         printf '  Machine:                           Intel 80386\n'
         ;;
 esac
@@ -82,34 +82,35 @@ READELF
 chmod +x "$ABI_READELF"
 export READELF="$ABI_READELF" TEST_GLIBC_VERSION=2.34
 
-if [ -x scripts/check-pattern-refresh-abi.sh ]; then
+if [ -x scripts/check-abi.sh ]; then
     READELF="$ABI_READELF" TEST_GLIBC_VERSION=2.34 \
-        scripts/check-pattern-refresh-abi.sh bin/pattern-refresh >/dev/null 2>&1 \
+        scripts/check-abi.sh bin/pattern-refresh >/dev/null 2>&1 \
         && ok "ABI gate accepts GLIBC_2.34" \
         || bad "ABI gate rejected GLIBC_2.34"
     if READELF="$ABI_READELF" TEST_GLIBC_VERSION=2.35 \
-        scripts/check-pattern-refresh-abi.sh bin/pattern-refresh >/dev/null 2>&1; then
+        scripts/check-abi.sh bin/pattern-refresh >/dev/null 2>&1; then
         bad "ABI gate accepted GLIBC_2.35"
     else
         ok "ABI gate rejects symbols newer than GLIBC_2.34"
     fi
-else
-    bad "scripts/check-pattern-refresh-abi.sh is missing"
-fi
-
-if [ -x scripts/check-sls-abi.sh ]; then
     READELF="$ABI_READELF" TEST_GLIBC_VERSION=2.34 \
-        scripts/check-sls-abi.sh bin/SLSsteam.so >/dev/null 2>&1 \
+        scripts/check-abi.sh bin/SLSsteam.so --i386 >/dev/null 2>&1 \
         && ok "SLS ABI gate accepts ELF32 GLIBC_2.34" \
         || bad "SLS ABI gate rejected ELF32 GLIBC_2.34"
     if READELF="$ABI_READELF" TEST_GLIBC_VERSION=2.35 \
-        scripts/check-sls-abi.sh bin/SLSsteam.so >/dev/null 2>&1; then
+        scripts/check-abi.sh bin/SLSsteam.so --i386 >/dev/null 2>&1; then
         bad "SLS ABI gate accepted GLIBC_2.35"
     else
         ok "SLS ABI gate rejects symbols newer than GLIBC_2.34"
     fi
+    if READELF="$ABI_READELF" TEST_ELF_CLASS=ELF64 \
+        scripts/check-abi.sh bin/SLSsteam.so --i386 >/dev/null 2>&1; then
+        bad "SLS ABI gate accepted an ELF64 binary"
+    else
+        ok "SLS ABI gate rejects an ELF64 binary"
+    fi
 else
-    bad "scripts/check-sls-abi.sh is missing"
+    bad "scripts/check-abi.sh is missing"
 fi
 
 STALE_VERSION="selftest-stale-$$"
