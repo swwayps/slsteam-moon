@@ -101,7 +101,9 @@ ck "a bootstrapped Steam gets a minimal launcher through the wrapper" \
 LOG="$(wire setup_path_and_desktop no-launcher)"
 ck "user reconciliation precedes the administrator prompt" \
    "$(in_order "$LOG" dc_guardian_run "dc_write_policy desktop" "sudo -v" \
-      "dc_migrate_legacy_backups --system" "dc_run --system policy=desktop sudo=sudo")"
+      "dc_run --system policy=desktop sudo=sudo")"
+eq "the system pass migrates its own legacy backups" "no" \
+   "$(has_prefix "$LOG" 'dc_migrate_legacy_backups')"
 ck "a patched system layer refreshes the system desktop database" \
    "$(has_line "$LOG" 'sudo update-desktop-database /usr/share/applications')"
 

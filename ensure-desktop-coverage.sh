@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Thin CLI over desktop-coverage.lib.sh. Installed to $SLSDIR; invoked by the
-# wrapper/Lumen (--user) and the user service (--guardian). setup.sh patches the
-# system layer in process. --user calls are best-effort; guardian failures are
-# explicit.
+# wrapper/Lumen (--user) and the user service (--guardian). Both run the
+# guardian's user pass; --user never fails a launch, --guardian reports its
+# failures. setup.sh patches the system layer in process.
 SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
 : "${WRAPPER:=$HOME/.local/share/SLSsteam/path/steam}"
 # Prefer the shared launcher eligibility check when this helper was installed
@@ -62,7 +62,7 @@ case "${2:-}" in
 esac
 case "$1" in
 	--user)
-		dc_run --user || true
+		dc_guardian_run || true
 		# Also converge the generated-autostart drop-in on the per-launch path.
 		# The wrapper/Lumen call this every injected launch, so even when the
 		# systemd user units are inert (installed while systemctl --user was

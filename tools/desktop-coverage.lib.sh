@@ -636,8 +636,8 @@ dc_patch_one() {
 # regular, trusted, executable file so the DE renders it as "Steam". We do NOT
 # create one where the user had none, and we do NOT use a symlink (GNOME shows a
 # symlinked .desktop as the raw filename + an untrusted link emblem). Steam may
-# restore a vanilla copy on a re-bootstrap; the per-launch/Lumen re-assert
-# re-patches it then.
+# restore a vanilla copy on a re-bootstrap; the next guardian pass re-patches it
+# then. Returns 1 only when a shortcut it should cover is not covered.
 dc_activate_shortcut() {
 	local shortcut="$1"
 	chmod 0755 "$shortcut" 2>/dev/null || return 1
@@ -682,12 +682,12 @@ dc_patch_shortcut() {
 	case "$(dc_classify "$sc")" in
 		launcher|patched)
 			dc_patch_one "$sc" || return 1
-			dc_activate_shortcut "$sc" || true
+			dc_activate_shortcut "$sc" || return 1
 			;;
 		stub)
 			[ "${DC_STEAM_INSTALLED:-0}" = 1 ] || return 0
 			dc_patch_one "$sc" || return 1
-			dc_activate_shortcut "$sc" || true
+			dc_activate_shortcut "$sc" || return 1
 			;;
 	esac
 	return 0
@@ -884,70 +884,6 @@ EOF
 	return 1
 }
 
-# dc_seed_application_shadows — discover supported donors in every system XDG
-# application layer. The first real donor for an ID wins; installer stubs are
-# globally ignored when any real donor exists. Existing exact-ID user entries
-# retain their metadata and are backed up/patched by dc_patch_one.
-dc_seed_application_shadows() {
-	local user_dir dir source kind id target class have_real=0 seen='' failed=0
-	user_dir="$(dc_user_app_dir)"
-
-	while IFS= read -r dir; do
-		[ "$dir" = "$user_dir" ] && continue
-		[ -d "$dir" ] || continue
-		for source in "$dir"/*; do
-			_dc_application_source "$source" || continue
-			[ "$(_dc_application_donor_kind "$source")" = launcher ] \
-				&& have_real=1
-		done
-	done < <(dc_application_dirs)
-
-	while IFS= read -r dir; do
-		[ "$dir" = "$user_dir" ] && continue
-		[ -d "$dir" ] || continue
-		for source in "$dir"/*; do
-			_dc_application_source "$source" || continue
-			kind="$(_dc_application_donor_kind "$source")"
-			case "$kind" in
-				launcher) : ;;
-				stub)
-					[ "$have_real" = 0 ] \
-						&& [ "${DC_STEAM_INSTALLED:-0}" = 1 ] || continue
-					;;
-				*) continue ;;
-			esac
-			id="$(dc_desktop_id "$source")"
-			printf '%s\n' "$seen" | grep -qxF "$id" 2>/dev/null && continue
-			seen="${seen}${seen:+
-}$id"
-			target="$user_dir/$id"
-			if [ "${DC_STEAM_INSTALLED:-0}" != 1 ] && \
-			   dc_is_prebootstrap_seed "$target"; then
-				continue
-			fi
-			_dc_discard_dangling_application_shadow "$target" || continue
-			if [ -e "$target" ] || [ -L "$target" ]; then
-				[ -r "$target" ] || chmod 0644 "$target" 2>/dev/null || true
-				# dc_patch_one also returns 1 for an entry it deliberately leaves
-				# alone; only a launcher it failed to cover is a failure.
-				class="$(dc_classify "$target")"
-				if ! dc_patch_one "$target" 2>/dev/null; then
-					case "$class" in launcher|patched) failed=1 ;; esac
-				fi
-			else
-				_dc_publish_application_shadow "$source" "$target" "$kind" || failed=1
-			fi
-		done
-	done < <(dc_application_dirs)
-	[ "$failed" = 0 ]
-}
-
-# Reconcile same-ID shadows before the existing broad user application pass.
-dc_reconcile_application_entries() {
-	dc_seed_application_shadows
-	dc_patch_glob "" "$(dc_user_app_dir)"
-}
-
 # dc_seed_autostart_override — when the desktop session auto-launches Steam via a
 # SYSTEM autostart entry (SteamOS/Bazzite: /etc/xdg/autostart/steam.desktop, often
 # read-only) and the user has NO ~/.config/autostart/steam.desktop, seed a
@@ -1056,6 +992,11 @@ dc_guardian_repair_dir() {
 		[ -f "$f" ] || [ -L "$f" ] || continue
 		name="$(dc_desktop_id "$f" | tr '[:upper:]' '[:lower:]')"
 		case "$name" in *.desktop) : ;; *) continue ;; esac
+		# Older installs left Steam entries without a read bit; one of the
+		# user's own is made readable so it is repaired, not misread.
+		case "$name" in
+			*steam*.desktop) [ -L "$f" ] || [ -r "$f" ] || chmod 0644 -- "$f" 2>/dev/null || true ;;
+		esac
 		if [ "${DC_STEAM_INSTALLED:-0}" != 1 ] && dc_is_prebootstrap_seed "$f"; then
 			continue
 		fi
@@ -1076,9 +1017,11 @@ dc_guardian_repair_dir() {
 	done
 }
 
-# Seed only missing application IDs here; all existing user entries are repaired
-# by the following directory pass. This preserves the required shadow->repair
-# order and avoids counting the same existing entry twice.
+# Seed a user shadow for every Steam ID a system XDG application layer offers:
+# the first real donor for an ID wins, and installer stubs are ignored when any
+# real donor exists. Only missing IDs are seeded here; existing user entries keep
+# their metadata and are repaired by the following directory pass, which keeps
+# the shadow->repair order and counts each entry once.
 dc_guardian_seed_application_shadows() {
 	local user_dir dir source kind id target have_real=0 seen='' result
 	user_dir="$(dc_user_app_dir)"
@@ -1177,9 +1120,10 @@ dc_guardian_patch_shortcut() {
 			;;
 	esac
 	before="$(dc_guardian_fingerprint "$shortcut")"
-	if dc_patch_one "$shortcut" && _dc_file_has_primary_wrapper_exec "$shortcut"; then
-		dc_activate_shortcut "$shortcut" \
-			|| { dc_guardian_record_result other 2; return 0; }
+	# dc_patch_shortcut may remove a link an older version made; a shortcut
+	# that is still there must run the wrapper.
+	if dc_patch_shortcut "$shortcut" && \
+	   { [ ! -e "$shortcut" ] || _dc_file_has_primary_wrapper_exec "$shortcut"; }; then
 		after="$(dc_guardian_fingerprint "$shortcut")"
 		if [ "$before" = "$after" ]; then result=1; else result=0; fi
 	else
@@ -1311,8 +1255,9 @@ dc_forget_policy() {
 DC_FINGERPRINT_VERSION=3
 
 # Where the last successful pass' digest lives. One file per scope: the guardian
-# (mandatory, user-only), the legacy best-effort --user pass and the optional
-# --system pass do different work and must not satisfy each other's cache.
+# (user entries) and the optional --system pass do different work and must not
+# satisfy each other's cache. Older versions also kept a `user` scope, which
+# dc_coverage_forget still removes.
 dc_fingerprint_path() {
 	local scope="${1:-user}"
 	printf '%s/coverage.fingerprint.%s\n' \
@@ -1519,60 +1464,37 @@ dc_guardian_run() {
 	return "$status"
 }
 
-# dc_run [--user|--system] — patch all known *steam*.desktop locations. --user
-# (default) does user-owned dirs only (no sudo). --system additionally patches
-# the system menu dir + stub (caller must provide sudo rights). An existing
-# desktop shortcut is patched in place; one is never created implicitly.
+# dc_run --system — patch the system menu and autostart entries with the
+# privilege command the caller grants in DC_SUDO. User entries are the
+# guardian's (dc_guardian_run), which setup.sh runs first.
 dc_run() {
-	local mode="${1:---user}" menu user_apps user_autostart failed=0 scope
-	case "$mode" in
-		--system) scope=system ;;
-		*) scope=user ;;
+	local failed=0
+	[ "${1:-}" = --system ] || return 2
+	# A successful mutable launcher shim owns the system launch path, so system
+	# desktop entries stay untouched while that policy is active. An explicit
+	# environment override remains available to tests/diagnostics; persisted
+	# state is trusted only after checking the live shim and its captured original.
+	case "${SLSM_COVERAGE_POLICY:-}" in
+		launcher) return 0 ;;
+		desktop) : ;;
+		*)
+			if [ "$(dc_read_policy)" = launcher ] && dc_launcher_coverage_active; then
+				return 0
+			fi
+			;;
 	esac
-	# A successful mutable launcher shim owns the system launch path. Keep the
-	# mandatory user reconciliation independent, but never mutate system desktop
-	# entries while that primary launcher policy is active. An explicit environment
-	# override remains available to tests/diagnostics; persisted state is trusted
-	# only after checking the live shim and its captured original.
-	if [ "$mode" = "--system" ]; then
-		case "${SLSM_COVERAGE_POLICY:-}" in
-			launcher) return 0 ;;
-			desktop) : ;;
-			*)
-				if [ "$(dc_read_policy)" = launcher ] && dc_launcher_coverage_active; then
-					return 0
-				fi
-				;;
-		esac
-	fi
-	# Same unchanged-input fast path as the guardian (see dc_coverage_unchanged):
-	# this is the per-launch legacy path on desktops without a working user
-	# manager, so it also runs while Steam is starting.
-	if dc_coverage_unchanged "$scope" "$mode"; then
+	if dc_coverage_unchanged system --system; then
 		return 0
 	fi
-	user_apps="$(dc_data_home)/applications"
-	user_autostart="$(dc_config_home)/autostart"
-	menu="$user_apps/steam.desktop"
-	# Migration must precede every repatch: adjacent .desktop backups are active
-	# launch candidates on KDE's systemd XDG-autostart implementation.
-	dc_migrate_legacy_backups "$mode" || failed=1
-	# Create/repair authoritative same-ID shadows before the legacy filename glob.
-	# A failed step is not remembered, so the next pass retries it.
-	dc_reconcile_application_entries || failed=1
-	# Seed a user autostart override from the system entry (SteamOS/Bazzite) BEFORE
-	# the autostart glob, so a freshly seeded file is (idempotently) re-patched too.
-	dc_seed_autostart_override || failed=1
-	dc_patch_glob "" "$user_autostart" || failed=1
-	if [ "$mode" = "--system" ]; then
-		dc_patch_glob "$DC_SUDO" "$DC_SYS_APPS" || failed=1
-		dc_patch_glob "$DC_SUDO" "$DC_SYS_AUTOSTART" || failed=1
-	fi
-	if [ -f "$menu" ]; then
-		dc_patch_shortcut "$(dc_desktop_dir)/steam.desktop" || failed=1
-	fi
+	# Migration must precede the repatch: adjacent .desktop backups are active
+	# launch candidates on KDE's systemd XDG-autostart implementation. A failed
+	# step is not remembered, so the next pass retries it.
+	dc_migrate_legacy_dir "$DC_SYS_APPS" "$DC_SUDO" || failed=1
+	dc_migrate_legacy_dir "$DC_SYS_AUTOSTART" "$DC_SUDO" || failed=1
+	dc_patch_glob "$DC_SUDO" "$DC_SYS_APPS" || failed=1
+	dc_patch_glob "$DC_SUDO" "$DC_SYS_AUTOSTART" || failed=1
 	[ "$failed" = 0 ] || return 2
-	dc_coverage_remember "$scope" "$mode" || true
+	dc_coverage_remember system --system || true
 	return 0
 }
 

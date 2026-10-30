@@ -899,7 +899,7 @@ EOF
 }
 
 # The autostart override lives in desktop-coverage.lib.sh as
-# dc_seed_autostart_override, run by dc_run.
+# dc_seed_autostart_override, run by the guardian's user pass.
 
 # ---------------------------------------------------------------------------
 # System launcher interception
@@ -1117,7 +1117,6 @@ setup_path_and_desktop()
 		else
 			DC_SUDO="sudo"
 			export DC_SUDO
-			dc_migrate_legacy_backups --system
 			if SLSM_COVERAGE_POLICY=desktop DC_FORCE=1 dc_run --system; then
 				system_desktop_changed=1
 				log_success "Patched optional system Steam desktop entries"
