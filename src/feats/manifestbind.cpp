@@ -352,10 +352,10 @@ namespace
 		// Only content WE manage.  A merely-observed key (owned game / Proton
 		// runtime) must NOT pull the depot in here: redirectGid would archive
 		// it into the ManifestStore and could redirect an owned depot to a
-		// stale local gid.  The store holds LuaTools depots only.
-		return DepotKey::manifestInManagedScope(
-		    appId, depotId,
-		    /*depotHasPin=*/g_config.getManifestPin(appId, depotId) != 0);
+		// stale local gid.  The store holds LuaTools depots only.  A pinned
+		// depot never gets here: redirectGid returns before the scope check.
+		return DepotKey::manifestInManagedScope(appId, depotId,
+		                                        /*depotHasPin=*/false);
 	}
 
 	// Shared redirect decision: when the planned (public) gid's manifest is

@@ -67,7 +67,7 @@ endif
 .PHONY: test-manifestdonor test-manifestdonor-runtime test-manifestfetch
 .PHONY: test-reconcilepin-scan
 .PHONY: test-depotkey-recv-policy
-.PHONY: test-private-apps test-config-settings test-config-tolerance test-config-watch test-config-create test-plugin-config test-curl-child test-legacy-cdkey test-utils-number test-launch-options
+.PHONY: test-pin-lookup test-private-apps test-config-settings test-config-tolerance test-config-watch test-config-create test-plugin-config test-curl-child test-legacy-cdkey test-utils-number test-launch-options
 
 test-manifestdonor:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror \
@@ -808,6 +808,17 @@ test-ownerwork-policy: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
 		lib/libyaml-cpp.a lib/libprotobuf.a -lcrypto -lpthread -ldl \
 		-o /tmp/test_ownerwork_policy
 	/tmp/test_ownerwork_policy
+test-pin-lookup: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
+		obj/api.o obj/feats/depotkey.o \
+		obj/feats/librarydates.o obj/ownerwork.o \
+		obj/sdk/protobufs/steammessages_clientserver_appinfo.pb.o \
+		obj/sdk/protobufs/steammessages_base.pb.o
+	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
+		-I include -isysteminclude tools/test_pin_lookup.cpp \
+		$(filter obj/%.o,$^) \
+		lib/libyaml-cpp.a lib/libprotobuf.a -lcrypto -lpthread -ldl \
+		-o /tmp/test_pin_lookup
+	/tmp/test_pin_lookup
 test-config-create: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
 		obj/api.o obj/feats/depotkey.o \
 		obj/feats/librarydates.o obj/ownerwork.o \

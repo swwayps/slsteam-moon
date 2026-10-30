@@ -935,13 +935,16 @@ bool CConfig::isAddedAppId(uint32_t appId)
 
 uint64_t CConfig::getManifestPin(uint32_t appId, uint32_t depotId)
 {
-	return ManifestPins::getPinForContext(manifestPinsByApp.get(), appId, depotId);
+	return manifestPinsByApp.read([&](const ManifestPins::PinMap& pins) {
+		return ManifestPins::getPinForContext(pins, appId, depotId);
+	});
 }
 
 uint64_t CConfig::getManifestPinForPlanner(uint32_t appId, uint32_t depotId)
 {
-	return ManifestPins::getPinForPlannerEntry(
-	    manifestPinsByApp.get(), appId, depotId);
+	return manifestPinsByApp.read([&](const ManifestPins::PinMap& pins) {
+		return ManifestPins::getPinForPlannerEntry(pins, appId, depotId);
+	});
 }
 
 bool CConfig::isAppLocked(uint32_t appId)
