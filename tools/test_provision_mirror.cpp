@@ -1,5 +1,6 @@
 // A cold-start pass walks the manifest store once: the terminal verdicts and
 // the depot synthesis of every app reuse the index the pass was primed with.
+// A mirror answer is capped at 16 MiB and its redirects stay on https.
 // The provider mirror answers through tools/fake_libcurl.cpp.
 // Build: make test-provision-mirror (links the whole object set).
 #include "../src/config.hpp"
@@ -9,6 +10,7 @@
 #include "../src/log.hpp"
 #include "fake_libcurl.hpp"
 
+#include <algorithm>
 #include <atomic>
 #include <climits>
 #include <cstdint>
@@ -64,21 +66,25 @@ static int g_failures = 0;
 namespace
 {
 
-// The provider mirror. App 1001 lists one depot nobody holds a key for; every
-// other app comes back without depots, as a token-locked one does.
+// The provider mirror. App 1001 lists one depot nobody holds a key for; app
+// 2000 answers with 17 MiB; every other app comes back without depots, as a
+// token-locked one does.
 class Provider final : public FakeCurl
 {
 public:
 	std::atomic<int> requests{0};
+	std::size_t bigAccepted = 0; // most bytes of 2000's answer one GET kept
+	bool redirectsHttps = true; // every GET limited its redirects to https
 
 	CURL* init() override { return reinterpret_cast<CURL*>(new Handle); }
 
-	CURLcode setopt(CURL* c, CURLoption option, long, void* pointer) override
+	CURLcode setopt(CURL* c, CURLoption option, long number, void* pointer) override
 	{
 		Handle& h = *reinterpret_cast<Handle*>(c);
 		if (option == CURLOPT_URL) h.url = static_cast<const char*>(pointer);
 		else if (option == CURLOPT_WRITEFUNCTION) h.write = reinterpret_cast<Write>(pointer);
 		else if (option == CURLOPT_WRITEDATA) h.writeData = pointer;
+		else if (option == CURLOPT_REDIR_PROTOCOLS) h.redirProtocols = number;
 		return CURLE_OK;
 	}
 
@@ -86,15 +92,28 @@ public:
 	{
 		Handle& h = *reinterpret_cast<Handle*>(c);
 		++requests;
+		if (h.redirProtocols != CURLPROTO_HTTPS) redirectsHttps = false;
 		const std::string id = h.url.substr(h.url.rfind('/') + 1);
 		const std::string depots = id == "1001"
 			? ",\"depots\":{\"10012\":{\"manifests\":{\"public\":{\"gid\":\"888\"}}}}"
 			: "";
-		std::string body = "{\"data\":{\"" + id + "\":{\"appid\":\"" + id +
-			"\",\"common\":{\"name\":\"App " + id + "\",\"type\":\"Game\"}" + depots +
-			",\"_change_number\":5}},\"status\":\"success\"}";
-		return h.write(body.data(), 1, body.size(), h.writeData) == body.size()
-			? CURLE_OK : CURLE_WRITE_ERROR;
+		const std::string pad = id == "2000"
+			? ",\"pad\":\"" + std::string(17u << 20, 'x') + "\"" : "";
+		const std::string body = "{\"data\":{\"" + id + "\":{\"appid\":\"" + id +
+			"\",\"common\":{\"name\":\"App " + id + "\",\"type\":\"Game\"" + pad + "}" +
+			depots + ",\"_change_number\":5}},\"status\":\"success\"}";
+		// Delivered in chunks, like libcurl: a short count ends the transfer.
+		std::size_t accepted = 0;
+		for (std::size_t at = 0; at < body.size(); at += 65536)
+		{
+			const std::size_t chunk = std::min<std::size_t>(65536, body.size() - at);
+			const std::size_t kept =
+				h.write(const_cast<char*>(body.data()) + at, 1, chunk, h.writeData);
+			accepted += kept;
+			if (kept != chunk) break;
+		}
+		if (id == "2000") bigAccepted = std::max(bigAccepted, accepted);
+		return accepted == body.size() ? CURLE_OK : CURLE_WRITE_ERROR;
 	}
 
 	void cleanup(CURL* c) override { delete reinterpret_cast<Handle*>(c); }
@@ -122,6 +141,7 @@ private:
 		std::string url;
 		Write write = nullptr;
 		void* writeData = nullptr;
+		long redirProtocols = -1;
 	};
 };
 
@@ -185,6 +205,19 @@ int main()
 	CHECK(provider.requests == 20,
 	      ("the next start reuses every verdict (" +
 	       std::to_string(provider.requests.load() - 20) + " apps asked again)").c_str());
+
+	// An answer larger than a cache pair (16 MiB) is refused while it arrives,
+	// so nothing is parsed: the app gets neither a pair nor a verdict.
+	apps.insert(2000);
+	g_config.managedAppIds.set(apps);
+	AppInfoProvision::provisionColdStartApps({2000});
+	CHECK(provider.bigAccepted > 0 && provider.bigAccepted <= (16u << 20) &&
+	      !std::filesystem::exists(cache + "/terminal_2000.state") &&
+	      !std::filesystem::exists(cache + "/picsbuffer_2000.bin"),
+	      ("an answer over 16 MiB is cut off and parsed nowhere (" +
+	       std::to_string(provider.bigAccepted) + " bytes kept)").c_str());
+	CHECK(provider.redirectsHttps,
+	      "every mirror GET follows redirects to https only");
 
 	if (g_failures == 0) std::printf("\nall provision mirror checks passed\n");
 	else std::printf("\n%d provision mirror check(s) FAILED\n", g_failures);
