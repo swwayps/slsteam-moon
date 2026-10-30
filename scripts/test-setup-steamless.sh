@@ -41,7 +41,7 @@ run_case() {
 make_fakeroot() {
     local root; root="$(mktemp -d)"
     mkdir -p "$root/tools/steamstub-bypass"
-    for s in run-steamless.sh install-steamless.sh scan-all.sh; do
+    for s in run-steamless.sh install-steamless.sh; do
         # install-steamless.sh stub must NOT touch the network; if the
         # fallback runs it, it just no-ops (leaving the kit absent).
         echo '#!/usr/bin/env bash' > "$root/tools/steamstub-bypass/$s"
@@ -84,6 +84,21 @@ else
     bad "no loud warning emitted when kit missing: $(cat "$WARN_LOG")"
 fi
 rm -rf "$R2" "$T2" "$WARN_LOG"
+
+# Case 3: an update installs the two helpers and removes the scan-all.sh an
+# older release installed (it processed every app, opted in or not).
+R3="$(make_fakeroot)"
+T3="$(mktemp -d)"; WARN_LOG="$(mktemp)"
+mkdir -p "$T3/steamstub-bypass"
+printf '#!/bin/sh\nexit 0\n' > "$T3/steamstub-bypass/scan-all.sh"
+run_case "$R3" "$T3" >/dev/null 2>&1
+[ -x "$T3/steamstub-bypass/run-steamless.sh" ] && [ -x "$T3/steamstub-bypass/install-steamless.sh" ] \
+    && ok "both helpers installed" \
+    || bad "helpers not installed"
+[ ! -e "$T3/steamstub-bypass/scan-all.sh" ] \
+    && ok "an older scan-all.sh is removed" \
+    || bad "an older scan-all.sh is still installed"
+rm -rf "$R3" "$T3" "$WARN_LOG"
 
 echo "== test-setup-steamless: install_steamstub checks done =="
 

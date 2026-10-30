@@ -1188,10 +1188,11 @@ install_steamstub()
 	mkdir -p "$TARGET/steamstub-bypass"
 	cp -v "$HELPERSRC/run-steamless.sh"     "$TARGET/steamstub-bypass/"
 	cp -v "$HELPERSRC/install-steamless.sh" "$TARGET/steamstub-bypass/"
-	cp -v "$HELPERSRC/scan-all.sh"          "$TARGET/steamstub-bypass/"
 	chmod u+x "$TARGET/steamstub-bypass/run-steamless.sh" \
-	          "$TARGET/steamstub-bypass/install-steamless.sh" \
-	          "$TARGET/steamstub-bypass/scan-all.sh"
+	          "$TARGET/steamstub-bypass/install-steamless.sh"
+	# Older releases also installed scan-all.sh, which processed every app
+	# whether or not its launch options opted in.
+	rm -f "$TARGET/steamstub-bypass/scan-all.sh"
 
 	echo ""
 
