@@ -3,6 +3,7 @@
 #include "CUtl.hpp"
 #include "types.hpp"
 
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -124,7 +125,8 @@ extern CSteamEngine* g_pSteamEngine;
 // hook.  g_pSteamEngine is only captured by the first ProcessIPCFrame;
 // CheckAppOwnership fires earlier and often with the same CUser* that
 // getUser(0) would return, so it is a reliable, timing-independent source.
-extern CUser* g_pLocalUser;
+// Written from whichever Steam thread runs that hook, read from others.
+extern std::atomic<CUser*> g_pLocalUser;
 
 // Returns the local user (pipe 0), preferring the engine when available and
 // falling back to the cached CheckAppOwnership user.  May return nullptr if

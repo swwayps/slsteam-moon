@@ -624,9 +624,11 @@ static bool hkUser_CheckAppOwnership(void* pClientUser, uint32_t appId, AppOwner
 	// getLocalUser().  This hook fires early and constantly with the
 	// pipe-0 user, so it covers the time before the first
 	// ProcessIPCFrame captures g_pSteamEngine.
-	if (pClientUser != nullptr)
+	// Stored only when it changes: this runs on every ownership check.
+	if (pClientUser != nullptr &&
+	    g_pLocalUser.load(std::memory_order_relaxed) != pClientUser)
 	{
-		g_pLocalUser = reinterpret_cast<CUser*>(pClientUser);
+		g_pLocalUser.store(reinterpret_cast<CUser*>(pClientUser), std::memory_order_relaxed);
 	}
 
 	// Only added apps are tracked; the other games' checks skip the policy lock.
