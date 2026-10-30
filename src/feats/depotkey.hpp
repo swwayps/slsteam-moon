@@ -2,8 +2,8 @@
 //
 // Depot decryption key feature.
 //
-// Intercepts CMsgClientGetDepotDecryptionKey requests/responses inside the
-// existing CProtoBufMsgBase hooks (already provided by SLSsteam).
+// Sees CMsgClientGetDepotDecryptionKey requests in the websocket send hook and
+// their responses on the CM receive path.
 //
 // Behaviour summary:
 //   - Outgoing requests: track (depot_id -> app_id) so we can correlate the
@@ -108,9 +108,7 @@ namespace DepotKey
 	// RecvAction + classifyRecv (the pure substitution decision) live in
 	// depotkey_recv_policy.hpp so they can be unit-tested without protobuf.
 
-	// Specific protobuf-typed handlers. recvDepotKey returns true iff it
-	// rewrote the response in place (so the CNetPacket CM-receive path
-	// reserializes the packet); the classic CProtoBufMsgBase path ignores it.
+	// Returns true iff it rewrote the response in place, so the CM receive
+	// path reserializes the packet.
 	bool recvDepotKey(CMsgClientGetDepotDecryptionKeyResponse* resp);
-	void sendDepotKey(CMsgClientGetDepotDecryptionKey* req);
 }

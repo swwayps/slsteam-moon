@@ -2,18 +2,17 @@
 //
 // Pure manifest-scope predicate for the depot-key feature.
 //
-// SLSsteam's manifest machinery — the synchronous blob staging in
-// CDepotDownloadMgr::BYldRequestDepotManifest and the GetManifestRequestCode
-// injection in ManifestCode — must engage ONLY for content WE supply.  A
-// depot key that Steam returned legitimately (an owned game, or a Proton
-// Steam Linux Runtime) is cached for substitution but is NOT a trigger:
-// engaging there fires a needless synchronous third-party fetch on a Steam
-// worker thread and overwrites Steam's own request code, which is wasteful
-// at best and a pipe-stall / SIGABRT vector at worst.
+// SLSsteam's manifest machinery (the archive fetch and local redirect in
+// ManifestBind, and the BYldRequestDepotManifest fallback in ManifestCode)
+// must engage ONLY for content WE supply.  A depot key that Steam returned
+// legitimately (an owned game, or a Proton Steam Linux Runtime) is cached for
+// substitution but is NOT a trigger: engaging there would fetch a manifest on
+// a Steam worker thread for content Steam serves itself, and could redirect
+// an owned depot to a stale local gid.
 //
 // The decision is kept here, free of globals and I/O, so it is unit-testable
-// (tools/test_depotkey_scope.cpp).  The callers (manifestcode.cpp) supply the
-// four signals from g_config / the key catalog.
+// (tools/test_depotkey_scope.cpp).  DepotKey::manifestInManagedScope supplies
+// the five signals from g_config / the key catalog.
 
 #pragma once
 

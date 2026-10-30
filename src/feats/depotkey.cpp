@@ -609,25 +609,19 @@ bool recvDepotKey(CMsgClientGetDepotDecryptionKeyResponse* resp)
 	}
 }
 
-void sendDepotKey(CMsgClientGetDepotDecryptionKey* req)
-{
-	if (!req) return;
-	{
-		std::lock_guard<std::mutex> lk(g_pendingMu);
-		g_pendingReqs[req->depot_id()] = req->app_id();
-	}
-	g_pLog->debug("DepotKey: outgoing request for app=%u depot=%u\n",
-	              req->app_id(), req->depot_id());
-}
-
 void sendMsg(CNetPacket* packet)
 {
 	// Observe only: remember which app asked for the key so the response can
 	// be cached against it. The outgoing frame is never rewritten.
 	if (!packet || packet->getProtoBufType() != k_EMsgClientGetDepotDecryptionKey)
 		return;
-	auto req = packet->deserializeBody<CMsgClientGetDepotDecryptionKey>();
-	sendDepotKey(&req);
+	const auto req = packet->deserializeBody<CMsgClientGetDepotDecryptionKey>();
+	{
+		std::lock_guard<std::mutex> lk(g_pendingMu);
+		g_pendingReqs[req.depot_id()] = req.app_id();
+	}
+	g_pLog->debug("DepotKey: outgoing request for app=%u depot=%u\n",
+	              req.app_id(), req.depot_id());
 }
 
 } // namespace DepotKey

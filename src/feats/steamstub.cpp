@@ -570,12 +570,11 @@ void setup(const char* installRoot)
 
 	if (!haveScript || !haveBinary)
 	{
-		g_pLog->warn
+		// Only --steamless launches need the kit, and those warn per app.
+		g_pLog->debug
 		(
-			"SteamStub: helper missing (script=%d binary=%d, root=%s); "
-			"DRM removal DISABLED — games with Steam DRM will fail with "
-			"\"Application load error 6\". Reinstall, or run "
-			"tools/steamstub-bypass/install-steamless.sh to enable.\n",
+			"SteamStub: Steamless kit missing (script=%d binary=%d, root=%s); "
+			"--steamless launches are skipped\n",
 			haveScript, haveBinary, root.c_str()
 		);
 		return;
@@ -617,7 +616,8 @@ void onLaunchApp(uint32_t appId)
 	if (!g_enabled.load(std::memory_order_acquire))
 	{
 		g_pLog->warn("SteamStub: --steamless set for %u but the Steamless kit is "
-		             "unavailable; leaving the executable untouched\n", appId);
+		             "unavailable (reinstall to restore it); leaving the "
+		             "executable untouched\n", appId);
 		return;
 	}
 

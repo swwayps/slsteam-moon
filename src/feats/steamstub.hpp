@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-// Wrapper integration: invokes a bundled helper script that
-// processes Windows binaries belonging to AdditionalApps before
-// Steam launches them through Proton. Drives Steamless under a
-// dedicated Wine prefix; runs synchronously inside the
+// Wrapper integration: for an AdditionalApp whose launch options carry
+// --steamless, invokes a bundled helper script that processes its Windows
+// binaries before Steam launches them through Proton. Drives Steamless under
+// a dedicated Wine prefix; runs synchronously inside the
 // IClientAppManager::LaunchApp hook.
 //
 // Layout expected at runtime:
