@@ -11,6 +11,7 @@
 #include "../src/sdk/protobufs/steammessages_base.pb.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -107,6 +108,8 @@ struct ScriptedEndpoint
 	bool fragment = false; // send each answer as a frame without FIN plus a continuation
 	bool corruptSecond = false; // send an unreadable body as the second answer
 	bool closeAfterFinal = false; // send a close frame right after the last answer
+	bool badGzip = false; // send each answer in a Multi whose body is not gzip
+	uint32_t logonEresult = 1; // the logon answer; the socket stays open either way
 	std::vector<std::vector<uint32_t>> requests;
 	std::unordered_set<uint32_t> delivered; // apps sent with a buffer
 };
@@ -261,7 +264,7 @@ private:
 			assigned.set_steamid((1ULL << 56) | (10ULL << 52) | 1);
 			assigned.set_client_sessionid(7);
 			CMsgClientLogonResponse logon;
-			logon.set_eresult(1);
+			logon.set_eresult(endpoints[h.host].logonEresult);
 			queue(h, 751, assigned.SerializeAsString(), logon.SerializeAsString());
 			return;
 		}
@@ -297,7 +300,14 @@ private:
 			}
 			const bool last = end == ids.size();
 			response.set_response_pending(!last || endpoint.withholdFinal);
-			if (endpoint.gzip)
+			if (endpoint.badGzip)
+			{
+				CMsgMulti multi;
+				multi.set_size_unzipped(4096);
+				multi.set_message_body("not a gzip stream");
+				queue(h, 1, CMsgProtoBufHeader().SerializeAsString(), multi.SerializeAsString());
+			}
+			else if (endpoint.gzip)
 			{
 				const std::string inner = CmWire::packPacket(
 				    8904, CMsgProtoBufHeader().SerializeAsString(), response.SerializeAsString());
@@ -458,6 +468,23 @@ int main()
 		CHECK(f.result == FetchResult::Success && f.buffers.size() == 2 &&
 		          cms.endpoints["cm-b.test"].requests.empty(),
 		      "a close after the final answer still completes the request");
+	}
+	// A CM whose answers this session cannot use ends it at once; the next CM
+	// is asked well within the batch budget.
+	for (const bool refuse : {false, true})
+	{
+		ScriptedCms cms;
+		cms.endpoints["cm-a.test"].badGzip = !refuse;
+		cms.endpoints["cm-a.test"].logonEresult = refuse ? 48 : 1; // TryAnotherCM
+		cms.endpoints["cm-b.test"];
+		const auto start = std::chrono::steady_clock::now();
+		const Fetch f = fetch(cms, batch);
+		const auto took = std::chrono::steady_clock::now() - start;
+		CHECK(f.result == FetchResult::Success && f.buffers.size() == knownIn(batch) &&
+		          !cms.endpoints["cm-b.test"].requests.empty() &&
+		          took < std::chrono::seconds(5),
+		      refuse ? "a refused logon ends the session and the next CM serves the batch"
+		             : "an answer that cannot be inflated ends the session and the next CM serves the batch");
 	}
 	{
 		ScriptedCms cms;

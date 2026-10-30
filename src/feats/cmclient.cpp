@@ -316,9 +316,12 @@ bool gzipInflate(const std::string& in, uint32_t expected, std::string& out)
 {
 	const ZlibApi* const z = zlibApi();
 	if (!z || in.empty()) return false;
-	// Cap the inflate so a malicious/oversized stream can't exhaust memory.
-	const size_t cap = expected ? (static_cast<size_t>(expected) + 64)
-	                            : (64u * 1024u * 1024u);
+	// Cap the inflate so a malicious/oversized stream can't exhaust memory: no
+	// answer is larger than a frame (32 MiB, to fit a 32-bit process), whatever
+	// size the server declares.
+	constexpr size_t kMaxInflated = 32u * 1024u * 1024u;
+	const size_t cap = (expected ? std::min<size_t>(expected, kMaxInflated)
+	                             : kMaxInflated) + 64;
 	constexpr int kGzipWindow = 15 + 16;
 	constexpr int kOk = 0, kStreamEnd = 1, kNoFlush = 0;
 	ZStream stream {};
@@ -567,12 +570,13 @@ std::string buildCmPacket(uint32_t emsg, const std::string& body,
 
 // Dispatch one decoded CM packet.  Recurses into Multi.  Updates `out`
 // for PICS apps, `session` on logon response, and sets `picsDone` when a
-// PICS response with response_pending==false arrives.  Returns false for
-// a PICS response it cannot read, which ends the session.
+// PICS response with response_pending==false arrives.  Returns false for an
+// answer it cannot read (a PICS response, or a Multi that does not parse or
+// inflate, which may carry one), which ends the session.
 bool handlePacket(const std::string& pkt, Session& session,
                   std::unordered_map<uint32_t, std::string>& out,
                   std::unordered_map<uint32_t, uint32_t>* changes,
-                  bool& gotLogon, bool& picsDone)
+                  bool& logonAnswered, bool& gotLogon, bool& picsDone)
 {
 	uint32_t emsg = 0;
 	std::string hdrBytes, body;
@@ -581,16 +585,17 @@ bool handlePacket(const std::string& pkt, Session& session,
 	if (emsg == EMSG_MULTI)
 	{
 		CMsgMulti multi;
-		if (!multi.ParseFromString(body)) return true;
+		if (!multi.ParseFromString(body)) return false;
 		std::string payload = multi.message_body();
 		if (multi.size_unzipped() > 0)
 		{
 			std::string inflated;
-			if (!gzipInflate(payload, multi.size_unzipped(), inflated)) return true;
+			if (!gzipInflate(payload, multi.size_unzipped(), inflated)) return false;
 			payload.swap(inflated);
 		}
 		for (const auto& inner : CmWire::expandMultiBody(payload))
-			if (!handlePacket(inner, session, out, changes, gotLogon, picsDone))
+			if (!handlePacket(inner, session, out, changes, logonAnswered, gotLogon,
+			                  picsDone))
 				return false;
 		return true;
 	}
@@ -607,6 +612,7 @@ bool handlePacket(const std::string& pkt, Session& session,
 		CMsgClientLogonResponse resp;
 		if (resp.ParseFromString(body))
 		{
+			logonAnswered = true;
 			gotLogon = (resp.eresult() == 1); // k_EResultOK
 			session.loggedOn = gotLogon;
 		}
@@ -629,7 +635,8 @@ template <typename Pred>
 bool pumpUntil(TlsSocket& sock, Session& session,
                std::unordered_map<uint32_t, std::string>& out,
                std::unordered_map<uint32_t, uint32_t>* changes,
-               bool& gotLogon, bool& picsDone, Pred predicate)
+               bool& logonAnswered, bool& gotLogon, bool& picsDone,
+               Pred predicate)
 {
 	for (;;)
 	{
@@ -645,7 +652,8 @@ bool pumpUntil(TlsSocket& sock, Session& session,
 			if (opcode == 0x8) return predicate();    // close: done if answered
 			if (opcode == 0x9 || opcode == 0xA) continue; // ping/pong: ignore
 			if (opcode == 0x2 &&
-			    !handlePacket(payload, session, out, changes, gotLogon, picsDone))
+			    !handlePacket(payload, session, out, changes, logonAnswered,
+			                  gotLogon, picsDone))
 				return false;
 		}
 		if (predicate()) return true;
@@ -667,14 +675,15 @@ bool runSession(const Endpoint& ep, std::vector<uint32_t>& pending,
 	if (!wsHandshake(sock, ep)) return false;
 
 	Session session;
-	bool gotLogon = false, picsDone = false;
+	bool logonAnswered = false, gotLogon = false, picsDone = false;
 
-	// Anonymous logon.
+	// Anonymous logon. A refusal (TryAnotherCM during maintenance, say) ends
+	// the session at once: the CM may keep the socket open.
 	const std::string logonBody = CmWire::buildAnonLogon();
 	if (!sock.sendAll(wsFrame(buildCmPacket(EMSG_CLIENT_LOGON, logonBody, session))))
 		return false;
-	if (!pumpUntil(sock, session, out, changes, gotLogon, picsDone,
-	               [&] { return gotLogon; }))
+	if (!pumpUntil(sock, session, out, changes, logonAnswered, gotLogon, picsDone,
+	               [&] { return logonAnswered; }))
 		return false;
 	if (!gotLogon) return false;
 
@@ -682,7 +691,7 @@ bool runSession(const Endpoint& ep, std::vector<uint32_t>& pending,
 	                                        CmWire::buildPicsRequest(pending),
 	                                        session))))
 		return false;
-	if (!pumpUntil(sock, session, out, changes, gotLogon, picsDone,
+	if (!pumpUntil(sock, session, out, changes, logonAnswered, gotLogon, picsDone,
 	               [&] { return picsDone; }))
 		return false;
 	pending.clear();
