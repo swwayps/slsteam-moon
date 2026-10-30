@@ -61,7 +61,7 @@ endif
 .NOTPARALLEL: clean rebuild
 .PHONY: uninstall clean-libs clean-tools schema-grabber ticket-grabber
 .PHONY: test-library-dates test-library-dates-hook test-depot-overrides
-.PHONY: test-vftableinfo-registry test-owner-frame-wiring test-decompiler-walk
+.PHONY: test-vftableinfo-registry test-owner-frame-wiring test-decompiler-walk test-memhlp-scan
 .PHONY: test-achievements test-achievement-scope test-stats-audit test-parental test-lfs
 .PHONY: test-stats-provenance
 .PHONY: test-manifestdonor test-manifestdonor-runtime test-manifestfetch
@@ -489,6 +489,12 @@ test-memhlp-target:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src -I include \
 		tools/test_memhlp_target.cpp -o /tmp/test_memhlp_target
 	/tmp/test_memhlp_target
+
+test-memhlp-scan:
+	$(CXX) -O2 -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem include -I src \
+		tools/test_memhlp_scan.cpp src/memhlp.cpp src/utils.cpp lib/liblibmem.a \
+		-ldl -lpthread -o /tmp/test_memhlp_scan
+	/tmp/test_memhlp_scan
 
 test-memhlp-prologue:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src -I include \
