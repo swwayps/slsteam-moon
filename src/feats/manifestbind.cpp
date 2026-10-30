@@ -493,9 +493,8 @@ namespace
 			}
 		}
 
-		const auto decision = ManifestSelection::choose(
-		    manifestId, ManifestSelection::ExactState::Unavailable,
-		    preferred, legacy);
+		const auto decision =
+		    ManifestSelection::choose(manifestId, preferred, legacy);
 		if (decision.gid == manifestId)
 		{
 			g_pLog->info(

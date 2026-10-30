@@ -12,16 +12,8 @@
 
 namespace ManifestSelection
 {
-	enum class ExactState
-	{
-		Ready,
-		Pending,
-		Unavailable,
-	};
-
 	enum class ChoiceSource
 	{
-		Exact,
 		PreferredLocal,
 		LegacyLocal,
 		ExactUnavailable,
@@ -31,7 +23,6 @@ namespace ManifestSelection
 	{
 		uint64_t gid;
 		ChoiceSource source;
-		bool final;
 	};
 
 	struct DepotPair
@@ -63,34 +54,19 @@ namespace ManifestSelection
 		return {pinnedGid, *pinnedSize, true};
 	}
 
-	inline Decision choose(uint64_t plannedGid, ExactState exactState,
-	                       uint64_t preferredLocalGid,
+	// The local gid to install when the planned (exact) gid is unavailable.
+	inline Decision choose(uint64_t plannedGid, uint64_t preferredLocalGid,
 	                       uint64_t legacyLocalGid)
 	{
-		if (exactState == ExactState::Ready)
-		{
-			return {plannedGid, ChoiceSource::Exact, true};
-		}
-		if (exactState == ExactState::Pending)
-		{
-			return {plannedGid, ChoiceSource::Exact, false};
-		}
 		if (preferredLocalGid && preferredLocalGid != plannedGid)
 		{
-			return {preferredLocalGid, ChoiceSource::PreferredLocal, true};
+			return {preferredLocalGid, ChoiceSource::PreferredLocal};
 		}
 		if (legacyLocalGid && legacyLocalGid != plannedGid)
 		{
-			return {legacyLocalGid, ChoiceSource::LegacyLocal, true};
+			return {legacyLocalGid, ChoiceSource::LegacyLocal};
 		}
-		return {plannedGid, ChoiceSource::ExactUnavailable, true};
-	}
-
-	inline int remainingBudgetMs(int totalBudgetMs, int elapsedMs)
-	{
-		if (totalBudgetMs <= 0 || elapsedMs >= totalBudgetMs) return 0;
-		if (elapsedMs <= 0) return totalBudgetMs;
-		return totalBudgetMs - elapsedMs;
+		return {plannedGid, ChoiceSource::ExactUnavailable};
 	}
 
 	// Validate Steam's CUtlVector using its own allocation count instead of an
