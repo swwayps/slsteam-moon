@@ -19,7 +19,6 @@
 #     setup.sh                     (installer the user runs)
 #     tools/
 #       steamstub-bypass/          (helper called by setup.sh install_steamstub)
-#         install-steamless.sh
 #         run-steamless.sh
 #       steamless-bin/             (Steamless kit, bundled verbatim — see
 #                                   docs/LICENSE/steamless; enables offline
