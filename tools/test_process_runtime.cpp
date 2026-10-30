@@ -6,7 +6,9 @@
 
 #include <csignal>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
+#include <new>
 #include <fstream>
 #include <iterator>
 #include <limits>
@@ -16,6 +18,17 @@
 #include <unistd.h>
 #include <vector>
 
+// While set, large allocations (whole executable sections) fail, as on a game
+// whose .text does not fit the 32-bit client's address space.
+static bool g_failLargeAllocations = false;
+void* operator new(std::size_t size)
+{
+	if (g_failLargeAllocations && size >= 10000) throw std::bad_alloc();
+	if (void* p = std::malloc(size ? size : 1)) return p;
+	throw std::bad_alloc();
+}
+void operator delete(void* p) noexcept { std::free(p); }
+void operator delete(void* p, std::size_t) noexcept { std::free(p); }
 std::unique_ptr<CLog> g_pLog;
 CConfig g_config;
 
@@ -307,6 +320,32 @@ int main()
 	}
 	expect(initialised && game.cmdLine == std::vector<std::string>{"/bin/sleep", "5"},
 	       "each command line argument is its own field");
+
+	// The executable analysis runs out of memory: the pipe keeps its app id.
+	{
+		g_config.smartTickets.set(CConfig::k_ESmartTicketsDenuvo);
+		const pid_t sleeper = fork();
+		if (sleeper == 0)
+		{
+			char* const argv[] = {const_cast<char*>("/bin/sleep"), const_cast<char*>("5"), nullptr};
+			char* const envp[] = {const_cast<char*>("SteamAppId=480"), nullptr};
+			execve("/bin/sleep", argv, envp);
+			_exit(127);
+		}
+		Process_t analysed{};
+		bool kept = false;
+		if (sleeper > 0 && waitForCmdline(sleeper, std::string("/bin/sleep\0" "5\0", 13)))
+		{
+			g_failLargeAllocations = true;
+			kept = analysed.init(sleeper, 1);
+			g_failLargeAllocations = false;
+			kill(sleeper, SIGKILL);
+			waitpid(sleeper, nullptr, 0);
+		}
+		g_config.smartTickets.set(0);
+		expect(kept && analysed.appId == 480,
+		       "a failed executable analysis keeps the pipe's app id");
+	}
 
 	// SmartTickets DRM analysis runs on every process that connects to the
 	// Steam pipe (owned games included), with no exception barrier. A binary

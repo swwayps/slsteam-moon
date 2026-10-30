@@ -859,8 +859,17 @@ bool Process_t::init(const pid_t pid, const HSteamPipe pipeHandle)
 			return true;
 		}
 
-		//An unparsable exe still leaves a usable appId mapping.
-		analyse();
+		//An unparsable exe still leaves a usable appId mapping, also when the
+		//analysis throws (a section too large for the 32-bit client).
+		try
+		{
+			analyse();
+		}
+		catch (...)
+		{
+			if (g_pLog) g_pLog->warn("Executable analysis failed for app=%u; ticket "
+			                         "detection skipped\n", appId);
+		}
 		return true;
 	}
 	catch (...)
