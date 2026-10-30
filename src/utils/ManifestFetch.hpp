@@ -61,10 +61,13 @@ namespace ManifestFetch
 	// archive is reachable whenever it answers at all — including a 404, which
 	// only means the manifest has not been donated yet, not that we are offline.
 	// A transport error or a 5xx means the host is unreachable; 429 is a rate
-	// limit that opens the circuit immediately.
+	// limit that opens the circuit immediately. A transfer the job's own budget
+	// stopped (`stoppedByUs`) says nothing either way.
 	inline ArchiveOutcome classifyArchiveOutcome(bool networkError,
-	                                              long httpStatus) noexcept
+	                                              long httpStatus,
+	                                              bool stoppedByUs = false) noexcept
 	{
+		if (networkError && stoppedByUs) return {false, false, false};
 		if (networkError) return {false, false, true};
 		if (httpStatus == 429) return {false, true, false};
 		if (httpStatus >= 500) return {false, false, true};

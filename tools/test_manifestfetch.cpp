@@ -156,6 +156,19 @@ int main()
 		const auto limited = classifyArchiveOutcome(false, 429);
 		CHECK(limited.rateLimited && !limited.success && !limited.transportFailure,
 		      "a 429 archive response is a rate limit");
+		// A download the job's own 60 s budget stopped (a big install on a
+		// slow link) says nothing about whether the archive answers.
+		const auto stopped = classifyArchiveOutcome(true, 0, /*stoppedByUs=*/true);
+		CHECK(!stopped.success && !stopped.rateLimited && !stopped.transportFailure,
+		      "a download stopped by its own budget is neither reachable nor an outage");
+		ProviderCircuit budgetCircuit(2, 30000);
+		for (int round = 0; round < 2; ++round)
+		{
+			const auto token = budgetCircuit.beginAttempt(0);
+			budgetCircuit.finishAttempt(token, 0, stopped.success, stopped.rateLimited,
+			                            stopped.transportFailure);
+		}
+		CHECK(!budgetCircuit.open(), "two budget stops in a row do not open the circuit");
 	}
 
 	// The planner asks "is any managed download running" once per depot; the

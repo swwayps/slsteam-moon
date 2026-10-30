@@ -412,8 +412,8 @@ bool fetchManifestBlob(uint64_t gid, uint32_t depotId,
 		// counts as reachable — the manifest just has not been donated yet.
 		if (const uint64_t token = beginProviderAttempt(sessionEpoch))
 		{
-			const auto outcome = classifyArchiveOutcome(archived.networkError,
-			                                            archived.status);
+			const auto outcome = classifyArchiveOutcome(
+			    archived.networkError, archived.status, budget && budget->shouldStop());
 			finishProviderAttempt(sessionEpoch, token, outcome.success,
 			                      outcome.rateLimited, outcome.transportFailure);
 		}
