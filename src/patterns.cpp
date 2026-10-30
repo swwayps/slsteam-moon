@@ -1072,10 +1072,16 @@ namespace Patterns
 			nullptr,
 			"Patterns::CDepotDownloadMgr::OnChunkUnpackedReg"
 		};
+		// x86-64 entry (beta 1793235415 0x10b51b0): (ctx, CUser*, flag), the
+		// function that logs "AppID %u %sconfig changed : added/updated/removed
+		// depots %s". It reads the ctx flags at +0x08 (kept in the signature,
+		// ReconcilePin reads that field) and calls
+		// CUserAppManager::BuildDepotDependency at +0x19e. One match on
+		// 1792711043, 1793235415 and the 2026-10-21 stable x86-64 client.
 		Pattern_t EvaluateConfigChanges
 		{
 			"CDepotDownloadMgr::EvaluateConfigChanges",
-			"",
+			"55 48 89 E5 41 57 41 56 41 55 41 54 53 48 81 EC ? ? 00 00 89 95 ? ? FF FF 8B 57 08 48 89 B5 ? ? FF FF 64 48 8B 04 25 28 00 00 00 48 89 45 C8 31 C0 41 89 D4 41 83 E4 01",
 			SigFollowMode::None
 		};
 	}

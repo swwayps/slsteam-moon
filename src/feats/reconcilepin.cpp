@@ -8,6 +8,7 @@
 #include "../globals.hpp"
 #include "../log.hpp"
 #include "../patterns.hpp"
+#include "../sdk/CUtl.hpp"
 
 #include "depotkey.hpp"
 #include "manageddepotfilter.hpp"
@@ -16,6 +17,7 @@
 #include "libmem/libmem.h"
 
 #include <atomic>
+#include <cstddef>
 #include <cstdio>
 #include <climits>
 #include <cstdint>
@@ -24,16 +26,10 @@
 
 namespace
 {
-	// EvaluateConfigChanges calling convention: a global
-	// anchor/manager pointer arrives in EAX (BOTH the manager object the body
-	// dereferences AND the PIC anchor for its .rodata string leas); the three
-	// real args are on the stack.  regparm(1) models exactly that: arg0 -> EAX,
-	// the rest -> stack.  Declaring both the hook and the orig-trampoline
-	// pointer regparm(1) keeps EAX intact across the call so the relocated
-	// prologue's `mov %eax,-0xb0(%ebp)` reads the right anchor.  (Prologue is a
-	// plain `push ebp`, not a get_pc_thunk -> no fixPICThunkCall.)
-	typedef void* (*ReconFn_t)(
-	    void* mgr, void* ctx, void* a1, void* a2);
+	// EvaluateConfigChanges on x86-64: (ctx, CUser*, flag); the third value is
+	// passed through pointer-sized so no register bits are dropped.
+	using ReconFn_t = std::uintptr_t (*)(
+	    void* ctx, void* user, std::uintptr_t a2);
 
 	ReconFn_t    g_orig = nullptr;
 	lm_address_t g_addr = LM_ADDRESS_BAD;
@@ -44,15 +40,16 @@ namespace
 	bool g_trace = false;       // SLSSTEAM_RECONCILE_TRACE: per-call logging
 	std::atomic<int> g_traceBudget{400};
 
-	// ctx layout (confirmed live on build cfe99f0c).
-	constexpr size_t kCtxFlagsOff = 0x04;
-	constexpr size_t kCtxAppIdOff = 0x08;
+	// ctx layout on x86-64 (entry reads `mov edx,[rdi+8]` for the flags and
+	// `[rbx+0xc]` for the app id; i386 had +0x04 / +0x08).
+	constexpr size_t kCtxFlagsOff = 0x08;
+	constexpr size_t kCtxAppIdOff = 0x0c;
 	// The depot CUtlVector inside ctx moves when Steam grows the context
-	// (0x78 -> 0x90 on the 2026-10 client), so it is decoded from
+	// (0xc0 on the x86-64 clients), so it is decoded from
 	// EvaluateConfigChanges at setup.  0 = not located: the ctx-vector patch
 	// stays off instead of rewriting whatever field now sits at a stale offset.
 	size_t g_ctxDepotVecOff = 0;
-	constexpr size_t kCtxVecCountOff = 0x0c;  // CUtlVector size, after base
+	constexpr size_t kCtxVecCountOff = offsetof(CUtlVector<char>, size);
 	// flag bit marking the TARGET/appinfo ctx (vs the ACTIVE/installed ctx).
 	constexpr uint32_t kFlagTargetSide = 0x8;
 	// DepotEntry: DepotId @ +0, ManifestGid @ +0x8, Size @ +0x10,
@@ -173,26 +170,15 @@ namespace
 		}
 	}
 
-	// --- the TARGET-LOCAL fix (the -0x90(ebp) CUtlVector) -----------------
+	// --- the TARGET-LOCAL fix (the [rbp-0x110] CUtlVector on x86-64) ------
 	//
-	// The divergent gid can sit in this local instead of [ctx+0x78]. It is filled
-	// after entry, so EvaluateConfigChanges' own builder call is redirected.
+	// The divergent gid can sit in this local instead of the ctx vector. It is
+	// filled after entry, so EvaluateConfigChanges' own builder call is
+	// redirected.
 	//
-	// CUtlVector<DepotEntry>: element base @ +0x0, count @ +0xc.
-	constexpr size_t kVecBaseOff = 0x00;
-	constexpr size_t kVecCountOff = 0x0c;
-
-	// Whether an address lands in an executable segment. Used to validate a
-	// scanned near-call target so drift recovery can never pick a byte whose
-	// decoded destination is not code.
-	bool executableAddress(lm_address_t address)
-	{
-		lm_segment_t segment{};
-		return address != 0 && address != LM_ADDRESS_BAD &&
-			LM_FindSegment(address, &segment) &&
-			(segment.prot & LM_PROT_XR) == LM_PROT_XR &&
-			address >= segment.base && address < segment.end;
-	}
+	// CUtlVector<DepotEntry>: SDK layout, element base @ +0x0, size @ +0x10.
+	constexpr size_t kVecBaseOff = offsetof(CUtlMemory<char>, base);
+	constexpr size_t kVecCountOff = offsetof(CUtlVector<char>, size);
 
 	using BuildTargetFn_t = void* (*)(void*, uint32_t, void*, void*, void*,
 	                                  void*, void*, void*);
@@ -247,17 +233,13 @@ namespace
 		                     + ReconcilePin::detail::kBuilderCallWindow + 8;
 		// The RE'd call offset drifts when Steam recompiles the function, so
 		// locate the call instead of trusting a fixed offset. The call must
-		// reach the resolved builder (or, without that locator, be the only
-		// executable call nearby); on ambiguity/absence it degrades to the
-		// ctx-vector patch alone.
+		// reach the resolved builder; without that locator, or on
+		// ambiguity/absence, it degrades to the ctx-vector patch alone.
 		const lm_address_t builder =
 		    Patterns::CUserAppManager::BuildDepotDependency.address;
 		const long callOff = ReconcilePin::detail::findBuilderCall(
 		    fn, scanLen, reinterpret_cast<uintptr_t>(fn),
-		    builder == LM_ADDRESS_BAD ? 0 : static_cast<uintptr_t>(builder),
-		    [](uintptr_t target) {
-			    return executableAddress(static_cast<lm_address_t>(target));
-		    });
+		    builder == LM_ADDRESS_BAD ? 0 : static_cast<uintptr_t>(builder));
 		if (callOff < 0)
 		{
 			using ReconcilePin::detail::kBuilderCallOff;
@@ -323,7 +305,7 @@ namespace
 		return true;
 	}
 
-	void* hkEvaluate(void* mgr, void* ctx, void* a1, void* a2)
+	std::uintptr_t hkEvaluate(void* ctx, void* user, std::uintptr_t a2)
 	{
 		if (ctx)
 		{
@@ -341,7 +323,7 @@ namespace
 			}
 			patchTargetCtx(ctx, appId, flags);
 		}
-		return g_orig(mgr, ctx, a1, a2);
+		return g_orig(ctx, user, a2);
 	}
 }
 

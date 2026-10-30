@@ -39,10 +39,10 @@
 // RequestAppInfoUpdate cannot defeat it (unlike the appinfo.vdf provision pin).
 // The active side is left untouched so a real pending downgrade is never masked.
 //
-// Calling convention (REd): a global anchor/manager pointer arrives in EAX; the
-// three args are on the stack (ctx = arg0 @ ebp+0x8).  Modelled with a
-// regparm(1) detour; the prologue is a plain `push ebp` (no get_pc_thunk), so
-// no fixPICThunkCall is needed.
+// Calling convention (x86-64, 0x10b51b0 on beta 1793235415): (rdi = ctx,
+// rsi = CUser, edx = flag); the i386 build received its PIC anchor in EAX on
+// top of the same three stack arguments.  The x86-64 context keeps the flags at
+// +0x08, the app id at +0x0c and the depot vector at +0xc0 (decoded at setup).
 //
 // Gating: the empty-depot filter is always active and only recognizes depots
 // imported as managed. The gid rewrite acts for any configured app-scoped pin
@@ -68,8 +68,9 @@ namespace ReconcilePin
 	namespace detail
 	{
 		// RE'd offset of the target-vector builder `call rel32`, relative to the
-		// EvaluateConfigChanges entry on build cfe99f0c.
-		inline constexpr std::size_t kBuilderCallOff = 0x183;
+		// EvaluateConfigChanges entry (x86-64 betas 1792711043 and 1793235415
+		// and the 2026-10-21 stable client; i386 cfe99f0c had +0x183).
+		inline constexpr std::size_t kBuilderCallOff = 0x19e;
 		// How far to look on either side of kBuilderCallOff when the function
 		// body was recompiled and the call moved.
 		inline constexpr std::size_t kBuilderCallWindow = 0x40;
@@ -87,28 +88,23 @@ namespace ReconcilePin
 		// Returns the offset of the call, -1 when no call qualifies, or -2 when
 		// more than one does. Either failure keeps the target-local fix off:
 		// a guessed-address hook could corrupt the reconcile.
-		template <typename TargetExecutable>
+		template <typename TargetOk>
 		inline long findBuilderCallRel32(
 			const std::uint8_t* code, std::size_t len, std::uintptr_t codeAddr,
-			std::size_t expectedOff, std::size_t window,
-			TargetExecutable targetExecutable)
+			std::size_t expectedOff, std::size_t window, TargetOk targetOk)
 		{
-			// The builder takes eight stack dwords (hkBuildTarget's arity), so
-			// its caller pops them with `add esp,0x20` straight after the call.
-			// That rejects neighbouring calls with other arities, which the
-			// 2026-10 client moved into the window.
+			// On x86-64 the builder's eight arguments travel in registers and
+			// two stack slots the caller pops later, so no cleanup right after
+			// the call marks it; the decoded target alone decides.
 			const auto callTargetOk = [&](std::size_t off) -> bool
 			{
-				if (off + 8 > len) return false;
+				if (off + 5 > len) return false;
 				if (code[off] != 0xE8) return false;
-				if (code[off + 5] != 0x83 || code[off + 6] != 0xC4
-				    || code[off + 7] != 0x20)
-					return false;
 				std::int32_t rel = 0;
 				std::memcpy(&rel, code + off + 1, sizeof(rel));
 				const std::uintptr_t target = codeAddr + off + 5 +
 					static_cast<std::uintptr_t>(static_cast<std::intptr_t>(rel));
-				return targetExecutable(target);
+				return targetOk(target);
 			};
 
 			// Fast path: the RE'd offset still holds (unambiguous by design).
@@ -130,64 +126,67 @@ namespace ReconcilePin
 			return found;
 		}
 
-		// The builder is CUserAppManager::BuildDepotDependency. When that
-		// locator resolved (`builder` != 0) only a call to it qualifies,
-		// because some builds have a second executable call in the same window.
-		template <typename TargetExecutable>
+		// The builder is CUserAppManager::BuildDepotDependency; only a call to
+		// it qualifies. Without that locator (`builder` == 0) nothing tells the
+		// builder call from its neighbours, so no call is redirected.
 		inline long findBuilderCall(
 			const std::uint8_t* code, std::size_t len, std::uintptr_t codeAddr,
-			std::uintptr_t builder, TargetExecutable targetExecutable)
+			std::uintptr_t builder)
 		{
+			if (builder == 0) return -1;
 			return findBuilderCallRel32(
 				code, len, codeAddr, kBuilderCallOff, kBuilderCallWindow,
-				[&](std::uintptr_t target) {
-					return builder != 0 ? target == builder
-					                    : targetExecutable(target);
-				});
+				[builder](std::uintptr_t target) { return target == builder; });
 		}
 
 		// Largest context offset accepted for the depot vector; the struct is
 		// a few hundred bytes, so anything beyond this is a mis-decode.
 		inline constexpr std::size_t kMaxCtxDepotVectorOff = 0x1000;
 		// Bytes of EvaluateConfigChanges searched for the depot-vector loop
-		// (it sits near +0x260 on every inspected client).
+		// (+0x318 on the x86-64 clients).
 		inline constexpr std::size_t kCtxDepotLoopScanLen = 0x600;
 
 		// Decode the content-update context's DepotEntry vector offset from
-		// EvaluateConfigChanges' per-entry loop:
+		// EvaluateConfigChanges' per-entry loop (rbx = ctx, r15 = index):
 		//
-		//   mov edi,[ebp+8] ; mov eax,esi ; shl eax,5 ; add eax,[edi+disp]
+		//   mov r11,[rbx+disp] ; mov r14,r15 ; shl r14,5 ; add r14,r11
 		//
-		// The context grows between client builds (0x78 -> 0x90 on the 2026-10
-		// client), so pinning the offset silently aims the patch at another
-		// field.  Accepts the disp8 (modrm 0x47) and disp32 (modrm 0x87) forms.
-		// Returns the offset, or -1 when the load is absent, ambiguous,
+		// The context grows between client builds (i386 0x78 -> 0x90; 0xc0 on
+		// the x86-64 clients), so pinning the offset silently aims the patch at
+		// another field.  Accepts the disp8 (4C 8B 5B) and disp32 (4C 8B 9B)
+		// forms.  Returns the offset, or -1 when the load is absent, ambiguous,
 		// truncated, or implausible, so the caller keeps the patch disabled.
 		inline long findCtxDepotVectorOffset(
 			const std::uint8_t* code, std::size_t len)
 		{
-			static constexpr std::uint8_t kHead[] = {
-				0x8B, 0x7D, 0x08, 0x89, 0xF0, 0xC1, 0xE0, 0x05, 0x03};
+			static constexpr std::uint8_t kTail[] = {
+				0x4D, 0x89, 0xFE, 0x49, 0xC1, 0xE6, 0x05, 0x4D, 0x01, 0xDE};
 			long found = -1;
-			for (std::size_t off = 0; off + sizeof(kHead) + 2 <= len; ++off)
+			for (std::size_t off = 0; off + 4 <= len; ++off)
 			{
-				if (std::memcmp(code + off, kHead, sizeof(kHead)) != 0) continue;
-				const std::size_t modrm = off + sizeof(kHead);
+				if (code[off] != 0x4C || code[off + 1] != 0x8B) continue;
 				std::uint32_t disp = 0;
-				if (code[modrm] == 0x47)
+				std::size_t tail = 0;
+				if (code[off + 2] == 0x5B)
 				{
-					disp = code[modrm + 1];
+					disp = code[off + 3];
+					tail = off + 4;
 				}
-				else if (code[modrm] == 0x87 && modrm + 5 <= len)
+				else if (code[off + 2] == 0x9B && off + 7 <= len)
 				{
-					std::memcpy(&disp, code + modrm + 1, sizeof(disp));
+					std::memcpy(&disp, code + off + 3, sizeof(disp));
+					tail = off + 7;
 				}
 				else
 				{
 					continue;
 				}
+				if (tail + sizeof(kTail) > len ||
+				    std::memcmp(code + tail, kTail, sizeof(kTail)) != 0)
+					continue;
 				if (found != -1) return -1;  // ambiguous
-				if (disp == 0 || disp % 4 != 0 || disp > kMaxCtxDepotVectorOff)
+				if (disp == 0 || disp % alignof(void*) != 0 ||
+				    disp > kMaxCtxDepotVectorOff)
 					return -1;
 				found = static_cast<long>(disp);
 			}
