@@ -18,9 +18,7 @@
 //
 // Each signature is asserted to be present verbatim in src/patterns.cpp, so
 // this test can never pass against a stale private copy of the pattern, and to
-// resolve to exactly one match in the module it belongs to. Locators not yet
-// ported to x86-64 must compile with an empty signature, which never matches,
-// so their feature stays off instead of patching the wrong code.
+// resolve to exactly one match in the module it belongs to.
 //
 // Build and run with:
 //   make test-optional-locators
@@ -150,16 +148,6 @@ std::size_t findPrologueAbove(const std::string& image, std::size_t match,
 	}
 	return std::string::npos;
 }
-// The locator is compiled with an empty signature: `"<name>", ""`.
-void expectUnported(const std::string& source, const std::string& name)
-{
-	const std::string literal = "\"" + name + "\",";
-	std::size_t at = source.find(literal);
-	if (at != std::string::npos)
-		at = source.find_first_not_of(" \t\r\n", at + literal.size());
-	expect(at != std::string::npos && source.compare(at, 3, "\"\",") == 0,
-	       name + ": not ported to x86-64 yet, so its signature must stay empty");
-}
 } // namespace
 
 int main(int argc, char** argv)
@@ -174,9 +162,15 @@ int main(int argc, char** argv)
 	const std::string ui = readFile(argv[2]);
 	const std::string source = readFile(argc == 4 ? argv[3] : "src/patterns.cpp");
 
-	// i386 signatures that have no x86-64 counterpart yet (see
-	// .kiro/research/x86_64-port/STATE.md).
-	expectUnported(source, "ParentalSignatureCheck");
+	// DisableParentalRestrictions: the cached-settings signature branch and
+	// the settings receiver.
+	const std::size_t parental = resolveUnique(client, "ParentalSignatureCheck",
+		"84 C0 75 ? 8B 93 ? ? 00 00 48 8D AC 24 ? ? 00 00 31 C0 48 8D 35 ? ? ? ? 48 89 EF E8", source);
+	expect(parental == std::string::npos ||
+	       static_cast<std::uint8_t>(client[parental + 2]) == 0x75,
+	       "ParentalSignatureCheck: expected the jne the unlock turns into jmp");
+	(void)resolveUnique(client, "ParentalSettingsReceived",
+		"41 57 41 56 45 89 C6 41 55 49 89 F5 41 54 41 89 D4 55 48 89 FD 53 48 89 CB 48 81 EC ? ? 00 00 48 8D 15 ? ? ? ?", source);
 	// Upstream dev-X86_64: the GameID decode near the top of the function.
 	// PrologueUpwards then walks up to `push rbp; mov rbp, rsp`.
 	const std::size_t spawn = resolveUnique(

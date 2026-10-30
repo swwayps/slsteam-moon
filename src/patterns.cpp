@@ -739,16 +739,25 @@ namespace Patterns
 	// upstream dev-X86_64. An empty signature marks a locator that has not been
 	// derived for x86-64 yet: it never resolves and its feature stays off.
 
+	// x86-64 (beta 1793235415): the `test al,al; jne` after the cached-settings
+	// signature check (0x1908995, in the loader that logs "Parental settings
+	// signature did not verify for cached settings for account ID %u"); the
+	// account-ID field load `mov edx,[rbx+0x242]` keeps its low bytes masked
+	// as on i386. One match on 1792711043, 1793235415 and the 2026-10-21
+	// stable x86-64 client.
 	Pattern_t ParentalSignatureCheck
 	{
 		"ParentalSignatureCheck",
-		"",
+		"84 C0 75 ? 8B 93 ? ? 00 00 48 8D AC 24 ? ? 00 00 31 C0 48 8D 35 ? ? ? ? 48 89 EF E8",
 		SigFollowMode::None
 	};
+	// (instance, settings, len, signature, signatureLen, a6, a7) at
+	// 0x1908b40, the receiver that logs "Parental settings signature did not
+	// verify for account ID %u". Same three builds, one match each.
 	Pattern_t ParentalSettingsReceived
 	{
 		"ParentalSettingsReceived",
-		"",
+		"41 57 41 56 45 89 C6 41 55 49 89 F5 41 54 41 89 D4 55 48 89 FD 53 48 89 CB 48 81 EC ? ? 00 00 48 8D 15 ? ? ? ?",
 		SigFollowMode::None
 	};
 
