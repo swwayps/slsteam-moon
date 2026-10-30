@@ -1332,24 +1332,26 @@ uninstall()
 			sudo update-desktop-database "/usr/share/applications" >/dev/null 2>&1 || true
 	fi
 
-	# Legacy: /usr/games/steam patch from older versions.
-	if ! is_immutable_distro && [ -f "/usr/games/steam" ] && grep -q "SLSsteam" "/usr/games/steam" 2>/dev/null; then
-		log_info "Found legacy /usr/games/steam modification"
-		if [ -f "/usr/games/steam.slsteam-backup" ]; then
-			log_info "Restoring original /usr/games/steam (requires sudo)"
-			sudo cp "/usr/games/steam.slsteam-backup" "/usr/games/steam"
-			sudo rm "/usr/games/steam.slsteam-backup"
-			log_success "Restored /usr/games/steam"
-		else
-			log_warn "Legacy modification found but no backup exists"
-		fi
-	fi
-
 	# Restore any wrapped system launchers before removing the dir.
 	if restore_system_launchers; then
 		launcher_restore_complete=1
 	else
 		launcher_restore_complete=0
+	fi
+	# Legacy: the in-place /usr/games/steam patch of older versions. The
+	# current shim at that path names SLSsteam too and is restored above.
+	local legacy="${SLSM_LEGACY_LAUNCHER:-/usr/games/steam}"
+	if ! is_immutable_distro && [ -f "$legacy" ] && ! ls_is_our_shim "$legacy" &&
+	   grep -q "SLSsteam" "$legacy" 2>/dev/null; then
+		log_info "Found legacy $legacy modification"
+		if [ -f "$legacy.slsteam-backup" ]; then
+			log_info "Restoring original $legacy (requires sudo)"
+			sudo cp "$legacy.slsteam-backup" "$legacy"
+			sudo rm "$legacy.slsteam-backup"
+			log_success "Restored $legacy"
+		else
+			log_warn "Legacy modification found but no backup exists"
+		fi
 	fi
 
 	# Policy state lives outside SLSDIR. Forget it only after launcher restore;

@@ -166,6 +166,17 @@ ck "an incomplete restore keeps the user coverage and says so" \
    "$(printf '%s\n' "$LOG" | grep -q '^warn .*retaining user desktop coverage' && \
       ! printf '%s\n' "$LOG" | grep -qx slsdir-removed && echo yes || echo no)"
 ck "an immutable uninstall restores without sudo" "$(has_line "$(wire uninstall immutable)" 'dc_restore_all sudo=')"
+# The legacy check for the old in-place /usr/games/steam patch does not take
+# the current shim at that path for it, nor copy a leftover backup over it.
+SHIM_FIX="$WIRE_TMP/games-steam"
+printf '#!/bin/sh\n# slsteam-moon system launcher shim\nSLSM_ORIG="/x"\nexec "$SLSM_HOME/.local/share/SLSsteam/path/steam" "$@"\n' > "$SHIM_FIX"
+LOG="$(SLSM_LEGACY_LAUNCHER="$SHIM_FIX" wire uninstall)"
+ck "uninstall does not report the current launcher shim as a legacy patch" \
+   "$(printf '%s\n' "$LOG" | grep -q 'Legacy modification' && echo no || echo yes)"
+cp "$SHIM_FIX" "$SHIM_FIX.slsteam-backup"
+LOG="$(SLSM_LEGACY_LAUNCHER="$SHIM_FIX" wire uninstall)"
+ck "a leftover legacy backup is not copied over the current shim" \
+   "$(printf '%s\n' "$LOG" | grep -qF "sudo cp $SHIM_FIX.slsteam-backup" && echo no || echo yes)"
 
 # Immutable detection: os-release fixtures and the explicit override. The probe
 # also asks rpm-ostree, steamos-readonly and findmnt, so it runs on a PATH that
