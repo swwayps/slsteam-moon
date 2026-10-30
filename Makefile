@@ -57,7 +57,7 @@ ifeq ($(shell type mold &> /dev/null && echo "found"),found)
 	LDFLAGS += -fuse-ld=mold
 endif
 
-.PHONY: all build rebuild clean install release test-ascii test-cmwire test-cmclient-loader test-cmclient-session test-provision-locks test-cmrecv-exceptions test-hook-placement test-hotreload-prepared test-cache-repair test-donor-connection test-owner-frame-exceptions test-route-msg-bounds test-cache-validation test-depot-prune test-offline-flags test-download-activity test-ticket-cache test-send-frame test-notify-async test-log-once test-catalog-trust test-local-catalog test-clientcompat test-dlcids test-dlc-scope test-dlc-metadata test-config-path test-config-discovery test-lua-import test-steamstub-launch test-ownerwork-policy test-filewatcher-burst test-provision-notice test-mtvar-contains test-synthmark test-appinfostate test-pattern-catalog test-pattern-cache test-pattern-refresh test-process-lock test-process-runtime test-atomic-file test-cache-pair test-appinfo-transaction test-appinfo-reload test-audit-symbols test-audit-eh test-audit-tier0 test-audit-policy test-memhlp-target test-memhlp-prologue test-memhlp-pic test-utils-sha test-provision-cache test-provision-refresh test-provision-result test-provision-terminal test-pending-proton test-provision-schedule test-provision-pass test-runtime-dependencies test-thread-start test-steamstub-launchopt test-boundedexecutor test-steamless-prewarm test-depotkey-scope test-curl-timeout test-manifest-index test-manifestselection test-manifeststore-io test-hotreload-inputs test-hotreload-package test-ownerqueue test-hotreload-capabilities test-libraryremoval test-pics test-yaml-runtime test-manifestpin-patterns test-optional-locators test-patternscan test-fakeappid-presence test-ticket test-familyshare
+.PHONY: all build rebuild clean install release test-ascii test-cmwire test-cmclient-loader test-cmclient-session test-provision-locks test-cmrecv-exceptions test-hook-placement test-hotreload-prepared test-cache-repair test-donor-connection test-owner-frame-exceptions test-route-msg-bounds test-cache-validation test-depot-prune test-offline-flags test-download-activity test-ticket-cache test-send-frame test-notify-async test-log-once test-catalog-trust test-local-catalog test-depotkey-snapshot test-clientcompat test-dlcids test-dlc-scope test-dlc-metadata test-config-path test-config-discovery test-lua-import test-steamstub-launch test-ownerwork-policy test-filewatcher-burst test-provision-notice test-mtvar-contains test-synthmark test-appinfostate test-pattern-catalog test-pattern-cache test-pattern-refresh test-process-lock test-process-runtime test-atomic-file test-cache-pair test-appinfo-transaction test-appinfo-reload test-audit-symbols test-audit-eh test-audit-tier0 test-audit-policy test-memhlp-target test-memhlp-prologue test-memhlp-pic test-utils-sha test-provision-cache test-provision-refresh test-provision-result test-provision-terminal test-pending-proton test-provision-schedule test-provision-pass test-runtime-dependencies test-thread-start test-steamstub-launchopt test-boundedexecutor test-steamless-prewarm test-depotkey-scope test-curl-timeout test-manifest-index test-manifestselection test-manifeststore-io test-hotreload-inputs test-hotreload-package test-ownerqueue test-hotreload-capabilities test-libraryremoval test-pics test-yaml-runtime test-manifestpin-patterns test-optional-locators test-patternscan test-fakeappid-presence test-ticket test-familyshare
 .NOTPARALLEL: clean rebuild
 .PHONY: uninstall clean-libs clean-tools schema-grabber ticket-grabber
 .PHONY: test-library-dates test-library-dates-hook test-depot-overrides
@@ -823,6 +823,17 @@ test-lua-import: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
 		lib/libyaml-cpp.a lib/libprotobuf.a -lcrypto -lpthread -ldl \
 		-o /tmp/test_lua_import
 	/tmp/test_lua_import
+test-depotkey-snapshot: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
+		obj/api.o obj/feats/depotkey.o \
+		obj/feats/librarydates.o obj/ownerwork.o \
+		obj/sdk/protobufs/steammessages_clientserver_appinfo.pb.o \
+		obj/sdk/protobufs/steammessages_base.pb.o
+	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
+		-I include -isysteminclude tools/test_depotkey_snapshot.cpp \
+		$(filter obj/%.o,$^) \
+		lib/libyaml-cpp.a lib/libprotobuf.a -lcrypto -lpthread -ldl \
+		-o /tmp/test_depotkey_snapshot
+	/tmp/test_depotkey_snapshot
 test-ownerwork-policy: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
 		obj/api.o obj/feats/depotkey.o \
 		obj/feats/librarydates.o obj/ownerwork.o \

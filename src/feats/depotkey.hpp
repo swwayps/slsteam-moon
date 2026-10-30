@@ -35,6 +35,7 @@
 #include <map>
 #include <mutex>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 class CNetPacket;
@@ -80,6 +81,10 @@ namespace DepotKey
 	// back without a `depots` block (manifestsynth).
 	// Returns deduped depot ids; empty on any error / no $HOME.
 	std::vector<uint32_t> managedDepotsForApp(uint32_t appId);
+
+	// Every cached depot whose entry records one of `appIds`, observed keys
+	// included: the depots package 0 lists for the apps it holds.
+	std::vector<uint32_t> depotsForApps(const std::unordered_set<uint32_t>& appIds);
 
 	// Importer for community-format Lua scripts.  Called at startup;
 	// scans `config/stplug-in/*.lua` (under Steam) and ingests every

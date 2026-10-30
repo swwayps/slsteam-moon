@@ -32,8 +32,11 @@
 #include <ios>
 #include <map>
 #include <mutex>
+#include <optional>
 #include <regex>
 #include <set>
+#include <string_view>
+#include <sys/stat.h>
 #include <sstream>
 #include <unistd.h>
 #include <vector>
@@ -125,10 +128,121 @@ bool parseCachedKeyFile(const std::filesystem::path& path, SavedKey& out)
 	}
 }
 
+// A large script collection leaves thousands of key files (2,800 on the test
+// VM, which took 0.6-0.9 s to read with a cold page cache at every boot). The
+// snapshot keeps each parsed file with the stat it had, so a load reads only
+// the files whose stat changed. It is a cache: anything wrong with it means
+// reading the key files again.
+struct KeyFileStamp
+{
+	std::uint64_t inode = 0;
+	std::int64_t ctimeSecs = 0;
+	std::int64_t ctimeNsecs = 0;
+	std::uint64_t size = 0;
+	bool operator==(const KeyFileStamp&) const = default;
+};
+struct SnapshotEntry
+{
+	KeyFileStamp stamp;
+	SavedKey key;
+};
+constexpr std::string_view kSnapshotHeader = "slsteam-depotkey-snapshot 1";
+constexpr std::uintmax_t kSnapshotMaxSize = 16u << 20;
+
+std::optional<KeyFileStamp> stampFor(const std::filesystem::path& path)
+{
+	struct stat value {};
+	if (::stat(path.c_str(), &value) != 0 || !S_ISREG(value.st_mode))
+		return std::nullopt;
+	return KeyFileStamp{
+		static_cast<std::uint64_t>(value.st_ino),
+		static_cast<std::int64_t>(value.st_ctim.tv_sec),
+		static_cast<std::int64_t>(value.st_ctim.tv_nsec),
+		static_cast<std::uint64_t>(value.st_size),
+	};
+}
+
+template<typename Number>
+bool parseNumber(std::string_view text, Number& out)
+{
+	const auto [end, error] = std::from_chars(text.data(), text.data() + text.size(), out);
+	return !text.empty() && error == std::errc() && end == text.data() + text.size();
+}
+
+// Keyed by the depot id in the file name, which the stamp belongs to. All or
+// nothing: one bad line, or a missing or wrong count line, discards it.
+std::map<uint32_t, SnapshotEntry> readSnapshot(const std::string& path)
+{
+	std::error_code ec;
+	const auto size = std::filesystem::file_size(path, ec);
+	if (ec || size == 0 || size > kSnapshotMaxSize) return {};
+	std::ifstream in(path, std::ios::binary);
+	std::string line;
+	if (!std::getline(in, line) || line != kSnapshotHeader) return {};
+	std::map<uint32_t, SnapshotEntry> out;
+	while (std::getline(in, line))
+	{
+		std::vector<std::string_view> field;
+		for (std::size_t at = 0, space; ; at = space + 1)
+		{
+			space = line.find(' ', at);
+			field.emplace_back(std::string_view(line).substr(at, space - at));
+			if (space == std::string::npos) break;
+		}
+		std::size_t count = 0;
+		if (field.size() == 2 && field[0] == "end")
+		{
+			return parseNumber(field[1], count) && count == out.size() && in.peek() == EOF
+				? out : std::map<uint32_t, SnapshotEntry>{};
+		}
+		uint32_t fileDepotId = 0;
+		unsigned managed = 2;
+		SnapshotEntry entry;
+		if (field.size() != 9 || !parseNumber(field[0], fileDepotId)
+		    || !parseNumber(field[1], entry.stamp.inode)
+		    || !parseNumber(field[2], entry.stamp.ctimeSecs)
+		    || !parseNumber(field[3], entry.stamp.ctimeNsecs)
+		    || !parseNumber(field[4], entry.stamp.size)
+		    || !parseNumber(field[5], entry.key.appId)
+		    || !parseNumber(field[6], entry.key.depotId)
+		    || !parseNumber(field[7], managed) || managed > 1 || entry.key.depotId == 0)
+			return {};
+		entry.key.key = hexToBytes(std::string(field[8]));
+		entry.key.managed = managed == 1;
+		if (entry.key.key.size() != 32 || !out.emplace(fileDepotId, std::move(entry)).second)
+			return {};
+	}
+	return {};
+}
+
+void writeSnapshot(const std::string& path, const std::map<uint32_t, SnapshotEntry>& entries)
+{
+	static const char* digits = "0123456789abcdef";
+	std::string body = std::string(kSnapshotHeader) + "\n";
+	for (const auto& [fileDepotId, entry] : entries)
+	{
+		std::string hex;
+		for (const unsigned char byte : entry.key.key)
+		{
+			hex += digits[byte >> 4];
+			hex += digits[byte & 15];
+		}
+		body += std::to_string(fileDepotId) + " " + std::to_string(entry.stamp.inode) + " "
+		      + std::to_string(entry.stamp.ctimeSecs) + " "
+		      + std::to_string(entry.stamp.ctimeNsecs) + " "
+		      + std::to_string(entry.stamp.size) + " " + std::to_string(entry.key.appId) + " "
+		      + std::to_string(entry.key.depotId) + " " + (entry.key.managed ? "1 " : "0 ")
+		      + hex + "\n";
+	}
+	body += "end " + std::to_string(entries.size()) + "\n";
+	std::string error;
+	if (!AtomicFile::write(path, body, error))
+		g_pLog->debug("DepotKey: cannot write the key snapshot: %s\n", error.c_str());
+}
+
 // Caller holds g_cacheMu.  The catalog is deliberately loaded lazily: most
-// boots never need a depot key before the importer, and one directory walk
-// plus one YAML parse per file is cheaper than reloading the same file for
-// every Lua-script match.
+// boots never need a depot key before the importer, and one directory walk is
+// cheaper than reloading the same file for every Lua-script match.
 void loadKeyIndexLocked()
 {
 	g_keyIndex.loadOnce([](auto& entries) {
@@ -137,6 +251,10 @@ void loadKeyIndexLocked()
 		if (!std::filesystem::is_directory(dir, ec) || ec) return;
 
 		static const std::regex fileRe("depotkey_(\\d+)\\.yaml");
+		const std::string snapshotPath = dir + "/.depotkey-snapshot";
+		const auto previous = readSnapshot(snapshotPath);
+		std::map<uint32_t, SnapshotEntry> current;
+		bool changed = false;
 		std::filesystem::directory_iterator it(dir, ec);
 		const std::filesystem::directory_iterator end;
 		for (; it != end && !ec; it.increment(ec))
@@ -146,12 +264,30 @@ void loadKeyIndexLocked()
 			std::error_code fileEc;
 			if (!it->is_regular_file(fileEc) || fileEc) continue;
 			const auto name = it->path().filename().string();
-			if (!std::regex_match(name, fileRe)) continue;
-
+			std::smatch match;
+			if (!std::regex_match(name, match, fileRe)) continue;
+			uint32_t fileDepotId = 0;
+			const std::string number = match[1].str();
+			if (std::from_chars(number.data(), number.data() + number.size(),
+			                    fileDepotId).ec != std::errc())
+				continue;
+			const auto stamp = stampFor(it->path());
+			if (!stamp) continue;
+			const auto known = previous.find(fileDepotId);
+			if (known != previous.end() && known->second.stamp == *stamp)
+			{
+				current.emplace(fileDepotId, known->second);
+				continue;
+			}
 			SavedKey key;
-			if (parseCachedKeyFile(it->path(), key))
-				entries[key.depotId] = std::move(key);
+			if (!parseCachedKeyFile(it->path(), key)) continue;
+			current.emplace(fileDepotId, SnapshotEntry{*stamp, std::move(key)});
+			changed = true;
 		}
+		if (changed || current.size() != previous.size())
+			writeSnapshot(snapshotPath, current);
+		for (const auto& [fileDepotId, entry] : current)
+			entries[entry.key.depotId] = entry.key;
 	});
 	if (!g_managedDepotIndexReady)
 	{
@@ -308,6 +444,19 @@ std::vector<uint32_t> managedDepotsForApp(uint32_t appId)
 	// Only MANAGED (Lua-injected) depots: an observed owned-game / runtime
 	// key must never be synthesized into an app's appinfo.
 	return g_managedDepotIndex.forApp(appId);
+}
+
+std::vector<uint32_t> depotsForApps(const std::unordered_set<uint32_t>& appIds)
+{
+	std::vector<uint32_t> out;
+	if (appIds.empty()) return out;
+	std::lock_guard<std::mutex> lk(g_cacheMu);
+	loadKeyIndexLocked();
+	for (const auto& [depotId, entry] : g_keyIndex.entries())
+	{
+		if (appIds.count(entry.appId) != 0) out.push_back(depotId);
+	}
+	return out;
 }
 
 
