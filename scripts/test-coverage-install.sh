@@ -1,29 +1,32 @@
 #!/usr/bin/env bash
-# Static checks that setup.sh installs the desktop-coverage helper into $SLSDIR
-# and that package.sh ships both files in the release zip.
+# setup.sh's install step puts the desktop-coverage helpers next to the wrapper.
+# That package.sh ships them is checked on the real zip by test-package.sh.
 set -u
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 fail=0
-ck(){ if [ "$2" = "yes" ]; then echo "ok   - $1"; else echo "FAIL - $1"; fail=1; fi; }
+check() { # desc expected actual
+  if [ "$2" = "$3" ]; then printf 'ok   - %s\n' "$1"
+  else printf 'FAIL - %s (want=[%s] got=[%s])\n' "$1" "$2" "$3"; fail=1; fi
+}
+TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 
-ck "package.sh ships the lib" \
-   "$(grep -q 'desktop-coverage.lib.sh' "$HERE/scripts/package.sh" && echo yes || echo no)"
-ck "package.sh ships the CLI" \
-   "$(grep -q 'ensure-desktop-coverage.sh' "$HERE/scripts/package.sh" && echo yes || echo no)"
-ck "setup.sh installs the CLI into SLSDIR" \
-   "$(grep -q 'ensure-desktop-coverage.sh' "$HERE/setup.sh" && echo yes || echo no)"
-ck "setup.sh installs the lib into SLSDIR" \
-   "$(grep -q 'desktop-coverage.lib.sh' "$HERE/setup.sh" && echo yes || echo no)"
-
-ck "package.sh ships the guardian unit lib" \
-   "$(grep -q 'desktop-guardian-units.lib.sh' "$HERE/scripts/package.sh" && echo yes || echo no)"
-ck "setup.sh installs the guardian unit lib into SLSDIR" \
-   "$(grep -q 'desktop-guardian-units.lib.sh' "$HERE/setup.sh" && echo yes || echo no)"
-
-ck "package.sh ships the launcher shim lib" \
-   "$(grep -q 'launcher-shim.lib.sh' "$HERE/scripts/package.sh" && echo yes || echo no)"
-ck "setup installs the launcher shim lib into SLSDIR" \
-   "$(grep -q 'launcher-shim.lib.sh' "$HERE/setup.sh" && echo yes || echo no)"
+# A release tree with the files install_slssteam copies.
+REL="$TMP/release"
+mkdir -p "$REL/bin" "$REL/tools" "$TMP/home"
+printf 'stub' > "$REL/bin/SLSsteam.so"
+cp "$HERE/tools/desktop-coverage.lib.sh" "$HERE/tools/launcher-shim.lib.sh" \
+   "$HERE/tools/desktop-guardian-units.lib.sh" "$REL/tools/"
+cp "$HERE/ensure-desktop-coverage.sh" "$REL/"
+installed="$(cd "$REL" && HOME="$TMP/home" SLS_SETUP_LIB_ONLY=1 bash -c '
+	source "$1/setup.sh" >/dev/null 2>&1
+	install_slssteam >/dev/null 2>&1 || exit 1
+	cd "$SLSDIR" && stat -c "%n:%a" desktop-coverage.lib.sh launcher-shim.lib.sh \
+		desktop-guardian-units.lib.sh ensure-desktop-coverage.sh 2>&1
+	[ -f SLSsteam.so ] && echo SLSsteam.so
+' bash "$HERE" | tr '\n' ' ')"
+check "install puts the helpers and the library next to the wrapper" \
+  "desktop-coverage.lib.sh:644 launcher-shim.lib.sh:644 desktop-guardian-units.lib.sh:644 ensure-desktop-coverage.sh:755 SLSsteam.so " \
+  "$installed"
 
 [ "$fail" = 0 ] && echo "ALL PASS" || echo "FAILURES"
 exit "$fail"

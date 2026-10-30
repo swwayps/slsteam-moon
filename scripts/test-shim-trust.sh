@@ -8,9 +8,10 @@
 # context that preserves HOME (sudo -E, sudoers env_keep += HOME, a helper that
 # inherits the environment), the user's script runs as root.
 #
-# The shim must therefore: resolve HOME from the password database for the
-# EFFECTIVE user rather than trusting $HOME, and refuse a wrapper that is not a
-# plain file owned by that user with no group/other write bit.
+# Which home the shim reads is not the safety property: it uses an absolute $HOME
+# and falls back to the effective account's password-database home. What stops
+# the escalation is that it refuses a wrapper that is not a plain file owned by
+# the effective account with no group/other write bit.
 #
 # Run from the repo root:  bash scripts/test-shim-trust.sh
 set -u
@@ -168,15 +169,16 @@ rm -f "$REAL_HOME/.local/share/SLSsteam/path/steam"
 mv "$TMP/wrapper.real" "$REAL_HOME/.local/share/SLSsteam/path/steam"
 
 # ---------------------------------------------------------------------------
-# T7: the generated shim must not read HOME straight out of the environment for
-#     the wrapper path, and must resolve the account from the password database.
+# T7: an invocation without a usable $HOME (unset, or not absolute) finds the
+#     wrapper through the effective account's password-database home.
 # ---------------------------------------------------------------------------
-check "T7 the shim resolves the account home from the password database" \
-	'grep -q "getent passwd" "$SHIM"'
-check "T7b the wrapper path is not taken from \$HOME directly" \
-	'! grep -q "SLSM_WRAPPER=\"\${HOME}" "$SHIM"'
-check "T7c the shim validates the wrapper before exec" \
-	'grep -q "slsm_wrapper_trusted" "$SHIM"'
+make_stubs "$MY_UID" "real" "$REAL_HOME"
+OUT="$(env -u HOME PATH="$STUB:$PATH" sh "$SHIM" 2>&1)"
+check "T7 without HOME the password-database home's wrapper is executed" \
+	'[ "$OUT" = "WRAPPER:real" ]'
+OUT="$(run_shim "relative/home")"
+check "T7b a relative HOME gives way to the password-database home" \
+	'[ "$OUT" = "WRAPPER:real" ]'
 
 # ---------------------------------------------------------------------------
 # T8: with nothing usable at all the shim still exits cleanly rather than
