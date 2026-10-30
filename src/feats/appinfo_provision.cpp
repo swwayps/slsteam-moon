@@ -140,6 +140,16 @@ struct DepotDlcMemo
 std::mutex g_depotDlcMemoMu;
 std::unordered_map<uint32_t, DepotDlcMemo> g_depotDlcMemo;
 std::unordered_map<uint32_t, CacheProbe> g_cacheProbeMemo;
+// The identity of each pair the probe memo holds as valid. Both are guarded
+// by g_cacheValidationMu.
+std::unordered_map<uint32_t, PairIdentity> g_pairIdentities;
+
+PairIdentity pairIdentity(const cache::CacheMetadataView& metadata)
+{
+	return {metadata.changeNumber, base64::from_base64(metadata.shaBase64),
+	        metadata.wireSize};
+}
+
 std::mutex g_provisionPassMu;
 std::mutex g_cachePublicationMu;
 std::mutex g_cacheReadInvalidationMu;
@@ -1497,9 +1507,12 @@ CacheProbe probeCacheImpl(uint32_t appId, CacheProbeMode mode)
 		return probe;
 	}
 
-	const auto remember = [appId](CacheProbe result) {
+	const auto remember = [appId](CacheProbe result,
+	                              std::optional<PairIdentity> identity = std::nullopt) {
 		std::lock_guard<std::mutex> validationLock(g_cacheValidationMu);
 		g_cacheProbeMemo[appId] = result;
+		if (identity) g_pairIdentities[appId] = std::move(*identity);
+		else g_pairIdentities.erase(appId);
 		return result;
 	};
 	ProcessLock::FileLock cacheLock(cacheLockPath(), false);
@@ -1565,7 +1578,7 @@ CacheProbe probeCacheImpl(uint32_t appId, CacheProbeMode mode)
 	probe.readiness = cache::isBufferReusable(
 		true, key.mtimeSecs, now, provisionTtlSecs())
 		? CacheReadiness::Fresh : CacheReadiness::ValidStale;
-	return remember(probe);
+	return remember(probe, pairIdentity(metadata));
 }
 
 // Render+prune+sha+persist a parsed appinfo node (shared tail used by
@@ -1778,6 +1791,22 @@ CacheProbe probeCache(uint32_t appId, CacheProbeMode mode)
 	return probeCacheImpl(appId, mode);
 }
 
+std::optional<PairIdentity> validatedPairIdentity(uint32_t appId) noexcept
+{
+	try
+	{
+		std::unique_lock<std::mutex> validationLock(g_cacheValidationMu, std::try_to_lock);
+		if (!validationLock.owns_lock()) return std::nullopt;
+		const auto found = g_pairIdentities.find(appId);
+		if (found == g_pairIdentities.end()) return std::nullopt;
+		return found->second;
+	}
+	catch (...)
+	{
+		return std::nullopt;
+	}
+}
+
 std::int64_t cachePairMtimeSecs(uint32_t appId) noexcept
 {
 	return cachePairMtimeSecsImpl(appId);
@@ -1874,6 +1903,7 @@ bool memoizePublishedCachePairLocked(uint32_t appId)
 					true, publishedKey.mtimeSecs, now, provisionTtlSecs())
 					? CacheReadiness::Fresh : CacheReadiness::ValidStale,
 				metadata.changeNumber};
+			g_pairIdentities[appId] = pairIdentity(metadata);
 		}
 	}
 	if (!memoized && g_pLog)
@@ -3660,6 +3690,7 @@ bool forgetAppImpl(uint32_t appId, bool preserveTicketArtifacts)
 	{
 		std::lock_guard<std::mutex> validationLock(g_cacheValidationMu);
 		g_cacheProbeMemo.erase(appId);
+		g_pairIdentities.erase(appId);
 		g_cacheValidationMemo.erase(appId);
 	}
 	{

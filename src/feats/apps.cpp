@@ -17,6 +17,7 @@
 #include "appinfo_provision.hpp"
 #include "appinfostate.hpp"
 #include "fakeappid.hpp"
+#include "pics.hpp"
 #include "synthmark.hpp"
 #include "../utils/ManifestFetch.hpp"
 
@@ -711,12 +712,21 @@ void Apps::sendPICSInfoRequest(CNetPacket* pkt)
 		const auto strip = SynthMark::stripIndices(
 		    requested, [](uint32_t appId) { return permitSynthStrip(appId); });
 
+		std::vector<uint32_t> hidden;
+		hidden.reserve(strip.size());
 		for (int idx : strip) // descending, safe for in-place delete
 		{
 			g_pLog->debugOnce("PICS-request: stripping locally authoritative app %u\n",
 			                  msg.apps(idx).appid());
+			hidden.push_back(msg.apps(idx).appid());
 			msg.mutable_apps()->DeleteSubrange(idx, 1);
 		}
+		// Steam asks for an app's metadata until it gets an answer, so the
+		// answer to this request also carries the hidden apps' metadata.
+		CMsgProtoBufHeader header;
+		if (!hidden.empty() && msg.meta_data_only() &&
+		    pkt->deserializeHeader(header) && header.has_jobid_source())
+			PICS::noteHiddenApps(header.jobid_source(), std::move(hidden));
 	}
 
 	// We intentionally do NOT add AdditionalApps to Steam's outgoing PICS

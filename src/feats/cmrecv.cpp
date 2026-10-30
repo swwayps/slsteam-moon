@@ -126,19 +126,28 @@ void dispatch(CNetPacket* pkt, uint32_t eMsg)
 
 		case k_EMsgClientPICSProductInfoResponse:
 		{
-			// Observe-only: the handler reads the response (cache repair,
-			// background refresh scheduling) and never rewrites it for Steam.
-			// Most answers are for other games and skip the parse, which would
-			// copy every app's buffer on Steam's receive thread.
-			if (!PICS::namesAddedApp(pkt->messageBytes(), [](uint32_t appId) {
+			// The handler reads the response (cache repair, background refresh
+			// scheduling); Steam's copy changes only when it answers a request
+			// the send hook hid apps from. Most answers are for other games and
+			// skip the parse, which would copy every app's buffer on Steam's
+			// receive thread.
+			CMsgProtoBufHeader header;
+			const auto hidden = pkt->deserializeHeader(header) && header.has_jobid_target()
+				? PICS::takeHiddenApps(header.jobid_target())
+				: std::vector<uint32_t>{};
+			const bool namesAdded = PICS::namesAddedApp(pkt->messageBytes(), [](uint32_t appId) {
 				return g_config.isAddedAppId(appId) || g_config.managedAppIds.contains(appId);
-			}))
+			});
+			if (!namesAdded && hidden.empty())
 			{
 				PICS::recvUnmanagedProductInfoResponse();
 				break;
 			}
 			auto body = pkt->deserializeBody<CMsgClientPICSProductInfoResponse>();
-			PICS::recvProductInfoResponse(&body);
+			if (namesAdded) PICS::recvProductInfoResponse(&body);
+			else PICS::recvUnmanagedProductInfoResponse();
+			if (PICS::answerHiddenApps(hidden, body))
+				pkt->serialize(body);
 			break;
 		}
 

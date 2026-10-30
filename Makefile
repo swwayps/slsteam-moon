@@ -67,7 +67,7 @@ endif
 .PHONY: test-manifestdonor test-manifestdonor-runtime test-manifestfetch
 .PHONY: test-reconcilepin-scan
 .PHONY: test-depotkey-recv-policy
-.PHONY: test-curl-sink test-pin-lookup test-provision-mirror test-private-apps test-config-settings test-config-tolerance test-config-watch test-config-create test-plugin-config test-curl-child test-legacy-cdkey test-utils-number test-launch-options
+.PHONY: test-curl-sink test-pin-lookup test-provision-mirror test-pics-answer test-private-apps test-config-settings test-config-tolerance test-config-watch test-config-create test-plugin-config test-curl-child test-legacy-cdkey test-utils-number test-launch-options
 
 test-manifestdonor:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror \
@@ -272,6 +272,11 @@ test-provision-mirror: $(objs) $(libs)
 		-Wl,-rpath,/tmp/fakecurl-mirror -lpthread -ldl \
 		-o /tmp/test_provision_mirror
 	/tmp/test_provision_mirror
+test-pics-answer: $(objs) $(libs)
+	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
+		-I include -isysteminclude tools/test_pics_answer.cpp \
+		$(objs) $(libs) -lpthread -ldl -o /tmp/test_pics_answer
+	/tmp/test_pics_answer
 test-cmrecv-exceptions: $(objs) $(libs)
 	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
 		-I include -isysteminclude tools/test_cmrecv_exceptions.cpp \

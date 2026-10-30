@@ -66,6 +66,16 @@ struct CacheProbe
 };
 
 CacheProbe probeCache(std::uint32_t appId, CacheProbeMode mode);
+// What a validated pair holds, which the splice gives Steam's appinfo cache.
+struct PairIdentity
+{
+	std::uint32_t changeNumber = 0;
+	std::string sha; // 20 raw bytes, SHA-1 of the wire text
+	std::uint64_t size = 0;
+};
+// The identity of the app's last validated pair, from memory only: empty when
+// it is unknown or invalid, or the memo is busy. Safe on Steam's threads.
+std::optional<PairIdentity> validatedPairIdentity(std::uint32_t appId) noexcept;
 // Observation-only recency used outside Steam callbacks to prioritize bounded
 // metadata migration. Zero means the pair changed or could not be observed.
 std::int64_t cachePairMtimeSecs(std::uint32_t appId) noexcept;
