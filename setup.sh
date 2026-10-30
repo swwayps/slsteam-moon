@@ -513,11 +513,12 @@ slsm_exec_vanilla() {
 # Debian's Install Steam package stub is a valid executable before the client
 # root exists, but it is not a Steam client and must never receive injection.
 # Explicit test/pinned binaries remain eligible; captured originals from our
-# system-launcher backup are shim-originated and still require bootstrap.
+# launcher backups (root's tree or the user's) are shim-originated and still
+# require bootstrap.
 slsm_bootstrap_guard() {
 	if [ "${SLSM_EXPLICIT_STEAM_BIN:-0}" = 1 ]; then
 		case "$SLSM_POLICY_BIN" in
-			"$SLSDIR/system-launcher-backup/"*) ;;
+			"$SLSDIR/system-launcher-backup/"*|/var/lib/slsteam-moon/launcher-backup/*) ;;
 			*) return 0 ;;
 		esac
 	else
@@ -985,25 +986,13 @@ restore_system_launchers() {
 	if ls_restore_shims; then
 		return 0
 	fi
-	# A failed restore may be recoverable with the retained original. If no
-	# usable mirrored or exactly-associated legacy backup exists, the wrapper
-	# tree itself must survive uninstall so the shim remains operational.
-	local launcher backup
+	# A failed restore may be recoverable with the retained original. If a live
+	# shim names no usable captured original, the wrapper tree itself must
+	# survive uninstall so the shim remains operational.
+	local launcher
 	while IFS= read -r launcher; do
 		[ -n "$launcher" ] || continue
-		backup="$(ls_backup_path "$launcher")"
-		if [ -f "$backup" ] && ls_backup_is_usable "$backup" && \
-		   ls_shim_references_backup "$launcher" "$backup"; then
-			continue
-		fi
-		# A mirrored file is a safe retry fallback only when this live shim
-		# explicitly names it. Otherwise try the exactly-associated legacy file;
-		# if neither is safe, keep the complete helper tree alive.
-		backup="$(ls_legacy_backup_path "$launcher")"
-		if ! ls_legacy_backup_is_unambiguous_restore "$backup" || \
-		   ! ls_shim_references_backup "$launcher" "$backup"; then
-			SLSM_KEEP_LAUNCHER_TREE=1
-		fi
+		ls_referenced_backup "$launcher" >/dev/null || SLSM_KEEP_LAUNCHER_TREE=1
 	done < <(ls_wrapped_paths)
 	SLSM_KEEP_LAUNCHER_BACKUP=1
 	log_warn "Some system launcher shims could not be restored; retaining their backups for a later retry"

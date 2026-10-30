@@ -1353,6 +1353,20 @@ DC_LAUNCHER_BACKUP_ROOT="$MIRROR_MISMATCH_ROOT/backup"
 check "unreferenced mirrored backup invalidates launcher policy" "no" \
   "$(dc_launcher_coverage_active && echo yes || echo no)"
 
+# A launcher only root can write keeps its captured original in root's tree; a
+# shim that runs that copy keeps the launcher policy.
+SYSTEM_POLICY_ROOT="$TMP/policy-system-root"
+SYSTEM_POLICY_COPY="$SYSTEM_POLICY_ROOT/var-lib/${SYSTEM_POLICY_ROOT#/}/launcher/steam.orig"
+mkdir -p "$SYSTEM_POLICY_ROOT/launcher" "$(dirname "$SYSTEM_POLICY_COPY")" "$SYSTEM_POLICY_ROOT/home-backup"
+printf '#!/bin/sh\n# slsteam-moon system launcher shim\nSLSM_ORIG="%s"\n' \
+  "$SYSTEM_POLICY_COPY" > "$SYSTEM_POLICY_ROOT/launcher/steam"
+printf '#!/bin/sh\nprintf "SYSTEM-ORIGINAL\\n"\n' > "$SYSTEM_POLICY_COPY"
+chmod 0755 "$SYSTEM_POLICY_ROOT/launcher/steam" "$SYSTEM_POLICY_COPY"
+DC_LAUNCHER_DIRS=("$SYSTEM_POLICY_ROOT/launcher")
+DC_LAUNCHER_BACKUP_ROOT="$SYSTEM_POLICY_ROOT/home-backup"
+check "a shim that runs root's copy keeps the launcher policy" "yes" \
+  "$(DC_LAUNCHER_SYSTEM_BACKUP_ROOT="$SYSTEM_POLICY_ROOT/var-lib" dc_launcher_coverage_active && echo yes || echo no)"
+
 # A persisted launcher policy is active only when every currently detected
 # distro launcher remains shimmed with its own mirrored backup. A package
 # replacement of one path must reopen the system desktop fallback.

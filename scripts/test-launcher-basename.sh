@@ -91,6 +91,8 @@ chmod 0755 "$HOME/.local/share/SLSsteam/path/steam"
 
 LS_SLSDIR="$HOME/.local/share/SLSsteam"
 LS_BACKUP_ROOT="$LS_SLSDIR/system-launcher-backup"
+# Never the host's /var/lib.
+LS_SYSTEM_BACKUP_ROOT="$TMP/var-lib/slsteam-moon/launcher-backup"
 LS_LAUNCHER_DIRS=("$BIN_DIR")
 LS_STEAM_ROOT="$STEAM_ROOT"
 LS_SUDO=""

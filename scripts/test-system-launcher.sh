@@ -42,6 +42,8 @@ chmod +x "$TMP/usr/bin/steam" "$TMP/usr/games/steam"
 
 LS_SLSDIR="$HOME/.local/share/SLSsteam"
 LS_BACKUP_ROOT="$LS_SLSDIR/system-launcher-backup"
+# Never the host's /var/lib: cases that need root's tree set their own.
+LS_SYSTEM_BACKUP_ROOT="$TMP/var-lib/slsteam-moon/launcher-backup"
 LS_LAUNCHER_DIRS=("$TMP/usr/bin" "$TMP/usr/games")
 LS_STEAM_ROOT="$TMP/steam-root"
 LS_SUDO=""
@@ -444,18 +446,23 @@ check "mixed reinstall migrates legacy original" "MIX-REINSTALL-GAMES" \
 check "mixed reinstall consumes legacy flat backup" "no" \
   "$([ -e "$MIX_REINSTALL_FLAT" ] && echo yes || echo no)"
 
-# Backup writes, refreshes, and mode normalization must use the configured
-# privilege command when a previous install left user-side state inaccessible.
+# A launcher only root can write keeps its captured original in root's own tree,
+# so the privilege command never works below the user's home, where the user
+# could swap any folder for a link. A mirror an older install left in the home
+# is not touched.
 PRIV_ROOT="$TMP/privileged-backup"
 PRIV_BIN="$PRIV_ROOT/usr/bin"
 PRIV_BACKUP_ROOT="$PRIV_ROOT/backup"
+PRIV_SYSTEM_ROOT="$PRIV_ROOT/var-lib/launcher-backup"
 PRIV_MIRRORED="$PRIV_BACKUP_ROOT/${PRIV_BIN#/}/steam.orig"
+PRIV_SYSTEM_MIRRORED="$PRIV_SYSTEM_ROOT/${PRIV_BIN#/}/steam.orig"
 PRIV_LOG="$PRIV_ROOT/privilege.log"
 mkdir -p "$PRIV_BIN" "$(dirname "$PRIV_MIRRORED")" "$PRIV_ROOT/steam-root"
 cat > "$PRIV_ROOT/fake-sudo" <<'EOF'
 #!/bin/sh
 printf '%s\n' "$1" >> "$SLS_PRIV_LOG"
-printf '%s\n' "$*" >> "$SLS_PRIV_LOG.argv"
+# One line per call, also for an `sh -c` script.
+printf '%s\n' "$(printf '%s' "$*" | tr '\n' ' ')" >> "$SLS_PRIV_LOG.argv"
 cmd="$1"
 shift
 "$cmd" "$@"
@@ -464,16 +471,22 @@ chmod +x "$PRIV_ROOT/fake-sudo"
 printf '#!/bin/sh\nprintf "PRIV-NEW\\n"\n' > "$PRIV_BIN/steam"
 printf '#!/bin/sh\nprintf "PRIV-OLD\\n"\n' > "$PRIV_MIRRORED"
 printf '#!/bin/sh\nexit 0\n' > "$PRIV_ROOT/steam-root/steam.sh"
-chmod 0755 "$PRIV_BIN/steam" "$PRIV_ROOT/steam-root/steam.sh"
+chmod 0755 "$PRIV_ROOT/steam-root/steam.sh"
+chmod 0555 "$PRIV_BIN/steam"
 chmod 0644 "$PRIV_MIRRORED"
 LS_LAUNCHER_DIRS=("$PRIV_BIN")
 LS_BACKUP_ROOT="$PRIV_BACKUP_ROOT"
+LS_SYSTEM_BACKUP_ROOT="$PRIV_SYSTEM_ROOT"
 LS_STEAM_ROOT="$PRIV_ROOT/steam-root"
 LS_SUDO="$PRIV_ROOT/fake-sudo"
 export SLS_PRIV_LOG="$PRIV_LOG"
-check "configured privilege command handles backup operations" "yes" \
-  "$(ls_install_shims && grep -q '^cp$' "$PRIV_LOG" && grep -q '^chmod$' "$PRIV_LOG" && echo yes || echo no)"
-check "privileged backup keeps refreshed original" "PRIV-NEW" \
+check "a launcher only root can write is wrapped" "yes" \
+  "$(ls_install_shims && ls_is_our_shim "$PRIV_BIN/steam" && echo yes || echo no)"
+check "its captured original is in root's tree and the shim runs it from there" "PRIV-NEW:yes" \
+  "$(sh "$PRIV_SYSTEM_MIRRORED" | cut -d' ' -f1):$(ls_shim_references_backup "$PRIV_BIN/steam" "$PRIV_SYSTEM_MIRRORED" && echo yes || echo no)"
+check "the privilege command names nothing below the user's backup folder" "" \
+  "$(grep -F "$PRIV_BACKUP_ROOT" "$PRIV_LOG.argv" || true)"
+check "the older home mirror is left as it was" "PRIV-OLD" \
   "$(sh "$PRIV_MIRRORED" | cut -d' ' -f1)"
 # A launcher the user cannot write is replaced through the privilege command,
 # which takes the new content on its stdin: the temp file and the captured
@@ -487,10 +500,14 @@ chmod 0555 "$RO_BIN/steam"
 chmod 0755 "$RO_ROOT/steam-root/steam.sh"
 LS_LAUNCHER_DIRS=("$RO_BIN")
 LS_BACKUP_ROOT="$RO_ROOT/backup"
+LS_SYSTEM_BACKUP_ROOT="$RO_ROOT/var-lib/launcher-backup"
+RO_SYSTEM_MIRRORED="$LS_SYSTEM_BACKUP_ROOT/${RO_BIN#/}/steam.orig"
 LS_STEAM_ROOT="$RO_ROOT/steam-root"
 export SLS_PRIV_LOG="$RO_ROOT/privilege.log"
 check "an unwritable launcher is wrapped through the privilege command" "yes" \
   "$(TMPDIR="$RO_ROOT/tmp" ls_install_shims && ls_is_our_shim "$RO_BIN/steam" && echo yes || echo no)"
+check "its captured original is in root's tree" "yes" \
+  "$([ -f "$RO_SYSTEM_MIRRORED" ] && echo yes || echo no)"
 chmod 0555 "$RO_BIN/steam"
 check "an unwritable launcher is restored through the privilege command" "RO-ORIG" \
   "$(TMPDIR="$RO_ROOT/tmp" ls_restore_shims && sh "$RO_BIN/steam")"
@@ -498,6 +515,47 @@ check "both launcher writes went through the privilege command" "2" \
   "$(grep -c '^install ' "$SLS_PRIV_LOG.argv")"
 check "the privilege command reads launcher content only from stdin" "" \
   "$(grep '^install ' "$SLS_PRIV_LOG.argv" | grep -v '^install -m 0755 /dev/stdin ' || true)"
+check "a restore from root's tree removes that copy and its folders" "no:no" \
+  "$([ -e "$RO_SYSTEM_MIRRORED" ] && echo yes || echo no):$([ -e "$RO_ROOT/var-lib" ] && echo yes || echo no)"
+
+# An existing shim that runs a copy an older install kept below the home moves
+# it to root's tree, but only a copy root wrote: the opened file must be a
+# root-owned regular file nobody else can write. A stat stub reports root as
+# the owner of that old copy and its folders (the test cannot create root
+# files); the old copy and its alias are then removed, the home backup folder
+# itself stays.
+MIG_ROOT="$TMP/migrate-home-copy"
+MIG_BIN="$MIG_ROOT/usr/bin"
+MIG_HOME_ROOT="$MIG_ROOT/home-backup"
+MIG_SYSTEM_ROOT="$MIG_ROOT/var-lib/launcher-backup"
+MIG_OLD="$MIG_HOME_ROOT/${MIG_BIN#/}/steam.orig"
+MIG_NEW="$MIG_SYSTEM_ROOT/${MIG_BIN#/}/steam.orig"
+mkdir -p "$MIG_BIN" "$(dirname "$MIG_OLD")" "$MIG_ROOT/steam-root"
+printf '#!/bin/sh\nprintf "MIG-ORIG\\n"\n' > "$MIG_OLD"
+printf '#!/bin/sh\nexit 0\n' > "$MIG_ROOT/steam-root/steam.sh"
+chmod 0755 "$MIG_OLD" "$MIG_ROOT/steam-root/steam.sh"
+ln -s steam.orig "$(dirname "$MIG_OLD")/steam"
+ls_shim_content "$MIG_OLD" > "$MIG_BIN/steam"
+chmod 0555 "$MIG_BIN/steam"
+LS_LAUNCHER_DIRS=("$MIG_BIN")
+LS_BACKUP_ROOT="$MIG_HOME_ROOT"
+LS_SYSTEM_BACKUP_ROOT="$MIG_SYSTEM_ROOT"
+LS_STEAM_ROOT="$MIG_ROOT/steam-root"
+LS_SUDO="$PRIV_ROOT/fake-sudo"
+export SLS_PRIV_LOG="$MIG_ROOT/privilege.log"
+check "a home copy root did not write is not moved" "no:yes" \
+  "$(ls_install_shims && echo yes || echo no):$(ls_shim_references_backup "$MIG_BIN/steam" "$MIG_OLD" && echo yes || echo no)"
+mkdir -p "$MIG_ROOT/stat-root"
+printf '#!/bin/sh\nlast=""\nfor a in "$@"; do last="$a"; done\nreal="$(readlink -f -- "$last" 2>/dev/null)"\ncase "$real:$*" in\n\t%s/*%%u*|%s:*%%u*) echo 0; exit 0 ;;\nesac\nexec "%s" "$@"\n' \
+  "$MIG_HOME_ROOT/${MIG_BIN#/}" "$MIG_HOME_ROOT/${MIG_BIN#/}" "$(command -v stat)" > "$MIG_ROOT/stat-root/stat"
+chmod +x "$MIG_ROOT/stat-root/stat"
+check "a home copy root wrote moves to root's tree" "yes:MIG-ORIG" \
+  "$(PATH="$MIG_ROOT/stat-root:$PATH" ls_install_shims && ls_shim_references_backup "$MIG_BIN/steam" "$MIG_NEW" && echo yes || echo no):$(sh "$MIG_NEW" 2>/dev/null)"
+check "the old home copy and its alias are removed" "no:no" \
+  "$([ -e "$MIG_OLD" ] && echo yes || echo no):$([ -L "$(dirname "$MIG_OLD")/steam" ] && echo yes || echo no)"
+check "the user's backup folder itself stays" "yes" "$([ -d "$MIG_HOME_ROOT" ] && echo yes || echo no)"
+check "the privilege command named no path below the user's backup folder but the checked old copy" "" \
+  "$(grep -F "$MIG_HOME_ROOT" "$SLS_PRIV_LOG.argv" | grep -v '^sh -c ' || true)"
 LS_SUDO=""
 unset SLS_PRIV_LOG
 

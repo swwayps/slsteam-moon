@@ -82,6 +82,9 @@ dc_autostart_dirs() {
 # and backup root directly.
 : "${DC_LAUNCHER_TAG:=# slsteam-moon system launcher shim}"
 : "${DC_LAUNCHER_BACKUP_ROOT:=}"
+# Root's tree for captured originals of launchers only root can write (see
+# launcher-shim.lib.sh).
+: "${DC_LAUNCHER_SYSTEM_BACKUP_ROOT:=${LS_SYSTEM_BACKUP_ROOT:-/var/lib/slsteam-moon/launcher-backup}}"
 
 dc_launcher_dirs() {
 	local dir
@@ -124,7 +127,7 @@ dc_launcher_shim_references_backup() {
 }
 
 dc_launcher_coverage_active() {
-	local dir launcher detected=0 shim_count=0 complete=1 backup legacy
+	local dir launcher detected=0 shim_count=0 complete=1 complete_one backup legacy
 	legacy="$(dc_launcher_backup_root)/steam.orig"
 	while IFS= read -r dir; do
 		[ -n "$dir" ] || continue
@@ -139,15 +142,20 @@ dc_launcher_coverage_active() {
 			continue
 		fi
 		shim_count=$((shim_count + 1))
-		backup="$(dc_launcher_backup_path "$launcher")"
-		if [ ! -f "$backup" ] || [ ! -x "$backup" ] || \
-		   head -3 "$backup" 2>/dev/null | grep -qF "$DC_LAUNCHER_TAG"; then
-			complete=0
-		elif ! dc_launcher_shim_references_backup "$launcher" "$backup"; then
-			# A valid mirror is not enough if the live shim would execute a
-			# different or missing original after the wrapper disappears.
-			complete=0
-		fi
+		# The mirror in root's tree or in the user's: a valid mirror is not
+		# enough if the live shim would execute a different or missing original
+		# after the wrapper disappears.
+		complete_one=0
+		for backup in "${DC_LAUNCHER_SYSTEM_BACKUP_ROOT%/}/${launcher#/}.orig" \
+		              "$(dc_launcher_backup_path "$launcher")"; do
+			if [ -f "$backup" ] && [ -x "$backup" ] && \
+			   ! head -3 "$backup" 2>/dev/null | grep -qF "$DC_LAUNCHER_TAG" && \
+			   dc_launcher_shim_references_backup "$launcher" "$backup"; then
+				complete_one=1
+				break
+			fi
+		done
+		[ "$complete_one" -eq 1 ] || complete=0
 	done < <(dc_launcher_dirs)
 	if [ "$detected" -gt 0 ] && [ "$detected" -eq "$shim_count" ] && [ "$complete" -eq 1 ]; then
 		return 0
