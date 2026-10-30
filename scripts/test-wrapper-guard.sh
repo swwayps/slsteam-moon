@@ -49,7 +49,7 @@ export XDG_STATE_HOME="$HOME_DIR/.local/state"
 # notices. Stubs first on PATH log those calls and keep them off the session
 # that runs the test.
 STUB_BIN="$HOME_DIR/stub-bin"; mkdir -p "$STUB_BIN"
-printf '#!/bin/sh\nprintf "systemctl %%s\\n" "$*" >> "%s/session-calls.log"\nexit 1\n' "$HOME_DIR" > "$STUB_BIN/systemctl"
+printf '#!/bin/sh\nprintf "systemctl %%s\\n" "$*" >> "%s/session-calls.log"\nexit "${SLSM_TEST_SYSTEMCTL_RC:-1}"\n' "$HOME_DIR" > "$STUB_BIN/systemctl"
 printf '#!/bin/sh\nprintf "notify-send %%s\\n" "$*" >> "%s/session-calls.log"\n' "$HOME_DIR" > "$STUB_BIN/notify-send"
 chmod +x "$STUB_BIN/systemctl" "$STUB_BIN/notify-send"
 export PATH="$STUB_BIN:$PATH"
@@ -58,6 +58,10 @@ GUARD_DIR="$XDG_STATE_HOME/slsteam-moon"
 
 mkdir -p "$SLSDIR"
 printf 'so'  > "$SLSDIR/SLSsteam.so"
+# The coverage CLI the wrapper falls back to without an enabled guardian; this
+# one only logs its call.
+printf '#!/bin/sh\nprintf "ensure %%s\\n" "$*" >> "%s/session-calls.log"\n' "$HOME_DIR" > "$SLSDIR/ensure-desktop-coverage.sh"
+chmod +x "$SLSDIR/ensure-desktop-coverage.sh"
 
 ( umask 0002; log_info() { :; }; log_success() { :; }; log_warn() { :; }; eval "$FN"; SLSDIR="$SLSDIR" create_steam_wrapper )
 WRAP="$SLSDIR/path/steam"
@@ -189,6 +193,30 @@ chmod +x "$SYMLINK_ORIG"
 [ "$(cat "$SYMLINK_LOG" 2>/dev/null)" = "vanilla" ] \
   && ok "absolute symlink paths preserve the bootstrap guard" \
   || bad "absolute symlink path bypassed the bootstrap guard"
+# The guard wants Valve's layout, where ~/.steam/steam links to the Steam root:
+# a real folder with a steam.sh inside does not pass, a link to one does.
+run_symlink_case() {
+	: > "$SYMLINK_LOG"
+	(
+		export HOME="$SYMLINK_HOME" SLSM_STEAM_BIN="$SYMLINK_ORIG" SYMLINK_LOG
+		export SLSM_GUARD_DUMPS_DIR="$SYMLINK_ROOT/dumps"
+		sh "$SYMLINK_SLSDIR/path/steam" >/dev/null 2>&1
+	)
+	cat "$SYMLINK_LOG" 2>/dev/null
+}
+mkdir -p "$SYMLINK_HOME/.steam/steam" "$SYMLINK_ROOT/steam-root"
+printf '#!/bin/sh\nexit 0\n' > "$SYMLINK_HOME/.steam/steam/steam.sh"
+cp "$SYMLINK_HOME/.steam/steam/steam.sh" "$SYMLINK_ROOT/steam-root/steam.sh"
+chmod +x "$SYMLINK_HOME/.steam/steam/steam.sh" "$SYMLINK_ROOT/steam-root/steam.sh"
+[ "$(run_symlink_case)" = "vanilla" ] \
+  && ok "a real ~/.steam/steam folder does not pass the bootstrap guard" \
+  || bad "a real ~/.steam/steam folder passed the bootstrap guard"
+rm -rf "$SYMLINK_HOME/.steam/steam"
+ln -s "$SYMLINK_ROOT/steam-root" "$SYMLINK_HOME/.steam/steam"
+[ "$(run_symlink_case)" = "injected" ] \
+  && ok "a linked, bootstrapped Steam root passes the bootstrap guard" \
+  || bad "a linked, bootstrapped Steam root was refused"
+rm -rf "$SYMLINK_HOME/.steam"
 
 # Safe mode must be genuinely vanilla even when an old desktop entry supplied
 # loader variables before the wrapper was reached.  Create a real latch first
@@ -484,6 +512,29 @@ grep -q '^systemctl --user' "$HOME_DIR/session-calls.log" 2>/dev/null \
 grep -q '^notify-send ' "$HOME_DIR/session-calls.log" 2>/dev/null \
   && ok "the wrapper's notices reach the stub" \
   || bad "the wrapper's notices left the harness"
+# Each launch re-asserts desktop coverage in the background: through the
+# guardian service when its path unit is enabled, else through the CLI.
+wait_for_call() {
+	local _
+	for _ in $(seq 1 25); do
+		grep -qxF "$1" "$HOME_DIR/session-calls.log" 2>/dev/null && return 0
+		sleep 0.2
+	done
+	return 1
+}
+reset_state
+: > "$HOME_DIR/session-calls.log"
+run_wrapper
+wait_for_call "ensure --user" \
+  && ok "without an enabled guardian a launch runs the coverage CLI for the user" \
+  || bad "a launch without an enabled guardian skipped the coverage CLI"
+reset_state
+: > "$HOME_DIR/session-calls.log"
+SLSM_TEST_SYSTEMCTL_RC=0 run_wrapper
+wait_for_call "systemctl --user start slsteam-desktop-guardian.service" \
+  && ! grep -q '^ensure ' "$HOME_DIR/session-calls.log" \
+  && ok "an enabled guardian is started instead of the coverage CLI" \
+  || bad "a launch with an enabled guardian did not start it alone"
 
 if [ "${SLSM_KEEP_TEST_TMP:-0}" = 1 ]; then
 	echo "test artifacts kept at $HOME_DIR"
