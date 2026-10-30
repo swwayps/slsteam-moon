@@ -2,17 +2,12 @@
 #pragma once
 
 #include <atomic>
-#include <cerrno>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <mutex>
-#include <optional>
 #include <string>
 #include <string_view>
-#include <sys/types.h>
-#include <unistd.h>
-#include <vector>
 
 
 namespace ManifestFetch
@@ -217,15 +212,6 @@ namespace ManifestFetch
 		{
 			if (requested) promoted.store(true, std::memory_order_release);
 		}
-		inline void promoteAppId(std::atomic<uint32_t>& stored,
-		                         uint32_t candidate) noexcept
-		{
-			if (!candidate) return;
-			uint32_t missing = 0;
-			(void)stored.compare_exchange_strong(
-				missing, candidate, std::memory_order_acq_rel);
-		}
-
 	} // namespace detail
 
 	// A blob job has one deadline shared by all callers. A caller that times
@@ -260,26 +246,22 @@ namespace ManifestFetch
 		std::atomic<bool> cancelled{false};
 	};
 
-	int getTimeoutSec();
-
-	void submitManifestBlob(uint64_t manifestGid,
-	                        uint32_t appId, uint32_t depotId,
+	// Blob jobs are keyed by depot and gid, the archive's address.
+	void submitManifestBlob(uint64_t manifestGid, uint32_t depotId,
 	                        bool bypassArchiveMiss = false);
 
-	// Submit (or join an in-flight one) and block up to timeoutSec for the
+	// Submit (or join an in-flight one) and block up to 12 s for the
 	// manifest blob to land on disk.  Returns true if the .manifest file is
 	// now present (or was already there).  Used by BYldRequestDepotManifest
 	// to avoid the "no internet / hit retry" UX: Steam's first install
 	// attempt finds the file already cached.
-	bool awaitManifestBlob(uint64_t manifestGid, uint32_t appId,
-	                       uint32_t depotId,
-	                       int timeoutSec, bool activeRequest = false);
+	bool awaitManifestBlob(uint64_t manifestGid, uint32_t depotId,
+	                       bool activeRequest = false);
 
 	// Join the exact blob job for at most timeoutMs. Used by the real Steam
 	// install plan so every depot shares one total deadline instead of each
 	// blocking a Steam worker for a fresh 12 seconds.
-	bool awaitManifestBlobFor(uint64_t manifestGid, uint32_t appId,
-	                          uint32_t depotId,
+	bool awaitManifestBlobFor(uint64_t manifestGid, uint32_t depotId,
 	                          int timeoutMs, bool notifyOnTimeout,
 	                          bool activeRequest = false);
 

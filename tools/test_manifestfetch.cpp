@@ -48,13 +48,6 @@ int main()
 	CHECK(bypass.load(), "active join promotes an existing blob job");
 	ManifestFetch::detail::promoteArchiveMissBypass(bypass, false);
 	CHECK(bypass.load(), "archive retry promotion is monotonic");
-	std::atomic<uint32_t> appId{0};
-	ManifestFetch::detail::promoteAppId(appId, 0);
-	CHECK(appId.load() == 0, "missing app id does not replace the job context");
-	ManifestFetch::detail::promoteAppId(appId, 11);
-	CHECK(appId.load() == 11, "blob job retains a real app id for depot-aware lookup");
-	ManifestFetch::detail::promoteAppId(appId, 22);
-	CHECK(appId.load() == 11, "first real app id remains stable across joiners");
 
 	std::string manifest("\xd0\x17\xf6\x71", 4);
 	manifest.append(8, '\0');

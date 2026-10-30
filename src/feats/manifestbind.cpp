@@ -398,9 +398,9 @@ namespace
 					// so leaf and planner calls cannot each wait the full 12 s.
 					const bool activeRequest =
 						ManifestFetch::isAnyManagedDownloadActive(appId);
-					ManifestFetch::submitManifestBlob(pin, appId, depotId, activeRequest);
+					ManifestFetch::submitManifestBlob(pin, depotId, activeRequest);
 					(void)ManifestFetch::awaitManifestBlobFor(
-					    pin, appId, depotId, remainingPlanBudgetMs(depotId, pin),
+					    pin, depotId, remainingPlanBudgetMs(depotId, pin),
 					    /*notifyOnTimeout=*/false, activeRequest);
 				}
 			}
@@ -466,11 +466,10 @@ namespace
 		// remaining in the plan-wide budget.
 		const bool activeRequest =
 			ManifestFetch::isAnyManagedDownloadActive(appId);
-		ManifestFetch::submitManifestBlob(
-			manifestId, appId, depotId, activeRequest);
+		ManifestFetch::submitManifestBlob(manifestId, depotId, activeRequest);
 		const int waitMs = remainingPlanBudgetMs(depotId, manifestId);
 		const bool fetched = ManifestFetch::awaitManifestBlobFor(
-		    manifestId, appId, depotId, waitMs,
+		    manifestId, depotId, waitMs,
 		    /*notifyOnTimeout=*/false,
 		    activeRequest);
 		if (fetched && ManifestStore::isInDepotcache(depotId, manifestId))
@@ -610,7 +609,7 @@ namespace
 						if (pin && !ManifestStore::installedSize(depotId, pin))
 						{
 							ManifestFetch::submitManifestBlob(
-							    pin, entryAppId, depotId,
+							    pin, depotId,
 							    ManifestFetch::isAnyManagedDownloadActive(entryAppId));
 						}
 					}
@@ -671,7 +670,7 @@ namespace
 						    [depotId, pin, entryAppId](int waitMs)
 						    {
 							return ManifestFetch::awaitManifestBlobFor(
-							    pin, entryAppId, depotId, waitMs,
+							    pin, depotId, waitMs,
 							    /*notifyOnTimeout=*/false,
 							    ManifestFetch::isAnyManagedDownloadActive(entryAppId));
 						    });
@@ -720,7 +719,7 @@ namespace
 						        planDepotcache, depotId, targetGid))
 						{
 							ManifestFetch::submitManifestBlob(
-							    targetGid, entryAppId, depotId,
+							    targetGid, depotId,
 							    ManifestFetch::isAnyManagedDownloadActive(entryAppId));
 						}
 					}

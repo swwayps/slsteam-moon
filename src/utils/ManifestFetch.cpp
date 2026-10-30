@@ -378,14 +378,11 @@ bool writeManifestFile(const std::string& path, const void* data,
 	return close(fd) == 0;
 }
 
-bool fetchManifestBlob(uint64_t gid, uint32_t appId, uint32_t depotId,
+bool fetchManifestBlob(uint64_t gid, uint32_t depotId,
                        const std::string& depotcacheDir,
                        const std::shared_ptr<JobBudget>& budget,
                        bool bypassArchiveMiss, uint64_t sessionEpoch)
 {
-	// appId is part of the shared blob API but not needed here: the archive is
-	// addressed by depot and gid only.
-	(void)appId;
 	if (budget && budget->shouldStop()) return false;
 	std::string targetPath = depotcacheDir + "/" + std::to_string(depotId)
 	                          + "_" + std::to_string(gid) + ".manifest";
@@ -526,7 +523,6 @@ struct BlobJob
 	std::shared_future<bool> future;
 	std::shared_ptr<JobBudget> budget;
 	uint64_t sessionEpoch = 0;
-	std::atomic<uint32_t> appId{0};
 	std::atomic<bool> bypassArchiveMiss{false};
 };
 
@@ -541,8 +537,7 @@ BoundedExecutor& blobExecutor()
 	return *executor;
 }
 
-std::shared_ptr<BlobJob> launchOrJoinBlob(uint64_t gid, uint32_t appId,
-	                                      uint32_t depotId,
+std::shared_ptr<BlobJob> launchOrJoinBlob(uint64_t gid, uint32_t depotId,
                                           const std::string& depotcacheDir,
                                           bool bypassArchiveMiss)
 {
@@ -558,27 +553,13 @@ std::shared_ptr<BlobJob> launchOrJoinBlob(uint64_t gid, uint32_t appId,
 		g_blobInflight.erase(it);
 		it = g_blobInflight.end();
 	}
+	// A job is in the map only while it runs: both completion paths below
+	// settle the promise and erase the entry under this lock.
 	if (it != g_blobInflight.end())
 	{
-		auto job = it->second;
-		detail::promoteAppId(job->appId, appId);
-		detail::promoteArchiveMissBypass(job->bypassArchiveMiss,
+		detail::promoteArchiveMissBypass(it->second->bypassArchiveMiss,
 		                                bypassArchiveMiss);
-		// If the previous job finished successfully AND the manifest is
-		// still on disk, return that. If it finished but failed, OR the
-		// file is gone, drop the entry so a fresh re-fetch happens.
-		if (job->future.wait_for(std::chrono::seconds(0)) ==
-		    std::future_status::ready)
-		{
-			const bool onDisk = ManifestStore::isInDepotcache(depotId, gid);
-			if (job->future.get() && onDisk)
-				return job;
-			g_blobInflight.erase(it);
-		}
-		else
-		{
-			return job;
-		}
+		return it->second;
 	}
 
 	auto completion = std::make_shared<std::promise<bool>>();
@@ -587,7 +568,6 @@ std::shared_ptr<BlobJob> launchOrJoinBlob(uint64_t gid, uint32_t appId,
 	job->budget = std::make_shared<JobBudget>(
 		std::chrono::seconds(60));
 	job->sessionEpoch = sessionEpoch;
-	detail::promoteAppId(job->appId, appId);
 	detail::promoteArchiveMissBypass(job->bypassArchiveMiss,
 	                                bypassArchiveMiss);
 	g_blobInflight.emplace(key, job);
@@ -612,9 +592,7 @@ std::shared_ptr<BlobJob> launchOrJoinBlob(uint64_t gid, uint32_t appId,
 	                    ok = (firstAttempt &&
 	                          ManifestStore::restoreToDepotcache(depotId, gid))
 	                         || fetchManifestBlob(
-	                             gid,
-	                             job->appId.load(std::memory_order_acquire),
-	                             depotId, depotcacheDir, job->budget,
+	                             gid, depotId, depotcacheDir, job->budget,
 	                             bypass, job->sessionEpoch);
 	                }
 	            }
@@ -661,12 +639,7 @@ std::shared_ptr<BlobJob> launchOrJoinBlob(uint64_t gid, uint32_t appId,
 
 
 
-int getTimeoutSec()
-{
-	return 12;
-}
-
-void submitManifestBlob(uint64_t manifestGid, uint32_t appId, uint32_t depotId,
+void submitManifestBlob(uint64_t manifestGid, uint32_t depotId,
                         bool bypassArchiveMiss)
 {
 	const auto steamRoot = findSteamRootForBlob();
@@ -678,29 +651,26 @@ void submitManifestBlob(uint64_t manifestGid, uint32_t appId, uint32_t depotId,
 		return;
 	}
 	const std::string depotcacheDir = steamRoot + "/depotcache";
-	(void)launchOrJoinBlob(manifestGid, appId, depotId, depotcacheDir,
+	(void)launchOrJoinBlob(manifestGid, depotId, depotcacheDir,
 	                       bypassArchiveMiss);
 }
 
-bool awaitManifestBlob(uint64_t manifestGid, uint32_t appId,
-                       uint32_t depotId, int timeoutSec, bool activeRequest)
+bool awaitManifestBlob(uint64_t manifestGid, uint32_t depotId,
+                       bool activeRequest)
 {
-	if (timeoutSec <= 0) timeoutSec = getTimeoutSec();
-	return awaitManifestBlobFor(
-	    manifestGid, appId, depotId, timeoutSec * 1000,
-	    /*notifyOnTimeout=*/true,
-	    activeRequest);
+	constexpr int kAwaitMs = 12 * 1000;
+	return awaitManifestBlobFor(manifestGid, depotId, kAwaitMs,
+	                            /*notifyOnTimeout=*/true, activeRequest);
 }
 
-bool awaitManifestBlobFor(uint64_t manifestGid, uint32_t appId,
-                          uint32_t depotId,
+bool awaitManifestBlobFor(uint64_t manifestGid, uint32_t depotId,
                           int timeoutMs, bool notifyOnTimeout,
                           bool activeRequest)
 {
 	const auto steamRoot = findSteamRootForBlob();
 	if (steamRoot.empty()) return false;
 	const std::string depotcacheDir = steamRoot + "/depotcache";
-	auto job = launchOrJoinBlob(manifestGid, appId, depotId, depotcacheDir,
+	auto job = launchOrJoinBlob(manifestGid, depotId, depotcacheDir,
 	                            /*bypassArchiveMiss=*/activeRequest);
 	if (timeoutMs < 0) timeoutMs = 0;
 	if (job->future.wait_for(std::chrono::milliseconds(timeoutMs)) !=

@@ -251,8 +251,7 @@ void handleSend_GetManifestRequestCode(const uint8_t* pBody, uint32_t cbBody,
 	// the request-code handshake entirely. Nothing here answers that
 	// handshake; the archive is the manifest source.
 	ManifestFetch::submitManifestBlob(
-		gid, appId, depotId,
-		ManifestFetch::isAnyManagedDownloadActive(appId));
+		gid, depotId, ManifestFetch::isAnyManagedDownloadActive(appId));
 }
 
 // Fills `replacement` when the frame has to go out rewritten.
@@ -702,7 +701,7 @@ bool hkCDepotDownloadMgr_BYldRequestDepotManifest(void* pthis, uint32_t appId, u
 			// Fallback for a gid the install plan did not stage: wait for the
 			// archive copy, then let Steam's own request run.
 			const bool ok = ManifestFetch::awaitManifestBlob(
-				manifestId, appId, depotId, ManifestFetch::getTimeoutSec(),
+				manifestId, depotId,
 				ManifestFetch::isAnyManagedDownloadActive(appId));
 			if (ok)
 			{
