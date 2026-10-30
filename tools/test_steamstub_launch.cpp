@@ -13,7 +13,7 @@
 #include <fstream>
 #include <iterator>
 #include <string>
-#include <thread>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <vector>
 namespace
@@ -49,8 +49,85 @@ extern "C" int setenv(const char* name, const char* value, int overwrite)
 	static const Real real = reinterpret_cast<Real>(dlsym(RTLD_NEXT, "setenv"));
 	return real(name, value, overwrite);
 }
-int main()
+namespace
 {
+	// Writes a file that carries the SteamStub v2 magic at 0x40.
+	void writeStubExe(const std::string& path)
+	{
+		std::string bytes(0x40, '\0');
+		bytes[0] = 'M';
+		bytes[1] = 'Z';
+		bytes.append("VLV", 4);
+		std::ofstream(path, std::ios::binary) << bytes;
+	}
+
+	// The opt-in launches run in a fresh process: the tool lookup is cached for
+	// the process, and the parent later runs without the tools.
+	int prewarmChild()
+	{
+		namespace fs = std::filesystem;
+		const std::string root = std::getenv("HOME");
+		const std::string steam = root + "/.local/share/Steam";
+		g_pLog = std::unique_ptr<CLog>(new CLog((root + "/child.log").c_str()));
+		const std::string bin = root + "/bin";
+		fs::create_directories(bin);
+		for (const char* tool : {"python3", "timeout"})
+		{
+			std::ofstream(bin + "/" + tool) << "#!/bin/sh\n";
+			fs::permissions(bin + "/" + tool, fs::perms::owner_all);
+		}
+		const char* inherited = std::getenv("PATH");
+		setenv("PATH", (bin + ":" + (inherited ? inherited : "")).c_str(), 1);
+
+		// The recording helper fails --prewarm while fail-prewarm exists.
+		const std::string kit = root + "/kit";
+		const std::string calls = root + "/helper.calls";
+		fs::create_directories(kit + "/tools/steamstub-bypass");
+		fs::create_directories(kit + "/tools/steamless-bin");
+		std::ofstream(kit + "/tools/steamless-bin/Steamless.CLI.exe") << "";
+		std::ofstream(kit + "/tools/steamstub-bypass/run-steamless.sh")
+			<< "printf '%s:%s:%s\\n' \"$STEAMLESS_HOME\" \"$QUIET\" \"$1\" >> " << calls << "\n"
+			<< "[ \"$1\" = --prewarm ] && [ -e " << root << "/fail-prewarm ] && exit 9\n"
+			<< "exit 0\n";
+		std::snprintf(g_childSetenvMark, sizeof(g_childSetenvMark), "%s/child-setenv", root.c_str());
+		SteamStub::setup(kit.c_str());
+
+		const std::string game = steam + "/steamapps/common/Stub";
+		fs::create_directories(game);
+		std::ofstream(steam + "/steamapps/appmanifest_124.acf")
+			<< "\"AppState\"\n{\n\t\"installdir\"\t\t\"Stub\"\n}\n";
+		fs::create_directories(steam + "/userdata/1/config");
+		std::ofstream(steam + "/userdata/1/config/localconfig.vdf")
+			<< "\"apps\"\n{\n\t\"124\"\n\t{\n\t\t\"LaunchOptions\"\t\t\"--steamless %command%\"\n\t}\n}\n";
+		g_config.addedAppIds.set({124});
+
+		std::ofstream(root + "/fail-prewarm") << "";
+		writeStubExe(game + "/A.exe");
+		SteamStub::onLaunchApp(124);
+		fs::remove(root + "/fail-prewarm");
+		writeStubExe(game + "/B.exe");
+		SteamStub::onLaunchApp(124);
+		writeStubExe(game + "/C.exe");
+		SteamStub::onLaunchApp(124);
+
+		std::ifstream file(calls);
+		const std::string seen((std::istreambuf_iterator<char>(file)), {});
+		const std::string home = kit + "/tools/steamless-bin:1:";
+		check(seen == home + "--prewarm\n" + home + game + "/A.exe\n"
+		              + home + "--prewarm\n" + home + game + "/B.exe\n"
+		              + home + game + "/C.exe\n",
+		      "the first opt-in launch prepares the prefix once before the exe, a failed "
+		      "preparation is tried again by the next launch, a ready prefix is not "
+		      "prepared again, and the helper sees STEAMLESS_HOME and QUIET (got \""
+		      + seen + "\")");
+		check(!fs::exists(g_childSetenvMark), "the forked child does not call setenv");
+		return failures == 0 ? 0 : 1;
+	}
+}
+
+int main(int argc, char** argv)
+{
+	if (argc > 1 && std::string(argv[1]) == "prewarm-child") return prewarmChild();
 	const std::string root = "/tmp/slssteam-steamstub-launch." + std::to_string(getpid());
 	const std::string configHome = root + "/config";
 	const std::string steam = root + "/.local/share/Steam";
@@ -75,25 +152,31 @@ int main()
 
 	// The helper gets its environment from the parent; the forked child only
 	// execs (a setenv there can deadlock on a lock another thread held).
+	{
+		const std::string childHome = root + "/prewarm-home";
+		std::filesystem::create_directories(childHome);
+		const pid_t pid = fork();
+		if (pid == 0)
+		{
+			setenv("HOME", childHome.c_str(), 1);
+			setenv("XDG_CONFIG_HOME", (childHome + "/config").c_str(), 1);
+			std::filesystem::create_directories(childHome + "/config/SLSsteam");
+			execl("/proc/self/exe", "test_steamstub_launch", "prewarm-child", nullptr);
+			_exit(127);
+		}
+		int status = 0;
+		waitpid(pid, &status, 0);
+		check(WIFEXITED(status) && WEXITSTATUS(status) == 0,
+		      "the opt-in launch sequence passes in a fresh process");
+	}
+
+	// The remaining cases set the helper kit up in this process.
 	const std::string kit = root + "/kit";
-	const std::string helperOut = root + "/helper.out";
 	std::filesystem::create_directories(kit + "/tools/steamstub-bypass");
 	std::filesystem::create_directories(kit + "/tools/steamless-bin");
 	std::ofstream(kit + "/tools/steamless-bin/Steamless.CLI.exe") << "";
-	std::ofstream(kit + "/tools/steamstub-bypass/run-steamless.sh")
-		<< "printf '%s:%s:%s' \"$STEAMLESS_HOME\" \"$QUIET\" \"$1\" > " << helperOut << "\n";
-	std::snprintf(g_childSetenvMark, sizeof(g_childSetenvMark), "%s/child-setenv", root.c_str());
+	std::ofstream(kit + "/tools/steamstub-bypass/run-steamless.sh") << "exit 0\n";
 	SteamStub::setup(kit.c_str());
-	SteamStub::warmupAsync();
-	for (int i = 0; i < 50 && !std::filesystem::exists(helperOut); ++i)
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
-	std::this_thread::sleep_for(std::chrono::milliseconds(100));
-	std::ifstream outFile(helperOut);
-	const std::string seen((std::istreambuf_iterator<char>(outFile)), std::istreambuf_iterator<char>());
-	check(seen == kit + "/tools/steamless-bin:1:--prewarm",
-	      "the helper sees STEAMLESS_HOME and QUIET (got \"" + seen + "\")");
-	check(!std::filesystem::exists(g_childSetenvMark),
-	      "the forked child does not call setenv");
 
 	// Without --steamless a launch reverts only our own fresh output.
 	{

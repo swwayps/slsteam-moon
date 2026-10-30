@@ -9,13 +9,10 @@
 #include "../globals.hpp"
 #include "../log.hpp"
 #include "../runtime_dependencies.hpp"
-#include "../thread_start.hpp"
-#include "steamstub_warmup.hpp"
 #include "steamstub_launchopt.hpp"
 
 #include <atomic>
 #include <chrono>
-#include <condition_variable>
 #include <cstdint>
 #include <cerrno>
 #include <cstdio>
@@ -51,17 +48,9 @@ namespace
 	std::mutex g_processedMu;
 	std::unordered_set<std::string> g_processedExes;
 
-	// Warmup synchronisation. warmupAsync() spawns a detached thread for each
-	// generation. Successful generations are one-shot; a failed generation
-	// wakes launchers and leaves the start gate retryable until the next
-	// generation claims it. onLaunchApp() waits for the active generation and
-	// retries once when a failure completes while the victim is waiting.
-	std::atomic<bool> g_warmupStarted{false};
-	std::atomic<bool> g_warmupDone{false};
-	std::atomic<bool> g_warmupFailed{false};
-	std::uint64_t g_warmupGeneration = 0;
-	std::mutex g_warmupMu;
-	std::condition_variable g_warmupCV;
+	// Set once the helper prepared its Wine prefix in this session.
+	std::mutex g_prefixMu;
+	bool g_prefixReady = false;
 
 	// Returns true when the file at `path` carries the VLV magic at
 	// offset 0x40 (SteamStub v2) OR has a ".bind" PE section
@@ -347,8 +336,8 @@ namespace
 		}
 	}
 
-	// Run `<script> --prewarm` synchronously (in a worker thread,
-	// not the calling thread).  Same env, same waitpid, just no exe.
+	// Run `<script> --prewarm` synchronously.  Same env, same waitpid, just
+	// no exe.
 	int runPrewarm()
 	{
 		const pid_t pid = spawnHelper("--prewarm");
@@ -369,6 +358,21 @@ namespace
 			default:
 				return -1;
 		}
+	}
+
+	// A fresh Wine prefix takes the helper ~30 s of wineboot. The first exe of
+	// a session waits for that in a run of its own, with its own time limit;
+	// after a failure the exe run initialises the prefix itself, and the next
+	// launch tries again.
+	void preparePrefix()
+	{
+		std::lock_guard<std::mutex> lk(g_prefixMu);
+		if (g_prefixReady) return;
+		g_pLog->debug("SteamStub: preparing the Wine prefix\n");
+		const int rc = runPrewarm();
+		g_prefixReady = rc == 0;
+		if (!g_prefixReady)
+			g_pLog->debug("SteamStub: prefix preparation exited with rc=%d\n", rc);
 	}
 
 	// True when the app's Steam launch options carry the `--steamless`
@@ -585,73 +589,6 @@ void setup(const char* installRoot)
 	);
 }
 
-void warmupAsync()
-{
-	if (!g_enabled.load(std::memory_order_acquire)) return;
-
-	// First call wins; the generation claim and its flag reset must be
-	// serialised with the worker's exit callback.  Otherwise an old exit
-	// can publish done=true into a newly-started generation.
-	if (!SteamStub::tryBeginWarmup(g_warmupMu,
-	                               g_warmupStarted,
-	                               g_warmupDone,
-	                               g_warmupFailed,
-	                               g_warmupGeneration))
-	{
-		return;
-	}
-	const bool started = ThreadStart::startDetached(
-		[]
-		{
-			ThreadStart::runGuarded(
-				[]
-				{
-					g_pLog->debug("SteamStub: prewarming Wine prefix in background\n");
-					const int rc = runPrewarm();
-					if (rc == 0)
-					{
-						g_pLog->debug("SteamStub: prewarm complete\n");
-					}
-					else
-					{
-						SteamStub::recordWarmupResult(g_warmupFailed, rc);
-						g_pLog->debug
-						(
-							"SteamStub: prewarm exited with rc=%d "
-							"(launch-time unpack will pay the cost)\n",
-							rc
-						);
-					}
-				},
-				[]
-				{
-					g_pLog->warn("SteamStub: prewarm worker failed; launch will warm inline\n");
-					g_warmupFailed.store(true, std::memory_order_release);
-				},
-				[]
-				{
-					SteamStub::finishWarmup(g_warmupMu,
-					                        g_warmupStarted,
-					                        g_warmupDone,
-					                        g_warmupFailed);
-					g_warmupCV.notify_all();
-				});
-		},
-		[]
-		{
-			std::lock_guard<std::mutex> lk(g_warmupMu);
-			g_warmupFailed.store(false, std::memory_order_release);
-			g_warmupStarted.store(false, std::memory_order_release);
-			g_warmupDone.store(true, std::memory_order_release);
-			g_warmupCV.notify_all();
-		});
-	if (!started)
-	{
-		g_pLog->warn("SteamStub: unable to start prewarm worker; launch will warm inline\n");
-	}
-
-}
-
 void onLaunchApp(uint32_t appId)
 {
 	if (!appId) return;
@@ -773,77 +710,7 @@ void onLaunchApp(uint32_t appId)
 			continue;
 		}
 
-		// A real victim may be the first launch after setup(), or may arrive
-		// after a failed prewarm generation released the start gate. In either
-		// case, start the next generation here before taking the wait lock. The
-		// gate inside warmupAsync() serialises concurrent launch retries.
-		if (!g_warmupStarted.load(std::memory_order_acquire))
-		{
-			warmupAsync();
-		}
-
-		// We have a real victim — wait for the background prewarm
-		// to finish before invoking the helper for real. Each waiter follows a
-		// generation identity: if another victim claims the replacement first,
-		// join that generation and wait for its terminal state rather than
-		// proceeding on a snapshot of shared booleans.
-		std::uint64_t observedGeneration = 0;
-		bool retriedWarmup = false;
-		for (;;)
-		{
-			bool retryWarmup = false;
-			{
-				std::unique_lock<std::mutex> lk(g_warmupMu);
-				if (observedGeneration == 0)
-					observedGeneration = g_warmupGeneration;
-
-				if (g_warmupGeneration != observedGeneration)
-				{
-					observedGeneration = g_warmupGeneration;
-					retriedWarmup = true;
-				}
-
-				const auto waitingGeneration = observedGeneration;
-				if (g_warmupStarted.load(std::memory_order_acquire)
-				    && !g_warmupDone.load(std::memory_order_acquire))
-				{
-					g_pLog->debug("SteamStub: waiting for prewarm generation %llu\n",
-					             static_cast<unsigned long long>(waitingGeneration));
-					g_warmupCV.wait(lk, [waitingGeneration]
-					{
-						return g_warmupGeneration != waitingGeneration ||
-						       g_warmupDone.load(std::memory_order_acquire);
-					});
-					if (g_warmupGeneration != waitingGeneration)
-					{
-						observedGeneration = g_warmupGeneration;
-						retriedWarmup = true;
-						continue;
-					}
-				}
-
-				if (SteamStub::shouldRetryWarmup(
-						g_warmupStarted.load(std::memory_order_acquire),
-						g_warmupDone.load(std::memory_order_acquire),
-						g_warmupFailed.load(std::memory_order_acquire))
-				    && !retriedWarmup)
-				{
-					retriedWarmup = true;
-					retryWarmup = true;
-				}
-				else
-				{
-					break;
-				}
-			}
-
-			if (retryWarmup)
-			{
-				g_pLog->debug("SteamStub: retrying failed prewarm before launch\n");
-				warmupAsync();
-			}
-		}
-
+		preparePrefix();
 		g_pLog->info("SteamStub: processing %s\n", pathStr.c_str());
 		const int rc = runHelper(pathStr);
 		switch (rc)
