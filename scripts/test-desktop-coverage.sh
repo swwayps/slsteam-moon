@@ -264,6 +264,21 @@ check "user run patches menu" "patched" "$(dc_classify "$H/.local/share/applicat
 check "user run patches autostart" "patched" "$(dc_classify "$H/.config/autostart/steam.desktop")"
 check "user run leaves stub alone" "stub" "$(dc_classify "$SYS/steam.desktop")"
 check "user run leaves no adjacent autostart backup" "no" "$([ -e "$H/.config/autostart/steam.desktop.slssteam-backup" ] && echo yes || echo no)"
+# A user pass whose menu patch fails reports it and records no digest, so the
+# next pass retries instead of taking the unchanged fast path.
+HX7="$TMP/home-x7"; mkdir -p "$HX7/.local/share/applications"
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/games/steam %%U\n' > "$HX7/.local/share/applications/steam.desktop"
+x7() {
+  XDG_DATA_DIRS="$TMP/none" DC_HOME="$HX7" DC_BACKUP_ROOT="$HX7/backup" \
+    DC_FINGERPRINT_DIR="$HX7/state" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" \
+    DC_SUDO="" DC_STEAM_INSTALLED=1 dc_run --user
+}
+if ( export TMPDIR="$TMP/missing-x7"; x7 ); then x7_status=0; else x7_status=$?; fi
+check "a user pass whose patch fails reports it and records nothing" "2:no" \
+  "$x7_status:$([ -e "$HX7/state/coverage.fingerprint.user" ] && echo yes || echo no)"
+x7 || true
+check "the next user pass retries the failed patch" "patched" \
+  "$(dc_classify "$HX7/.local/share/applications/steam.desktop")"
 
 # Valve's Debian bootstrap may leave the user menu entry as a dangling symlink
 # into deb-installer/. It still shadows the valid system desktop ID, so coverage

@@ -681,15 +681,16 @@ dc_patch_shortcut() {
 	fi
 	case "$(dc_classify "$sc")" in
 		launcher|patched)
-			dc_patch_one "$sc"
+			dc_patch_one "$sc" || return 1
 			dc_activate_shortcut "$sc" || true
 			;;
 		stub)
 			[ "${DC_STEAM_INSTALLED:-0}" = 1 ] || return 0
-			dc_patch_one "$sc"
+			dc_patch_one "$sc" || return 1
 			dc_activate_shortcut "$sc" || true
 			;;
 	esac
+	return 0
 }
 
 # Overridable roots (tests inject fakes; real callers leave them at defaults).
@@ -888,7 +889,7 @@ EOF
 # globally ignored when any real donor exists. Existing exact-ID user entries
 # retain their metadata and are backed up/patched by dc_patch_one.
 dc_seed_application_shadows() {
-	local user_dir dir source kind id target have_real=0 seen=''
+	local user_dir dir source kind id target class have_real=0 seen='' failed=0
 	user_dir="$(dc_user_app_dir)"
 
 	while IFS= read -r dir; do
@@ -927,13 +928,18 @@ dc_seed_application_shadows() {
 			_dc_discard_dangling_application_shadow "$target" || continue
 			if [ -e "$target" ] || [ -L "$target" ]; then
 				[ -r "$target" ] || chmod 0644 "$target" 2>/dev/null || true
-				dc_patch_one "$target" 2>/dev/null || true
+				# dc_patch_one also returns 1 for an entry it deliberately leaves
+				# alone; only a launcher it failed to cover is a failure.
+				class="$(dc_classify "$target")"
+				if ! dc_patch_one "$target" 2>/dev/null; then
+					case "$class" in launcher|patched) failed=1 ;; esac
+				fi
 			else
-				_dc_publish_application_shadow "$source" "$target" "$kind" || true
+				_dc_publish_application_shadow "$source" "$target" "$kind" || failed=1
 			fi
 		done
 	done < <(dc_application_dirs)
-	return 0
+	[ "$failed" = 0 ]
 }
 
 # Reconcile same-ID shadows before the existing broad user application pass.
@@ -962,20 +968,24 @@ dc_seed_autostart_override() {
 	[ -f "$sys_as" ] || return 0
 	grep -q "^Name=Install Steam" "$sys_as" 2>/dev/null && return 0
 	grep -qiE '^Exec=.*steam' "$sys_as" 2>/dev/null || return 0
-	mkdir -p "$(dirname "$user_as")" 2>/dev/null || return 0
-	cp -- "$sys_as" "$user_as" 2>/dev/null || return 0
+	# From here a seed is needed, so a failure returns 1 for the caller to
+	# retry rather than remember the pass.
+	mkdir -p "$(dirname "$user_as")" 2>/dev/null || return 1
+	cp -- "$sys_as" "$user_as" 2>/dev/null || return 1
 	# Mark it seeded BEFORE patching so dc_patch_one never captures this
 	# just-created file as an original.
 	if ! grep -qxF "$DC_SEED_TAG" "$user_as" 2>/dev/null; then
-		local tmp; tmp="$(mktemp)" || return 0
+		local tmp; tmp="$(mktemp)" || return 1
 		awk -v s="$DC_SEED_TAG" '
 			!d && /^\[Desktop Entry\]/ { print; print s; d=1; next } { print }
 		' "$user_as" > "$tmp" 2>/dev/null && cat "$tmp" > "$user_as"
 		rm -f "$tmp"
 	fi
-	dc_patch_one "$user_as"
+	local status=0
+	dc_patch_one "$user_as" || status=1
 	# Defensive cleanup for an interrupted older seeding implementation.
 	rm -f "$user_as.slssteam-backup" "$user_as.slsteam-bak" "$(dc_backup_path "$user_as")"
+	return "$status"
 }
 
 # Guardian commands are injectable so tests can observe lock/cache behavior.
@@ -1536,16 +1546,19 @@ dc_run() {
 	# launch candidates on KDE's systemd XDG-autostart implementation.
 	dc_migrate_legacy_backups "$mode" || failed=1
 	# Create/repair authoritative same-ID shadows before the legacy filename glob.
-	dc_reconcile_application_entries
+	# A failed step is not remembered, so the next pass retries it.
+	dc_reconcile_application_entries || failed=1
 	# Seed a user autostart override from the system entry (SteamOS/Bazzite) BEFORE
 	# the autostart glob, so a freshly seeded file is (idempotently) re-patched too.
-	dc_seed_autostart_override
+	dc_seed_autostart_override || failed=1
 	dc_patch_glob "" "$user_autostart" || failed=1
 	if [ "$mode" = "--system" ]; then
 		dc_patch_glob "$DC_SUDO" "$DC_SYS_APPS" || failed=1
 		dc_patch_glob "$DC_SUDO" "$DC_SYS_AUTOSTART" || failed=1
 	fi
-	[ -f "$menu" ] && dc_patch_shortcut "$(dc_desktop_dir)/steam.desktop"
+	if [ -f "$menu" ]; then
+		dc_patch_shortcut "$(dc_desktop_dir)/steam.desktop" || failed=1
+	fi
 	[ "$failed" = 0 ] || return 2
 	dc_coverage_remember "$scope" "$mode" || true
 	return 0
