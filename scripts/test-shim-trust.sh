@@ -11,7 +11,9 @@
 # Which home the shim reads is not the safety property: it uses an absolute $HOME
 # and falls back to the effective account's password-database home. What stops
 # the escalation is that it refuses a wrapper that is not a plain file owned by
-# the effective account with no group/other write bit.
+# the effective account with no group/other write bit, and runs the captured
+# original only when it and every folder above it belong to root or the
+# effective account and nobody else can write them.
 #
 # Run from the repo root:  bash scripts/test-shim-trust.sh
 set -u
@@ -73,6 +75,23 @@ chmod 0755 "$SHIM"
 # what the password database says, without needing root.
 STUB="$TMP/stub"
 mkdir -p "$STUB"
+REAL_STAT="$(command -v stat)"
+# The shim checks every folder up to /. In a test sandbox / and /tmp are not
+# root's (user namespace), so this stub reports them as root's, as on a real
+# system. T13 extends it.
+base_stat_stub() {
+	cat > "$STUB/stat" <<EOF
+#!/bin/sh
+last=""
+for a in "\$@"; do last="\$a"; done
+case "\$last:\$*" in
+	/:*%u*|/tmp:*%u*) echo 0; exit 0 ;;
+esac
+exec "$REAL_STAT" "\$@"
+EOF
+	chmod 0755 "$STUB/stat"
+}
+base_stat_stub
 make_stubs() {
 	# make_stubs <euid> <username> <passwd-home>
 	cat > "$STUB/id" <<EOF
@@ -116,8 +135,8 @@ make_stubs 4242 "other" "$FAKE_HOME"
 OUT="$(run_shim "$REAL_HOME")"
 check "T2 a wrapper owned by another account is refused" \
 	'[ "$OUT" != "WRAPPER:real" ]'
-check "T2b it falls back to the packaged launcher" \
-	'[ "$OUT" = "ORIGINAL_LAUNCHER" ]'
+check "T2b a captured original another account owns is not run either" \
+	'[ "$OUT" != "ORIGINAL_LAUNCHER" ] && printf "%s" "$OUT" | grep -q "no usable launcher"'
 
 # ---------------------------------------------------------------------------
 # T3: running as root with HOME preserved. root's passwd home has no wrapper, so
@@ -129,8 +148,8 @@ make_stubs 0 "root" "$ROOT_HOME"
 OUT="$(run_shim "$REAL_HOME")"
 check "T3 elevated invocation does not run the user's wrapper" \
 	'[ "$OUT" != "WRAPPER:real" ]'
-check "T3b elevated invocation uses the packaged launcher" \
-	'[ "$OUT" = "ORIGINAL_LAUNCHER" ]'
+check "T3b elevated invocation does not run a captured original the user owns" \
+	'[ "$OUT" != "ORIGINAL_LAUNCHER" ]'
 
 # ---------------------------------------------------------------------------
 # T4: a wrapper that others can write must be refused even inside the right home:
@@ -167,6 +186,55 @@ check "T6 a symlinked wrapper is refused" '[ "$OUT" != "PAYLOAD" ]'
 check "T6b it falls back to the packaged launcher" '[ "$OUT" = "ORIGINAL_LAUNCHER" ]'
 rm -f "$REAL_HOME/.local/share/SLSsteam/path/steam"
 mv "$TMP/wrapper.real" "$REAL_HOME/.local/share/SLSsteam/path/steam"
+
+# ---------------------------------------------------------------------------
+# T12: the captured original runs only from a tree nobody else can change. A
+#      folder above it that others can write is refused, even for its owner.
+# ---------------------------------------------------------------------------
+make_stubs "$MY_UID" "real" "$REAL_HOME"
+mv "$REAL_HOME/.local/share/SLSsteam/path/steam" "$TMP/wrapper.real"
+chmod 0777 "$ORIG_DIR"
+OUT="$(run_shim "$REAL_HOME")"
+check "T12 a captured original in a folder others can write is refused" \
+	'[ "$OUT" != "ORIGINAL_LAUNCHER" ]'
+chmod 0755 "$ORIG_DIR"
+OUT="$(run_shim "$REAL_HOME")"
+check "T12b the same original runs once only its owner can change the folder" \
+	'[ "$OUT" = "ORIGINAL_LAUNCHER" ]'
+mv "$TMP/wrapper.real" "$REAL_HOME/.local/share/SLSsteam/path/steam"
+
+# ---------------------------------------------------------------------------
+# T13: a captured original that root owns, in folders only root can change,
+#      runs for any account. A stat stub reports root as the owner of that
+#      tree (and of $TMP above it), since the test cannot create root files.
+# ---------------------------------------------------------------------------
+SYS_TREE="$TMP/sysroot"
+mkdir -p "$SYS_TREE/usr/bin"
+printf '#!/bin/sh\necho "SYSTEM_ORIGINAL"\n' > "$SYS_TREE/usr/bin/steam.orig"
+chmod 0755 "$SYS_TREE/usr/bin/steam.orig"
+ln -s steam.orig "$SYS_TREE/usr/bin/steam"
+SYS_SHIM="$TMP/steam-system"
+ls_shim_content "$SYS_TREE/usr/bin/steam.orig" > "$SYS_SHIM"
+chmod 0755 "$SYS_SHIM"
+cat > "$STUB/stat" <<EOF
+#!/bin/sh
+last=""
+for a in "\$@"; do last="\$a"; done
+case "\$last" in
+	/|/tmp|"$TMP"|"$SYS_TREE"|"$SYS_TREE"/*)
+		case "\$*" in *%u*) echo 0; exit 0 ;; esac ;;
+esac
+exec "$REAL_STAT" "\$@"
+EOF
+chmod 0755 "$STUB/stat"
+make_stubs 4242 "other" "$FAKE_HOME"
+OUT="$(env PATH="$STUB:$PATH" HOME="$FAKE_HOME" sh "$SYS_SHIM" 2>&1)"
+check "T13 a root-owned captured original runs for another account" \
+	'[ "$OUT" = "SYSTEM_ORIGINAL" ]'
+make_stubs 0 "root" "$ROOT_HOME"
+OUT="$(env PATH="$STUB:$PATH" HOME="$REAL_HOME" sh "$SYS_SHIM" 2>&1)"
+check "T13b and for an elevated invocation" '[ "$OUT" = "SYSTEM_ORIGINAL" ]'
+base_stat_stub
 
 # ---------------------------------------------------------------------------
 # T7: an invocation without a usable $HOME (unset, or not absolute) finds the

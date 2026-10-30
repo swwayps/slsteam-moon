@@ -239,8 +239,9 @@ $LS_TAG
 # (sudo -E, sudoers env_keep += HOME, a helper that inherits the environment)
 # therefore finds a wrapper owned by someone else, refuses it, and falls through
 # to the packaged launcher instead of running a user-writable script as root.
-# The account's home is resolved from the password database when the invocation
-# carries no usable \$HOME of its own.
+# The packaged launcher (the captured original) gets the same rule for its whole
+# path, see slsm_tree_trusted. The account's home is resolved from the password
+# database when the invocation carries no usable \$HOME of its own.
 SLSM_USER="\$(id -un 2>/dev/null || true)"
 SLSM_EUID="\$(id -u 2>/dev/null || true)"
 SLSM_PW_HOME=""
@@ -266,6 +267,32 @@ slsm_wrapper_trusted() {
 	[ "\$(printf '%s' "\$_slsm_perm" | cut -c6)" = "w" ] && return 1
 	[ "\$(printf '%s' "\$_slsm_perm" | cut -c9)" = "w" ] && return 1
 	return 0
+}
+# The captured original may sit in another account's tree (older installs kept
+# it in the installing user's home). Run it only when nobody but root or the
+# effective account can change it: the file and every folder above it belong to
+# one of them and none is writable by group or others, unless it is a sticky
+# folder such as /tmp, where only an entry's owner can replace it.
+slsm_tree_trusted() {
+	_slsm_t="\$1"
+	[ -n "\$SLSM_EUID" ] || return 1
+	while :; do
+		_slsm_o="\$(stat -L -c '%u' "\$_slsm_t" 2>/dev/null || true)"
+		[ "\$_slsm_o" = 0 ] || [ "\$_slsm_o" = "\$SLSM_EUID" ] || return 1
+		_slsm_a="\$(stat -L -c '%A' "\$_slsm_t" 2>/dev/null || true)"
+		case "\$_slsm_a" in
+			'') return 1 ;;
+			d????????t|d????????T) ;;
+			?????w*|????????w*) return 1 ;;
+		esac
+		[ "\$_slsm_t" = / ] && return 0
+		_slsm_t="\${_slsm_t%/*}"
+		[ -n "\$_slsm_t" ] || _slsm_t=/
+	done
+}
+# A folder whose path holds no link, so the entries checked are the entries run.
+slsm_dir_trusted() {
+	[ "\$(readlink -f "\$1" 2>/dev/null || true)" = "\$1" ] && slsm_tree_trusted "\$1"
 }
 # \$HOME is what every ordinary launch carries; the password-database home is only
 # consulted when the invocation arrives without one. WHICH directory is used is
@@ -300,7 +327,8 @@ if [ -f "\$SLSM_ORIG" ] && [ -x "\$SLSM_ORIG" ]; then
 	SLSM_WRAPPER_REAL="\$(readlink -f "\$SLSM_WRAPPER" 2>/dev/null || true)"
 	if [ -n "\$SLSM_ORIG_REAL" ] && \
 	   [ "\$SLSM_ORIG_REAL" != "\$SLSM_WRAPPER_REAL" ] && \
-	   ! head -3 "\$SLSM_ORIG" 2>/dev/null | grep -qF "\$SLSM_TAG"; then
+	   ! head -3 "\$SLSM_ORIG" 2>/dev/null | grep -qF "\$SLSM_TAG" && \\
+	   slsm_tree_trusted "\$SLSM_ORIG_REAL"; then
 		SLSM_ORIG_USABLE=1
 	fi
 fi
@@ -313,17 +341,19 @@ fi
 SLSM_LAUNCH=""
 slsm_shim_alias_ready() {
 	[ -x "\$SLSM_ORIG_EXEC" ] || return 1
-	[ "\$(readlink -f "\$SLSM_ORIG_EXEC" 2>/dev/null || true)" = "\$SLSM_ORIG_REAL" ]
+	[ "\$(readlink -f "\$SLSM_ORIG_EXEC" 2>/dev/null || true)" = "\$SLSM_ORIG_REAL" ] || return 1
+	slsm_dir_trusted "\${SLSM_ORIG_EXEC%/*}"
 }
 if [ "\$SLSM_ORIG_USABLE" = 1 ]; then
-	if ! slsm_shim_alias_ready; then
+	# Heal the alias only in a folder nobody else can change.
+	if ! slsm_shim_alias_ready && slsm_dir_trusted "\${SLSM_ORIG_EXEC%/*}"; then
 		if [ ! -e "\$SLSM_ORIG_EXEC" ] || [ -L "\$SLSM_ORIG_EXEC" ]; then
 			ln -sfn -- "\${SLSM_ORIG##*/}" "\$SLSM_ORIG_EXEC" 2>/dev/null || true
 		fi
 	fi
 	if slsm_shim_alias_ready; then
 		SLSM_LAUNCH="\$SLSM_ORIG_EXEC"
-	else
+	elif slsm_dir_trusted "\${SLSM_ORIG%/*}"; then
 		case "\${SLSM_ORIG##*/}" in
 			steam|steambeta|bin_steam.sh|steam.sh) SLSM_LAUNCH="\$SLSM_ORIG" ;;
 		esac

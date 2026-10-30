@@ -33,6 +33,14 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 SETUP="$REPO_ROOT/setup.sh"
 TMP="$(mktemp -d)"
 trap 'chmod -R u+w "$TMP" 2>/dev/null || true; rm -rf "$TMP"' EXIT
+# The shim trusts a captured original only when root or the caller owns every
+# folder above it. In a test sandbox / and /tmp are not root's (user
+# namespace), so this stub reports them as root's, as on a real system.
+mkdir -p "$TMP/stat-stub"
+printf '#!/bin/sh\nlast=""\nfor a in "$@"; do last="$a"; done\ncase "$last:$*" in\n\t/:*%%u*|/tmp:*%%u*) echo 0; exit 0 ;;\nesac\nexec "%s" "$@"\n' \
+  "$(command -v stat)" > "$TMP/stat-stub/stat"
+chmod +x "$TMP/stat-stub/stat"
+export PATH="$TMP/stat-stub:$PATH"
 PASS=0; FAIL=0
 check() {
 	if [ "$2" = "$3" ]; then
