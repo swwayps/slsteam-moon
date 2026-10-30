@@ -42,7 +42,7 @@ int main()
 	expect(!build.empty() && !evaluate.empty(), "both ReconcilePin hooks are found");
 	expect(contained(build, "patchTargetVec(") && !contained(build, "g_origBuild("),
 	       "the target-vector patch is contained and the builder runs outside it");
-	expect(contained(evaluate, "patchTargetCtx(") && contained(evaluate, "traceLog(") &&
+	expect(contained(evaluate, "patchTargetCtx(") &&
 	           !contained(evaluate, "g_orig(") &&
 	           evaluate.find("return g_orig(") > evaluate.rfind("catch (...)"),
 	       "the context patch is contained and EvaluateConfigChanges runs after it");

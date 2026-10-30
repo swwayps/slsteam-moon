@@ -91,6 +91,18 @@ first CA file found in `SLSSTEAM_CA_BUNDLE`, `CURL_CA_BUNDLE`, `SSL_CERT_FILE`
 or the usual distro paths (`src/cainfo.hpp`). Set `SLSSTEAM_CA_BUNDLE` when the
 system bundle lives somewhere else; a path that does not exist is skipped.
 
+## Manifest switches
+
+Both are on by default; the value `0` turns one off for the session.
+
+* `SLSSTEAM_MANIFEST_FALLBACK=0`: when the planned manifest of a managed depot
+  cannot be staged, Steam's own request runs instead of installing a local
+  manifest of that depot (`src/feats/manifestbind.cpp`). With the fallback on,
+  such a game shows as offline in the Game Updates tab.
+* `SLSSTEAM_RECONCILE_PIN=0`: a `ManifestPins` entry no longer rewrites the
+  target build Steam reconciles an installed app against
+  (`src/feats/reconcilepin.cpp`). The empty-depot filter keeps running.
+
 ## CloudRedirect stats bridge
 
 CloudRedirect asks SLSsteam which apps keep local stats through the
