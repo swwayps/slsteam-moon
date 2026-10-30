@@ -72,7 +72,6 @@ std::int64_t cachePairMtimeSecs(std::uint32_t appId) noexcept;
 // Mtime (secs) of the DLC-metadata sidecar (dlcmetadata_<id>.yaml), or 0 when
 // absent. Cheap stat used to key the hot-reload per-app input memo.
 std::int64_t dlcMetadataCacheMtimeSecs(std::uint32_t appId) noexcept;
-std::string localContentFingerprint(std::uint32_t appId);
 std::string localContentFingerprint(
 	std::uint32_t appId,
 	const ManifestStore::ArchivedGidIndex& archivedGids);

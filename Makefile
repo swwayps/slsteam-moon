@@ -67,7 +67,7 @@ endif
 .PHONY: test-manifestdonor test-manifestdonor-runtime test-manifestfetch
 .PHONY: test-reconcilepin-scan
 .PHONY: test-depotkey-recv-policy
-.PHONY: test-curl-sink test-pin-lookup test-private-apps test-config-settings test-config-tolerance test-config-watch test-config-create test-plugin-config test-curl-child test-legacy-cdkey test-utils-number test-launch-options
+.PHONY: test-curl-sink test-pin-lookup test-provision-mirror test-private-apps test-config-settings test-config-tolerance test-config-watch test-config-create test-plugin-config test-curl-child test-legacy-cdkey test-utils-number test-launch-options
 
 test-manifestdonor:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror \
@@ -260,6 +260,18 @@ test-provision-locks: $(objs) $(libs)
 		-I include -isysteminclude tools/test_provision_locks.cpp \
 		$(objs) $(libs) -lpthread -ldl -o /tmp/test_provision_locks
 	/tmp/test_provision_locks
+# Cold-start provisioning against a provider mirror that answers through
+# tools/fake_libcurl.cpp.
+test-provision-mirror: $(objs) $(libs)
+	mkdir -p /tmp/fakecurl-mirror
+	$(CXX) -m32 -std=c++20 -shared -fPIC -Wl,-soname,libcurl.so.4 \
+		tools/fake_libcurl.cpp -o /tmp/fakecurl-mirror/libcurl.so.4
+	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
+		-I include -isysteminclude tools/test_provision_mirror.cpp \
+		$(objs) $(libs) /tmp/fakecurl-mirror/libcurl.so.4 \
+		-Wl,-rpath,/tmp/fakecurl-mirror -lpthread -ldl \
+		-o /tmp/test_provision_mirror
+	/tmp/test_provision_mirror
 test-cmrecv-exceptions: $(objs) $(libs)
 	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
 		-I include -isysteminclude tools/test_cmrecv_exceptions.cpp \

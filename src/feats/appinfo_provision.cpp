@@ -659,6 +659,22 @@ bool readValidatedCacheBufferLocked(uint32_t appId, std::string& wireOut,
                                     std::string& diag,
                                     bool* requiresProton = nullptr);
 
+struct ProvisionPassContext
+{
+	std::unordered_map<uint32_t, std::string> cmBuffers;
+	std::unordered_map<uint32_t, uint32_t> cmChanges;
+	std::unordered_map<uint32_t, CachePublicationToken> cachePublications;
+	// The newest archived gid per depot. The store is walked on first use and
+	// the index then serves every fingerprint and depot rebuild of the pass.
+	std::optional<ManifestStore::ArchivedGidIndex> archivedGids;
+
+	const ManifestStore::ArchivedGidIndex& archived()
+	{
+		if (!archivedGids) archivedGids = ManifestStore::archivedGidIndex();
+		return *archivedGids;
+	}
+};
+
 // Rebuild a missing `depots` block for a token-locked app from data we
 // already hold on disk.  Some titles (e.g. Risk of Rain 2, app 632360)
 // have their PICS product-info gated behind an app access token Valve
@@ -672,19 +688,18 @@ bool readValidatedCacheBufferLocked(uint32_t appId, std::string& wireOut,
 // CompatTool mapping downstream.  No-op when the body already has real
 // depots (see ManifestSynth::injectSynthesizedDepots).  Mutates `body`;
 // returns the number of depots synthesized.
-int synthesizeDepotsFromStore(YAML::Node& body, uint32_t appId)
+int synthesizeDepotsFromStore(YAML::Node& body, uint32_t appId,
+                              ProvisionPassContext& context)
 {
 	std::vector<ManifestSynth::SynthDepot> depots;
 	// Accumulate file lists per OS across all of the app's depots so we can
 	// synthesize one launch entry per platform (native + forced-Proton).
 	std::vector<std::string> winFiles, linFiles, macFiles;
-	// One walk of the store for every depot, instead of one per depot.
-	std::optional<ManifestStore::ArchivedGidIndex> archived;
 	for (uint32_t depotId : DepotKey::managedDepotsForApp(appId))
 	{
-		if (!archived) archived = ManifestStore::archivedGidIndex();
-		const auto found = archived->find(depotId);
-		const uint64_t gid = found == archived->end() ? 0 : found->second;
+		const auto& archived = context.archived();
+		const auto found = archived.find(depotId);
+		const uint64_t gid = found == archived.end() ? 0 : found->second;
 		if (gid == 0) continue; // no archived manifest -> can't plan it
 
 		// Read the archived manifest, derive the depot's OS from its parsed
@@ -771,7 +786,8 @@ bool isDlcApp(const YAML::Node& body)
 
 SourceResult renderAppinfoBuffer(
     const YAML::Node& appNode, uint32_t appId, std::string& wireOut,
-    const CachePublicationToken& publication, bool* synthesizedOut)
+    const CachePublicationToken& publication, ProvisionPassContext& context,
+    bool* synthesizedOut)
 {
 	if (synthesizedOut) *synthesizedOut = false;
 	if (!appNode.IsMap()) return SourceResult::InvalidResponse;
@@ -802,7 +818,7 @@ SourceResult renderAppinfoBuffer(
 	// tail below runs unchanged.  No-op when real depots are present.
 	if (YAML::Node d = body["depots"]; !d || !d.IsMap() || d.size() == 0)
 	{
-		const int n = synthesizeDepotsFromStore(body, appId);
+		const int n = synthesizeDepotsFromStore(body, appId, context);
 		if (n > 0)
 		{
 			if (synthesizedOut) *synthesizedOut = true;
@@ -1787,12 +1803,13 @@ CacheProbe probeCacheImpl(uint32_t appId, CacheProbeMode mode)
 // number for the meta record.
 SourceResult renderAndPersist(uint32_t appId, const YAML::Node& appNode,
                               uint32_t changeNumber,
-                              const CachePublicationToken& publication)
+                              const CachePublicationToken& publication,
+                              ProvisionPassContext& context)
 {
 	std::string wire;
 	bool synthesized = false;
 	const SourceResult renderResult = renderAppinfoBuffer(
-	    appNode, appId, wire, publication, &synthesized);
+	    appNode, appId, wire, publication, context, &synthesized);
 	if (renderResult != SourceResult::Success)
 	{
 		const char* reason = "invalid response";
@@ -1832,7 +1849,8 @@ SourceResult renderAndPersist(uint32_t appId, const YAML::Node& appNode,
 // path's tail but skips the JSON parse — the CM buffer is already wire VDF.
 SourceResult provisionAppFromCmBuffer(uint32_t appId, const std::string& cmWire,
                                       uint32_t changeNumber,
-                                      const CachePublicationToken& publication)
+                                      const CachePublicationToken& publication,
+                                      ProvisionPassContext& context)
 {
 	if (cmWire.empty()) return SourceResult::InvalidResponse;
 	CmVdfReader reader(cmWire.data(), cmWire.data() + cmWire.size());
@@ -1842,15 +1860,8 @@ SourceResult provisionAppFromCmBuffer(uint32_t appId, const std::string& cmWire,
 		g_pLog->info("AppInfoProvision: app=%u CM buffer parse failed, fallback\n", appId);
 		return SourceResult::InvalidResponse;
 	}
-	return renderAndPersist(appId, appNode, changeNumber, publication);
+	return renderAndPersist(appId, appNode, changeNumber, publication, context);
 }
-
-struct ProvisionPassContext
-{
-	std::unordered_map<uint32_t, std::string> cmBuffers;
-	std::unordered_map<uint32_t, uint32_t> cmChanges;
-	std::unordered_map<uint32_t, CachePublicationToken> cachePublications;
-};
 
 struct PendingProtonLoad
 {
@@ -2394,11 +2405,6 @@ std::uint64_t cachePublicationGenerationLocked(uint32_t appId)
 	return it == g_cachePublicationGenerations.end() ? 0 : it->second;
 }
 
-std::string localContentFingerprint(uint32_t appId)
-{
-	return localContentFingerprint(appId, ManifestStore::archivedGidIndex());
-}
-
 std::string localContentFingerprint(
 	uint32_t appId,
 	const ManifestStore::ArchivedGidIndex& archivedGids)
@@ -2488,7 +2494,8 @@ bool terminalProvisionResultKnown(uint32_t appId,
 }
 
 bool noteTerminalProvisionResult(uint32_t appId, SourceResult result,
-	uint32_t changeNumber, const CachePublicationToken& publication)
+	uint32_t changeNumber, const CachePublicationToken& publication,
+	ProvisionPassContext& context)
 {
 	// IncompleteContent (no depot data at all) shares the NoUsableContent
 	// persistence shape: both are "no installable content" verdicts bound to
@@ -2506,7 +2513,7 @@ bool noteTerminalProvisionResult(uint32_t appId, SourceResult result,
 			: ProvisionTerminal::Kind::NoUsableContent,
 		.changeNumber = changeNumber,
 		.inputFingerprint = result == SourceResult::VirtualDlc
-			? "-" : localContentFingerprint(appId),
+			? "-" : localContentFingerprint(appId, context.archived()),
 	};
 	std::lock_guard<std::mutex> lock(g_cachePublicationMu);
 	ProcessLock::FileLock cacheLock(cacheLockPath(), false);
@@ -2576,10 +2583,11 @@ std::mutex& provisioningPassMutex()
 // the terminal verdict where one applies and maps the result to the outcome.
 ProvisionOutcome outcomeWithoutUpdate(uint32_t appId, SourceResult result,
                                       uint32_t changeNumber,
-                                      const CachePublicationToken& publication)
+                                      const CachePublicationToken& publication,
+                                      ProvisionPassContext& context)
 {
 	if (recordsTerminalVerdict(result))
-		noteTerminalProvisionResult(appId, result, changeNumber, publication);
+		noteTerminalProvisionResult(appId, result, changeNumber, publication, context);
 	switch (result)
 	{
 	case SourceResult::VirtualDlc:
@@ -2636,7 +2644,7 @@ ProvisionOutcome provisionAppDetailed(uint32_t appId,
 			if (auto ci = context.cmChanges.find(appId); ci != context.cmChanges.end())
 				cn = ci->second;
 			const SourceResult cmResult =
-			    provisionAppFromCmBuffer(appId, it->second, cn, publication);
+			    provisionAppFromCmBuffer(appId, it->second, cn, publication, context);
 			if (cmResult == SourceResult::Success)
 			{
 				g_pLog->debug("AppInfoProvision: app=%u provisioned via CM\n", appId);
@@ -2654,7 +2662,7 @@ ProvisionOutcome provisionAppDetailed(uint32_t appId,
 				            : cmResult == SourceResult::IncompleteContent
 				                ? "no depot data available anonymously"
 				                : "local cache write failed");
-				return outcomeWithoutUpdate(appId, cmResult, cn, publication);
+				return outcomeWithoutUpdate(appId, cmResult, cn, publication, context);
 			}
 			g_pLog->info("AppInfoProvision: app=%u CM response %s, trying steamcmd\n",
 			             appId,
@@ -2736,10 +2744,10 @@ ProvisionOutcome provisionAppDetailed(uint32_t appId,
 	}
 	const uint32_t changeNumber = pickChangeNumber(appNode);
 	const SourceResult result =
-	    renderAndPersist(appId, appNode, changeNumber, publication);
+	    renderAndPersist(appId, appNode, changeNumber, publication, context);
 	if (result == SourceResult::Success)
 		return ProvisionOutcome::Updated;
-	return outcomeWithoutUpdate(appId, result, changeNumber, publication);
+	return outcomeWithoutUpdate(appId, result, changeNumber, publication, context);
 }
 
 std::vector<std::uint32_t> publishRuntimeAppInfo(
@@ -2782,10 +2790,6 @@ int provisionAppsPass(const std::unordered_set<uint32_t>& added,
 	// would short-circuit them anyway), so a warm relaunch makes no CM
 	// request at all.  Disable entirely via SLSSTEAM_DISABLE_CM=1.
 	ProvisionPassState pass;
-	// One walk of the manifest store per pass: every app's terminal check
-	// fingerprints its depots against it.
-	const ManifestStore::ArchivedGidIndex archivedGids = onlyMissing
-		? ManifestStore::ArchivedGidIndex{} : ManifestStore::archivedGidIndex();
 	const bool cmDisabled = [] {
 		const char* v = std::getenv("SLSSTEAM_DISABLE_CM");
 		return v && *v && std::string(v) != "0";
@@ -2796,10 +2800,10 @@ int provisionAppsPass(const std::unordered_set<uint32_t>& added,
 		for (uint32_t appId : added)
 		{
 			if (!onlyMissing)
-				primeTerminalMemo(appId, localContentFingerprint(appId, archivedGids));
+				primeTerminalMemo(appId, localContentFingerprint(appId, context.archived()));
 			const bool terminalKnown = onlyMissing
 				? observeTerminal(appId, 0).applies
-				: terminalProvisionResultKnown(appId, 0, nullptr, archivedGids);
+				: terminalProvisionResultKnown(appId, 0, nullptr, context.archived());
 			if (terminalKnown)
 				continue;
 			if (onlyMissing)
@@ -2854,7 +2858,7 @@ int provisionAppsPass(const std::unordered_set<uint32_t>& added,
 		const bool terminalKnown = onlyMissing
 			? observeTerminal(appId, observedChange).applies
 			: terminalProvisionResultKnown(
-				appId, observedChange, &outcome, archivedGids);
+				appId, observedChange, &outcome, context.archived());
 		if (!terminalKnown)
 			outcome = provisionAppDetailed(appId, pass, context);
 		if (fallbackApps && outcome == ProvisionOutcome::FallbackCache)
@@ -2999,13 +3003,6 @@ ProvisionPassSummary provisionRequestedApps(
 	fetch.reserve(accepted.size());
 	cachedPublish.reserve(accepted.size());
 	std::size_t busy = 0;
-	// Built on first use: a batch of cache hits never walks the store.
-	std::optional<ManifestStore::ArchivedGidIndex> archivedGids;
-	const auto archived = [&]() -> const ManifestStore::ArchivedGidIndex&
-	{
-		if (!archivedGids) archivedGids = ManifestStore::archivedGidIndex();
-		return *archivedGids;
-	};
 	for (const RefreshRequest& request : accepted)
 	{
 		const CacheProbe probe = probeCache(
@@ -3019,7 +3016,7 @@ ProvisionPassSummary provisionRequestedApps(
 			continue;
 		}
 		if (terminalProvisionResultKnown(
-			request.appId, request.minimumChangeNumber, nullptr, archived()))
+			request.appId, request.minimumChangeNumber, nullptr, context.archived()))
 		{
 			++summary.terminal;
 			continue;
@@ -3072,7 +3069,7 @@ ProvisionPassSummary provisionRequestedApps(
 		const uint32_t observed = change == context.cmChanges.end()
 			? request.minimumChangeNumber : change->second;
 		if (!terminalProvisionResultKnown(
-			request.appId, observed, &outcome, archived()))
+			request.appId, observed, &outcome, context.archived()))
 			outcome = provisionAppDetailed(
 				request.appId, pass, context, request.forceRefresh);
 		if (outcome == ProvisionOutcome::Updated) ++summary.updated;
@@ -3148,16 +3145,11 @@ int provisionColdStartApps(const std::unordered_set<uint32_t>& candidates)
 	});
 	// Prime the terminal memo from disk. One manifest observation index for the
 	// whole fleet keeps a network-free startup from scaling with apps ×
-	// archived manifests, as rebuilding it per app would.
-	{
-		const auto archivedGids = ManifestStore::archivedGidIndex();
-		for (const uint32_t appId : managedApps)
-		{
-			const std::string fingerprint =
-				localContentFingerprint(appId, archivedGids);
-			primeTerminalMemo(appId, fingerprint);
-		}
-	}
+	// archived manifests, as rebuilding it per app would; the cold pass below
+	// records its verdicts against the same index.
+	ProvisionPassContext context;
+	for (const uint32_t appId : managedApps)
+		primeTerminalMemo(appId, localContentFingerprint(appId, context.archived()));
 	// Validate persisted pairs and recover only missing or invalid ones; a
 	// validated stale pair is already usable and must not trigger synchronous
 	// provider work.
@@ -3200,7 +3192,6 @@ int provisionColdStartApps(const std::unordered_set<uint32_t>& candidates)
 
 	g_pLog->info("AppInfoProvision: cold-start fallback for %zu app(s)\n",
 	             cold.size());
-	ProvisionPassContext context;
 	const int provisioned = provisionAppsPass(
 		cold, true, context, &fallbackApps, "startup-cold");
 	std::size_t unresolvedCount = 0;
