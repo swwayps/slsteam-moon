@@ -79,6 +79,11 @@ inline Result reload(
 			void* const data = runtime.lookup(runtime.cache, appId, false);
 			if (!hasSha(data, layout)) continue;
 			++result.present;
+			// The lookup goes through the trampoline, so the guard that clears
+			// the skip byte it set while the SHA was empty does not run here,
+			// and Steam's install lookup refuses a record that keeps it.
+			if (store.contains(appId))
+				static_cast<std::uint8_t*>(data)[layout.skipOffset] = 0;
 			if (store.noteResolved(appId)) ++result.resolved;
 		}
 		return result;

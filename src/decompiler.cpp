@@ -504,12 +504,13 @@ struct Decompiler::DecodedRun
 			}
 		}
 
-		// Never read past the mapped segment that holds the address.
+		// Never read past the mapped segment that holds the address; an
+		// address no segment holds (a bogus slot or branch) ends the walk.
 		if (address < segmentBase || address >= segmentEnd)
 		{
 			lm_segment_t segment {};
 			if (!LM_FindSegment(address, &segment))
-				return LM_Disassemble(address, out);
+				return false;
 			segmentBase = segment.base;
 			segmentEnd = segment.end;
 		}
@@ -526,11 +527,23 @@ struct Decompiler::DecodedRun
 	}
 };
 
+namespace
+{
+	// One run across the functions of a walk keeps the segment bounds it
+	// found, so the maps lookup happens once per segment, not once per slot.
+	void parseFunctionWith(const lm_address_t begin,
+	                       std::unordered_map<lm_address_t, unsigned int>& references,
+	                       Decompiler::DecodedRun& run)
+	{
+		auto branchesTaken = std::unordered_set<lm_address_t>();
+		Decompiler::__parseFunction(begin, references, branchesTaken, run);
+	}
+}
+
 void Decompiler::parseFunction(const lm_address_t begin, std::unordered_map<lm_address_t, unsigned int>& references)
 {
-	auto branchesTaken = std::unordered_set<lm_address_t>();
 	DecodedRun run;
-	__parseFunction(begin, references, branchesTaken, run);
+	parseFunctionWith(begin, references, run);
 }
 
 void Decompiler::__parseFunction
@@ -658,13 +671,14 @@ std::map<std::string, unsigned int> Decompiler::parseInterfaceMapBase(const char
 
 	LOG_DEBUG("Disassembling %s's functions\n", interface);
 
+	DecodedRun run;
 	for (unsigned int i = 0; i < vft.functions.size(); i++)
 	{
 		//LOG_DEBUG("Decompiling %u\n", i);
 		const lm_address_t fn = vft.functions[i];
 
 		auto refs = std::unordered_map<lm_address_t, unsigned int>();
-		parseFunction(fn, refs);
+		parseFunctionWith(fn, refs, run);
 
 		for (const auto& ref : refs)
 		{

@@ -432,6 +432,13 @@ bool VFTIndexes::init()
 {
 	LOG_DEBUG("VFTIndexes::init()\n");
 
+	// Only optional hooks use these (Hooks::setup warns and drops the feature),
+	// so a changed client string must not fail the whole load.
+	IClientCompat::BIsCompatLayerEnabled.optional = true;
+	IClientConfigStore::SetString.optional = true;
+	IClientFriends::GetFriendGamePlayed.optional = true;
+	IClientRemoteStorage::IsCloudEnabledForApp.optional = true;
+
 	bool success = true;
 
 	for(const auto& fn : functions())

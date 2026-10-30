@@ -178,6 +178,12 @@ int main()
 		      "an out-of-range context offset is rejected");
 	}
 
+	// 12. disp8 0x90 is [rbx-0x70], not a field of the context.
+	{
+		auto b = nop; putDepotIndex(b, 0x10, 0x90, false);
+		CHECK(findCtxDepotVectorOffset(b.data(), b.size()) == -1,
+		      "a negative disp8 is not read as a context offset");
+	}
 	if (g_failures == 0) std::printf("\nall reconcilepin-scan checks passed\n");
 	else                 std::printf("\n%d reconcilepin-scan check(s) FAILED\n", g_failures);
 	return g_failures == 0 ? 0 : 1;

@@ -432,7 +432,7 @@ namespace
 		}
 
 		// The local catalog is attempted before SHA-256 attestation.  If it is
-		// absent or disabled, retain the existing signed remote catalog path;
+		// absent or disabled, retain the published, identity-checked catalog path;
 		// otherwise a warm boot does no full-module hashing at all.
 		if (!g_steamClientLocal.catalog)
 			g_steamClientCatalog = loadCatalog("steamclient", "steamclient.so", g_modSteamClient);

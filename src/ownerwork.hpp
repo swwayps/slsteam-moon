@@ -109,8 +109,12 @@ namespace OwnerWork
 
 	// Drain point. Cheap enough to call on every RunInterface frame: it
 	// returns immediately unless this thread is the latched owner AND work is
-	// pending. Never re-enters itself.
+	// pending. Never re-enters itself, and contains whatever its work throws.
 	void drainOnOwnerFrame();
+
+	// Records that our work inside an IPC frame threw (logged once); Steam's
+	// dispatch goes on.
+	void noteFrameFailure(const char* stage) noexcept;
 
 	// Managed-state handoff: reconcile package 0 to the complete snapshot on
 	// the owner IPC thread. Snapshots coalesce by generation in the owner

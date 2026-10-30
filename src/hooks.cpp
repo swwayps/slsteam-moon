@@ -440,47 +440,66 @@ static uint32_t hkSteamEngine_ProcessIPCFrame(
 	const bool log = g_config.extendedLogging.get();
 	if (log)
 	{
-		g_pLog->debug(
-			"ProcessIPCFrame pipe %u command %s\n",
-			hPipe,
-			EIPCCmd_ToString(cmd).c_str());
+		try
+		{
+			g_pLog->debug(
+				"ProcessIPCFrame pipe %u command %s\n",
+				hPipe,
+				EIPCCmd_ToString(cmd).c_str());
+		}
+		catch (...)
+		{
+		}
 	}
 
 	uint32_t ret;
 	if (cmd == EIPCCmd::RunInterface && pBufIn->hasBytes(10))
 	{
-		Hooks::placeVFTHooks();
-
 		EIPCInterface interface{};
 		uint32_t function = 0;
 		std::memcpy(&interface, pBufIn->mem.base + 1, sizeof(interface));
 		std::memcpy(&function, pBufIn->mem.base + 6, sizeof(function));
-		// IClientUtils calls define the owner IPC thread: owner work queued
-		// by watcher threads only runs inside a frame on that thread, so it
-		// is serialised with Steam's dispatcher.
-		if (interface == EIPCInterface::Utils)
+		// Our work around Steam's dispatch must not unwind into Steam.
+		try
 		{
-			OwnerWork::latchOwnerThread();
+			Hooks::placeVFTHooks();
+			// IClientUtils calls define the owner IPC thread: owner work queued
+			// by watcher threads only runs inside a frame on that thread, so it
+			// is serialised with Steam's dispatcher.
+			if (interface == EIPCInterface::Utils)
+			{
+				OwnerWork::latchOwnerThread();
+			}
+			if (log)
+			{
+				const auto utils = g_pSteamEngine->getUtils();
+				g_pLog->debug(
+					"RunInterface %s %u for %u (%u)\n",
+					EIPCInterface_ToString(interface).c_str(),
+					function,
+					FakeAppIds::getRealAppIdForCurrentPipe(),
+					utils ? utils->getAppId() : 0);
+			}
+			FakeAppIds::runIPCFrame(false, interface);
 		}
-		if (log)
+		catch (...)
 		{
-			const auto utils = g_pSteamEngine->getUtils();
-			g_pLog->debug(
-				"RunInterface %s %u for %u (%u)\n",
-				EIPCInterface_ToString(interface).c_str(),
-				function,
-				FakeAppIds::getRealAppIdForCurrentPipe(),
-				utils ? utils->getAppId() : 0);
+			OwnerWork::noteFrameFailure("frame preparation");
 		}
-		FakeAppIds::runIPCFrame(false, interface);
 		OwnerWork::drainOnOwnerFrame();
 		ret = Hooks::CSteamEngine_ProcessIPCFrame.tramp.fn(
 			pSteamEngine, hPipe, pBufIn, pBufOut);
-		FakeAppIds::runIPCFrame(true, interface);
-
-		if (interface == EIPCInterface::Utils)
+		try
 		{
-			SLSAPI::runIPCFrame();
+			FakeAppIds::runIPCFrame(true, interface);
+			if (interface == EIPCInterface::Utils)
+			{
+				SLSAPI::runIPCFrame();
+			}
+		}
+		catch (...)
+		{
+			OwnerWork::noteFrameFailure("frame completion");
 		}
 	}
 	else
@@ -489,9 +508,16 @@ static uint32_t hkSteamEngine_ProcessIPCFrame(
 			pSteamEngine, hPipe, pBufIn, pBufOut);
 	}
 
-	if (cmd == EIPCCmd::ClosePipe)
+	try
 	{
-		FakeAppIds::closePipe(hPipe);
+		if (cmd == EIPCCmd::ClosePipe)
+		{
+			FakeAppIds::closePipe(hPipe);
+		}
+	}
+	catch (...)
+	{
+		OwnerWork::noteFrameFailure("pipe bookkeeping");
 	}
 
 	return ret;
@@ -570,9 +596,11 @@ static bool hkUser_CheckAppOwnership(void* pClientUser, uint32_t appId, AppOwner
 	// getLocalUser().  This hook fires early and constantly with the
 	// pipe-0 user, so it covers the time before the first
 	// ProcessIPCFrame captures g_pSteamEngine.
-	if (pClientUser != nullptr)
+	// Stored only when it changes: this runs on every ownership check.
+	if (pClientUser != nullptr &&
+	    g_pLocalUser.load(std::memory_order_relaxed) != pClientUser)
 	{
-		g_pLocalUser = reinterpret_cast<CUser*>(pClientUser);
+		g_pLocalUser.store(reinterpret_cast<CUser*>(pClientUser), std::memory_order_relaxed);
 	}
 
 	// Only added apps are tracked; the other games' checks skip the policy lock.
@@ -1542,7 +1570,7 @@ bool Hooks::setup()
 		if (storage != Decompiler::vftables.end())
 		{
 			const auto& slots = storage->second.functions;
-			cloudToggleHookReady = entry.index < slots.size()
+			cloudToggleHookReady = entry.address != 0 && entry.index < slots.size()
 				&& IClientRemoteStorage_IsCloudEnabledForApp.setup(
 					entry.getPrintName().c_str(), slots[entry.index],
 					hkClientRemoteStorage_IsCloudEnabledForApp);
@@ -1562,7 +1590,7 @@ bool Hooks::setup()
 		if (compat != Decompiler::vftables.end())
 		{
 			const auto& slots = compat->second.functions;
-			compatLayerHookReady = entry.index < slots.size()
+			compatLayerHookReady = entry.address != 0 && entry.index < slots.size()
 				&& IClientCompat_BIsCompatLayerEnabled.setup(
 					entry.getPrintName().c_str(), slots[entry.index],
 					hkClientCompat_BIsCompatLayerEnabled);
@@ -1581,7 +1609,7 @@ bool Hooks::setup()
 		if (store != Decompiler::vftables.end())
 		{
 			const auto& slots = store->second.functions;
-			configStoreHookReady = entry.index < slots.size()
+			configStoreHookReady = entry.address != 0 && entry.index < slots.size()
 				&& IClientConfigStore_SetString.setup(
 					entry.getPrintName().c_str(), slots[entry.index],
 					hkClientConfigStore_SetString);
@@ -1602,7 +1630,7 @@ bool Hooks::setup()
 		if (friends != Decompiler::vftables.end())
 		{
 			const auto& slots = friends->second.functions;
-			friendGameHookReady = entry.index < slots.size()
+			friendGameHookReady = entry.address != 0 && entry.index < slots.size()
 				&& IClientFriends_GetFriendGamePlayed.setup(
 					entry.getPrintName().c_str(), slots[entry.index],
 					hkClientFriends_GetFriendGamePlayed);

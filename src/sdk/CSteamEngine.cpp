@@ -184,7 +184,7 @@ void CSteamEngine::setAppIdForCurrentPipe(const AppId_t appId)
 }
 
 CSteamEngine* g_pSteamEngine = nullptr;
-CUser* g_pLocalUser = nullptr;
+std::atomic<CUser*> g_pLocalUser{nullptr};
 
 CUser* getLocalUser()
 {
@@ -200,5 +200,5 @@ CUser* getLocalUser()
 		}
 	}
 
-	return g_pLocalUser;
+	return g_pLocalUser.load(std::memory_order_relaxed);
 }

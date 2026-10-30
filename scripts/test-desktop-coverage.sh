@@ -743,6 +743,21 @@ current_user="${USER:-$(id -un)}"
 check "guardian state message contains no username" "no" \
   "$(grep -Fq "$current_user" "$state17" 2>/dev/null && echo yes || echo no)"
 
+# A dangling desktop shortcut link is no launch source: the pass still succeeds.
+H17b="$TMP/home17b"; mkdir -p "$H17b/data/applications" "$H17b/conf/autostart" \
+  "$H17b/runtime" "$H17b/state" "$H17b/Desktop"
+printf '[Desktop Entry]\n%s\nName=Steam\nExec=%s %%U\n' "$DC_TAG" "$WRAPPER" \
+  > "$H17b/data/applications/steam.desktop"
+ln -s "$TMP/nowhere17b.desktop" "$H17b/Desktop/steam.desktop"
+if XDG_DATA_HOME="$H17b/data" XDG_DATA_DIRS="$TMP/empty17" XDG_CONFIG_HOME="$H17b/conf" \
+  XDG_STATE_HOME="$H17b/state" XDG_RUNTIME_DIR="$H17b/runtime" DC_HOME="$H17b" \
+  DC_BACKUP_ROOT="$H17b/backup" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" \
+  DC_SUDO="$SUDO_SHIM" DC_FLOCK="$FLOCK_SHIM" \
+  DC_UPDATE_DESKTOP_DATABASE="$UPDATE_SHIM" DC_KBUILDSYCOCA="$KBUILD_SHIM" \
+  DC_TEST_EVENTS="$TMP/events17b" DC_TEST_STATE_LOG="$H17b/state/slsteam-moon/guardian.log" \
+  DC_TEST_APP="$H17b/data/applications/steam.desktop" \
+  dc_guardian_run; then guardian17b_status=0; else guardian17b_status=$?; fi
+check "guardian ignores a dangling desktop shortcut link" "0" "$guardian17b_status"
 # Publishing an application shadow precedes cache convergence. Runtime guardian
 # must never invoke the privileged system fallback or mutate its donor.
 H18="$TMP/home18"; S18="$TMP/sys18/applications"

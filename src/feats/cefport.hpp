@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../ascii.hpp"
-#include "../utils/atomic_file.hpp"
 
 // Pure, side-effect-light helpers for the CEF debug-port rewrite shim.
 //
@@ -15,7 +14,9 @@
 // contract file the Lumen sidecar reads.
 //
 // This header holds the parts worth unit-testing in isolation:
-//   - rewritePortArg : the string surgery on one argv element
+//   - rewritePortArgInto / rewriteArgv : the argv surgery, allocation-free
+//   - prepareContract / publishPrepared : the contract, published from the
+//     fork child with plain system calls
 //   - isBindable / pickFreePort / resolveSessionPortNoPersist : free-port selection
 //   - deckyPresent / removeContract : Decky-coexistence gate (keep 8080)
 // The actual exec interposition lives in main.cpp.
@@ -24,14 +25,17 @@
 // 8080 (Decky's injector is hard-coded to it). main.cpp::setup() then leaves
 // the port alone and Lumen falls back to 8080 too; both share the endpoint.
 
+#include <cerrno>
+#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <string>
-#include <utility>
 
 #include <arpa/inet.h>
+#include <fcntl.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -39,51 +43,108 @@
 namespace CefPort
 {
 	inline constexpr const char* kSwitchPrefix = "--remote-debugging-port=";
+	inline constexpr std::size_t kNoFit = static_cast<std::size_t>(-1);
 
-	// Replace the digit run after every "--remote-debugging-port=" occurrence
-	// in `arg` with `port`. Returns {rewritten, changed}. Matches by prefix
-	// (not the literal 8080) so a Steam build defaulting to another port is
-	// still caught, and is idempotent when the value already equals `port`.
-	// Handles both a bare argv element and the switch embedded inside a
-	// `sh -c "exec ... '--remote-debugging-port=8080' ..."` wrapper string.
-	inline std::pair<std::string, bool> rewritePortArg(const std::string& arg, uint16_t port)
+	// The exec hook runs in a fork child right before exec, where another
+	// thread of the parent may have held a lock (the logger's, the allocator's)
+	// at fork time. Everything below that it calls therefore uses fixed
+	// buffers and plain system calls only.
+
+	// Copy `arg` into `out` (capacity `cap`, NUL included), replacing the digit
+	// run after every "--remote-debugging-port=" occurrence with `port`.
+	// Returns the length written, or kNoFit when the result does not fit.
+	// Matches by prefix (not the literal 8080) so a Steam build defaulting to
+	// another port is still caught, and is idempotent when the value already
+	// equals `port`. Handles both a bare argv element and the switch embedded
+	// in a `sh -c "exec ... '--remote-debugging-port=8080' ..."` string.
+	inline std::size_t rewritePortArgInto(const char* arg, uint16_t port, char* out,
+	                                      std::size_t cap, bool& changed) noexcept
 	{
-		const std::string prefix = kSwitchPrefix;
-		const std::string portStr = std::to_string(port);
-		std::string out;
-		out.reserve(arg.size() + 8);
-		bool changed = false;
-
-		size_t i = 0;
-		while (i < arg.size())
+		char digits[6];
+		std::size_t digitCount = 0;
+		for (unsigned int value = port; digitCount == 0 || value != 0; value /= 10)
+			digits[digitCount++] = static_cast<char>('0' + value % 10);
+		const std::size_t prefixLength = std::strlen(kSwitchPrefix);
+		changed = false;
+		std::size_t n = 0;
+		const auto put = [&](char c) {
+			if (n + 1 >= cap) return false;
+			out[n++] = c;
+			return true;
+		};
+		for (std::size_t i = 0; arg[i] != '\0';)
 		{
-			if (arg.compare(i, prefix.size(), prefix) == 0)
+			if (std::strncmp(arg + i, kSwitchPrefix, prefixLength) != 0)
 			{
-				out += prefix;
-				i += prefix.size();
-
-				size_t start = i;
-				while (i < arg.size() && Ascii::isDigit(
-					static_cast<unsigned char>(arg[i])))
-				{
-					++i;
-				}
-
-				if (i > start)
-				{
-					out += portStr;
-					changed = true;
-				}
-				// No digits after the prefix: leave as-is (prefix already copied).
+				if (!put(arg[i++])) return kNoFit;
+				continue;
 			}
-			else
-			{
-				out += arg[i];
-				++i;
-			}
+			for (std::size_t k = 0; k < prefixLength; ++k)
+				if (!put(arg[i++])) return kNoFit;
+			const std::size_t start = i;
+			while (Ascii::isDigit(static_cast<unsigned char>(arg[i]))) ++i;
+			// No digits after the prefix: not a port value, keep it as it is.
+			if (i == start) continue;
+			for (std::size_t k = digitCount; k > 0; --k)
+				if (!put(digits[k - 1])) return kNoFit;
+			changed = true;
 		}
+		if (cap == 0) return kNoFit;
+		out[n] = '\0';
+		return n;
+	}
 
-		return {out, changed};
+	// Static storage for one rewritten argv.
+	struct ArgvArena
+	{
+		static constexpr std::size_t kMaxArgs = 256;
+		char* argv[kMaxArgs + 1];
+		char bytes[16384];
+	};
+
+	// True when `arg` carries the switch followed by a port value.
+	inline bool hasPortSwitch(const char* arg) noexcept
+	{
+		const std::size_t prefixLength = std::strlen(kSwitchPrefix);
+		for (const char* p = std::strstr(arg, kSwitchPrefix); p != nullptr;
+		     p = std::strstr(p + 1, kSwitchPrefix))
+		{
+			if (Ascii::isDigit(static_cast<unsigned char>(p[prefixLength])))
+				return true;
+		}
+		return false;
+	}
+
+	// The argv with the CEF debug port rewritten to `port`, built in `arena`:
+	// elements without the switch are passed through, the others are copied.
+	// nullptr when the argv does not launch the webhelper (a game or tool
+	// started with its own debug port keeps it), no element carries the
+	// switch, or the result does not fit.
+	inline char** rewriteArgv(char* const argv[], uint16_t port, ArgvArena& arena) noexcept
+	{
+		if (argv == nullptr) return nullptr;
+		bool webhelper = false;
+		for (std::size_t i = 0; argv[i] != nullptr && !webhelper; ++i)
+			webhelper = std::strstr(argv[i], "steamwebhelper") != nullptr;
+		if (!webhelper) return nullptr;
+		bool any = false;
+		std::size_t used = 0;
+		std::size_t n = 0;
+		for (; argv[n] != nullptr; ++n)
+		{
+			if (n == ArgvArena::kMaxArgs) return nullptr;
+			arena.argv[n] = argv[n];
+			if (!hasPortSwitch(argv[n])) continue;
+			bool changed = false;
+			const std::size_t length = rewritePortArgInto(
+				argv[n], port, arena.bytes + used, sizeof(arena.bytes) - used, changed);
+			if (length == kNoFit) return nullptr;
+			arena.argv[n] = arena.bytes + used;
+			used += length + 1;
+			any = true;
+		}
+		arena.argv[n] = nullptr;
+		return any ? arena.argv : nullptr;
 	}
 
 	// True if 127.0.0.1:port can be bound right now (plain bind, no REUSEADDR,
@@ -242,18 +303,68 @@ namespace CefPort
 		return parseStatStartTicks(line);
 	}
 
-	inline bool writePortFile(const std::string& path, uint16_t port, long ownerPid,
-	                          unsigned long long ownerStartTicks)
+	// A contract formatted in the parent (setup()), so the exec hook can
+	// publish it from the fork child with plain system calls.
+	struct PreparedContract
 	{
+		char path[512] = {};
+		char text[64] = {};
+		std::size_t length = 0;
+	};
+
+	// Format the contract for `path` and create its directory. False when the
+	// path is empty or too long; nothing can be published then.
+	inline bool prepareContract(PreparedContract& out, const std::string& path,
+	                            uint16_t port, long ownerPid,
+	                            unsigned long long ownerStartTicks)
+	{
+		out = {};
+		const std::string text = formatContract(port, ownerPid, ownerStartTicks);
+		// Room for the ".tmp.<pid>" suffix publishPrepared appends.
+		if (path.empty() || path.size() + 16 >= sizeof(out.path) ||
+		    text.size() > sizeof(out.text))
+			return false;
 		std::error_code ec;
 		const auto parent = std::filesystem::path(path).parent_path();
 		if (!parent.empty())
-		{
 			std::filesystem::create_directories(parent, ec); // best effort
+		std::memcpy(out.path, path.c_str(), path.size() + 1);
+		std::memcpy(out.text, text.data(), text.size());
+		out.length = text.size();
+		return true;
+	}
+
+	// Lumen polls the contract, so it is published whole: written to a
+	// private temporary file, then renamed over the old one.
+	inline bool publishPrepared(const PreparedContract& contract) noexcept
+	{
+		if (contract.length == 0) return false;
+		char tmp[sizeof(contract.path)];
+		std::size_t n = std::strlen(contract.path);
+		std::memcpy(tmp, contract.path, n);
+		std::memcpy(tmp + n, ".tmp.", 5);
+		n += 5;
+		char digits[12];
+		std::size_t count = 0;
+		for (unsigned long pid = static_cast<unsigned long>(::getpid());
+		     count == 0 || pid != 0; pid /= 10)
+			digits[count++] = static_cast<char>('0' + pid % 10);
+		while (count > 0) tmp[n++] = digits[--count];
+		tmp[n] = '\0';
+		const int fd = ::open(tmp, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC | O_NOFOLLOW, 0644);
+		if (fd < 0) return false;
+		bool ok = true;
+		for (std::size_t done = 0; ok && done < contract.length;)
+		{
+			const ssize_t written = ::write(fd, contract.text + done, contract.length - done);
+			if (written < 0 && errno == EINTR) continue;
+			ok = written > 0;
+			if (ok) done += static_cast<std::size_t>(written);
 		}
-		// Lumen polls this file: publish it whole, never truncated in place.
-		std::string error;
-		return AtomicFile::write(path, formatContract(port, ownerPid, ownerStartTicks), error);
+		ok = ::close(fd) == 0 && ok;
+		if (ok && ::rename(tmp, contract.path) == 0) return true;
+		::unlink(tmp);
+		return false;
 	}
 
 	// Decide the port to use this session WITHOUT persisting it: reuse the

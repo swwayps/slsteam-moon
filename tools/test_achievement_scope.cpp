@@ -183,6 +183,7 @@ int main() {
 		const auto dup = nextJob++;
 		request(modern, dup); request(modern, dup);
 		check(safeFailure(modern, response(modern, dup)), "ambiguous duplicate job never publishes another user's progress");
+		check(safeFailure(modern, response(modern, dup)), "the second reply of a duplicate job fails too");
 	}
 	for (bool modern : {false, true}) {
 		const uint32_t game = modern ? 54322 : 54321;

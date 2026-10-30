@@ -9,11 +9,15 @@
 #include "../log.hpp"
 
 #include <atomic>
+#include <cerrno>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <limits>
 #include <span>
+
+#include <sys/uio.h>
+#include <unistd.h>
 
 
 //Helper class to make calculations more legible
@@ -98,6 +102,22 @@ private:
 	}
 
 public:
+	// Copies `size` bytes at `address` of this process; false when they are not
+	// mapped (process_vm_readv reports EFAULT instead of faulting). Where the
+	// call is unavailable the bytes are read directly, as before.
+	static bool readMapped(const void* address, void* out, std::size_t size) noexcept
+	{
+		iovec local{out, size};
+		iovec remote{const_cast<void*>(address), size};
+		const ssize_t copied = process_vm_readv(getpid(), &local, 1, &remote, 1, 0);
+		if (copied == static_cast<ssize_t>(size)) return true;
+		if (copied < 0 && (errno == ENOSYS || errno == EPERM))
+		{
+			std::memcpy(out, address, size);
+			return true;
+		}
+		return false;
+	}
 
 	CNetPacketBody* body() const { return fieldGet<CNetPacketBody*>(OFF_BODY); }
 	void setBody(CNetPacketBody* value) { fieldSet<CNetPacketBody*>(OFF_BODY, value); }
@@ -123,10 +143,13 @@ public:
 			if (!plausibleBody(body)
 			    || size < sizeof(CNetPacketBody) || size > MAX_PLAUSIBLE_SIZE)
 				continue;
+			// A layout neither shift knows can put a sane-looking but unmapped
+			// value in the body word: probe it instead of reading through it.
 			uint32_t headerSize;
-			std::memcpy(&headerSize,
-			            reinterpret_cast<const uint8_t*>(body) + offsetof(CNetPacketBody, headerSize),
-			            sizeof(headerSize));
+			if (!readMapped(reinterpret_cast<const uint8_t*>(body) +
+			                    offsetof(CNetPacketBody, headerSize),
+			                &headerSize, sizeof(headerSize)))
+				continue;
 			if (headerSize > size - sizeof(CNetPacketBody))
 				continue;
 			s_fieldShift.store(shift, std::memory_order_relaxed);
@@ -141,9 +164,9 @@ public:
 		return getType() != INVALID_MESSAGE_TYPE;
 	}
 
-	// Reports INVALID for an implausible body/size (defense-in-depth: even if
-	// the detected layout is somehow wrong, a mis-read pointer is never
-	// dereferenced — the client degrades to a safe no-op instead of crashing).
+	// Reports INVALID for an implausible body/size: null-page and top-page
+	// values are rejected here, and detectLayout probed a body before it
+	// settled the layout, so a wrong layout is not read through.
 	ENetPacket getType() const
 	{
 		CNetPacketBody* b = body();

@@ -57,11 +57,11 @@ endif
 #	LDFLAGS += -fuse-ld=mold
 #endif
 
-.PHONY: all build rebuild clean install release test-ascii test-cmwire test-cmclient-loader test-cmclient-session test-provision-locks test-cmrecv-exceptions test-hook-placement test-hotreload-prepared test-cache-validation test-depot-prune test-offline-flags test-ticket-cache test-send-frame test-notify-async test-log-once test-catalog-trust test-clientcompat test-dlcids test-dlc-scope test-dlc-metadata test-config-path test-config-discovery test-lua-import test-steamstub-launch test-ownerwork-policy test-filewatcher-burst test-provision-notice test-mtvar-contains test-synthmark test-appinfostate test-pattern-catalog test-pattern-cache test-pattern-refresh test-process-lock test-process-runtime test-atomic-file test-cache-pair test-appinfo-transaction test-appinfo-reload test-audit-symbols test-audit-eh test-audit-tier0 test-audit-policy test-memhlp-target test-memhlp-prologue test-memhlp-pic test-utils-sha test-provision-cache test-provision-refresh test-provision-result test-provision-terminal test-pending-proton test-provision-schedule test-provision-pass test-runtime-dependencies test-thread-start test-steamstub-warmup test-steamstub-launchopt test-boundedexecutor test-steamless-prewarm test-depotkey-scope test-curl-timeout test-manifest-index test-manifestselection test-manifeststore-io test-hotreload-inputs test-hotreload-package test-ownerqueue test-hotreload-capabilities test-libraryremoval test-pics test-yaml-runtime test-manifestpin-patterns test-optional-locators test-patternscan test-fakeappid-presence test-ticket test-familyshare
+.PHONY: all build rebuild clean install release test-ascii test-cmwire test-cmclient-loader test-cmclient-session test-provision-locks test-cmrecv-exceptions test-hook-placement test-hotreload-prepared test-cache-repair test-donor-connection test-owner-frame-exceptions test-route-msg-bounds test-cache-validation test-depot-prune test-offline-flags test-ticket-cache test-send-frame test-notify-async test-log-once test-catalog-trust test-clientcompat test-dlcids test-dlc-scope test-dlc-metadata test-config-path test-config-discovery test-lua-import test-steamstub-launch test-ownerwork-policy test-filewatcher-burst test-provision-notice test-mtvar-contains test-synthmark test-appinfostate test-pattern-catalog test-pattern-cache test-pattern-refresh test-process-lock test-process-runtime test-atomic-file test-cache-pair test-appinfo-transaction test-appinfo-reload test-audit-symbols test-audit-eh test-audit-tier0 test-audit-policy test-memhlp-target test-memhlp-prologue test-memhlp-pic test-utils-sha test-provision-cache test-provision-refresh test-provision-result test-provision-terminal test-pending-proton test-provision-schedule test-provision-pass test-runtime-dependencies test-thread-start test-steamstub-warmup test-steamstub-launchopt test-boundedexecutor test-steamless-prewarm test-depotkey-scope test-curl-timeout test-manifest-index test-manifestselection test-manifeststore-io test-hotreload-inputs test-hotreload-package test-ownerqueue test-hotreload-capabilities test-libraryremoval test-pics test-yaml-runtime test-manifestpin-patterns test-optional-locators test-patternscan test-fakeappid-presence test-ticket test-familyshare
 .NOTPARALLEL: clean rebuild
 .PHONY: uninstall clean-libs clean-tools schema-grabber ticket-grabber
 .PHONY: test-library-dates test-library-dates-hook test-depot-overrides
-.PHONY: test-vftableinfo-registry test-owner-frame-wiring
+.PHONY: test-vftableinfo-registry test-owner-frame-wiring test-decompiler-walk test-memhlp-scan
 .PHONY: test-achievements test-achievement-scope test-stats-audit test-parental test-lfs
 .PHONY: test-stats-provenance
 .PHONY: test-manifestdonor test-manifestdonor-runtime test-manifestfetch
@@ -270,6 +270,16 @@ test-hotreload-prepared: $(objs) $(libs)
 		-I include -isysteminclude tools/test_hotreload_prepared.cpp \
 		$(objs) $(libs) -lpthread -ldl -o /tmp/test_hotreload_prepared
 	/tmp/test_hotreload_prepared
+test-owner-frame-exceptions: $(objs) $(libs)
+	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
+		-I include -isysteminclude tools/test_owner_frame_exceptions.cpp \
+		$(objs) $(libs) -lpthread -ldl -o /tmp/test_owner_frame_exceptions
+	/tmp/test_owner_frame_exceptions
+test-cache-repair: $(objs) $(libs)
+	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
+		-I include -isysteminclude tools/test_cache_repair.cpp \
+		$(objs) $(libs) -lpthread -ldl -o /tmp/test_cache_repair
+	/tmp/test_cache_repair
 test-hook-placement: $(objs) $(libs)
 	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
 		-I include -isysteminclude tools/test_hook_placement.cpp \
@@ -286,6 +296,16 @@ test-send-frame: $(objs) $(libs)
 		-I include -isysteminclude tools/test_send_frame.cpp \
 		$(objs) $(libs) -lpthread -ldl -o /tmp/test_send_frame
 	/tmp/test_send_frame
+test-route-msg-bounds: $(objs) $(libs)
+	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
+		-I include -isysteminclude tools/test_route_msg_bounds.cpp \
+		$(objs) $(libs) -lpthread -ldl -o /tmp/test_route_msg_bounds
+	/tmp/test_route_msg_bounds
+test-donor-connection: $(objs) $(libs)
+	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
+		-I include -isysteminclude tools/test_donor_connection.cpp \
+		$(objs) $(libs) -lpthread -ldl -o /tmp/test_donor_connection
+	/tmp/test_donor_connection
 test-ticket-cache: $(objs) $(libs)
 	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
 		-I include -isysteminclude tools/test_ticket_cache.cpp \
@@ -474,6 +494,12 @@ test-memhlp-target:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src -I include \
 		tools/test_memhlp_target.cpp -o /tmp/test_memhlp_target
 	/tmp/test_memhlp_target
+
+test-memhlp-scan:
+	$(CXX) -O2 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem include -I src \
+		tools/test_memhlp_scan.cpp src/memhlp.cpp src/utils.cpp src/globals.cpp lib/liblibmem.a \
+		-ldl -lpthread -o /tmp/test_memhlp_scan
+	/tmp/test_memhlp_scan
 
 test-memhlp-prologue:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src -I include \
@@ -873,6 +899,12 @@ test-log-format:
 		fi; \
 		echo "ok: LOG_FORMAT_$$c rejected"; \
 	done
+test-decompiler-walk:
+	$(CXX) -O2 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem include -I src \
+		tools/test_decompiler_walk.cpp src/decompiler.cpp \
+		src/utils.cpp src/process.cpp lib/liblibmem.a -Wl,--wrap=LM_FindSegment \
+		-ldl -lpthread -o /tmp/test_decompiler_walk
+	/tmp/test_decompiler_walk
 test-vftable-anchors:
 	$(CXX) -O2 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem include -I src \
 		tools/test_vftable_anchors.cpp src/decompiler.cpp src/vftableinfo.cpp \

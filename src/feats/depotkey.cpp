@@ -140,7 +140,10 @@ void loadKeyIndexLocked()
 		const std::filesystem::directory_iterator end;
 		for (; it != end && !ec; it.increment(ec))
 		{
-			if (!it->is_regular_file()) continue;
+			// The no-argument overload throws for an entry it cannot stat
+			// (a symlink loop or a link into a denied folder).
+			std::error_code fileEc;
+			if (!it->is_regular_file(fileEc) || fileEc) continue;
 			const auto name = it->path().filename().string();
 			if (!std::regex_match(name, fileRe)) continue;
 

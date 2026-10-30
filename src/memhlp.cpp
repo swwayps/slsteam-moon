@@ -100,12 +100,14 @@ lm_address_t MemHlp::patternScan(const char* pattern, lm_module_t targetModule,
 	PatternScanTotal total;
 	for(const auto& segment : codeSegments.segments)
 	{
+		// Only segments that overlap the module: one that ends at its base or
+		// starts at its end belongs to a neighbouring library.
 		const lm_address_t segmentEnd = segment.base + segment.size;
-		if (targetModule.base > segmentEnd)
+		if (targetModule.base >= segmentEnd)
 		{
 			continue;
 		}
-		if (targetModule.base + targetModule.size < segment.base)
+		if (targetModule.base + targetModule.size <= segment.base)
 		{
 			continue;
 		}

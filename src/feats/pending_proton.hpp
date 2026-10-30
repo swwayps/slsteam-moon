@@ -72,10 +72,14 @@ inline void addDepotPlatforms(std::set<std::string>& out, std::string_view oslis
 // Concretely, a genuine native Linux build requires BOTH a surviving depot
 // that targets Linux AND app-level Linux support.  If either is missing the
 // app can only run through Proton.
+//
+// linuxDepotDropped: a Linux-tagged content depot was pruned (no key). The
+// Linux build then lived there, so an untagged depot is shared content only.
 inline bool requiresProtonMapping(
 	std::size_t keptContentDepots,
 	const std::set<std::string>& depotOs,
-	std::string_view commonOsList)
+	std::string_view commonOsList,
+	bool linuxDepotDropped = false)
 {
 	if (keptContentDepots == 0) return false;
 
@@ -89,9 +93,10 @@ inline bool requiresProtonMapping(
 	if (depotOs.size() == (anyPlatform ? 1u : 0u))
 		return !commonOs.empty() && !commonHasLinux;
 
-	// An untagged depot carries the Linux build only when the app declares one.
-	const bool depotTargetsLinux =
-		depotOs.count("linux") != 0 || (anyPlatform && commonHasLinux);
+	// An untagged depot carries the Linux build only when the app declares one
+	// and no Linux depot was dropped.
+	const bool depotTargetsLinux = depotOs.count("linux") != 0 ||
+		(anyPlatform && commonHasLinux && !linuxDepotDropped);
 	const bool nativeLinuxAvailable = commonOs.empty()
 		? depotTargetsLinux
 		: (depotTargetsLinux && commonOs.count("linux") != 0);

@@ -23,7 +23,7 @@
 //  (2) target-local patch: EvaluateConfigChanges also compares against an
 //      appinfo-derived TARGET CUtlVector built as a function LOCAL at
 //      -0x90(ebp).  For some apps the divergent (still-public) gid lives THERE,
-//      not in [ctx+0x78].  An entry hook can't reach a not-yet-built local, so
+//      not in the ctx vector.  An entry hook can't reach a not-yet-built local, so
 //      this function's own call to the builder is redirected to a wrapper that
 //      patches the local after it is filled; the builder's other callers (the
 //      chunk-diff baseline) stay untouched.  The local is always the
@@ -81,9 +81,8 @@ namespace ReconcilePin
 		// (the byte at kBuilderCallOff may not be the call), so instead of
 		// giving up on any drift this searches around it.
 		// `code`/`len` is the readable function prologue, `codeAddr` its runtime
-		// base (to decode the near-call target), and `targetExecutable(addr)`
-		// reports whether a decoded absolute target lands in executable memory
-		// (wired to LM_FindSegment by the caller).
+		// base (to decode the near-call target), and `targetOk(addr)` accepts
+		// a decoded absolute target.
 		//
 		// Returns the offset of the call, -1 when no call qualifies, or -2 when
 		// more than one does. Either failure keeps the target-local fix off:
@@ -169,6 +168,8 @@ namespace ReconcilePin
 				std::size_t tail = 0;
 				if (code[off + 2] == 0x5B)
 				{
+					// disp8 is signed: 0x80 and up address below the context.
+					if (code[off + 3] >= 0x80) return -1;
 					disp = code[off + 3];
 					tail = off + 4;
 				}

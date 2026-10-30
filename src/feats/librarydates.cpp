@@ -109,31 +109,36 @@ bool Store::refresh(const std::string& configDir, const std::string& scriptDir,
 		times_.clear();
 		initialized_ = false;
 	}
+	// Only another holder of the lock defers the store; a lock file we cannot
+	// trust is no lock at all and must not turn the store off.
 	ProcessLock::FileLock fileLock(path + ".lock");
 	Dates persisted;
 	ReadResult result = ReadResult::Failed;
-	if (fileLock.acquired())
+	if (!fileLock.heldByAnother())
 		result = readDates(path, persisted, error);
 	else
 		error = "date store lock unavailable";
+	const bool read = result != ReadResult::Failed;
 
 	Dates next;
 	for (uint32_t id : appIds)
 	{
 		if (!id) continue;
 		const auto local = times_.find(id);
-		const auto saved = persisted.find(id);
-		// Once initialized, memory is authoritative: a failed removal write
-		// must not resurrect an old disk date when the app is added again.
-		const uint32_t date = local != times_.end() ? local->second
-		    : !initialized_ && saved != persisted.end() ? saved->second
+		const auto saved = read ? persisted.find(id) : persisted.end();
+		// Until a read succeeded, the saved date wins over a session date a
+		// busy first refresh made up. Once initialized, memory is
+		// authoritative: a failed removal write must not resurrect an old
+		// disk date when the app is added again.
+		const uint32_t date = !initialized_ && saved != persisted.end() ? saved->second
+		    : local != times_.end() ? local->second
 		    : !initialized_ ? initialDate(scriptDir, id, now) : now;
 		if (date) next.emplace(id, date);
 	}
 	// A removed app is forgotten, so a later re-add gets a new inclusion date.
 	times_.swap(next);
-	initialized_ = true;
-	if (result == ReadResult::Failed) return false;
+	if (read) initialized_ = true;
+	if (!read) return false;
 	if (result == ReadResult::Ready && times_ == persisted) return true;
 
 	std::ostringstream output;

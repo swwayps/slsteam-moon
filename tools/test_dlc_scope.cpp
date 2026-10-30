@@ -60,7 +60,7 @@ CUser localUser;
 CConfig g_config;
 IClientUtils* g_pClientUtils = &clientUtils;
 CSteamEngine* g_pSteamEngine = nullptr;
-CUser* g_pLocalUser = nullptr;
+std::atomic<CUser*> g_pLocalUser{nullptr};
 
 CConfig::~CConfig() = default;
 

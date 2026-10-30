@@ -223,6 +223,29 @@ int main()
 		      "an unchanged missing-key report is written once");
 	}
 
+	// A luaappids.yaml that does not parse is not an empty list: the apps it
+	// listed stay managed until it parses again.
+	{
+		std::ofstream(configHome + "/SLSsteam/config.yaml", std::ios::trunc)
+			<< "AchievementOwnerId: 0\nNotifications: no\n";
+		const auto writeLuaAppIds = [&](const char* text)
+		{
+			std::ofstream(configHome + "/SLSsteam/luaappids.yaml", std::ios::trunc) << text;
+		};
+		writeLuaAppIds("AdditionalApps:\n  - 4242\n");
+		check(g_config.loadSettings() && g_config.managedAppIds.contains(4242),
+		      "luaappids.yaml apps are managed");
+		writeLuaAppIds("AdditionalApps: [4242\n");
+		check(g_config.loadSettings() && g_config.managedAppIds.contains(4242),
+		      "a luaappids.yaml that does not parse keeps its apps managed");
+		writeLuaAppIds("just text\n");
+		check(g_config.loadSettings() && g_config.managedAppIds.contains(4242),
+		      "a luaappids.yaml that is not a map keeps its apps managed");
+		writeLuaAppIds("AdditionalApps: []\n");
+		check(g_config.loadSettings() && !g_config.managedAppIds.contains(4242),
+		      "an emptied luaappids.yaml removes its apps");
+	}
+
 	std::filesystem::remove_all(root);
 	if (failures != 0)
 	{

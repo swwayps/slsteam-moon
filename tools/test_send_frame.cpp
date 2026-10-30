@@ -12,6 +12,9 @@
 #include <cstring>
 #include <memory>
 #include <string>
+#include <sys/mman.h>
+#include <sys/wait.h>
+#include <unistd.h>
 static int g_failures = 0;
 #define CHECK(cond, msg)                                               \
 	do {                                                               \
@@ -45,6 +48,31 @@ int main()
 	ManifestCode::hkBBuildAndAsyncSendFrame(nullptr, k_eWebSocketOpCode_Binary, frame, sizeof(frame));
 	CHECK(g_allocations == 0 && g_sentData == frame,
 	      "before the layout is known a frame is sent as it came");
+
+	// A packet layout neither shift knows: the body word points into an
+	// unmapped page while the size looks sane. Detection must not read it.
+	{
+		const long page = sysconf(_SC_PAGESIZE);
+		auto* pages = static_cast<uint8_t*>(mmap(nullptr, 2 * page, PROT_READ | PROT_WRITE,
+		                                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
+		const bool mapped = pages != MAP_FAILED && munmap(pages + page, page) == 0;
+		alignas(8) uint8_t unknown[0x40] = {};
+		const void* unmapped = pages + page;
+		const uint32_t plausible = 64;
+		std::memcpy(unknown + CNetPacket::OFF_BODY, &unmapped, sizeof(unmapped));
+		std::memcpy(unknown + CNetPacket::OFF_SIZE, &plausible, sizeof(plausible));
+		std::fflush(stdout);
+		const pid_t child = fork();
+		if (child == 0)
+		{
+			CNetPacket::detectLayout(reinterpret_cast<const CNetPacket*>(unknown));
+			std::_Exit(CNetPacket::layoutSettled() ? 1 : 0);
+		}
+		int status = -1;
+		waitpid(child, &status, 0);
+		CHECK(mapped && WIFEXITED(status) && WEXITSTATUS(status) == 0,
+		      "layout detection skips a body pointer into unmapped memory");
+	}
 
 	// A received packet on the classic layout settles the shift at 0.
 	alignas(8) uint8_t body[64] = {};

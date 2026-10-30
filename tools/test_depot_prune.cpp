@@ -1,6 +1,7 @@
 // pruneUnsupportedDepots keeps a DLC advertised when its only keyed depot is
 // empty: the empty manifest is dropped, the entitlement is not.
 // Build: make test-depot-prune (links the whole object set).
+#include "../src/config.hpp"
 #include "../src/feats/appinfo_provision.hpp"
 #include "../src/feats/depotkey.hpp"
 #include "../src/log.hpp"
@@ -49,6 +50,21 @@ int main()
 	CHECK(list == "43",
 	      ("the DLC with a keyed empty depot stays listed, the unkeyed one goes (got \"" +
 	       list + "\")").c_str());
+
+	// Shared untagged content and the Windows depot are keyed, the Linux depot
+	// is not: only Proton can run the game.
+	DepotKey::saveKeyToCache(50, 5001, key, true);
+	DepotKey::saveKeyToCache(50, 5002, key, true);
+	g_config.managedAppIds.set({50});
+	YAML::Node shared = YAML::Load(
+		"common: {oslist: 'windows,linux'}\n"
+		"depots:\n"
+		"  '5001': {manifests: {public: {gid: '1', size: '100'}}}\n"
+		"  '5002': {config: {oslist: windows}, manifests: {public: {gid: '2', size: '100'}}}\n"
+		"  '5003': {config: {oslist: linux}, manifests: {public: {gid: '3', size: '100'}}}\n");
+	AppInfoProvision::pruneUnsupportedDepots(shared, 50, {true, 0});
+	CHECK(!shared["depots"]["5003"] && AppInfoProvision::requiresProton(50),
+	      "with the Linux depot dropped, shared untagged content does not make the game native");
 
 	g_pLog.reset();
 	std::string cleanup = std::string("rm -rf ") + home;

@@ -128,7 +128,7 @@ int main()
 	const std::string mainText(
 		(std::istreambuf_iterator<char>(mainSource)),
 		std::istreambuf_iterator<char>());
-	const auto rawLogOpen = mainText.find("g_rawLogFd = open");
+	const auto rawLogOpen = mainText.find("AuditLog::reopen(g_rawLog,");
 	const auto setupLock = mainText.find("g_setupLock = std::make_unique");
 	check(mainSource.is_open() && rawLogOpen != std::string::npos
 	          && setupLock != std::string::npos && rawLogOpen < setupLock,
@@ -213,21 +213,41 @@ int main()
 	      "audit sources avoid locale-dependent libc ctype calls");
 
 	char logPath[] = "/tmp/slssteam-audit-log-XXXXXX";
-	int logFd = mkstemp(logPath);
-	check(logFd >= 0, "temporary raw audit log can be created");
-	if (logFd >= 0)
+	const int created = mkstemp(logPath);
+	check(created >= 0, "temporary raw audit log can be created");
+	const auto readAll = [](const char* path)
 	{
-		AuditLog::write(logFd, logPath, "before-close\\n");
-		close(logFd); // Simulate Steam closing inherited descriptors in the child.
-		AuditLog::write(logFd, logPath, "after-reopen\\n");
+		std::ifstream file(path);
+		return std::string((std::istreambuf_iterator<char>(file)),
+		                   std::istreambuf_iterator<char>());
+	};
+	if (created >= 0)
+	{
+		close(created);
+		AuditLog::Sink sink;
+		check(AuditLog::reopen(sink, logPath), "raw audit log opens");
+		AuditLog::write(sink, logPath, "before-close\\n");
+		close(sink.fd); // Simulate Steam closing inherited descriptors in the child.
+		AuditLog::write(sink, logPath, "after-reopen\\n");
+		check(readAll(logPath) == "before-close\\nafter-reopen\\n",
+		      "raw audit log reopens a closed descriptor and preserves the message");
 
-		std::ifstream logFile(logPath);
-		const std::string contents(
-			(std::istreambuf_iterator<char>(logFile)),
-			std::istreambuf_iterator<char>());
-		check(contents == "before-close\\nafter-reopen\\n",
-		      "raw audit log reopens an EBADF descriptor and preserves the message");
-		if (logFd >= 0) close(logFd);
+		// The fork child may hand the number to another file before the exec
+		// wrapper writes: the line must still go to the log.
+		char otherPath[] = "/tmp/slssteam-audit-other-XXXXXX";
+		const int other = mkstemp(otherPath);
+		close(other);
+		const int number = sink.fd;
+		close(number);
+		const int reused = open(otherPath, O_WRONLY | O_APPEND);
+		const bool sameNumber = reused == number;
+		AuditLog::write(sink, logPath, "after-reuse\\n");
+		check(sameNumber && readAll(logPath) == "before-close\\nafter-reopen\\nafter-reuse\\n" &&
+		          readAll(otherPath).empty(),
+		      "raw audit log does not write through a number another file now holds");
+		if (reused >= 0) close(reused);
+		if (sink.fd >= 0) close(sink.fd);
+		std::remove(otherPath);
 		std::remove(logPath);
 	}
 

@@ -15,7 +15,9 @@
 #include "sdk/CSteamEngine.hpp"
 
 #include <atomic>
+#include <cstdint>
 #include <cstdlib>
+#include <vector>
 
 #include <sys/syscall.h>
 #include <unistd.h>
@@ -56,16 +58,18 @@ namespace
 	// even reaching it.
 	thread_local bool t_draining = false;
 
-	// Queue an EnsureCompat again for a later owner frame. Every retry counts,
-	// whatever its reason; past kMaxPollAttempts, or when the queue refuses it,
-	// the app stays hidden until the restart applies the persisted mapping.
+	// Queue an EnsureCompat again for a later owner frame. Every retry counts;
+	// past kMaxPollAttempts, or when the queue refuses it, the app stays hidden
+	// until the restart applies the persisted mapping. A held lock is not a
+	// failed attempt: parkBusy bounds that wait by time instead.
 	void retryCompat(const OwnerQueue::Command& cmd, const char* reason)
 	{
 		const std::uint32_t next = cmd.attempt() + 1;
 		if (next < CompatLive::kMaxPollAttempts)
 		{
 			const auto pushed = queue().push(
-				OwnerQueue::Command::ensureCompat(cmd.appId(), cmd.managedGeneration(), next),
+				OwnerQueue::Command::ensureCompat(
+					cmd.appId(), cmd.managedGeneration(), next, cmd.busySinceUs()),
 				OwnerQueue::monotonicUs());
 			if (pushed != OwnerQueue::PushResult::Full)
 				return;
@@ -73,6 +77,61 @@ namespace
 		}
 		g_pLog->warn("OwnerWork: %s for app=%u; keeping it hidden until restart\n",
 		             reason, cmd.appId());
+	}
+
+	// A publication refused by a held lock waits here rather than in the
+	// queue, so owner frames that come faster than the lock is released do
+	// not each retry it. Owner thread only: parkBusy runs behind the compat
+	// gate and releaseBusy inside the owner drain.
+	constexpr std::uint64_t kBusyRetryUs = 250000;
+	constexpr std::uint64_t kBusyLimitUs = 60000000;
+	std::vector<OwnerQueue::Command> g_busy;
+	std::atomic<std::uint64_t> g_busyDueUs{ 0 };  // 0: nothing parked
+
+	void parkBusy(const OwnerQueue::Command& cmd)
+	{
+		const std::uint64_t now = OwnerQueue::monotonicUs();
+		const std::uint64_t since = cmd.busySinceUs() != 0 ? cmd.busySinceUs() : now;
+		if (now - since >= kBusyLimitUs)
+		{
+			g_pLog->warn("OwnerWork: hot reload stayed busy for app=%u; keeping it "
+			             "hidden until restart\n", cmd.appId());
+			return;
+		}
+		g_busy.push_back(OwnerQueue::Command::ensureCompat(
+			cmd.appId(), cmd.managedGeneration(), cmd.attempt(), since));
+		if (g_busyDueUs.load(std::memory_order_relaxed) == 0)
+			g_busyDueUs.store(now + kBusyRetryUs, std::memory_order_relaxed);
+	}
+
+	bool busyRetryDue()
+	{
+		const std::uint64_t due = g_busyDueUs.load(std::memory_order_relaxed);
+		return due != 0 && OwnerQueue::monotonicUs() >= due;
+	}
+
+	void releaseBusy()
+	{
+		g_busyDueUs.store(0, std::memory_order_relaxed);
+		std::vector<OwnerQueue::Command> parked;
+		parked.swap(g_busy);
+		for (const OwnerQueue::Command& cmd : parked)
+		{
+			if (queue().push(cmd, OwnerQueue::monotonicUs()) == OwnerQueue::PushResult::Full)
+				g_pLog->warn("OwnerWork: owner queue full for app=%u; keeping it "
+				             "hidden until restart\n", cmd.appId());
+		}
+	}
+
+	// Steam's dispatcher must not wait on a pass or publication, so a held
+	// lock parks the request for a later frame.
+	void publishOrPark(const OwnerQueue::Command& cmd)
+	{
+		bool busy = false;
+		(void)HotReload::publishPreparedBase(
+			cmd.appId(), cmd.managedGeneration(), &busy);
+		if (busy)
+			parkBusy(cmd);
 	}
 
 	// Execute one command. Every dispatch mode reaches the Steam-owned calls
@@ -92,6 +151,14 @@ namespace
 					OwnerWork::onOwnerThread()))
 				{
 					retryCompat(cmd, "owner IPC thread never ran the compatibility mapping");
+					break;
+				}
+
+				// A busy retry issued or found its mapping on its first run;
+				// only the publication is left.
+				if (cmd.busySinceUs() != 0)
+				{
+					publishOrPark(cmd);
 					break;
 				}
 
@@ -127,15 +194,9 @@ namespace
 				//                for. This is the difference between the title
 				//                appearing in ~1-2s and it staying at "0 B"
 				//                until the next launch.
-				// Steam's dispatcher must not wait on a pass or publication, so
-				// a held lock sends the request to a later frame instead.
 				if (result.status != CompatLive::StepStatus::Unavailable)
 				{
-					bool busy = false;
-					(void)HotReload::publishPreparedBase(
-						cmd.appId(), cmd.managedGeneration(), &busy);
-					if (busy)
-						retryCompat(cmd, "hot reload stayed busy");
+					publishOrPark(cmd);
 					break;
 				}
 
@@ -277,23 +338,53 @@ namespace OwnerWork
 		const std::size_t depthHint = queue().depthHint();
 		const bool resolvedHint = AppInfoState::resolvedDirtyHint();
 		const bool refreshPending = PackagePatch::runtimeRefreshPending();
-		if (depthHint == 0 && !resolvedHint && !refreshPending)
+		const bool busyDue = busyRetryDue();
+		if (depthHint == 0 && !resolvedHint && !refreshPending && !busyDue)
 			return;
 		if (!OwnerQueue::shouldDrain(cachedTid(),
 		                            g_ownerTid.load(std::memory_order_relaxed),
-		                            t_draining, depthHint != 0 || resolvedHint || refreshPending))
+		                            t_draining,
+		                            depthHint != 0 || resolvedHint || refreshPending || busyDue))
 			return;
 
+		// This runs inside Steam's IPC dispatch: nothing may unwind into Steam,
+		// and a failed frame must not leave later drains refused.
 		t_draining = true;
-		const std::size_t taken = depthHint == 0
-			? 0 : queue().drain(runCommand);
-		if (AppInfoState::takeResolvedDirty() ||
-			PackagePatch::runtimeRefreshPending())
-			PackagePatch::reprocessCurrentState();
-		t_draining = false;
+		try
+		{
+			if (busyDue)
+				releaseBusy();
+			const std::size_t taken = queue().depthHint() == 0
+				? 0 : queue().drain(runCommand);
+			if (AppInfoState::takeResolvedDirty() ||
+				PackagePatch::runtimeRefreshPending())
+				PackagePatch::reprocessCurrentState();
+			t_draining = false;
 
-		if (taken != 0)
-			g_pLog->info("OwnerWork: drained %zu command(s) on the owner IPC thread\n", taken);
+			if (taken != 0)
+				g_pLog->info("OwnerWork: drained %zu command(s) on the owner IPC thread\n", taken);
+		}
+		catch (...)
+		{
+			t_draining = false;
+			noteFrameFailure("owner work");
+		}
+	}
+
+	void noteFrameFailure(const char* stage) noexcept
+	{
+		static std::atomic<bool> logged{ false };
+		if (logged.exchange(true, std::memory_order_relaxed))
+			return;
+		try
+		{
+			if (g_pLog)
+				g_pLog->warn("OwnerWork: %s failed inside an IPC frame; Steam keeps "
+				             "dispatching\n", stage);
+		}
+		catch (...)
+		{
+		}
 	}
 
 	void idleTick()

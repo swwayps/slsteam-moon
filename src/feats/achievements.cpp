@@ -257,7 +257,9 @@ std::optional<std::vector<uint8_t>> Achievements::rewriteResponse(bool modern,
 		auto it = pending.find(header.jobid_target());
 		if (it == pending.end() || it->second.modern != modern) return {};
 		request = it->second;
-		pending.erase(it);
+		// A tombstone stays, so every reply of a duplicate job fails, not
+		// only the first; it still counts against the 4096 bound.
+		if (request.epoch) pending.erase(it);
 	}
 	// A tombstoned (duplicate) job cannot tell which owner answered.
 	if (request.epoch && size <= maxReplyBytes)

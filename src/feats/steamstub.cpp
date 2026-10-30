@@ -432,8 +432,9 @@ namespace
 
 	// Default-mode counterpart to the strip loop: undo any previous Steamless
 	// run so the on-disk exe is byte-for-byte what the game shipped. Renames a
-	// `<exe>.original.exe` backup back over `<exe>` and drops the
-	// `.steamless_done` marker. Idempotent — a no-op when no backup is present.
+	// `<exe>.original.exe` backup back over `<exe>` while its
+	// `.steamless_done` marker shows `<exe>` is still our output, and drops
+	// the marker. Idempotent — a no-op when no backup is present.
 	void restoreOriginals(const std::string& installDir)
 	{
 		auto endsWith = [](const std::string& s, const char* suffix) {
@@ -462,6 +463,26 @@ namespace
 			const std::string backupStr = backup.string();
 			const std::string liveStr =
 				backupStr.substr(0, backupStr.size() - std::strlen(".original.exe"));
+
+			// Only our own output is reverted. The helper writes the marker
+			// after the swap: without one the file belongs to the game, and a
+			// live exe newer than the marker came from a Steam update, which
+			// the stale backup must not replace.
+			const std::string markerStr = liveStr + ".steamless_done";
+			std::error_code markerEc;
+			const auto markerTime = std::filesystem::last_write_time(markerStr, markerEc);
+			if (markerEc) continue;
+			std::error_code liveEc;
+			const auto liveTime = std::filesystem::last_write_time(liveStr, liveEc);
+			if (!liveEc && liveTime > markerTime)
+			{
+				std::error_code rmEc;
+				std::filesystem::remove(backup, rmEc);
+				std::filesystem::remove(markerStr, rmEc);
+				g_pLog->info("SteamStub: %s changed after Steamless ran; dropped the old backup\n",
+				             liveStr.c_str());
+				continue;
+			}
 
 			// Refuse to clobber the live exe with a truncated or non-PE backup:
 			// a bad restore would brick the game.

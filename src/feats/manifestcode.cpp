@@ -64,6 +64,10 @@ bool g_DonorDeferredReset = false;
 thread_local unsigned int t_DonorSendDepth = 0;
 uint64_t g_DonorContextGeneration = 1;
 void* g_DonorConnection = nullptr;
+// The captured connection's vtable pointer. Steam destroys the connection when
+// its CM socket drops (the vptr then reads CNetConnection's), and the capture
+// stays until the next logon response, so a send first checks the object.
+const void* g_DonorConnectionVptr = nullptr;
 std::vector<uint8_t> g_DonorHeader;
 uint64_t g_NextDonorJob = kDonorJobBase;
 std::unordered_map<uint64_t, DonorPending> g_DonorPending;
@@ -76,7 +80,15 @@ void clearDonorSessionLocked()
 	g_DonorPending.clear();
 	g_PassiveRequests.clear();
 	g_DonorConnection = nullptr;
+	g_DonorConnectionVptr = nullptr;
 	g_DonorHeader.clear();
+}
+
+// Reads the first word of an object that Steam may have released, without
+// faulting on an unmapped page.
+bool readVptr(const void* object, const void*& vptr) noexcept
+{
+	return CNetPacket::readMapped(object, &vptr, sizeof(vptr));
 }
 
 void prunePassiveRequestsLocked()
@@ -375,6 +387,13 @@ CodeRequest requestCode(uint32_t appId, uint32_t depotId, uint64_t gid)
 	uint64_t job = 0;
 	{
 		std::lock_guard lock(g_DonorLock);
+		const void* vptr = nullptr;
+		if (!g_DonorResetting && g_DonorConnection &&
+		    (!readVptr(g_DonorConnection, vptr) || vptr != g_DonorConnectionVptr))
+		{
+			g_pLog->info("Donor: Steam closed its CM connection; waiting for the next logon\n");
+			clearDonorSessionLocked();
+		}
 		if (g_DonorResetting || !g_DonorConnection || g_DonorHeader.empty() ||
 		    !Hooks::CWebSocketConnection_BBuildAndAsyncSendFrame.tramp.fn ||
 		    g_DonorPending.size() >= 128)
@@ -549,6 +568,8 @@ bool hkBBuildAndAsyncSendFrame(void* pConnection,
 						{
 							const bool first = g_DonorHeader.empty();
 							g_DonorConnection = pConnection;
+							g_DonorConnectionVptr =
+								*static_cast<const void* const*>(pConnection);
 							g_DonorHeader.assign(pHdr, pHdr + cbHdr);
 							if (first)
 								g_pLog->infoOnce(
@@ -628,7 +649,9 @@ bool hkBRouteMsgToJob(void* pJobMgr, void* arg2, void* pMsg, void* pJob)
 
 	const auto* hdrPtr = reinterpret_cast<const MsgHdr*>(pBuf);
 	const uint32_t cbProtoHdr = hdrPtr->headerLength;
-	if (cbProtoHdr == 0 || sizeof(MsgHdr) + cbProtoHdr > cbBuf)
+	// Compared against what is left after the prefix: `8 + length` wraps for
+	// a garbage length near 2^32 and would pass.
+	if (cbProtoHdr == 0 || cbProtoHdr > cbBuf - sizeof(MsgHdr))
 	{
 		return Hooks::CJobMgr_BRouteMsgToJob.tramp.fn(pJobMgr, arg2, pMsg, pJob);
 	}

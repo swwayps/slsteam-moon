@@ -307,23 +307,12 @@ namespace
 		next.directory = depotcacheDir;
 		next.directoryMtime = directoryMtime;
 
-		std::error_code ec;
-		for (const auto& entry :
-		     std::filesystem::directory_iterator(depotcacheDir, ec))
-		{
-			if (ec) break;
-			ec.clear();
-			if (!entry.is_regular_file(ec) || ec) continue;
-			const auto parsed = ManifestIndex::parseManifestName(
-				entry.path().filename().string());
-			if (!parsed) continue;
-
-			ec.clear();
-			const auto mtime = entry.last_write_time(ec);
-			if (ec) continue;
-			next.byDepot[parsed->depotId].push_back(
-				{parsed->gid, mtime});
-		}
+		ManifestIndex::forEachManifest(depotcacheDir,
+			[&next](const ManifestIndex::ManifestName& parsed,
+			        std::filesystem::file_time_type mtime)
+			{
+				next.byDepot[parsed.depotId].push_back({parsed.gid, mtime});
+			});
 
 		for (auto& [depotId, candidates] : next.byDepot)
 		{

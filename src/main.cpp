@@ -139,8 +139,7 @@ static uint16_t g_cefSessionPort = 0;
 // instead of rewriting it to an ephemeral port. Set in setup() when Decky
 // Loader is present: Decky's injector is hard-coded to 8080 and can't follow
 // our port, so we share 8080 (Lumen falls back to it). This gates BOTH the
-// setup() port pick and the exec-time rewrite (cefRewriteArgv), so the lazy
-// fallback resolve in the exec hook can't pick a port behind our back.
+// setup() port pick and the exec-time rewrite (cefRewriteArgv).
 static bool g_cefKeepDefaultPort = false;
 
 // Identity of THIS Steam client, captured in setup() (i.e. inside the client
@@ -152,12 +151,16 @@ static bool g_cefKeepDefaultPort = false;
 static long g_clientPid = 0;
 static unsigned long long g_clientStartTicks = 0;
 
+// The contract text and path, formatted in setup() so the exec hook can
+// publish it from the fork child with plain system calls.
+static CefPort::PreparedContract g_cefContract;
+
 // Audit callbacks and post-fork exec wrappers must not consult C++ logging
 // state.  setup() opens this descriptor before any webhelper fork; callbacks
 // only use write(2)-style operations against the inherited fd. Steam may close
 // inherited descriptors in the fork child, so keep a fixed path for an
 // async-signal-safe O_APPEND reopen at the last possible moment.
-static int g_rawLogFd = -1;
+static AuditLog::Sink g_rawLog;
 static char g_rawLogPath[4096] = {};
 static std::atomic<bool> g_auditDiagnosticsEnabled{false};
 static std::atomic<bool> g_auditPolicyReady{false};
@@ -207,9 +210,9 @@ static void setup()
 	{
 		std::snprintf(g_rawLogPath, sizeof(g_rawLogPath), "%s", g_pLog->path.c_str());
 	}
-	if (g_rawLogFd < 0 && g_rawLogPath[0] != '\0')
+	if (g_rawLog.fd < 0 && g_rawLogPath[0] != '\0')
 	{
-		g_rawLogFd = open(g_rawLogPath, O_WRONLY | O_APPEND | O_CLOEXEC);
+		(void)AuditLog::reopen(g_rawLog, g_rawLogPath);
 	}
 
 	// Publish the environment-only audit policy before taking the process-wide
@@ -306,10 +309,21 @@ static void setup()
 	else
 	{
 		g_cefSessionPort = CefPort::resolveSessionPortNoPersist(CefPort::contractPath());
-		if (g_cefSessionPort != 0)
+		// Without a contract Lumen could not follow the port, so keep 8080.
+		if (g_cefSessionPort != 0 &&
+		    !CefPort::prepareContract(g_cefContract, CefPort::contractPath(),
+		                              g_cefSessionPort, g_clientPid, g_clientStartTicks))
 		{
-			g_pLog->info("CEF: remote-debugging port -> %u (frees 8080); published when this client launches the webhelper\n",
-			             g_cefSessionPort);
+			g_pLog->warn("CEF: cannot prepare the port contract at '%s'; Steam will keep 8080\n",
+			             CefPort::contractPath().c_str());
+			g_cefSessionPort = 0;
+		}
+		else if (g_cefSessionPort != 0)
+		{
+			g_pLog->info("CEF: remote-debugging port -> %u (frees 8080); published to %s "
+			             "(owner pid %ld, start %llu) when this client launches the webhelper\n",
+			             g_cefSessionPort, CefPort::contractPath().c_str(), g_clientPid,
+			             g_clientStartTicks);
 		}
 		else
 		{
@@ -572,6 +586,7 @@ static void load()
 	if (!Steam::init())
 	{
 		LOG_NOTIFYERROR("Failed to find steam exports!\n");
+		g_pLog->notifyUser(UserMsg::InitializationFailed);
 		return;
 	}
 
@@ -601,6 +616,7 @@ static void load()
 		// so log it (otherwise it only shows up as missing ownership).
 		g_pLog->warn("Hooks::setup() reported failure; aborting injection and "
 		             "running unmodified\n");
+		g_pLog->notifyUser(UserMsg::InitializationFailed);
 		unload();
 		return;
 	}
@@ -704,7 +720,14 @@ static void load()
 	catch (const std::exception& e)
 	{
 		// Tear the hooks down and say why, so Steam runs unmodified visibly.
-		if (g_pLog) g_pLog->warn("load() aborted by exception: %s\n", e.what());
+		// The handler often runs after a bad_alloc: logging may throw too.
+		try
+		{
+			if (g_pLog) g_pLog->warn("load() aborted by exception: %s\n", e.what());
+		}
+		catch (...)
+		{
+		}
 		try
 		{
 			unload();
@@ -716,7 +739,13 @@ static void load()
 	}
 	catch (...)
 	{
-		if (g_pLog) g_pLog->warn("%s", "load() aborted by a non-std exception\n");
+		try
+		{
+			if (g_pLog) g_pLog->warn("%s", "load() aborted by a non-std exception\n");
+		}
+		catch (...)
+		{
+		}
 		try
 		{
 			unload();
@@ -795,7 +824,7 @@ extern "C" char* la_objsearch(const char* name,
 // family we return a wrapper that rewrites argv, otherwise the original
 // address (a no-op redirect). The client launches the webhelper via execv,
 // with the switch embedded inside a `sh -c "exec steamwebhelper.sh ..."`
-// wrapper string, so a substring rewrite is used (CefPort::rewritePortArg).
+// wrapper string, so a substring rewrite is used (CefPort::rewriteArgv).
 // This lives in SLSsteam.so itself — no extra preloaded library.
 // ───────────────────────────────────────────────────────────────────────
 namespace
@@ -840,7 +869,7 @@ namespace
 
 	void writeRawLog(const char* text) noexcept
 	{
-		AuditLog::write(g_rawLogFd, g_rawLogPath, text);
+		AuditLog::write(g_rawLog, g_rawLogPath, text);
 	}
 
 	void writeRawUnsigned(unsigned int value) noexcept
@@ -877,142 +906,111 @@ namespace
 		writeRawLog(")\n");
 	}
 
-	void logCefRewrite(uint16_t port) noexcept
+	void logCefRewrite(uint16_t port, bool published) noexcept
 	{
 		// This runs in a fork child immediately before exec.  The fd was opened
 		// in the parent during setup, so this path performs no env lookup,
 		// allocation, formatted I/O, or C++ logger locking after fork.
 		writeRawLog("[Info] CEF: rewrote --remote-debugging-port to ");
 		writeRawUnsigned(port);
-		writeRawLog(" (8080 freed)\n");
+		writeRawLog(published ? " (8080 freed, contract published)\n"
+		                      : " (8080 freed, contract NOT published)\n");
 	}
 
-	// Returns a heap argv copy with the CEF debug port rewritten to a free
-	// loopback port, or nullptr if argv carries no such switch (caller then
-	// uses the original). The copy is intentionally leaked: the caller is
-	// about to exec.
-	char** cefRewriteArgv(char* const argv[])
+	// One rewritten argv at a time; a concurrent spawn from another thread
+	// keeps its argv as it is.
+	CefPort::ArgvArena g_cefArena;
+	std::atomic_flag g_cefArenaBusy;  // clear (C++20)
+
+	// The argv with the CEF debug port rewritten to the session port, or
+	// nullptr to keep the original. This runs in the fork child right before
+	// exec (or in the spawning thread for posix_spawn), where a lock another
+	// thread held at fork time stays held forever: only static storage,
+	// prepared data and plain system calls are used here, no allocation, no
+	// environment lookup and no logger.
+	char** cefRewriteArgv(char* const argv[]) noexcept
 	{
-		if (!argv)
-		{
+		// Decky coexistence keeps Steam on its hard-coded 8080, and without a
+		// port from this copy's setup() there is nothing to rewrite to.
+		if (!argv || g_cefKeepDefaultPort || g_cefSessionPort == 0)
 			return nullptr;
-		}
-
-		// Decky coexistence: leave Steam on its hard-coded 8080 — no rewrite, no
-		// contract. Gating here (not just via g_cefSessionPort) is essential: the
-		// lazy fallback below would otherwise pick a fresh ephemeral port and
-		// rewrite anyway.
-		if (g_cefKeepDefaultPort)
-		{
+		if (g_cefArenaBusy.test_and_set(std::memory_order_acquire))
 			return nullptr;
-		}
-
-		int n = 0;
-		bool any = false;
-		for (; argv[n]; ++n)
+		char** out = CefPort::rewriteArgv(argv, g_cefSessionPort, g_cefArena);
+		if (!out)
 		{
-			const char* p = std::strstr(argv[n], CefPort::kSwitchPrefix);
-			if (p && Ascii::isDigit(static_cast<unsigned char>(
-				p[std::strlen(CefPort::kSwitchPrefix)])))
-			{
-				any = true;
-			}
-		}
-		if (!any)
-		{
+			g_cefArenaBusy.clear(std::memory_order_release);
 			return nullptr;
-		}
-
-		static uint16_t port = 0;
-		if (port == 0)
-		{
-			// Prefer the session port decided in setup() (stable across webhelper
-			// restarts). Fall back to a lazy resolve only if a webhelper launch
-			// somehow beats setup() (it shouldn't: the UI/webhelper come up well
-			// after steamclient.so maps). Neither path writes the contract here;
-			// publishing happens below, once, when we actually rewrite the arg.
-			port = g_cefSessionPort != 0
-			           ? g_cefSessionPort
-			           : CefPort::resolveSessionPortNoPersist(CefPort::contractPath());
-		}
-		if (port == 0)
-		{
-			return nullptr; // no port available: leave Steam on 8080
 		}
 
 		// Publish the contract file the Lumen sidecar reads — NOW, because this
-		// client tree is actually launching the webhelper, so `port` is the live
-		// CEF port. Writing here (not in setup()) is what makes the contract
-		// robust against a concurrent second Steam instance at login: that loser
-		// runs setup() but exits at the single-instance lock before ever reaching
-		// this exec hook, so it never overwrites the contract. Idempotent within
-		// the tree (guarded); contract == live by construction.
+		// client tree is actually launching the webhelper, so the session port
+		// is the live CEF port. Writing here (not in setup()) is what makes the
+		// contract robust against a concurrent second Steam instance at login:
+		// that loser runs setup() but exits at the single-instance lock before
+		// ever reaching this exec hook, so it never overwrites the contract.
+		// Every webhelper launch publishes the same text again.
 		//
 		// The contract also carries this client's identity (pid + start time,
 		// captured in setup()), so the sidecar can ignore a contract left behind
 		// by a previous session instead of polling its dead port — and so a
 		// vanilla Steam launch after an injected one falls back to 8080 instead
 		// of chasing a stale ephemeral port forever.
-		static bool published = false;
-		if (!published && CefPort::writePortFile(CefPort::contractPath(), port,
-		                                        g_clientPid, g_clientStartTicks))
-		{
-			published = true;
-			if (g_pLog)
-			{
-				g_pLog->info("CEF: published debug port %u to %s (owner pid %ld, start %llu)\n",
-				             port, CefPort::contractPath().c_str(), g_clientPid,
-				             g_clientStartTicks);
-			}
-		}
-
-		char** out = static_cast<char**>(std::malloc(sizeof(char*) * (n + 1)));
-		if (!out)
-		{
-			return nullptr;
-		}
-		for (int i = 0; i < n; ++i)
-		{
-			auto [s, changed] = CefPort::rewritePortArg(argv[i], port);
-			out[i] = changed ? strdup(s.c_str()) : argv[i];
-		}
-		out[n] = nullptr;
-
-		logCefRewrite(port);
+		logCefRewrite(g_cefSessionPort, CefPort::publishPrepared(g_cefContract));
 		return out;
+	}
+
+	// After the real call returned (a failed exec, or posix_spawn in the
+	// parent), the arena may be used again.
+	void cefRewriteDone(char** rewritten) noexcept
+	{
+		if (rewritten)
+			g_cefArenaBusy.clear(std::memory_order_release);
 	}
 
 	int cefExecv(const char* path, char* const argv[])
 	{
 		char** rw = cefRewriteArgv(argv);
-		return g_realExecv(path, rw ? rw : argv);
+		const int result = g_realExecv(path, rw ? rw : argv);
+		cefRewriteDone(rw);
+		return result;
 	}
 	int cefExecvp(const char* file, char* const argv[])
 	{
 		char** rw = cefRewriteArgv(argv);
-		return g_realExecvp(file, rw ? rw : argv);
+		const int result = g_realExecvp(file, rw ? rw : argv);
+		cefRewriteDone(rw);
+		return result;
 	}
 	int cefExecve(const char* path, char* const argv[], char* const envp[])
 	{
 		char** rw = cefRewriteArgv(argv);
-		return g_realExecve(path, rw ? rw : argv, envp);
+		const int result = g_realExecve(path, rw ? rw : argv, envp);
+		cefRewriteDone(rw);
+		return result;
 	}
 	int cefExecvpe(const char* file, char* const argv[], char* const envp[])
 	{
 		char** rw = cefRewriteArgv(argv);
-		return g_realExecvpe(file, rw ? rw : argv, envp);
+		const int result = g_realExecvpe(file, rw ? rw : argv, envp);
+		cefRewriteDone(rw);
+		return result;
 	}
 	int cefSpawn(pid_t* pid, const char* path, const posix_spawn_file_actions_t* fa,
 	             const posix_spawnattr_t* attr, char* const argv[], char* const envp[])
 	{
 		char** rw = cefRewriteArgv(argv);
-		return g_realSpawn(pid, path, fa, attr, rw ? rw : argv, envp);
+		const int result = g_realSpawn(pid, path, fa, attr, rw ? rw : argv, envp);
+		cefRewriteDone(rw);
+		return result;
 	}
 	int cefSpawnp(pid_t* pid, const char* file, const posix_spawn_file_actions_t* fa,
 	              const posix_spawnattr_t* attr, char* const argv[], char* const envp[])
 	{
 		char** rw = cefRewriteArgv(argv);
-		return g_realSpawnp(pid, file, fa, attr, rw ? rw : argv, envp);
+		const int result = g_realSpawnp(pid, file, fa, attr, rw ? rw : argv, envp);
+		cefRewriteDone(rw);
+		return result;
 	}
 }
 
@@ -1080,13 +1078,30 @@ static void decompileBeforeRelocation(const char* path)
 		return;
 	}
 
-	BootProf::Span profile(g_pLog.get(), client ? "decompile_steamclient" : "decompile_steamui");
-	Decompiler::parseModule(mod);
-	for (auto& [name, vft] : Decompiler::vftables)
+	// This runs inside la_objopen, where an exception must not escape. A
+	// module the parser cannot read leaves no vtables, so VFTIndexes::init()
+	// fails and load() leaves Steam unmodified with a notice.
+	try
 	{
-		if (vft.moduleBase == mod.base)
+		BootProf::Span profile(g_pLog.get(), client ? "decompile_steamclient" : "decompile_steamui");
+		Decompiler::parseModule(mod);
+		for (auto& [name, vft] : Decompiler::vftables)
 		{
-			vft.analyze();
+			if (vft.moduleBase == mod.base)
+			{
+				vft.analyze();
+			}
+		}
+	}
+	catch (...)
+	{
+		Decompiler::cleanUp();
+		try
+		{
+			if (g_pLog) g_pLog->warn("%s", "decompiler failed on a client module\n");
+		}
+		catch (...)
+		{
 		}
 	}
 }
@@ -1104,11 +1119,24 @@ static void setupGuarded()
 	}
 	catch (const std::exception& e)
 	{
-		if (g_pLog) g_pLog->warn("setup() aborted by exception: %s\n", e.what());
+		// The handler often runs after a bad_alloc: logging may throw too.
+		try
+		{
+			if (g_pLog) g_pLog->warn("setup() aborted by exception: %s\n", e.what());
+		}
+		catch (...)
+		{
+		}
 	}
 	catch (...)
 	{
-		if (g_pLog) g_pLog->warn("%s", "setup() aborted by a non-std exception\n");
+		try
+		{
+			if (g_pLog) g_pLog->warn("%s", "setup() aborted by a non-std exception\n");
+		}
+		catch (...)
+		{
+		}
 	}
 	setupAborted = true;
 	setupSuccess = false;

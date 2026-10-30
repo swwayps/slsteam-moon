@@ -95,6 +95,40 @@ int main()
 	check(!std::filesystem::exists(g_childSetenvMark),
 	      "the forked child does not call setenv");
 
+	// Without --steamless a launch reverts only our own fresh output.
+	{
+		namespace fs = std::filesystem;
+		const std::string game = steam + "/steamapps/common/Game";
+		fs::create_directories(game);
+		std::ofstream(steam + "/steamapps/appmanifest_123.acf")
+			<< "\"AppState\"\n{\n\t\"installdir\"\t\t\"Game\"\n}\n";
+		const auto readAll = [](const std::string& path) {
+			std::ifstream file(path);
+			return std::string((std::istreambuf_iterator<char>(file)), {});
+		};
+		const auto hourAgo = fs::file_time_type::clock::now() - std::chrono::hours(1);
+		// Steam updated the game after Steamless ran: the backup is stale.
+		std::ofstream(game + "/Game.exe") << "MZnew";
+		std::ofstream(game + "/Game.exe.original.exe") << "MZold";
+		std::ofstream(game + "/Game.exe.steamless_done") << "";
+		fs::last_write_time(game + "/Game.exe.original.exe", hourAgo);
+		fs::last_write_time(game + "/Game.exe.steamless_done", hourAgo);
+		// A fresh Steamless result: the marker is newer than the exe.
+		std::ofstream(game + "/Tool.exe") << "MZstripped";
+		std::ofstream(game + "/Tool.exe.original.exe") << "MZorig";
+		std::ofstream(game + "/Tool.exe.steamless_done") << "";
+		fs::last_write_time(game + "/Tool.exe", hourAgo);
+		// A file of the game itself that happens to end in .original.exe.
+		std::ofstream(game + "/Data.original.exe") << "MZgame";
+		SteamStub::onLaunchApp(123);
+		check(readAll(game + "/Game.exe") == "MZnew" && !fs::exists(game + "/Game.exe.original.exe"),
+		      "a backup older than the live exe is dropped, not restored over it");
+		check(readAll(game + "/Tool.exe") == "MZorig",
+		      "a fresh Steamless result is reverted");
+		check(fs::exists(game + "/Data.original.exe") && !fs::exists(game + "/Data"),
+		      "a file without our marker is left alone");
+	}
+
 	std::filesystem::remove_all(root);
 	if (failures != 0)
 	{

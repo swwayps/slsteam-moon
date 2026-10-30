@@ -47,6 +47,11 @@ int main()
 	const auto dispatch = runInterface.find("Hooks::CSteamEngine_ProcessIPCFrame.tramp.fn(");
 	expect(drain != npos && dispatch != npos && drain < dispatch,
 	       "owner work drains before Steam dispatches the call");
+	const auto prepared = runInterface.find("OwnerWork::noteFrameFailure(\"frame preparation\")");
+	const auto completed = runInterface.find("OwnerWork::noteFrameFailure(\"frame completion\")");
+	expect(prepared != npos && prepared < drain && completed != npos && completed > dispatch &&
+	           frame.find("OwnerWork::noteFrameFailure(\"pipe bookkeeping\")") != npos,
+	       "our work before and after Steam's dispatch is contained");
 	const std::string place = between(hooks, "void Hooks::placeVFTHooks()", "\n}\n");
 	expect(place.find("std::atomic<bool> placed") != npos && place.find("std::lock_guard") != npos,
 	       "the vtable hooks are placed once, under a lock");

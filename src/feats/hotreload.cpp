@@ -68,8 +68,9 @@ std::unordered_set<std::uint32_t> publishAppInfoScopes(
 		managedAppIds, g_config.addedAppIds.get());
 	const auto guardedAppIds = HotReloadPublishPolicy::guardedAppInfoIds(
 		managedAppIds, plannerAppIds, authoritative);
-	// Publish authority first: a newly guarded record must never be observable
-	// with a real SHA during the gap before its skip policy becomes active.
+	// Publish authority before membership: the incoming changelist filter and
+	// the outgoing PICS checks must know a newly guarded record before the
+	// lookup guard starts managing it.
 	AppInfoState::publishAuthoritative(authoritative);
 	(void)membershipStore().publish(guardedAppIds);
 	return authoritative;
@@ -559,6 +560,15 @@ takeMissingCacheRepairRequests() noexcept
 
 		const auto now = std::chrono::steady_clock::now();
 		if (now < state.cacheRepairAfter) return {};
+		// A base with a terminal verdict has no pair to repair.
+		state.cacheRepairBaseIds.erase(
+			std::remove_if(
+				state.cacheRepairBaseIds.begin(), state.cacheRepairBaseIds.end(),
+				[](std::uint32_t appId)
+				{
+					return AppInfoProvision::observeTerminal(appId, 0).applies;
+				}),
+			state.cacheRepairBaseIds.end());
 		for (std::size_t attempt = 0;
 			attempt < state.cacheRepairBaseIds.size(); ++attempt)
 		{
@@ -568,11 +578,13 @@ takeMissingCacheRepairRequests() noexcept
 			const auto found = state.managedGenerations.find(appId);
 			if (found == state.managedGenerations.end()) continue;
 			state.cacheRepairAfter = now + std::chrono::seconds(30);
+			// Not forced: a pair that has become valid is published from
+			// disk; only a missing or invalid one is fetched again.
 			return {{
 				appId, 0, found->second,
 				AppInfoProvision::reasonMask(
 					AppInfoProvision::RefreshReason::CacheRepair),
-				true, true,
+				false, true,
 			}};
 		}
 	}

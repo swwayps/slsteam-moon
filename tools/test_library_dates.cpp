@@ -139,6 +139,40 @@ int main()
 	check(malformed.get(101) == now + 100,
 	      "invalid state falls back to script metadata, not a package date");
 
+	// A lock file that is not a private file of ours is not a lock: the dates
+	// are still read and written.
+	{
+		const auto untrustedDir = root / "untrusted";
+		fs::create_directory(untrustedDir);
+		const auto lockPath = untrustedDir / "library-added-times.txt.lock";
+		std::ofstream(lockPath) << "";
+		fs::permissions(lockPath, fs::perms::owner_read | fs::perms::owner_write |
+		                              fs::perms::group_read | fs::perms::others_read);
+		LibraryDates::Store untrusted;
+		check(untrusted.refresh(untrustedDir.string(), scripts.string(), {101}, now, error)
+		      && fs::exists(untrustedDir / "library-added-times.txt"),
+		      "an untrusted lock file does not turn the date store off");
+	}
+	// A first refresh that loses the lock keeps session dates, and the next
+	// one adopts the saved dates instead of writing the session ones over them.
+	{
+		const auto savedDir = root / "saved";
+		fs::create_directory(savedDir);
+		const auto savedPath = savedDir / "library-added-times.txt";
+		const std::string savedText = "library-added-times-v1\n101 1690000000\n";
+		std::ofstream(savedPath) << savedText;
+		LibraryDates::Store late;
+		{
+			ProcessLock::FileLock otherWriter(savedPath.string() + ".lock");
+			check(otherWriter.acquired(), "the saved store lock fixture is held");
+			check(!late.refresh(savedDir.string(), scripts.string(), {101}, now, error),
+			      "a busy first refresh defers persistence");
+		}
+		check(late.refresh(savedDir.string(), scripts.string(), {101}, now + 50, error)
+		      && late.get(101) == 1690000000 && read(savedPath) == savedText,
+		      "a later refresh adopts the saved dates after a busy first one");
+	}
+
 	const auto futureDir = root / "future";
 	fs::create_directory(futureDir);
 	script(scripts, 606, now + 10000);

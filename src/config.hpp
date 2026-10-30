@@ -178,7 +178,11 @@ public:
 	//   2. luaappids.yaml AdditionalApps
 	// Installed Accela and legacy config entries are added only to addedAppIds.
 	std::unordered_set<uint32_t> discoverStPluginAppIds();
+	// A file that exists but does not parse returns the last list that did,
+	// so a typo or a half-written file does not remove every app it lists.
 	std::unordered_set<uint32_t> loadLuaAppIdsYaml();
+	MTVariable<std::unordered_set<uint32_t>> lastLuaAppIds;
+	std::atomic<bool> luaAppIdsUnreadable {false};
 
 	void setError(const ELoadError err, const char* keyName);
 	bool loadSettings();
