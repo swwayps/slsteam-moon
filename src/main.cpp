@@ -159,7 +159,7 @@ static CefPort::PreparedContract g_cefContract;
 // only use write(2)-style operations against the inherited fd. Steam may close
 // inherited descriptors in the fork child, so keep a fixed path for an
 // async-signal-safe O_APPEND reopen at the last possible moment.
-static int g_rawLogFd = -1;
+static AuditLog::Sink g_rawLog;
 static char g_rawLogPath[4096] = {};
 static std::atomic<bool> g_auditDiagnosticsEnabled{false};
 static std::atomic<bool> g_auditPolicyReady{false};
@@ -199,9 +199,9 @@ static void setup()
 	{
 		std::snprintf(g_rawLogPath, sizeof(g_rawLogPath), "%s", g_pLog->path.c_str());
 	}
-	if (g_rawLogFd < 0 && g_rawLogPath[0] != '\0')
+	if (g_rawLog.fd < 0 && g_rawLogPath[0] != '\0')
 	{
-		g_rawLogFd = open(g_rawLogPath, O_WRONLY | O_APPEND | O_CLOEXEC);
+		(void)AuditLog::reopen(g_rawLog, g_rawLogPath);
 	}
 
 	// Publish the environment-only audit policy before taking the process-wide
@@ -862,7 +862,7 @@ namespace
 
 	void writeRawLog(const char* text) noexcept
 	{
-		AuditLog::write(g_rawLogFd, g_rawLogPath, text);
+		AuditLog::write(g_rawLog, g_rawLogPath, text);
 	}
 
 	void writeRawUnsigned(unsigned int value) noexcept
