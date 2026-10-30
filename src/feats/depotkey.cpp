@@ -23,6 +23,7 @@
 #include "yaml-cpp/emittermanip.h"
 #include "yaml-cpp/yaml.h"
 
+#include <algorithm>
 #include <charconv>
 #include <cstdio>
 #include <cstdlib>
@@ -358,17 +359,24 @@ void importLuaScriptsFrom(const std::string& stplug)
 				line.erase(commentPos);
 			}
 
-			auto begin = std::sregex_iterator(line.begin(), line.end(), addappidWithKeyRe);
-			auto end = std::sregex_iterator();
-			for (auto it = begin; it != end; ++it)
+			// std::regex recurses once per character it consumes, so each call
+			// is matched in a window a real one (under 120 characters) fits.
+			for (std::size_t at = line.find("addappid"); at != std::string::npos;
+			     at = line.find("addappid", at + 1))
 			{
+				std::smatch call;
+				if (!std::regex_search(line.cbegin() + at,
+				                       line.cbegin() + std::min(line.size(), at + 256),
+				                       call, addappidWithKeyRe,
+				                       std::regex_constants::match_continuous))
+					continue;
 				// The regex admits any digit run; skip an id that does not fit.
-				const std::string digits = (*it)[1].str();
+				const std::string digits = call[1].str();
 				uint32_t depotId = 0;
 				if (std::from_chars(digits.data(), digits.data() + digits.size(),
 				                    depotId).ec != std::errc())
 					continue;
-				const std::string keyHex = (*it)[2].str();
+				const std::string keyHex = call[2].str();
 				const std::string keyBin = hexToBytes(keyHex);
 				if (keyBin.size() != 32) continue;
 				if (saveKeyToCache(appIdGuess, depotId, keyBin, /*managed=*/true))

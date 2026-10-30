@@ -13,6 +13,7 @@
 #include <iterator>
 #include <string>
 #include <sys/resource.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <vector>
 namespace
@@ -74,6 +75,27 @@ int main()
 	check(!depotKeyThrew, "an oversized depot id does not throw out of the key importer");
 	check(DepotKey::getCachedKey(124).key.size() == 32,
 	      "the key line after the oversized one still imports");
+
+	// A very long call line must not exhaust the stack: std::regex recurses
+	// once per character it consumes. Run in a child with Steam's 8 MiB stack.
+	{
+		std::ofstream(steam + "/config/stplug-in/123.lua")
+			<< "addappid(" << std::string(100000, ' ') << "4201, 1, \"" << key << "\")\n"
+			<< "addappid(4202, 1, \"" << key << "\")\n";
+		const pid_t child = fork();
+		if (child == 0)
+		{
+			const rlimit stack{8u << 20, 8u << 20};
+			setrlimit(RLIMIT_STACK, &stack);
+			DepotKey::reloadLuaScripts();
+			std::_Exit(DepotKey::getCachedKey(4202).key.size() == 32 ? 0 : 1);
+		}
+		int status = 0;
+		waitpid(child, &status, 0);
+		check(WIFEXITED(status) && WEXITSTATUS(status) == 0,
+		      "a call line of 100,000 characters neither crashes the importer nor "
+		      "stops the next line");
+	}
 
 	// A script's stem is its main app id, even when that id is also one of
 	// its keyed depots (single-depot titles such as 275850).
