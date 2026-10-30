@@ -689,11 +689,11 @@ static bool hkUserAppManager_BuildDepotDependency
 
 	// Steam checks depotcache for each planned manifest about 15 s later and
 	// only requests a manifest code (Access Denied for added apps) when it is
-	// missing. The i386 build starts these fetches from
-	// CDepotDownloadMgr::BuildDepotDependency (ManifestBind), which has no
-	// x86-64 locator yet, so start them here. The fetch is deduplicated and
-	// runs on SLSsteam's executor; this hook does not wait for it.
-	for (uint32_t i = 0; depots && i < depots->size; i++)
+	// missing. ManifestBind's CDepotDownloadMgr::BuildDepotDependency hook
+	// starts these fetches after applying manifest pins; when that hook is not
+	// placed, start them here for the public gids. The fetch is deduplicated
+	// and runs on SLSsteam's executor; this hook does not wait for it.
+	for (uint32_t i = 0; depots && !ManifestBind::builderInstalled() && i < depots->size; i++)
 	{
 		const auto* depot = depots->at(i);
 		if (depot->manifestId

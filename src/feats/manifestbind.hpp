@@ -42,4 +42,7 @@ namespace ManifestBind
 
 	// Tear the detour back down (called from Hooks::remove).
 	void remove();
+	// True while the BuildDepotDependency detour is placed, i.e. the
+	// planner itself starts the planned manifest fetches.
+	bool builderInstalled();
 }

@@ -1042,17 +1042,19 @@ namespace Patterns
 			"41 57 41 56 41 55 41 54 55 53 48 89 FB 48 83 EC 78 48 89 74 24 08 89 4C 24 04 64 4C 8B 24 25 28 00 00 00 4C 89 64 24 68 4D 89 C4 E8",
 			SigFollowMode::None
 		};
-		// Not ported: the x86-64 planner (the pair of calls with flag 0/1 into
-		// contentupdatecontext.cpp, e.g. 0x11fc8e0 on beta 1793235415) takes
-		// (ctx, flag, dword, vector) and walks 0x28-byte entries, while
-		// ManifestBind's builder hook expects the i386 (ctx, flag, vector, dword)
-		// and 0x20-byte DepotEntry layout. The leaf above already stages the
-		// manifests; manifest pins need the builder.
+		// x86-64 entry (beta 1793235415 0x11fe380): (ctx, flag, CUtlVector<
+		// DepotEntry>*, branch), the 0x20-byte DepotEntry copy loop followed
+		// by the per-entry call into contentupdatecontext.cpp and the "Failed
+		// to initialize depot %u, manifest %llu (%s)" log, called in flag 0/1
+		// pairs from four sites as on i386. The workshop job has its own
+		// per-depot builder (0x11fc8e0, 0x28-byte entries) that is not this.
+		// The ctx byte the prologue sets is masked; one match on 1792711043,
+		// 1793235415 and the 2026-10-21 stable x86-64 client.
 		Pattern_t BuildDepotDependency
 		{
 			"CDepotDownloadMgr::BuildDepotDependency",
-			"",
-			SigFollowMode::Relative
+			"41 57 41 56 41 55 41 54 41 89 F4 55 48 89 FD 53 48 81 EC ? ? 00 00 64 4C 8B 2C 25 28 00 00 00 4C 89 AC 24 ? ? 00 00 49 89 CD C6 47 ? 01 44 8B 72 10",
+			SigFollowMode::None
 		};
 		Pattern_t OnChunkUnpackedStack
 		{

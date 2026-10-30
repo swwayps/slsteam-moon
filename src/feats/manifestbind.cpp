@@ -19,12 +19,14 @@
 #include "../log.hpp"
 #include "../memhlp.hpp"
 #include "../patterns.hpp"
+#include "../sdk/CUtl.hpp"
 #include "../utils/ManifestFetch.hpp"
 
 #include "libmem/libmem.h"
 
 #include <algorithm>
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
@@ -76,25 +78,28 @@ namespace
 	                           uint64_t, void*);
 
 	// FUNC_1141 / CDepotDownloadMgr::BuildDepotDependency — the install-plan
-	// consumer.  cdecl, 4 dwords:
-	//   (void* ctx, uint32_t flag, CUtlVector<DepotEntry>* depots, uint32_t a3)
-	using BuildDepFn_t = void*(*)(void*, uint32_t, void*, uint32_t);
+	// consumer:
+	//   (void* ctx, bool flag, CUtlVector<DepotEntry>* depots, branch)
+	// The last argument is a pointer (rcx on x86-64), so it must stay
+	// pointer-sized when passed through.
+	using BuildDepFn_t = void*(*)(void*, uint32_t, void*, void*);
 
 	// DepotEntry layout (matching OpenSteamTool Structs.h):
 	//   +0x00 u32 DepotId   +0x04 u32 AppId
 	//   +0x08 u64 ManifestGid   +0x10 u64 ManifestSize
 	//   +0x18 u32 DlcAppId   +0x1c u8 Lcs   +0x1d u8 bNotNewTarget
 	//   +0x1e u8 SharedInstall ; stride 0x20.
-	// CUtlVector<DepotEntry>: element base @ +0x00 (memory.base),
-	//   count (size) @ +0x0c.
+	// The x86-64 builder copies the same 0x20-byte entries. CUtlVector<
+	// DepotEntry> follows the SDK layout: element base @ +0x00, allocation
+	// count @ +0x08, size @ +0x10 (i386 had +0x04 / +0x0c).
 	constexpr size_t kDepotEntryStride = ManagedDepotFilter::kDepotEntryStride;
 	constexpr size_t kDepotEntryAppIdOff = 0x04;
 	constexpr size_t kDepotEntryGidOff = 0x08;
 	constexpr size_t kDepotEntrySizeOff = ManagedDepotFilter::kDepotSizeOff;
 	constexpr size_t kDepotEntryDlcAppIdOff = 0x18;
-	constexpr size_t kVecBaseOff = 0x00;
-	constexpr size_t kVecCapacityOff = 0x04;
-	constexpr size_t kVecCountOff = 0x0c;
+	constexpr size_t kVecBaseOff = offsetof(CUtlMemory<char>, base);
+	constexpr size_t kVecCapacityOff = offsetof(CUtlMemory<char>, alloc);
+	constexpr size_t kVecCountOff = offsetof(CUtlVector<char>, size);
 	// Steam invokes BuildDepotDependency in pairs: flag 0 builds the
 	// acquisition target and flag 1 describes the installed side.
 	constexpr uint32_t kTargetPlanFlag = 0;
@@ -579,7 +584,7 @@ namespace
 	//
 	// Defensive: bail on an implausible vector (null base / out-of-range count)
 	// so a signature/ABI drift degrades to a harmless pass-through.
-	void* hkBuildDepot(void* ctx, uint32_t flag, void* depots, uint32_t a3)
+	void* hkBuildDepot(void* ctx, uint32_t flag, void* depots, void* a3)
 	{
 		if (depots)
 		{
@@ -867,5 +872,10 @@ namespace ManifestBind
 			LM_UnhookCode(g_builder.addr, g_builder.tramp, g_builder.size);
 		}
 		g_builder = BuildDetour{};
+	}
+
+	bool builderInstalled()
+	{
+		return g_builder.size != 0;
 	}
 }
