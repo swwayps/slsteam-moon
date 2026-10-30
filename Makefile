@@ -739,7 +739,7 @@ test-pics:
 
 test-process-lock:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src \
-		tools/test_process_lock.cpp -o /tmp/test_process_lock
+		tools/test_process_lock.cpp -Wl,--wrap=flock -o /tmp/test_process_lock
 	/tmp/test_process_lock
 
 test-atomic-file:

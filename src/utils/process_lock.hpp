@@ -46,8 +46,16 @@ public:
 		usable_ = true;
 
 		const int mode = LOCK_EX | (nonBlocking ? LOCK_NB : 0);
-		if (::flock(fd_, mode) != 0)
+		int result = 0;
+		do
 		{
+			result = ::flock(fd_, mode);
+		} while (result != 0 && errno == EINTR);
+		if (result != 0)
+		{
+			// Only contention means somebody else holds it. Any other error
+			// (ENOLCK on a network home) is no lock we can trust.
+			if (errno != EWOULDBLOCK) usable_ = false;
 			::close(fd_);
 			fd_ = -1;
 		}
