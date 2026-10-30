@@ -483,18 +483,21 @@ bool fetchManifestBlob(uint64_t gid, uint32_t depotId,
 
 bool isAnyManagedDownloadActive(uint32_t appIdHint)
 {
-	const std::string steamRoot = findSteamRootForBlob();
-	const auto downloading = [&steamRoot](uint32_t appId)
+	// Steam writes an appmanifest from the state its app manager holds, so the
+	// file is only read before that interface is resolved.
+	IClientAppManager* const appManager = g_pClientAppManager;
+	std::string steamRoot;
+	if (!appManager) steamRoot = findSteamRootForBlob();
+	const auto downloading = [appManager, &steamRoot](uint32_t appId)
 	{
-		if (g_pClientAppManager &&
-		    appStateIsDownloading(static_cast<uint32_t>(
-			    g_pClientAppManager->getAppInstallState(appId))))
-			return true;
-		return appStateIsDownloading(appManifestState(steamRoot, appId));
+		const uint32_t state = appManager
+			? static_cast<uint32_t>(appManager->getAppInstallState(appId))
+			: appManifestState(steamRoot, appId);
+		return appStateIsDownloading(state);
 	};
 	if (appIdHint && downloading(appIdHint)) return true;
-	// Asked once per depot while Steam plans; the fleet scan reads one
-	// appmanifest per managed app, so it runs once per window.
+	// Asked once per depot while Steam plans, so the fleet answer is reused
+	// for a short window.
 	static DownloadActivityCache fleet;
 	return fleet.get(steadyNowMs(), [&]
 	{

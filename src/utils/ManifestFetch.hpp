@@ -17,8 +17,9 @@ namespace ManifestFetch
 		return (state & (0x100u | 0x400u)) != 0;
 	}
 
-	// Remembers one answer for a short window. Concurrent askers wait for the
-	// running scan instead of starting their own.
+	// Remembers one answer for a short window. The scan calls Steam, so it runs
+	// outside the lock: a caller that holds a Steam lock must never wait for a
+	// scan that waits for that lock. Callers in a stale window may both scan.
 	class DownloadActivityCache
 	{
 	public:
@@ -27,14 +28,16 @@ namespace ManifestFetch
 		template <typename Scan>
 		bool get(std::int64_t nowMs, Scan&& scan)
 		{
-			std::lock_guard lock(m_mutex);
-			if (!m_valid || nowMs - m_checkedAtMs >= kWindowMs)
 			{
-				m_active = scan();
-				m_checkedAtMs = nowMs;
-				m_valid = true;
+				std::lock_guard lock(m_mutex);
+				if (m_valid && nowMs - m_checkedAtMs < kWindowMs) return m_active;
 			}
-			return m_active;
+			const bool active = scan();
+			std::lock_guard lock(m_mutex);
+			m_active = active;
+			m_checkedAtMs = nowMs;
+			m_valid = true;
+			return active;
 		}
 
 	private:
