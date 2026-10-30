@@ -56,6 +56,25 @@ check "C4 a carriage return is refused" \
 	'! run_config "$(printf "Key: value\r\n")"'
 check "C5 a missing config file is refused" \
 	'rm -f "$TMP/res/config.yaml"; ! (cd "$TMP" && bash embed-config.sh >/dev/null 2>&1)'
+# ── a refusal stops the build ───────────────────────────────────────────────
+# The header is tracked, so a refused regeneration left the previous one in
+# place and obj/config.o compiled it: the build passed with the old config.
+if command -v make >/dev/null 2>&1; then
+	mkdir -p "$TMP/mk/res" "$TMP/mk/src"
+	cp "$REPO/embed-config.sh" "$TMP/mk/"
+	printf '// previous header\n' > "$TMP/mk/src/config_default.hpp"
+	touch -d '2000-01-01' "$TMP/mk/src/config_default.hpp"
+	printf 'int main() { return 0; }\n' > "$TMP/mk/src/config.cpp"
+	printf 'Key: value\r\n' > "$TMP/mk/res/config.yaml"
+	check "M1 a refused config fails the build" \
+		'! make -s -C "$TMP/mk" -f "$REPO/Makefile" obj/config.o CXX=true >/dev/null 2>&1'
+	check "M1b the previous header is left as it was" \
+		'grep -q "previous header" "$TMP/mk/src/config_default.hpp"'
+	printf 'Key: value\n' > "$TMP/mk/res/config.yaml"
+	check "M2 an accepted config builds with a regenerated header" \
+		'make -s -C "$TMP/mk" -f "$REPO/Makefile" obj/config.o CXX=true >/dev/null 2>&1 &&
+		 grep -q "Key: value" "$TMP/mk/src/config_default.hpp"'
+fi
 
 # ── the generated header actually compiles ──────────────────────────────────
 if command -v g++ >/dev/null 2>&1; then

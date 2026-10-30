@@ -184,8 +184,11 @@ ticket-grabber:
 	$(MAKE) -C tools/ticket-grabber
 
 -include $(deps)
-obj/config.o: src/config.cpp res/config.yaml
-	$(shell ./embed-config.sh)
+# A real target, so a refused config fails the build instead of compiling the
+# header the repository already holds.
+src/config_default.hpp: res/config.yaml embed-config.sh
+	./embed-config.sh
+obj/config.o: src/config.cpp src/config_default.hpp
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -isysteminclude -MMD -MP -c $< -o $@
 
