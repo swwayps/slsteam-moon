@@ -432,14 +432,11 @@ static void load()
 		return;
 	}
 
-	//This should never happen, but better be safe than sorry in case I refactor someday
-	if (!LM_FindModule("steamclient.so", &g_modSteamClient))
-	{
-		unload();
-		return;
-	}
-	// steamui.so maps after steamclient.so; the next la_objopen retries.
-	if (!LM_FindModule("steamui.so", &g_modSteamUI))
+	// Either module can map first (steamui.so does on the 2026-10 client); the
+	// next la_objopen retries. Nothing is set up yet, so nothing is torn down:
+	// a teardown here stops the manifest donor for the whole session.
+	if (!LM_FindModule("steamclient.so", &g_modSteamClient) ||
+	    !LM_FindModule("steamui.so", &g_modSteamUI))
 	{
 		return;
 	}
