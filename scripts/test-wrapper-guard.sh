@@ -45,6 +45,14 @@ FN="$(awk '
 HOME_DIR="$(mktemp -d)"
 export HOME="$HOME_DIR"
 export XDG_STATE_HOME="$HOME_DIR/.local/state"
+# The wrapper starts the guardian through the user manager and raises desktop
+# notices. Stubs first on PATH log those calls and keep them off the session
+# that runs the test.
+STUB_BIN="$HOME_DIR/stub-bin"; mkdir -p "$STUB_BIN"
+printf '#!/bin/sh\nprintf "systemctl %%s\\n" "$*" >> "%s/session-calls.log"\nexit 1\n' "$HOME_DIR" > "$STUB_BIN/systemctl"
+printf '#!/bin/sh\nprintf "notify-send %%s\\n" "$*" >> "%s/session-calls.log"\n' "$HOME_DIR" > "$STUB_BIN/notify-send"
+chmod +x "$STUB_BIN/systemctl" "$STUB_BIN/notify-send"
+export PATH="$STUB_BIN:$PATH"
 SLSDIR="$HOME_DIR/.local/share/SLSsteam"
 GUARD_DIR="$XDG_STATE_HOME/slsteam-moon"
 
@@ -466,6 +474,14 @@ kill "$lumen_decoy" 2>/dev/null; wait "$lumen_decoy" 2>/dev/null
   && ok "a process naming the sidecar path does not stop the sidecar" \
   || bad "the sidecar was skipped because another process names its path"
 rm -rf "$LUMEN_TEST_DIR" "$LUMEN_MARK"
+# The wrapper asks the user manager to start the guardian and raises notices;
+# both must reach the stubs, never the real session.
+grep -q '^systemctl --user' "$HOME_DIR/session-calls.log" 2>/dev/null \
+  && ok "the wrapper's user manager calls reach the stub" \
+  || bad "the wrapper's user manager calls left the harness"
+grep -q '^notify-send ' "$HOME_DIR/session-calls.log" 2>/dev/null \
+  && ok "the wrapper's notices reach the stub" \
+  || bad "the wrapper's notices left the harness"
 
 if [ "${SLSM_KEEP_TEST_TMP:-0}" = 1 ]; then
 	echo "test artifacts kept at $HOME_DIR"

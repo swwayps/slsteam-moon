@@ -17,6 +17,14 @@ check() { # desc expected actual
 }
 
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
+REAL_HOME="$HOME"
+# Every default of the library that names the host (the invoking user's home,
+# the system XDG layers, the runtime and state folders, sudo) points into $TMP;
+# cases that need a layer still pass their own.
+export HOME="$TMP/home" DC_HOME="$TMP/home" XDG_STATE_HOME="$TMP/home/.local/state" \
+  XDG_RUNTIME_DIR="$TMP/runtime" XDG_DATA_DIRS="$TMP/xdg-data" XDG_CONFIG_DIRS="$TMP/xdg-config" \
+  DC_SYS_APPS="$TMP/xdg-data/applications" DC_SYS_AUTOSTART="$TMP/xdg-config/autostart" DC_SUDO=""
+mkdir -p "$HOME" "$XDG_RUNTIME_DIR" "$XDG_DATA_DIRS" "$XDG_CONFIG_DIRS"
 
 # classify: real launcher
 cat > "$TMP/real.desktop" <<EOF
@@ -1409,6 +1417,10 @@ stderrE=$( (XDG_DATA_HOME="$HE/data" XDG_DATA_DIRS="$TMP/emptyE" XDG_CONFIG_HOME
   dc_guardian_run >/dev/null; echo STDERR-MARK >&2) 2>&1 )
 check "guardian pass leaves the caller's stderr open" "yes" \
   "$(case "$stderrE" in *STDERR-MARK*) echo yes ;; *) echo no ;; esac)"
+# Backups mirror the patched path, so a case that fell back to the invoking
+# user's home would leave this run's tmp tree in that user's backup store.
+check "the run stores nothing in the invoking user's home" "no" \
+  "$([ -e "$REAL_HOME/.local/share/SLSsteam/backup/${TMP#/}" ] && echo yes || echo no)"
 
 [ "$fail" = 0 ] && echo "ALL PASS" || echo "FAILURES"
 exit "$fail"

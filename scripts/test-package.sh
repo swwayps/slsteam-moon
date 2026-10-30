@@ -47,6 +47,22 @@ fi
 STUBBED=()
 BACKUP_DIR="$(mktemp -d)"
 BACKED_UP=()
+STALE_VERSION="selftest-stale-$$"
+TEST_VERSION="selftest-$$"
+INCOMPATIBLE_VERSION="selftest-incompatible-$$"
+cleanup() {
+    rm -rf "dist/slsteam-moon-${STALE_VERSION}" \
+           "dist/slsteam-moon-linux-${STALE_VERSION}.zip" \
+           "dist/slsteam-moon-${TEST_VERSION}" \
+           "dist/slsteam-moon-linux-${TEST_VERSION}.zip" \
+           "dist/slsteam-moon-${INCOMPATIBLE_VERSION}" \
+           "dist/slsteam-moon-linux-${INCOMPATIBLE_VERSION}.zip" "${ABI_TMP:-}"
+    for f in "${STUBBED[@]}"; do rm -f "$f"; done
+    for f in "${BACKED_UP[@]}"; do cp -a "$BACKUP_DIR/$(basename "$f")" "$f"; done
+    rm -rf "$BACKUP_DIR"
+}
+# Installed before the stubs replace bin/, so an interrupted run restores it.
+trap cleanup EXIT
 for f in bin/SLSsteam.so bin/pattern-refresh; do
     mkdir -p bin
     if [ -e "$f" ]; then
@@ -113,21 +129,6 @@ else
     bad "scripts/check-abi.sh is missing"
 fi
 
-STALE_VERSION="selftest-stale-$$"
-TEST_VERSION="selftest-$$"
-INCOMPATIBLE_VERSION="selftest-incompatible-$$"
-cleanup() {
-    rm -rf "dist/slsteam-moon-${STALE_VERSION}" \
-           "dist/slsteam-moon-linux-${STALE_VERSION}.zip" \
-           "dist/slsteam-moon-${TEST_VERSION}" \
-           "dist/slsteam-moon-linux-${TEST_VERSION}.zip" \
-           "dist/slsteam-moon-${INCOMPATIBLE_VERSION}" \
-           "dist/slsteam-moon-linux-${INCOMPATIBLE_VERSION}.zip" "$ABI_TMP"
-    for f in "${STUBBED[@]}"; do rm -f "$f"; done
-    for f in "${BACKED_UP[@]}"; do cp -a "$BACKUP_DIR/$(basename "$f")" "$f"; done
-    rm -rf "$BACKUP_DIR"
-}
-trap cleanup EXIT
 
 # Non-empty but stale binaries must not be accepted as a release input. This
 # catches the ignored-bin failure mode where package.sh silently copies a
