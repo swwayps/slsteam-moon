@@ -40,6 +40,7 @@
 
 #include <algorithm>
 #include <cerrno>
+#include <charconv>
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
@@ -49,6 +50,7 @@
 #include <dlfcn.h>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <random>
 #include <sstream>
 #include <string>
@@ -232,6 +234,37 @@ void writeCachedCmList(const std::vector<Endpoint>& eps)
 	for (const auto& e : eps) ofs << e.host << ':' << e.port << '\n';
 }
 
+// The cell Steam stores in config.vdf ("CellIDServerOverride"); 0 when there
+// is none. The directory lists the CMs nearest to that cell first.
+uint32_t steamCellId()
+{
+	const char* home = std::getenv("HOME");
+	if (!home) return 0;
+	for (const char* root : {"/.steam/steam", "/.steam/debian-installation", "/.local/share/Steam"})
+	{
+		std::ifstream in(std::string(home) + root + "/config/config.vdf");
+		if (!in) continue;
+		const std::string text((std::istreambuf_iterator<char>(in)), {});
+		const std::string key = "\"CellIDServerOverride\"";
+		const auto at = text.find(key);
+		const auto open = at == std::string::npos ? at : text.find('"', at + key.size());
+		if (open == std::string::npos) return 0;
+		uint32_t cell = 0;
+		const char* begin = text.data() + open + 1;
+		const char* end = text.data() + text.size();
+		const auto parsed = std::from_chars(begin, end, cell);
+		return parsed.ec == std::errc{} && parsed.ptr != begin && parsed.ptr < end &&
+		       *parsed.ptr == '"' ? cell : 0;
+	}
+	return 0;
+}
+
+std::string cmListUrl()
+{
+	return "https://api.steampowered.com/ISteamDirectory/GetCMListForConnect/v1/"
+	       "?cellid=" + std::to_string(steamCellId()) + "&cmtype=websockets&format=json";
+}
+
 std::vector<Endpoint> fetchCmList(AppInfoProvision::NetworkFailure& failure,
                                   const BatchBudget& budget)
 {
@@ -249,9 +282,7 @@ std::vector<Endpoint> fetchCmList(AppInfoProvision::NetworkFailure& failure,
 	}
 
 	std::vector<Endpoint> out;
-	const std::string url =
-		"https://api.steampowered.com/ISteamDirectory/GetCMListForConnect/v1/"
-		"?cellid=0&cmtype=websockets&format=json";
+	const std::string url = cmListUrl();
 	std::string body;
 	failure = httpsGet(url, body, budget);
 	if (failure != AppInfoProvision::NetworkFailure::None) return out;
@@ -767,9 +798,7 @@ FetchResult fetchProductInfoDetailed(
 			std::error_code ec;
 			std::filesystem::remove(cmListCachePath(), ec);
 			std::vector<Endpoint> fresh;
-			const std::string url =
-				"https://api.steampowered.com/ISteamDirectory/GetCMListForConnect/v1/"
-				"?cellid=0&cmtype=websockets&format=json";
+			const std::string url = cmListUrl();
 			std::string body;
 			const auto freshFailure = httpsGet(url, body, budget);
 			if (freshFailure == AppInfoProvision::NetworkFailure::None)
