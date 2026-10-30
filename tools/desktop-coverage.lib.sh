@@ -1145,7 +1145,8 @@ dc_guardian_seed_autostart() {
 dc_guardian_patch_shortcut() {
 	local shortcut class before after result
 	shortcut="$(dc_desktop_dir)/steam.desktop"
-	[ -e "$shortcut" ] || [ -L "$shortcut" ] || return 0
+	# A dangling link launches nothing, so there is nothing to cover.
+	[ -e "$shortcut" ] || return 0
 	if [ "${DC_STEAM_INSTALLED:-0}" != 1 ] && dc_is_prebootstrap_seed "$shortcut"; then
 		return 0
 	fi
