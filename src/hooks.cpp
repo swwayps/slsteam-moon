@@ -1303,7 +1303,8 @@ namespace Hooks
 	static bool configStoreHookReady = false;
 	static bool friendGameHookReady = false;
 	static bool traceIpcHookReady = false;
-	static bool manifestCodeHookReady = false;
+	static bool routeMsgHookReady = false;
+	static bool manifestRequestHookReady = false;
 
 	DetourHook<TraceIPC_t> TraceIPC;
 
@@ -1474,13 +1475,17 @@ bool Hooks::setup()
 		&& CSteamEngine_ProcessIPCFrame.setup(Patterns::CSteamEngine::ProcessIPCFrame, &hkSteamEngine_ProcessIPCFrame)
 		&& CSteamEngine_SetAppIdForCurrentPipe.setup(Patterns::CSteamEngine::SetAppIdForCurrentPipe, &hkSteamEngine_SetAppIdForCurrentPipe);
 
-	// Only the manifest request-code fallback rides these two detours.
-	manifestCodeHookReady =
-		CJobMgr_BRouteMsgToJob.setup(Patterns::CJobMgr::BRouteMsgToJob, &ManifestCode::hkBRouteMsgToJob)
-		&& CDepotDownloadMgr_BYldRequestDepotManifest.setup(Patterns::CDepotDownloadMgr::BYldRequestDepotManifest, &ManifestCode::hkCDepotDownloadMgr_BYldRequestDepotManifest);
-	if (!manifestCodeHookReady)
+	// Only the manifest request-code fallback rides these two detours, and
+	// each works alone: BYldRequestDepotManifest waits for a staged blob before
+	// Steam's own request, BRouteMsgToJob feeds GetManifestRequestCode answers
+	// to the donor (x86-64 reads those in the CM receive hook instead).
+	routeMsgHookReady =
+		CJobMgr_BRouteMsgToJob.setup(Patterns::CJobMgr::BRouteMsgToJob, &ManifestCode::hkBRouteMsgToJob);
+	manifestRequestHookReady =
+		CDepotDownloadMgr_BYldRequestDepotManifest.setup(Patterns::CDepotDownloadMgr::BYldRequestDepotManifest, &ManifestCode::hkCDepotDownloadMgr_BYldRequestDepotManifest);
+	if (!manifestRequestHookReady)
 	{
-		g_pLog->warn("Request-code routing hooks unavailable; manifest request-code fallback disabled\n");
+		g_pLog->warn("BYldRequestDepotManifest hook unavailable; manifest request fallback disabled\n");
 	}
 	// TraceIPC only logs IPC calls under ExtendedLogging.
 	traceIpcHookReady = TraceIPC.setup(Patterns::TraceIPC, &hkTraceIPC);
@@ -1637,11 +1642,10 @@ bool Hooks::place()
 		TraceIPC.place();
 	bool required = CCMInterface_RecvPkt.place();
 
-	if (manifestCodeHookReady)
-	{
+	if (routeMsgHookReady)
 		CJobMgr_BRouteMsgToJob.place();
+	if (manifestRequestHookReady)
 		CDepotDownloadMgr_BYldRequestDepotManifest.place();
-	}
 	required &= CSteamEngine_ProcessIPCFrame.place();
 	required &= CSteamEngine_SetAppIdForCurrentPipe.place();
 

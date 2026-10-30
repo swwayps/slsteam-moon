@@ -199,6 +199,9 @@ int main(int argc, char** argv)
 	expect(ownership == std::string::npos ||
 	       static_cast<std::uint8_t>(ui[ownership + 2]) == 0x56,
 	       "CSteamApp::OwnershipFlagsReference: expected mov edx,[r14+0x1c]");
+	// ManifestCode: the request Steam sends when a manifest is not on disk.
+	(void)resolveUnique(client, "CDepotDownloadMgr::BYldRequestDepotManifest",
+		"41 57 48 8D 41 FF 41 89 D7 41 56 41 55 41 54 4D 89 C4 55 48 89 CD 53 48 89 FB 48 81 EC ? ? 00 00 48 83 F8 FD", source);
 	// DepotQuarantine: both chunk-completion callbacks.
 	(void)resolveUnique(client, "CDepotDownloadMgr::OnChunkUnpacked[cdecl]",
 		"55 48 89 E5 41 57 41 56 49 89 D6 41 55 41 89 CD 41 54 4D 89 C4 53 48 89 FB 48 81 EC ? ? 00 00 48 8B 05 ? ? ? ? 48 89 B5 ? ? FF FF", source);

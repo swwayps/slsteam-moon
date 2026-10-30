@@ -1127,6 +1127,9 @@ namespace Patterns
 
 	namespace CJobMgr
 	{
+		// Not ported: on i386 this only fed GetManifestRequestCode answers to
+		// the donor, which the x86-64 build reads in the CM receive hook
+		// (ManifestCode::recvServiceMethodResponse) instead.
 		Pattern_t BRouteMsgToJob
 		{
 			"CJobMgr::BRouteMsgToJob",
@@ -1137,10 +1140,15 @@ namespace Patterns
 
 	namespace CDepotDownloadMgr
 	{
+		// x86-64 entry (beta 1793235415 0x13c6b10): (this, appId, depotId,
+		// gid, branch, a6), called only from ProcessDepotManifest when the
+		// manifest is not on disk; it starts by rejecting gid 0 and -1/-2.
+		// One match on 1792711043, 1793235415 and the 2026-10-21 stable
+		// x86-64 client.
 		Pattern_t BYldRequestDepotManifest
 		{
 			"CDepotDownloadMgr::BYldRequestDepotManifest",
-			"",
+			"41 57 48 8D 41 FF 41 89 D7 41 56 41 55 41 54 4D 89 C4 55 48 89 CD 53 48 89 FB 48 81 EC ? ? 00 00 48 83 F8 FD",
 			SigFollowMode::None
 		};
 	}
