@@ -154,7 +154,7 @@ printf '[Desktop Entry]\nName=Steam\nExec=env MANGOHUD=1 /usr/bin/steam %%U\n' >
 DC_BACKUP_ROOT="$TMP/central-env" dc_patch_one "$TMP/env-patch.desktop"
 check "patch_one accepts env-prefixed rewritten Exec" "patched" "$(dc_classify "$TMP/env-patch.desktop")"
 check "env-prefixed patch keeps prefix" "Exec=env MANGOHUD=1 $WRAPPER %U" "$(grep -m1 '^Exec=' "$TMP/env-patch.desktop")"
-if dc_file_has_wrapper_exec "$TMP/env-patch.desktop"; then wrapper_valid=yes; else wrapper_valid=no; fi
+if _dc_file_has_primary_wrapper_exec "$TMP/env-patch.desktop"; then wrapper_valid=yes; else wrapper_valid=no; fi
 check "env-prefixed patch validates exact wrapper token" "yes" "$wrapper_valid"
 
 # A stale desktop entry may already carry the old LD_AUDIT assignment.  The
@@ -171,13 +171,13 @@ WRAPPER='/tmp/sls\fake/path/steam'
 backslash_rewrite="$(dc_rewrite_exec_line '/usr/bin/steam %U')"
 check "rewrite uses four backslashes for Desktop Entry" '"/tmp/sls\\\\fake/path/steam" %U' "$backslash_rewrite"
 printf '[Desktop Entry]\nExec=%s\n' "$backslash_rewrite" > "$TMP/backslash-wrapper.desktop"
-if dc_file_has_wrapper_exec "$TMP/backslash-wrapper.desktop"; then wrapper_valid=yes; else wrapper_valid=no; fi
+if _dc_file_has_primary_wrapper_exec "$TMP/backslash-wrapper.desktop"; then wrapper_valid=yes; else wrapper_valid=no; fi
 check "validation matches wrapper backslashes exactly" "yes" "$wrapper_valid"
 WRAPPER='/tmp/sls#fake/path/steam'
 reserved_rewrite="$(dc_rewrite_exec_line '/usr/bin/steam %U')"
 check "rewrite quotes reserved wrapper characters" '"/tmp/sls#fake/path/steam" %U' "$reserved_rewrite"
 printf '[Desktop Entry]\nExec=%s\n' "$reserved_rewrite" > "$TMP/reserved-wrapper.desktop"
-if dc_file_has_wrapper_exec "$TMP/reserved-wrapper.desktop"; then wrapper_valid=yes; else wrapper_valid=no; fi
+if _dc_file_has_primary_wrapper_exec "$TMP/reserved-wrapper.desktop"; then wrapper_valid=yes; else wrapper_valid=no; fi
 check "validation resolves reserved wrapper exactly" "yes" "$wrapper_valid"
 WRAPPER="$normal_wrapper"
 
@@ -966,7 +966,12 @@ H22="$TMP/home22"; mkdir -p "$H22/data/applications" "$H22/conf/autostart" \
 printf '[Desktop Entry]\nName=Steam\nExec="/usr/bin/steam %%U\n' > "$H22/data/applications/steam.desktop"
 : > "$GUARDIAN_EVENTS"
 check "CLI --user is accepted and best-effort" "0" "$(cli_status "$H22" --user)"
-check "CLI --system is accepted" "0" "$(cli_status "$H22" --system)"
+# setup.sh patches the system layer in process, so the CLI has no mode for it.
+check "CLI rejects --system" "2" "$(cli_status "$H22" --system)"
+# The library grants no privilege on its own: a system pass uses sudo only when
+# its caller passes it.
+check "the library defaults to no privilege command" "" \
+  "$(env -u DC_SUDO bash -c '. "$1/tools/desktop-coverage.lib.sh"; printf %s "$DC_SUDO"' bash "$HERE")"
 check "CLI --guardian reports mandatory failure" "2" "$(cli_status "$H22" --guardian)"
 check "CLI rejects missing mode" "2" "$(cli_status "$H22")"
 check "CLI rejects unknown mode" "2" "$(cli_status "$H22" --unknown)"

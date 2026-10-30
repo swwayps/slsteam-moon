@@ -400,18 +400,6 @@ dc_rewrite_exec_line() {
 	_dc_exec_scan rewrite "$1"
 }
 
-# dc_file_has_wrapper_exec <desktop-file> — true when an Exec line tokenizes to
-# the exact wrapper path, including commands with a valid env prefix.
-dc_file_has_wrapper_exec() {
-	local f="$1" line
-	[ -f "$f" ] || return 1
-	while IFS= read -r line || [ -n "$line" ]; do
-		case "$line" in
-			Exec=*) _dc_exec_scan wrapper "${line#Exec=}" >/dev/null && return 0 ;;
-		esac
-	done < "$f"
-	return 1
-}
 
 # _dc_file_exec_syntax_valid <desktop-file> — reject the whole entry before any
 # mutation when an Exec line contains malformed or unterminated quoting.
@@ -573,8 +561,7 @@ _dc_exec_is_steam_shell_wrapper() {
 # and tagging such a file would make every later run believe it is done.
 # $2="sudo" for system files. Returns 0 on patch, 1 on no-op/failure.
 dc_patch_one() {
-	local f="$1" S="${2:-}" bak tmp kind
-	bak="$(dc_backup_path "$f")"
+	local f="$1" S="${2:-}" tmp kind
 	[ -f "$f" ] || return 1
 	_dc_file_exec_syntax_valid "$f" || return 1
 	kind="$(dc_classify "$f")"
@@ -695,8 +682,8 @@ dc_patch_shortcut() {
 # Overridable roots (tests inject fakes; real callers leave them at defaults).
 : "${DC_SYS_APPS:=/usr/share/applications}"
 : "${DC_SYS_AUTOSTART:=/etc/xdg/autostart}"
-# Command used to write system-owned files. Default "sudo"; tests set it empty.
-: "${DC_SUDO:=sudo}"
+# Command used to write system-owned files; empty unless the caller grants one.
+: "${DC_SUDO:=}"
 
 # dc_desktop_dir — honour XDG_DESKTOP_DIR from user-dirs.dirs, else ~/Desktop.
 # Parse the one supported assignment without sourcing the file. Only literal

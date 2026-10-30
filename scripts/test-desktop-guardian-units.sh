@@ -38,7 +38,6 @@ contains "service uses idle IO scheduling" "$service" $'\nIOSchedulingClass=idle
 timer="$(dgu_timer_content)"
 contains "timer starts after login" "$timer" 'OnStartupSec=30s'
 contains "timer repeats every five minutes" "$timer" 'OnUnitActiveSec=5min'
-contains "timer is persistent" "$timer" 'Persistent=true'
 
 USER_APPS="$TMP/User Data/applications"
 USER_AUTOSTART="$TMP/User Config/autostart"

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Thin CLI over desktop-coverage.lib.sh. Installed to $SLSDIR; invoked by the
-# wrapper/Lumen (--user), setup (--system), and the user service (--guardian).
-# Legacy --user calls remain best-effort; guardian failures are explicit.
+# wrapper/Lumen (--user) and the user service (--guardian). setup.sh patches the
+# system layer in process. --user calls are best-effort; guardian failures are
+# explicit.
 SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
 : "${WRAPPER:=$HOME/.local/share/SLSsteam/path/steam}"
 # Prefer the shared launcher eligibility check when this helper was installed
@@ -71,9 +72,6 @@ case "$1" in
 			dgu_install_autostart_dropins || true
 		fi
 		exit 0
-		;;
-	--system)
-		dc_run --system
 		;;
 	--guardian)
 		dc_guardian_run

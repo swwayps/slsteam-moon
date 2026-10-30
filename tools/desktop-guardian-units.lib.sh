@@ -45,7 +45,6 @@ Description=Periodic Steam desktop launch coverage reconciliation
 [Timer]
 OnStartupSec=30s
 OnUnitActiveSec=5min
-Persistent=true
 Unit=slsteam-desktop-guardian.service
 
 [Install]
