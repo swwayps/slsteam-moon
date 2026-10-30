@@ -16,9 +16,8 @@
 //
 // THE FIX (this unit): a pure, last-resort text repair that normalises the
 // indentation of block-sequence items so the document parses again, WITHOUT
-// touching a file that is already well-formed. It runs only after yaml-cpp has
-// already rejected the file, and the caller re-validates the result, so it can
-// never make a parseable file worse.
+// touching a file that is already well-formed. It runs before parsing, and
+// the caller persists its result only when that parses.
 //
 // Build:
 //   g++ -O3 -flto=auto -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \

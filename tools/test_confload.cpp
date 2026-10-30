@@ -7,8 +7,7 @@
 //     fix (self-heal) so the user's game list survives,
 //   - a file that cannot be salvaged reports Failed so the caller falls back to
 //     defaults and Steam still boots.
-// It NEVER throws, so it cannot rely on the release build's (unreliable)
-// exception landing pads.
+// It NEVER throws.
 //
 // Build:
 //   g++ -O3 -flto=auto -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
@@ -115,6 +114,19 @@ int main() {
     check(outcome == Outcome::ParsedAsIs &&
           node["X"][0]["note"].as<std::string>("") == "- not an item",
           "a block scalar whose text starts with a dash is kept as written");
+    // A key inside an item that holds a list, then the next outer item: the
+    // outer item belongs to the list above the key, not to the key's list.
+    outcome = ConfLoad::parseWithRepair(
+        "Plugin:\n  - name: a\n    ids:\n      - 1\n      - 2\n  - name: b\n", node, repaired);
+    check(outcome == Outcome::ParsedAsIs && node["Plugin"].size() == 2 &&
+          node["Plugin"][0]["ids"].size() == 2,
+          "a list under a key inside an item is kept as written");
+    // A key's block scalar whose lines start with dashes is text, not items.
+    outcome = ConfLoad::parseWithRepair(
+        "Notes: |\n  - first\n    - nested text\n", node, repaired);
+    check(outcome == Outcome::ParsedAsIs &&
+          node["Notes"].as<std::string>("") == "- first\n  - nested text\n",
+          "a key's block scalar with dashed lines is kept as written");
   }
   // 5) Empty file parses as-is (a null document; defaults kick in downstream).
   {
