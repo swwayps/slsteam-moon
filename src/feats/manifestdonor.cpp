@@ -19,6 +19,7 @@
 #include <future>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <random>
 #include <string>
 #include <string_view>
@@ -196,9 +197,12 @@ namespace
 		return true;
 	}
 
-	uint64_t requestCode(uint32_t appId, uint32_t depotId, uint64_t gid)
+	// No value when nothing reached Steam or the worker is stopping; 0 when
+	// Steam answered without a code or did not answer within 30 s.
+	std::optional<uint64_t> requestCode(uint32_t appId, uint32_t depotId, uint64_t gid)
 	{
 		auto request = ManifestCode::requestCode(appId, depotId, gid);
+		if (!request.sent) return std::nullopt;
 		const auto deadline = Clock::now() + std::chrono::seconds(30);
 		while (g_running && Clock::now() < deadline &&
 		       request.result.wait_for(std::chrono::milliseconds(100)) !=
@@ -211,7 +215,7 @@ namespace
 			g_pLog->info("Donor: request stopped or timed out for depot=%u gid=%llu\n",
 			             depotId, static_cast<unsigned long long>(gid));
 			ManifestCode::discardRequest(request.jobId);
-			return 0;
+			return g_running ? std::optional<uint64_t>(0) : std::nullopt;
 		}
 		return request.result.get();
 	}
@@ -315,17 +319,20 @@ namespace
 			g_pLog->debug("Donor: requesting app=%u depot=%u gid=%llu\n",
 			             appId, wanted.depotId,
 			             static_cast<unsigned long long>(wanted.gid));
-			const uint64_t code = requestCode(appId, wanted.depotId, wanted.gid);
+			const auto code = requestCode(appId, wanted.depotId, wanted.gid);
+			// Nothing reached Steam (no send context yet, as right after a CM
+			// reconnect): end the cycle without counting a request or a refusal.
+			if (!code) break;
 			++attempted;
 			flushCapturedCodes();
 			if (g_generation.load() != generation ||
 			    !sessionAlive->load(std::memory_order_acquire)) break;
 			++g_mintedThisSession;
-			if (code)
+			if (*code)
 			{
 				if (pendingCount == 0) batchStarted = Clock::now();
 				body += std::to_string(wanted.depotId) + ":"
-				      + std::to_string(wanted.gid) + ":" + std::to_string(code) + "\n";
+				      + std::to_string(wanted.gid) + ":" + std::to_string(*code) + "\n";
 				++pendingCount;
 				++submitted;
 			}

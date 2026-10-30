@@ -435,6 +435,7 @@ CodeRequest requestCode(uint32_t appId, uint32_t depotId, uint64_t gid)
 	}
 	else
 	{
+		request.sent = true;
 		g_pLog->debug("Donor: Steam WebSocket accepted job=%llu (%zu bytes)\n",
 		             static_cast<unsigned long long>(job), frame.size());
 	}
