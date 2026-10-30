@@ -1079,7 +1079,9 @@ int injectAllCached(const std::string& path)
 	for (std::filesystem::directory_iterator it(cacheDir, iterError), end;
 	     it != end && !iterError; it.increment(iterError))
 	{
-		if (!it->is_regular_file()) continue;
+		// An entry that cannot be stat-ed (a symlink loop) is skipped.
+		std::error_code typeError;
+		if (!it->is_regular_file(typeError) || typeError) continue;
 		const auto fname = it->path().filename().string();
 		uint32_t expectedAppId = 0;
 		if (parsePicsBufferName(fname, expectedAppId))

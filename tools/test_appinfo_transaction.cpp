@@ -162,8 +162,17 @@ int main()
 	writeCache(cacheDir, 1002, 20, second);
 	writeCache(cacheDir, 1003, 30, orphan);
 	writeCache(cacheDir, 1004, 40, wireFor(111), true);
+	// A cache entry that cannot be stat-ed (a link to itself) is skipped. A
+	// throw here left Steam unhooked at every boot while it existed.
+	std::filesystem::create_symlink("loop", cacheDir + "/loop");
 
-	assert(AppInfoVdf::injectAllCached(appinfo) == 2);
+	bool injectThrew = false;
+	int injected = -1;
+	try { injected = AppInfoVdf::injectAllCached(appinfo); }
+	catch (...) { injectThrew = true; }
+	if (injectThrew) std::puts("FAIL: injectAllCached threw on an entry it cannot stat");
+	assert(!injectThrew && injected == 2);
+	std::filesystem::remove(cacheDir + "/loop");
 	assert(!std::filesystem::exists(cacheDir + "/picsbuffer_1003.bin"));
 	assert(!std::filesystem::exists(cacheDir + "/picsbuffer_1003.yaml"));
 	bool orphanQuarantined = false;
