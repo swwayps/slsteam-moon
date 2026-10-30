@@ -158,9 +158,23 @@ int main()
 	check(!std::filesystem::exists(steam + "/depotcache/3_4.manifest"),
 	      "a cut-off shipped manifest is not copied into depotcache");
 
+	// A cache lock that is not a private file of ours (mode 0644 here) is no
+	// lock: the shader-cache edit goes ahead instead of reading it as busy.
+	g_config.addedAppIds.set({123});
+	{
+		const std::string lockPath = configHome + "/SLSsteam/cache/.picsbuffer.lock";
+		std::ofstream(lockPath).close();
+		std::filesystem::permissions(lockPath, std::filesystem::perms(0644));
+		std::ofstream(steam + "/config/config.vdf", std::ios::trunc)
+			<< "\"InstallConfigStore\"\n{\n\t\"ShaderCacheManager\"\n\t{\n\t}\n}\n";
+		DepotKey::disableShaderCache();
+		check(readAll(steam + "/config/config.vdf").find("\"DisableShaderCache\"") !=
+		          std::string::npos,
+		      "an unusable cache lock does not stop the shader-cache edit");
+		std::filesystem::remove(lockPath);
+	}
 	// The preinit config.vdf edit treats an unusable Steam config folder (a
 	// symlink loop here) as absent instead of throwing out of setup().
-	g_config.addedAppIds.set({123});
 	std::filesystem::remove_all(steam + "/config");
 	std::filesystem::create_directory_symlink("config", steam + "/config");
 	bool shaderCacheThrew = false;

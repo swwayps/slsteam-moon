@@ -1302,7 +1302,7 @@ int PatternRefresh::refreshInstallation(
 			return 3;
 		}
 		refreshLock.emplace((patternRoot / ".state/.refresh.lock").string(), true);
-		if (!refreshLock->acquired())
+		if (refreshLock->heldByAnother())
 		{
 			setError(error, "embedded fallback remote refresh is already active");
 			return 3;

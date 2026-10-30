@@ -628,7 +628,7 @@ void disableShaderCache()
 		return;
 	}
 	ProcessLock::FileLock configLock(configLockPath, false);
-	if (!configLock.acquired())
+	if (configLock.heldByAnother())
 	{
 		g_pLog->debug("DepotKey: config.vdf writer lock is busy\n");
 		return;

@@ -927,7 +927,7 @@ bool injectApp(const std::string& path,
                const std::string& wireBuffer)
 {
 	ProcessLock::FileLock lock(appInfoLockPath(path));
-	if (!lock.acquired())
+	if (lock.heldByAnother())
 	{
 		g_pLog->info("AppInfoVdf: another writer owns %s; skipping app=%u\n",
 		              appInfoLockPath(path).c_str(), appid);

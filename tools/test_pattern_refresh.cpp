@@ -951,6 +951,40 @@ int main()
 	}
 
 	{
+		// A refresh lock that is not a private file of ours (here: mode 0644,
+		// as a vfat home or a root-made leftover gives) is no lock at all. Read
+		// as "another refresh is active", it stopped every remote refresh.
+		TempDirectory temporary;
+		const auto steamRoot = temporary.path / "steam";
+		const auto configRoot = temporary.path / "config";
+		const auto stateRoot = configRoot / "SLSsteam/patterns/.state";
+		std::filesystem::create_directories(steamRoot / "ubuntu12_32");
+		std::filesystem::create_directories(stateRoot);
+		writeBytes(steamRoot / "ubuntu12_32/steamclient.so", testElf());
+		writeBytes(steamRoot / "ubuntu12_32/steamui.so", testElf());
+		const auto lockPath = stateRoot / ".refresh.lock";
+		const int lockDescriptor = open(lockPath.c_str(), O_CREAT | O_RDWR | O_CLOEXEC, 0600);
+		if (lockDescriptor >= 0)
+		{
+			fchmod(lockDescriptor, 0644);
+			close(lockDescriptor);
+		}
+		HttpServer server({});
+		const MirrorBases mirrors
+		{
+			server.base("/github/"),
+			server.base("/cdn/"),
+			true,
+		};
+		(void)refreshInstallation(
+			steamRoot, configRoot, signing.publicKey,
+			RefreshMode::Remote, mirrors
+		);
+		expect(server.requestCount() > 0,
+		       "a refresh lock that is not a private file does not stop the remote refresh");
+	}
+
+	{
 		TempDirectory temporary;
 		const auto steamRoot = temporary.path / "steam";
 		const auto configRoot = temporary.path / "config";
