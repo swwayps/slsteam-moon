@@ -502,8 +502,10 @@ namespace
 	void writeLocalCatalog(bool steamUi)
 	{
 		LocalCatalogState& state = steamUi ? g_steamUiLocal : g_steamClientLocal;
-		if ((!state.writeEligible && !state.dirty)
-		    || (steamUi ? g_steamUiCatalog.has_value() : g_steamClientCatalog.has_value()))
+		// A pass served by the published catalog is written too: its entries
+		// passed the same checks a cached one does, and without a local cache
+		// every later boot hashes the whole module to find that catalog again.
+		if (!state.writeEligible && !state.dirty)
 			return;
 		const auto root = patternRoot();
 		const auto catalog = buildLocalCatalog(steamUi);

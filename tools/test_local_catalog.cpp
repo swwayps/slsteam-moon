@@ -1,10 +1,13 @@
 // A local pattern cache that lacks an optional locator the embedded resolver
 // then finds (a later build added the locator, or fixed its signature) is
 // written again with it, so the next boot reads it instead of scanning again.
+// A boot served by a published catalog writes the local cache too, so later
+// boots do not hash the whole module to find that catalog again.
 // Build: make test-local-catalog (links the whole object set).
 #include "../src/globals.hpp"
 #include "../src/log.hpp"
 #include "../src/patterns.hpp"
+#include "../src/utils.hpp"
 
 #include <algorithm>
 #include <cstdio>
@@ -73,6 +76,35 @@ bool has(const std::string& body, const char* text)
 	return body.find(text) != std::string::npos;
 }
 
+// What the log gained since `offset` bytes.
+std::string logSince(const std::string& path, std::size_t offset)
+{
+	const std::string body = slurp(path);
+	return offset < body.size() ? body.substr(offset) : std::string();
+}
+
+// A published catalog for this binary naming where the two fixture locators
+// resolved, in the canonical form the pattern-refresh helper activates.
+std::string publishedCatalog(const std::string& path)
+{
+	std::string body = "schema = 1\nplatform = \"linux32\"\ncomponent = \"steamclient\"\n"
+	                   "module_name = \"steamclient.so\"\nmodule_sha256 = \"" +
+	                   Utils::getFileSHA256(path.c_str()) + "\"\nmodule_size = " +
+	                   std::to_string(std::filesystem::file_size(path)) + "\ngnu_build_id = \"" +
+	                   Utils::getBuildId(path.c_str()) + "\"\nsteam_version = 1\n"
+	                   "consumer_commit = \"" + std::string(40, 'a') + "\"\n"
+	                   "minimum_consumer_schema = 1\nrevision = 1\nsource = \"deterministic\"\n";
+	for (const Pattern_t* pattern : {&g_kept, &g_added})
+	{
+		const std::string rva = std::to_string(pattern->matchAddress - g_modSteamClient.base);
+		body += "\n[[locators]]\nsymbol = \"" + pattern->symbol + "\"\nname = \"" +
+		        pattern->name + "\"\ntarget_rva = " + rva + "\nmatch_rva = " + rva +
+		        "\nsignature = \"" + pattern->pattern + "\"\nfollow_mode = \"None\"\n"
+		        "resolver = \"signature\"\nrequired = false\nmatch_count = 1\ntarget_count = 1\n";
+	}
+	return body;
+}
+
 } // namespace
 
 int main()
@@ -121,6 +153,52 @@ int main()
 	CHECK(written != 0 && inode(file) == written && slurp(file) == rewritten,
 	      "a pass that resolves nothing new leaves the cache alone");
 	CHECK(g_added.address != LM_ADDRESS_BAD, "the added locator still resolves");
+
+	// A boot served by a published catalog keeps its result as the local cache,
+	// so later boots skip the published path and its hash of the whole module.
+	char published[] = "/tmp/test_local_catalog_pub_XXXXXX";
+	if (!mkdtemp(published)) return 2;
+	setenv("HOME", published, 1);
+	setenv("XDG_CONFIG_HOME", published, 1);
+	const auto catalogDir = std::filesystem::path(published) / "SLSsteam" / "patterns" / "steamclient";
+	std::filesystem::create_directories(catalogDir);
+	std::ofstream(catalogDir / (Utils::getFileSHA256(self.c_str()) + ".toml"), std::ios::binary)
+		<< publishedCatalog(self);
+	std::size_t mark = slurp(logPath).size();
+	CHECK(Patterns::init(), "a pass served by the published catalog succeeds");
+	CHECK(has(logSince(logPath, mark), "Pattern catalog: loaded steamclient revision 1"),
+	      "that pass loads the published catalog");
+	const auto local = cacheFile(published);
+	CHECK(!local.empty() && has(slurp(local), "locator_count=2\n"),
+	      "it keeps the published result as the local cache");
+	mark = slurp(logPath).size();
+	CHECK(Patterns::init(), "the next pass succeeds");
+	std::string pass = logSince(logPath, mark);
+	CHECK(has(pass, "Pattern cache: loaded steamclient local catalog")
+	      && !has(pass, "Pattern catalog: loaded steamclient"),
+	      "the next pass reads the local cache instead of the published catalog");
+
+	// A local cache from an older locator policy is replaced as well, instead
+	// of being rejected again on every later boot.
+	if (!local.empty())
+	{
+		std::string stale = slurp(local);
+		const auto at = stale.find("signature=8F 3A");
+		if (at != std::string::npos) stale.replace(at, 15, "signature=8F 3B");
+		std::ofstream(local, std::ios::binary | std::ios::trunc) << stale;
+	}
+	mark = slurp(logPath).size();
+	CHECK(Patterns::init(), "a pass with a stale local cache succeeds");
+	pass = logSince(logPath, mark);
+	CHECK(has(pass, "changed compiled locator policy")
+	      && has(pass, "Pattern catalog: loaded steamclient revision 1"),
+	      "it rejects the stale cache and uses the published catalog");
+	mark = slurp(logPath).size();
+	CHECK(Patterns::init(), "the pass after it succeeds");
+	pass = logSince(logPath, mark);
+	CHECK(!has(pass, "changed compiled locator policy")
+	      && has(pass, "Pattern cache: loaded steamclient local catalog"),
+	      "the stale cache was replaced, so the next pass loads it without a warning");
 
 	if (g_failures == 0) std::printf("\nall local catalog checks passed\n");
 	else std::printf("\n%d local catalog check(s) FAILED\n", g_failures);
