@@ -216,7 +216,7 @@ bool setup() noexcept
 		{
 			g_queue.close();
 			if (g_pLog != nullptr)
-				g_pLog->once(
+				g_pLog->warn(
 					"LibraryRemoval: optional SteamUI capability unavailable; "
 					"visual removals will complete after a natural refresh or restart\n");
 			return false;
@@ -234,7 +234,7 @@ bool setup() noexcept
 		{
 			rollback();
 			if (g_pLog != nullptr)
-				g_pLog->once(
+				g_pLog->warn(
 					"LibraryRemoval: optional SteamUI hooks could not be installed; "
 					"visual removals will complete after a natural refresh or restart\n");
 			return false;
@@ -251,7 +251,7 @@ bool setup() noexcept
 	{
 		rollback();
 		if (g_pLog != nullptr)
-			g_pLog->once(
+			g_pLog->warn(
 				"LibraryRemoval: optional SteamUI setup failed; visual removals "
 				"will complete after a natural refresh or restart\n");
 		return false;

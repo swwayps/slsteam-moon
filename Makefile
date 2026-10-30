@@ -211,10 +211,10 @@ clean-tools:
 	-$(MAKE) -C tools/ticket-grabber clean
 
 install:
-	sh setup.sh install
+	bash setup.sh install
 
 uninstall:
-	sh setup.sh uninstall
+	bash setup.sh uninstall
 
 # Unit test for cmwire.hpp's protobuf-backed helpers (Task 3).  Links the
 # already-compiled protobuf objects + libprotobuf.a, matching the

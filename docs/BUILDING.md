@@ -14,7 +14,7 @@ slsteam-moon is a 32-bit shared library that hooks into Steam through
 | Use it (don't build)                  | grab the latest [release][rel]   |
 | Develop / iterate fast                | `scripts/build.sh --host`        |
 | Build a portable, release-grade binary| `scripts/build.sh --portable`    |
-| Produce the release zip               | `scripts/release.sh`             |
+| Produce the release zip               | `scripts/release.sh --version X.Y-lumen` |
 | Install onto your own Steam           | `make install`                   |
 
 [rel]: https://github.com/swwayps/slsteam-moon/releases/latest
@@ -70,31 +70,31 @@ glibc 2.31 / Ubuntu 20.04), change the `FROM` line in
 already include `-D_GLIBCXX_USE_CXX11_ABI=0` for C++ ABI compatibility.
 
 ## Releasing
-
 ```
-scripts/release.sh --version 2.1      # explicit version
+scripts/release.sh --version 2.9-lumen
 ```
-
 Equivalent to `scripts/build.sh --portable` followed by
-`scripts/package.sh`. The output is `dist/slsteam-moon-linux-<ver>.zip`,
-matching the layout consumers (and `luatools-moon/install.sh`)
-expect:
-
+`scripts/package.sh`. The output is `dist/slsteam-moon-linux-<ver>.zip`
+plus its `.sha256` checksum. Both installers (`autofix.sh` and
+`luatools-moon/install.sh`) only pick an asset whose name ends in `-lumen.zip`
+and verify it against the checksum file, so `<ver>` must end in `-lumen` and
+both files are uploaded. Layout:
 ```
 slsteam-moon-<ver>/
   bin/{SLSsteam.so, pattern-refresh}
   setup.sh
+  ensure-desktop-coverage.sh
   res/config.yaml
   docs/LICENSE/
+  tools/{desktop-coverage,desktop-guardian-units,launcher-shim}.lib.sh
   tools/steamstub-bypass/
+  tools/steamless-bin/
 ```
-
-Upload to the GitHub release with `gh`:
-
+Upload both files to the GitHub release with `gh`:
 ```
-gh release upload vX.Y dist/slsteam-moon-linux-X.Y.zip --clobber
+gh release upload vX.Y dist/slsteam-moon-linux-X.Y-lumen.zip \
+    dist/slsteam-moon-linux-X.Y-lumen.zip.sha256 --clobber
 ```
-
 ## Verifying a build
 
 ```
