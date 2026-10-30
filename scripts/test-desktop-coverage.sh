@@ -823,6 +823,45 @@ if XDG_DATA_HOME="$H17b/data" XDG_DATA_DIRS="$TMP/empty17" XDG_CONFIG_HOME="$H17
   DC_TEST_APP="$H17b/data/applications/steam.desktop" \
   dc_guardian_run; then guardian17b_status=0; else guardian17b_status=$?; fi
 check "guardian ignores a dangling desktop shortcut link" "0" "$guardian17b_status"
+# guardian13 <home> [VAR=value...]: one guardian pass over a home that is
+# already reconciled; prints its status.
+guardian13() {
+  local h="$1"; shift
+  env "$@" XDG_DATA_HOME="$h/data" XDG_DATA_DIRS="$TMP/empty17" XDG_CONFIG_HOME="$h/conf" \
+    XDG_STATE_HOME="$h/state" DC_HOME="$h" DC_BACKUP_ROOT="$h/backup" \
+    DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" DC_FLOCK="$FLOCK_SHIM" \
+    DC_UPDATE_DESKTOP_DATABASE="$UPDATE_SHIM" DC_KBUILDSYCOCA="$KBUILD_SHIM" \
+    DC_TEST_EVENTS="$TMP/events13" DC_TEST_STATE_LOG="$h/state/slsteam-moon/guardian.log" \
+    DC_TEST_APP="$h/data/applications/steam.desktop" WRAPPER="$WRAPPER" \
+    bash -c '. "$1/tools/desktop-coverage.lib.sh"; dc_guardian_run; echo "$?"' bash "$HERE"
+}
+H13a="$TMP/home13a"; mkdir -p "$H13a/data/applications" "$H13a/conf/autostart" "$H13a/state" "$TMP/shared13"
+printf '[Desktop Entry]\n%s\nName=Steam\nExec=%s %%U\n' "$DC_TAG" "$WRAPPER" \
+  > "$H13a/data/applications/steam.desktop"
+# Without XDG_RUNTIME_DIR (su, cron) another account could own the shared temp
+# name; the lock then lives in the user's own state folder.
+mkdir -p "$TMP/shared13/slsteam-desktop-guardian-${UID:-$(id -u)}.lock"
+check "without a runtime dir the guardian locks in its state folder" "0" \
+  "$(guardian13 "$H13a" -u XDG_RUNTIME_DIR TMPDIR="$TMP/shared13")"
+# The log keeps its newest lines: every trigger appends and the timer fires
+# every five minutes.
+mkdir -p "$H13a/state/slsteam-moon"
+seq 1 2000 | sed 's/^/2026-01-01T00:00:00Z old line /' > "$H13a/state/slsteam-moon/guardian.log"
+guardian13 "$H13a" XDG_RUNTIME_DIR="$H13a/state" > /dev/null
+check "the guardian log stays bounded" "yes" \
+  "$([ "$(wc -l < "$H13a/state/slsteam-moon/guardian.log")" -le 1100 ] && echo yes || echo no)"
+check "the bounded log still ends with the pass summary" "yes" \
+  "$(tail -1 "$H13a/state/slsteam-moon/guardian.log" | grep -Eq ' examined=[0-9]+ .* failed=[0-9]+$' && echo yes || echo no)"
+# A restored desktop shortcut keeps the executable bit the desktop needs to
+# launch it.
+H13d="$TMP/home13d"; mkdir -p "$H13d/.local/share/applications" "$H13d/Desktop"
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/games/steam %%U\n' > "$H13d/.local/share/applications/steam.desktop"
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/games/steam %%U\n' > "$H13d/Desktop/steam.desktop"
+chmod 0755 "$H13d/Desktop/steam.desktop"
+DC_HOME="$H13d" DC_BACKUP_ROOT="$H13d/backup" DC_STEAM_INSTALLED=1 dc_run --user
+DC_HOME="$H13d" DC_BACKUP_ROOT="$H13d/backup" dc_restore_all
+check "a restored desktop shortcut keeps its executable mode" "755:Exec=/usr/games/steam %U" \
+  "$(stat -c %a "$H13d/Desktop/steam.desktop"):$(grep -m1 '^Exec=' "$H13d/Desktop/steam.desktop")"
 # Publishing an application shadow precedes cache convergence. Runtime guardian
 # must never invoke the privileged system fallback or mutate its donor.
 H18="$TMP/home18"; S18="$TMP/sys18/applications"

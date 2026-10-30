@@ -561,7 +561,7 @@ _dc_exec_is_steam_shell_wrapper() {
 # and tagging such a file would make every later run believe it is done.
 # $2="sudo" for system files. Returns 0 on patch, 1 on no-op/failure.
 dc_patch_one() {
-	local f="$1" S="${2:-}" tmp kind
+	local f="$1" S="${2:-}" tmp tagged kind
 	[ -f "$f" ] || return 1
 	_dc_file_exec_syntax_valid "$f" || return 1
 	kind="$(dc_classify "$f")"
@@ -595,11 +595,17 @@ dc_patch_one() {
 		rm -f "$tmp"
 		return 1
 	fi
-	# drop stale tag, then insert one line after the first [Desktop Entry]
-	grep -vxF "$DC_TAG" "$tmp" > "$tmp.2" 2>/dev/null && mv "$tmp.2" "$tmp"
-	awk -v tag="$DC_TAG" '
+	# One pass drops a stale tag and inserts one after the first [Desktop Entry],
+	# into a second file mktemp creates (a name derived from $tmp could already
+	# exist in a shared temp folder).
+	tagged="$(mktemp)" || { rm -f "$tmp"; return 1; }
+	if ! awk -v tag="$DC_TAG" '
+		$0 == tag { next }
 		!done && /^\[Desktop Entry\]/ { print; print tag; done=1; next } { print }
-	' "$tmp" > "$tmp.2" 2>/dev/null && mv "$tmp.2" "$tmp"
+	' "$tmp" > "$tagged" 2>/dev/null || ! mv -f -- "$tagged" "$tmp"; then
+		rm -f "$tmp" "$tagged"
+		return 1
+	fi
 	# Preserve inode/mtime on converged regular files. Symlinks are still
 	# replaced so managed entries remain ordinary files.
 	if [ ! -L "$f" ] && cmp -s "$tmp" "$f" 2>/dev/null; then
@@ -1405,38 +1411,50 @@ dc_coverage_forget() {
 	return 0
 }
 
-dc_guardian_write_summary() {
-	local dir log timestamp
+# _dc_guardian_log <text>  append one timestamped line to guardian.log. Every
+# trigger appends and the timer alone fires every five minutes, so past 2000
+# lines the log keeps its newest 1000.
+_dc_guardian_log() {
+	local dir log timestamp lines kept
 	dir="$(dc_state_home)/slsteam-moon"
 	log="$dir/guardian.log"
 	mkdir -p "$dir" 2>/dev/null || return 2
 	timestamp="$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null)" || return 2
-	printf '%s examined=%s changed=%s app_changed=%s autostart_changed=%s skipped=%s failed=%s\n' \
-		"$timestamp" "$DC_EXAMINED" "$DC_CHANGED" "$DC_APP_CHANGED" \
-		"$DC_AUTOSTART_CHANGED" "$DC_SKIPPED" "$DC_FAILED" >> "$log" 2>/dev/null \
-		|| return 2
+	lines="$({ wc -l < "$log"; } 2>/dev/null)" || lines=0
+	if [ "${lines:-0}" -ge 2000 ] && kept="$(mktemp "$log.XXXXXX" 2>/dev/null)"; then
+		if ! { tail -n 1000 "$log" > "$kept" && mv -f -- "$kept" "$log"; } 2>/dev/null; then
+			rm -f -- "$kept"
+		fi
+	fi
+	printf '%s %s\n' "$timestamp" "$1" >> "$log" 2>/dev/null || return 2
+}
+
+dc_guardian_write_summary() {
+	_dc_guardian_log "$(printf 'examined=%s changed=%s app_changed=%s autostart_changed=%s skipped=%s failed=%s' \
+		"$DC_EXAMINED" "$DC_CHANGED" "$DC_APP_CHANGED" \
+		"$DC_AUTOSTART_CHANGED" "$DC_SKIPPED" "$DC_FAILED")"
 }
 
 # A skipped pass is still one recorded pass per trigger: the note says WHY it did
 # no work, and the ordinary all-zero summary line follows it, so log consumers
 # (and the tests) keep seeing the same six-counter shape as the last line.
 dc_guardian_write_cached_note() {
-	local dir log timestamp
-	dir="$(dc_state_home)/slsteam-moon"
-	log="$dir/guardian.log"
-	mkdir -p "$dir" 2>/dev/null || return 2
-	timestamp="$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null)" || return 2
-	printf '%s unchanged: desktop launch sources match the last reconciliation -> skipped\n' \
-		"$timestamp" >> "$log" 2>/dev/null || return 2
+	_dc_guardian_log 'unchanged: desktop launch sources match the last reconciliation -> skipped'
 }
 
 # dc_guardian_run — serialized, mandatory user-only reconciliation. Lock
 # contention is a successful no-op. No system mutation or sudo path is reachable.
 dc_guardian_run() {
-	local runtime uid lock result shortcut status=0
-	runtime="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}"
+	local uid lock result shortcut status=0
 	uid="${UID:-$(id -u)}"
-	lock="${runtime%/}/slsteam-desktop-guardian-${uid}.lock"
+	if [ -n "${XDG_RUNTIME_DIR:-}" ]; then
+		lock="${XDG_RUNTIME_DIR%/}/slsteam-desktop-guardian-${uid}.lock"
+	else
+		# Without a runtime dir (su, cron) a shared temp name could belong to
+		# another account; the state folder is the user's own.
+		mkdir -p "$(dc_state_home)/slsteam-moon" 2>/dev/null || return 2
+		lock="$(dc_state_home)/slsteam-moon/guardian.lock"
+	fi
 	command -v "$DC_FLOCK" >/dev/null 2>&1 || return 2
 	# The braces keep the stderr redirect off the caller's shell.
 	{ exec 9>"$lock"; } 2>/dev/null || return 2
@@ -1555,7 +1573,7 @@ dc_run() {
 # entries carrying our tag. A symlink we made is replaced by its central
 # original when available.
 dc_restore_one() {
-	local f="$1" S="${2:-}" bak
+	local f="$1" S="${2:-}" bak mode
 	# Accept and immediately centralize both historical adjacent suffixes.
 	dc_migrate_legacy_file "$f.slssteam-backup" "$S" || true
 	dc_migrate_legacy_file "$f.slsteam-bak" "$S" || true
@@ -1573,9 +1591,15 @@ dc_restore_one() {
 		[ -f "$bak" ] || return 0
 	fi
 	# The backup lives in the user's home: the user's shell opens it and the
-	# privileged side only writes the entry (install replaces a link).
+	# privileged side only writes the entry (install replaces a link). System
+	# entries go back as 0644; a user's own file keeps its mode, so a desktop
+	# shortcut stays executable.
 	if [ -f "$bak" ]; then
-		if $S install -m 0644 /dev/stdin "$f" < "$bak" 2>/dev/null; then
+		mode=0644
+		if [ -z "$S" ] && [ -f "$f" ] && [ ! -L "$f" ]; then
+			mode="$(stat -c '%a' "$f" 2>/dev/null)" || mode=0644
+		fi
+		if $S install -m "$mode" /dev/stdin "$f" < "$bak" 2>/dev/null; then
 			rm -f -- "$bak" 2>/dev/null
 			return 0
 		fi
