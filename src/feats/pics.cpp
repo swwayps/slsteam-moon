@@ -140,7 +140,7 @@ bool persistAppBuffer(uint32_t appId, uint32_t changeNumber,
 	std::lock_guard<std::mutex> publicationLock(
 	    AppInfoProvision::cachePublicationMutex());
 	ProcessLock::FileLock cacheLock(AppInfoProvision::cacheLockPath(), false);
-	if (!cacheLock.acquired())
+	if (AppInfoProvision::cacheLockHeldElsewhere(cacheLock))
 	{
 		g_pLog->info("PICS: unable to lock cache pair for app=%u\n", appId);
 		return false;

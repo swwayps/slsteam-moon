@@ -944,7 +944,7 @@ void persistPendingProtonMappings(bool waitForLock)
 	if (g_needProton.empty() && g_pendingProtonRemovals.empty()) return;
 	(void)getCacheDir();
 	ProcessLock::FileLock cacheLock(cacheLockPath(), !waitForLock);
-	if (!cacheLock.acquired()) return;
+	if (cacheLockHeldElsewhere(cacheLock)) return;
 
 	const auto existing = readPendingProtonFileLocked();
 	if (existing.status == PendingProtonFileStatus::Invalid)
@@ -1052,7 +1052,7 @@ bool persistBuffer(uint32_t appId, uint32_t changeNumber,
 	(void)getCacheDir();
 	std::lock_guard<std::mutex> publicationLock(g_cachePublicationMu);
 	ProcessLock::FileLock cacheLock(cacheLockPath(), false);
-	if (!cacheLock.acquired())
+	if (cacheLockHeldElsewhere(cacheLock))
 	{
 		g_pLog->info("AppInfoProvision: unable to lock cache pair for app=%u\n", appId);
 		return false;
@@ -1222,7 +1222,7 @@ bool injectProtonMappings()
 	(void)getCacheDir();
 	const auto configLockPath = cacheLockPath();
 	ProcessLock::FileLock configLock(configLockPath, false);
-	if (!configLock.acquired())
+	if (cacheLockHeldElsewhere(configLock))
 	{
 		g_pLog->debug("AppInfoProvision: config.vdf writer lock is busy\n");
 		return false;
@@ -1636,7 +1636,7 @@ bool cachedWireSizeMatches(uint32_t appId, long long actualSize)
 cache::CacheUse cacheUseForApp(uint32_t appId, bool refreshUnavailable)
 {
 	ProcessLock::FileLock cacheLock(cacheLockPath(), false);
-	if (!cacheLock.acquired()) return cache::CacheUse::None;
+	if (cacheLockHeldElsewhere(cacheLock)) return cache::CacheUse::None;
 
 	cache::CacheValidationKey key{};
 	const bool present = statBuffer(appId, key);
@@ -1717,7 +1717,7 @@ CacheProbe probeCacheImpl(uint32_t appId, CacheProbeMode mode)
 		return result;
 	};
 	ProcessLock::FileLock cacheLock(cacheLockPath(), false);
-	if (!cacheLock.acquired())
+	if (cacheLockHeldElsewhere(cacheLock))
 	{
 		probe.readiness = CacheReadiness::Invalid;
 		return remember(probe);
@@ -1863,7 +1863,7 @@ struct PendingProtonLoad
 PendingProtonLoad loadPendingProtonMappings()
 {
 	ProcessLock::FileLock cacheLock(cacheLockPath(), false);
-	if (!cacheLock.acquired()) return {};
+	if (cacheLockHeldElsewhere(cacheLock)) return {};
 
 	const auto file = readPendingProtonFileLocked();
 	PendingProtonLoad result;
@@ -1923,7 +1923,7 @@ bool clearPendingProtonMappingsIfUnchanged(
     const std::set<uint32_t>& expectedFileIds)
 {
 	ProcessLock::FileLock cacheLock(cacheLockPath(), false);
-	if (!cacheLock.acquired()) return false;
+	if (cacheLockHeldElsewhere(cacheLock)) return false;
 
 	const auto current = readPendingProtonFileLocked();
 	if (current.status != PendingProtonFileStatus::Valid ||
@@ -2109,7 +2109,7 @@ bool memoizePublishedCachePairLocked(uint32_t appId)
 bool readValidatedCacheBuffer(uint32_t appId, std::string& buffer)
 {
 	ProcessLock::FileLock cacheLock(cacheLockPath(), false);
-	if (!cacheLock.acquired()) return false;
+	if (cacheLockHeldElsewhere(cacheLock)) return false;
 	std::string diag;
 	return readValidatedCacheBufferLocked(appId, buffer, diag);
 }
@@ -2298,7 +2298,7 @@ bool readValidatedDlcMetadataCache(
 	if (!managed) return false;
 
 	ProcessLock::FileLock cacheLock(cacheLockPath(), false);
-	if (!cacheLock.acquired()) return false;
+	if (cacheLockHeldElsewhere(cacheLock)) return false;
 	std::string validatedBaseWire;
 	std::string baseValidationDiag;
 	if (!readValidatedCacheBufferLocked(
@@ -2366,6 +2366,21 @@ static bool dlcMetadataPublicationMatchesBaseLocked(
 		cachePublicationGenerationLocked(record.baseAppId),
 		record.baseChangeNumber, record.baseSha,
 		metadata.changeNumber, currentSha);
+}
+
+bool cacheLockHeldElsewhere(const ProcessLock::FileLock& lock)
+{
+	if (!lock.usable())
+	{
+		// In-process writers are serialized by cachePublicationMutex(), pairs
+		// are replaced by rename and config.vdf through writeIfUnchanged, so
+		// the work stays safe without the cross-process lock.
+		static std::atomic<bool> warned{false};
+		if (!warned.exchange(true) && g_pLog)
+			g_pLog->warn("AppInfoProvision: cache lock %s cannot be used; "
+			             "cache work goes ahead without it\n", lock.path().c_str());
+	}
+	return lock.heldByAnother();
 }
 
 std::mutex& cachePublicationMutex()
@@ -2449,7 +2464,7 @@ bool terminalProvisionResultKnown(uint32_t appId,
 		outcome, nullptr)) return true;
 	if (!g_config.isAddedAppId(appId)) return false;
 	ProcessLock::FileLock cacheLock(cacheLockPath(), false);
-	if (!cacheLock.acquired()) return false;
+	if (cacheLockHeldElsewhere(cacheLock)) return false;
 	const auto loaded = ProvisionTerminal::Store(getCacheDir()).load(appId);
 	if (loaded.status != ProvisionTerminal::LoadStatus::Valid)
 	{
@@ -2495,7 +2510,7 @@ bool noteTerminalProvisionResult(uint32_t appId, SourceResult result,
 	};
 	std::lock_guard<std::mutex> lock(g_cachePublicationMu);
 	ProcessLock::FileLock cacheLock(cacheLockPath(), false);
-	if (!cacheLock.acquired() || !cache::cachePublicationAllowed(
+	if (cacheLockHeldElsewhere(cacheLock) || !cache::cachePublicationAllowed(
 		publication.managed, publication.generation,
 		cachePublicationGenerationLocked(appId))) return false;
 	// Remove any previous verdict before attempting the replacement. A failed
@@ -2527,7 +2542,7 @@ void primeTerminalMemo(uint32_t appId, std::string_view fingerprint)
 	g_localContentFingerprints[appId] = fingerprint;
 	if (!g_config.isAddedAppId(appId)) return;
 	ProcessLock::FileLock cacheLock(cacheLockPath(), false);
-	if (!cacheLock.acquired()) return;
+	if (cacheLockHeldElsewhere(cacheLock)) return;
 	const auto loaded = ProvisionTerminal::Store(getCacheDir()).load(appId);
 	if (loaded.status != ProvisionTerminal::LoadStatus::Valid ||
 		!ProvisionTerminal::applies(
@@ -3255,7 +3270,7 @@ void flushPendingProtonMappings()
 		std::string wire;
 		std::string diag;
 		bool proton = false;
-		if (cacheLock.acquired() &&
+		if (!cacheLockHeldElsewhere(cacheLock) &&
 			readValidatedCacheBufferLocked(appId, wire, diag, &proton) && proton)
 		{
 			g_needProton.insert(appId);
@@ -3532,7 +3547,7 @@ void enrichAndPublishDlcMetadata(
 		std::lock_guard<std::mutex> publicationLock(g_cachePublicationMu);
 		const auto managed = g_config.managedAppIds.get();
 		ProcessLock::FileLock cacheLock(cacheLockPath(), false);
-		if (!cacheLock.acquired()) return;
+		if (cacheLockHeldElsewhere(cacheLock)) return;
 		for (const auto& item : work)
 		{
 			if (!item.fetchComplete) continue;
@@ -3770,7 +3785,7 @@ DlcInjectionIds collectDlcAppIdsForAddedApps(bool* complete)
 	}
 
 	ProcessLock::FileLock cacheLock(cacheLockPath(), false);
-	if (!cacheLock.acquired())
+	if (cacheLockHeldElsewhere(cacheLock))
 	{
 		if (g_pLog)
 			g_pLog->debug(
@@ -3898,7 +3913,7 @@ bool forgetAppImpl(uint32_t appId, bool preserveTicketArtifacts)
 	{
 		std::lock_guard<std::mutex> publicationLock(g_cachePublicationMu);
 		ProcessLock::FileLock cacheLock(cacheLockPath(), false);
-		if (!cacheLock.acquired()) return false;
+		if (cacheLockHeldElsewhere(cacheLock)) return false;
 		ProvisionTerminal::Store(cacheDir).erase(appId);
 		// Decide marker retention only after both publication and cache locks are
 		// held. A concurrent synthetic publication must be visible here before

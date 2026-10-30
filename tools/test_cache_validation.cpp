@@ -137,6 +137,17 @@ int main()
 	read.clear();
 	CHECK(AppInfoProvision::readValidatedCacheBuffer(kApp, read) && read == wire,
 	      "an unchanged pair is read again");
+	// A cache lock that cannot be used (a link here; a foreign owner or loose
+	// mode is the same) is no reason to skip the cache it guards.
+	{
+		const std::string lock = AppInfoProvision::cacheLockPath();
+		std::filesystem::remove(lock);
+		std::filesystem::create_symlink(cache + "/elsewhere", lock);
+		read.clear();
+		CHECK(AppInfoProvision::readValidatedCacheBuffer(kApp, read) && read == wire,
+		      "a valid pair is read while the cache lock is unusable");
+		std::filesystem::remove(lock);
+	}
 
 	// Same size, other bytes, metadata left as it was: the SHA-1 no longer matches.
 	replaceFile(buffer, wireWithGid("1234567891"));

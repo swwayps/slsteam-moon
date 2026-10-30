@@ -52,6 +52,8 @@
 #include <utility>
 #include <vector>
 
+namespace ProcessLock { class FileLock; }
+
 namespace AppInfoProvision
 {
 
@@ -293,6 +295,11 @@ inline std::string cacheLockPath()
 	           std::getenv("XDG_CONFIG_HOME"), std::getenv("HOME")) +
 	       "/cache/.picsbuffer.lock";
 }
+
+// True when another process holds the cache lock, so the guarded work must
+// wait for a later pass. An unusable lock (a link, a foreign owner, loose
+// mode) is no reason to skip it: it is logged once and the work proceeds.
+bool cacheLockHeldElsewhere(const ProcessLock::FileLock& lock);
 
 // Forget the on-disk app-scoped state for an app that was removed from
 // LuaTools. Artifacts are quarantined with a recoverable suffix rather than
