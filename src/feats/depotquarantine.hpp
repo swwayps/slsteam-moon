@@ -36,8 +36,10 @@ namespace DepotQuarantine
 	// are followed.
 	inline bool plausiblePointer(const void* p) noexcept
 	{
+		// x86-64 user space ends at 2^47, as CNetPacket bounds its body.
 		const auto a = reinterpret_cast<std::uintptr_t>(p);
-		return a >= 0x10000u && a <= UINTPTR_MAX - 0xFFFu && (a & 3u) == 0;
+		return a >= 0x10000u && a < (std::uintptr_t{1} << 47) &&
+			(a & (alignof(void*) - 1)) == 0;
 	}
 
 	inline const void* readPointer(const void* base, std::size_t offset) noexcept
@@ -47,26 +49,29 @@ namespace DepotQuarantine
 		return value;
 	}
 
-	// context+0x08 -> owner, owner+0x0c -> depot, whose first field is the
-	// depot id. 0 when the chain cannot be followed.
+	// context+0x10 -> owner, owner+0x18 -> depot, whose first field is the
+	// depot id (i386: +0x08 / +0x0c; every field before them is pointer-sized,
+	// and the x86-64 callbacks read the same neighbours at twice the offset).
+	// 0 when the chain cannot be followed.
 	inline uint32_t depotIdFromContext(const void* context) noexcept
 	{
 		if (!plausiblePointer(context)) return 0;
-		const void* owner = readPointer(context, 0x08);
+		const void* owner = readPointer(context, 0x10);
 		if (!plausiblePointer(owner)) return 0;
-		const void* depot = readPointer(owner, 0x0c);
+		const void* depot = readPointer(owner, 0x18);
 		if (!plausiblePointer(depot)) return 0;
 		uint32_t depotId = 0;
 		std::memcpy(&depotId, depot, sizeof(depotId));
 		return depotId;
 	}
 
-	// Hash of the 20-byte chunk SHA OnChunkUnpacked formats at chunk+0x0c, so
-	// separate failing chunks count separately. 0 when it cannot be read.
+	// Hash of the 20-byte chunk SHA OnChunkUnpacked formats at chunk+0x10
+	// (x86-64; i386 +0x0c), so separate failing chunks count separately. 0
+	// when it cannot be read.
 	inline uint64_t chunkFingerprint(const void* chunk) noexcept
 	{
 		if (!plausiblePointer(chunk)) return 0;
-		const auto sha = static_cast<const uint8_t*>(chunk) + 0x0c;
+		const auto sha = static_cast<const uint8_t*>(chunk) + 0x10;
 		uint64_t hash = 14695981039346656037ULL;
 		for (std::size_t i = 0; i < 20; ++i)
 		{

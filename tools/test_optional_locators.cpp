@@ -205,6 +205,11 @@ int main(int argc, char** argv)
 	expect(ownership == std::string::npos ||
 	       static_cast<std::uint8_t>(ui[ownership + 2]) == 0x56,
 	       "CSteamApp::OwnershipFlagsReference: expected mov edx,[r14+0x1c]");
+	// DepotQuarantine: both chunk-completion callbacks.
+	(void)resolveUnique(client, "CDepotDownloadMgr::OnChunkUnpacked[cdecl]",
+		"55 48 89 E5 41 57 41 56 49 89 D6 41 55 41 89 CD 41 54 4D 89 C4 53 48 89 FB 48 81 EC ? ? 00 00 48 8B 05 ? ? ? ? 48 89 B5 ? ? FF FF", source);
+	(void)resolveUnique(client, "CDepotDownloadMgr::OnChunkUnpacked[regparm3]",
+		"55 48 89 E5 41 57 41 56 49 89 F6 41 55 49 89 D5 41 54 41 89 CC 53 48 81 EC ? ? 00 00 48 8B 05 ? ? ? ? 48 89 BD ? ? FF FF 4C 89 85 ? ? FF FF", source);
 	// AppInfoState: live appinfo reload entry, disk reader call site and the
 	// two CAppData layout reads.
 	(void)resolveUnique(client, "CAppInfoCache::GetOrAddAppData",

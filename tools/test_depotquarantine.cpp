@@ -27,17 +27,24 @@ int main()
 		alignas(8) uint8_t depot[8] = {};
 		const uint32_t depotId = 4300;
 		std::memcpy(depot, &depotId, sizeof(depotId));
+		// x86-64 layout: context+0x10 -> owner, owner+0x18 -> depot.
 		alignas(8) uint8_t owner[0x20] = {};
 		const void* depotPtr = depot;
-		std::memcpy(owner + 0x0c, &depotPtr, sizeof(depotPtr));
+		std::memcpy(owner + 0x18, &depotPtr, sizeof(depotPtr));
 		alignas(8) uint8_t context[0x20] = {};
 		const void* ownerPtr = owner;
-		std::memcpy(context + 0x08, &ownerPtr, sizeof(ownerPtr));
+		std::memcpy(context + 0x10, &ownerPtr, sizeof(ownerPtr));
 		CHECK(DepotQuarantine::depotIdFromContext(context) == 4300,
 		      "the depot id is read through the context chain");
+		// A pointer above the 47-bit user address space is never followed.
+		const void* kernelHalf = reinterpret_cast<const void*>(std::uintptr_t{1} << 47);
+		CHECK(!DepotQuarantine::plausiblePointer(kernelHalf),
+		      "a pointer outside user space is not plausible");
+		CHECK(!DepotQuarantine::plausiblePointer(owner + 4),
+		      "a pointer that is not 8-byte aligned is not plausible");
 		// A layout change leaves a sentinel where the owner pointer was.
 		const void* sentinel = reinterpret_cast<const void*>(~std::uintptr_t(0) - 0xF);
-		std::memcpy(context + 0x08, &sentinel, sizeof(sentinel));
+		std::memcpy(context + 0x10, &sentinel, sizeof(sentinel));
 		const pid_t child = fork();
 		if (child == 0)
 		{

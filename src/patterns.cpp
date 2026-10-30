@@ -1056,10 +1056,16 @@ namespace Patterns
 			"41 57 41 56 41 55 41 54 41 89 F4 55 48 89 FD 53 48 81 EC ? ? 00 00 64 4C 8B 2C 25 28 00 00 00 4C 89 AC 24 ? ? 00 00 49 89 CD C6 47 ? 01 44 8B 72 10",
 			SigFollowMode::None
 		};
+		// The two chunk-completion callbacks (beta 1793235415 0x13ddde0 and
+		// 0x13de130, the users of "OnChunkUnpacked" / "unpacking bad chunk").
+		// The i386 build had a cdecl and a regparm(3) body; on x86-64 both are
+		// SysV (ctx, chunk, source, location, detail, result) clones, and the
+		// names are kept so pattern catalogs still line up. One match each on
+		// 1792711043, 1793235415 and the 2026-10-21 stable x86-64 client.
 		Pattern_t OnChunkUnpackedStack
 		{
 			"CDepotDownloadMgr::OnChunkUnpacked[cdecl]",
-			"",
+			"55 48 89 E5 41 57 41 56 49 89 D6 41 55 41 89 CD 41 54 4D 89 C4 53 48 89 FB 48 81 EC ? ? 00 00 48 8B 05 ? ? ? ? 48 89 B5 ? ? FF FF",
 			SigFollowMode::None,
 			nullptr,
 			"Patterns::CDepotDownloadMgr::OnChunkUnpackedStack"
@@ -1067,7 +1073,7 @@ namespace Patterns
 		Pattern_t OnChunkUnpackedReg
 		{
 			"CDepotDownloadMgr::OnChunkUnpacked[regparm3]",
-			"",
+			"55 48 89 E5 41 57 41 56 49 89 F6 41 55 49 89 D5 41 54 41 89 CC 53 48 81 EC ? ? 00 00 48 8B 05 ? ? ? ? 48 89 BD ? ? FF FF 4C 89 85 ? ? FF FF",
 			SigFollowMode::None,
 			nullptr,
 			"Patterns::CDepotDownloadMgr::OnChunkUnpackedReg"
