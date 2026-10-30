@@ -128,7 +128,8 @@ check "changed install makes three manager calls" "3" "$(wc -l < "$DGU_CALLS")"
 check "daemon reload arguments stay separate" $'CALL\t<--user>\t<daemon-reload>' "$(sed -n '1p' "$DGU_CALLS")"
 check "enable arguments stay separate" $'CALL\t<--user>\t<enable>\t<--now>\t<slsteam-desktop-guardian.path>\t<slsteam-desktop-guardian.timer>' "$(sed -n '2p' "$DGU_CALLS")"
 check "start arguments stay separate" $'CALL\t<--user>\t<start>\t<slsteam-desktop-guardian.service>' "$(sed -n '3p' "$DGU_CALLS")"
-atomic="$(awk -v d="$DGU_UNIT_DIR/" 'NR % 2 == 1 && index($0, d) != 1 { bad=1 } END { print bad ? "no" : "yes" }' "$DGU_MV_LOG")"
+# Three units, so three renames, each from a temp file in the unit folder.
+atomic="$(awk -v d="$DGU_UNIT_DIR/" 'NR % 2 == 1 && index($0, d) != 1 { bad=1 } END { print (NR == 6 && !bad) ? "yes" : "no" }' "$DGU_MV_LOG")"
 check "atomic temp files are created in destination directory" "yes" "$atomic"
 check "atomic install leaves no temporary files" "0" "$(compgen -G "$DGU_UNIT_DIR/.*.tmp.*" | wc -l)"
 
@@ -248,8 +249,8 @@ Exec=env FOO=1 /usr/bin/steam -silent %U
 EOF
 check "autostart unit name uses generated service template" \
   "app-steam@autostart.service" "$(dgu_autostart_unit_name steam.desktop 2>/dev/null || true)"
-check "autostart args remove lone field code" "" \
-  "$(dgu_autostart_args "$TMP/autostart-steam.desktop" 2>/dev/null || true)"
+check "autostart args remove lone field code" "0:" \
+  "$(out="$(dgu_autostart_args "$TMP/autostart-steam.desktop" 2>/dev/null)"; printf '%s:%s' "$?" "$out")"
 check "autostart args preserve ordinary flag" "-silent" \
   "$(dgu_autostart_args "$TMP/autostart-bazzite.desktop" 2>/dev/null || true)"
 check "autostart args discard env prefix and field code" "-silent" \

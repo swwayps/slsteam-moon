@@ -97,7 +97,7 @@ ck "setup no longer contains the inline launcher writer" \
 ck "runtime coverage derives installed state from bootstrap" \
    "$(grep -q 'ls_steam_bootstrapped' "$HERE/ensure-desktop-coverage.sh" && echo yes || echo no)"
 ck "wrapper bootstrap guard requires the canonical Steam symlink" \
-   "$(grep -q '\\[ -L \"\\$HOME/.steam/steam\" \\]' "$HERE/setup.sh" && echo yes || echo no)"
+   "$(grep -qF '[ -L "$HOME/.steam/steam" ]' "$HERE/setup.sh" && echo yes || echo no)"
 
 # Behavioral regression: an immutable host should normally have no system shim,
 # but an interrupted historical uninstall may leave one behind. In that case

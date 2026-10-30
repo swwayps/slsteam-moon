@@ -241,6 +241,8 @@ allinj=1; for i in 1 2 3 4 5; do [ "$(nth $i)" = "injected" ] || allinj=0; done
 
 # --- crash loop: each boot leaves a startup crash dump -> latch -> vanilla ----
 reset_state
+# The safe-mode case above already latched once, which removed this fixture.
+printf 'spliced' > "$HOME_DIR/.steam/steam/appcache/appinfo.vdf"
 for i in 1 2 3 4; do
 	# Simulate: previous boot started ~30s ago and crashed ~12s in.
 	if [ -f "$GUARD_DIR/last_launch" ]; then

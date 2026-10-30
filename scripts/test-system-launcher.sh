@@ -99,7 +99,7 @@ chmod 0555 "$TMP/readonly/steam" "$TMP/readonly"
 LS_LAUNCHER_DIRS=("$TMP/readonly")
 LS_SUDO=""
 if [ "$(id -u)" -eq 0 ]; then
-  printf 'ok   - unwritable launcher checks skipped under root\n'
+  printf 'skip - unwritable launcher checks (root can write anything)\n'
 else
   check "unwritable launcher reports failure" "no" "$(ls_install_shims && echo yes || echo no)"
   check "unwritable launcher stays original" "ORIG-RO" "$(sh "$TMP/readonly/steam")"
