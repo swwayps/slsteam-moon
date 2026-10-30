@@ -1,17 +1,22 @@
 // A cold-start pass walks the manifest store once: the terminal verdicts and
 // the depot synthesis of every app reuse the index the pass was primed with.
-// A mirror answer is capped at 16 MiB and its redirects stay on https.
+// A mirror answer is capped at 16 MiB and its redirects stay on https. A
+// force-full changes answer refreshes the locally authoritative apps.
 // The provider mirror answers through tools/fake_libcurl.cpp.
 // Build: make test-provision-mirror (links the whole object set).
 #include "../src/config.hpp"
 #include "../src/feats/appinfo_provision.hpp"
+#include "../src/feats/appinfostate.hpp"
 #include "../src/feats/depotkey.hpp"
 #include "../src/feats/manifeststore.hpp"
+#include "../src/feats/pics.hpp"
 #include "../src/log.hpp"
+#include "../src/sdk/protobufs/steammessages_clientserver_appinfo.pb.h"
 #include "fake_libcurl.hpp"
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <climits>
 #include <cstdint>
 #include <cstdio>
@@ -20,9 +25,11 @@
 #include <dlfcn.h>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <memory>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <unistd.h>
 #include <unordered_set>
 
@@ -91,6 +98,10 @@ public:
 	CURLcode perform(CURL* c) override
 	{
 		Handle& h = *reinterpret_cast<Handle*>(c);
+		// Only the mirror answers: the CM directory and CM sockets are unreachable.
+		if (h.url.rfind("https://provider.test/", 0) != 0 &&
+		    h.url.rfind("https://api.steamcmd.net/", 0) != 0)
+			return CURLE_COULDNT_RESOLVE_HOST;
 		++requests;
 		if (h.redirProtocols != CURLPROTO_HTTPS) redirectsHttps = false;
 		const std::string id = h.url.substr(h.url.rfind('/') + 1);
@@ -218,6 +229,26 @@ int main()
 	       std::to_string(provider.bigAccepted) + " bytes kept)").c_str());
 	CHECK(provider.redirectsHttps,
 	      "every mirror GET follows redirects to https only");
+
+	// A force-full changes answer lists no apps, and Steam's own full refresh
+	// leaves out locally authoritative ones, so each managed one is refreshed
+	// here.
+	setenv("SLSSTEAM_ASYNC_PROVISION", "1", 1);
+	AppInfoState::publishAuthoritative({1000});
+	CMsgClientPICSChangesSinceResponse changes;
+	changes.set_current_change_number(9000);
+	changes.set_force_full_update(true);
+	changes.set_force_full_app_update(true);
+	PICS::recvChangesSinceResponse(&changes);
+	bool planned = false;
+	for (int i = 0; i < 500 && !planned; ++i)
+	{
+		std::ifstream log(logPath);
+		const std::string text(std::istreambuf_iterator<char>(log), {});
+		planned = text.find("plan origin=force-full candidates=1 ") != std::string::npos;
+		if (!planned) std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	}
+	CHECK(planned, "a force-full changes answer refreshes the authoritative managed app");
 
 	if (g_failures == 0) std::printf("\nall provision mirror checks passed\n");
 	else std::printf("\n%d provision mirror check(s) FAILED\n", g_failures);

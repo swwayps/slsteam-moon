@@ -589,9 +589,12 @@ void recvChangesSinceResponse(CMsgClientPICSChangesSinceResponse* resp)
 	std::vector<AppInfoProvision::RefreshRequest> refreshRequests;
 	if (resp->force_full_app_update())
 	{
-		refreshRequests.reserve(suppressedManagedApps.size());
-		for (const uint32_t appId : suppressedManagedApps)
+		// A force-full answer need not list the changed apps, so every managed
+		// app whose appinfo comes from a local pair is refreshed here; Steam
+		// never refreshes those pairs itself.
+		for (const uint32_t appId : managed)
 		{
+			if (!AppInfoState::isAuthoritative(appId)) continue;
 			const auto publication =
 				AppInfoProvision::snapshotCachePublication(appId);
 			refreshRequests.push_back({
