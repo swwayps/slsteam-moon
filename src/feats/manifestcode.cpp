@@ -243,9 +243,9 @@ void handleSend_GetManifestRequestCode(const uint8_t* pBody, uint32_t cbBody,
 	}
 	const uint64_t jobId = hdr.jobid_source();
 
-	g_pLog->info("ManifestCode send: depot=%u gid=%llu app=%u jobid=%llu\n",
-	             depotId, static_cast<unsigned long long>(gid),
-	             appId, static_cast<unsigned long long>(jobId));
+	g_pLog->debug("ManifestCode send: depot=%u gid=%llu app=%u jobid=%llu\n",
+	              depotId, static_cast<unsigned long long>(gid),
+	              appId, static_cast<unsigned long long>(jobId));
 
 	// Stage the manifest from the archive so Steam finds it on disk and skips
 	// the request-code handshake entirely. Nothing here answers that

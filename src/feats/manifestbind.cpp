@@ -497,7 +497,8 @@ namespace
 		    ManifestSelection::choose(manifestId, preferred, legacy);
 		if (decision.gid == manifestId)
 		{
-			g_pLog->info(
+			// Every re-plan asks again while the archive lacks this gid.
+			g_pLog->infoOnce(
 			    "ManifestBind[%s]: depot=%u exact gid=%llu unavailable and "
 			    "no local fallback exists\n",
 			    site, depotId, static_cast<unsigned long long>(manifestId));

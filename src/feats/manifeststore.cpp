@@ -144,8 +144,8 @@ namespace ManifestStore
 			return true;
 		}
 
-		g_pLog->info("ManifestStore: published downloaded %s (store -> depotcache)\n",
-		             name.c_str());
+		g_pLog->debug("ManifestStore: published downloaded %s (store -> depotcache)\n",
+		              name.c_str());
 		return true;
 	}
 
@@ -214,8 +214,8 @@ namespace ManifestStore
 		const fs::path src = fs::path(store) / name;
 		if (ManifestStoreIO::restore(src, dest))
 		{
-			g_pLog->info("ManifestStore: restored %s into depotcache\n",
-			             name.c_str());
+			g_pLog->debug("ManifestStore: restored %s into depotcache\n",
+			              name.c_str());
 			return true;
 		}
 		return false;
