@@ -620,11 +620,10 @@ dc_patch_one() {
 		rm -f "$tmp"
 		return 0
 	fi
-	if ! $S cp --remove-destination -- "$tmp" "$f" 2>/dev/null; then
-		rm -f "$tmp"
-		return 1
-	fi
-	if ! $S chmod 0644 "$f" 2>/dev/null; then
+	# The user's shell opens the temp file, so a privileged write never reads a
+	# path the user could swap for a link. install replaces a link like cp
+	# --remove-destination did.
+	if ! $S install -m 0644 /dev/stdin "$f" < "$tmp" 2>/dev/null; then
 		rm -f "$tmp"
 		return 1
 	fi
@@ -1585,17 +1584,11 @@ dc_restore_one() {
 	# entries (LibreOffice does) and those stay.
 	if [ -L "$f" ]; then
 		[ -f "$bak" ] || return 0
-		$S rm -f -- "$f" 2>/dev/null || return 1
-		if $S cp -- "$bak" "$f" 2>/dev/null; then
-			rm -f -- "$bak" 2>/dev/null
-		else
-			return 1
-		fi
-		return 0
 	fi
+	# The backup lives in the user's home: the user's shell opens it and the
+	# privileged side only writes the entry (install replaces a link).
 	if [ -f "$bak" ]; then
-		if $S cp --remove-destination -- "$bak" "$f" 2>/dev/null; then
-			$S chmod 0644 "$f" 2>/dev/null || true
+		if $S install -m 0644 /dev/stdin "$f" < "$bak" 2>/dev/null; then
 			rm -f -- "$bak" 2>/dev/null
 			return 0
 		fi

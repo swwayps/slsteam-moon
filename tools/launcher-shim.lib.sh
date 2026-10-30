@@ -371,7 +371,8 @@ ls_write_shim() {
 		return 1
 	fi
 	if [ -n "$privilege" ]; then
-		$privilege install -m 0755 "$temp" "$launcher" 2>/dev/null
+		# The temp file is the user's: the user's shell opens it, root only writes.
+		$privilege install -m 0755 /dev/stdin "$launcher" < "$temp" 2>/dev/null
 		rc=$?
 	else
 		install -m 0755 "$temp" "$launcher" 2>/dev/null
@@ -470,7 +471,8 @@ ls_restore_one() {
 		[ -n "$privilege" ] || return 1
 	fi
 	if [ -n "$privilege" ]; then
-		$privilege install -m 0755 "$backup" "$launcher" 2>/dev/null || return 1
+		# The backup is in the user's home: the user's shell opens it.
+		$privilege install -m 0755 /dev/stdin "$launcher" < "$backup" 2>/dev/null || return 1
 	else
 		install -m 0755 "$backup" "$launcher" 2>/dev/null || return 1
 	fi

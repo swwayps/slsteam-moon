@@ -716,6 +716,31 @@ check "compound shell command is left untouched" \
   "Exec=sh -c 'mangohud steam %U && notify-send done'" \
   "$(grep -m1 '^Exec=' "$AFC4/steam.desktop" 2>/dev/null || true)"
 
+# The privileged side only writes system entries: the temp file and the backups
+# live in user folders, where the user could swap a file for a link, so the
+# user's shell opens them and root never names them.
+X10="$TMP/x10"; X10S="$X10/sys/applications"; X10T="$X10/usertmp"; X10B="$X10/userbackup"
+X10LOG="$X10/privileged.log"
+mkdir -p "$X10S" "$X10T"
+printf '#!/bin/sh\nprintf "%%s\\n" "$*" >> "%s"\nexec "$@"\n' "$X10LOG" > "$X10/priv"
+chmod 0755 "$X10/priv"
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/bin/steam %%U\n' > "$X10S/steam.desktop"
+x10() { TMPDIR="$X10T" DC_HOME="$X10" DC_BACKUP_ROOT="$X10B" "$@"; }
+x10 dc_patch_one "$X10S/steam.desktop" "$X10/priv"
+check "a privileged patch wraps the system entry" "patched" "$(dc_classify "$X10S/steam.desktop")"
+x10 dc_restore_one "$X10S/steam.desktop" "$X10/priv"
+check "a privileged restore puts the system entry back" "Exec=/usr/bin/steam %U" \
+  "$(grep -m1 '^Exec=' "$X10S/steam.desktop")"
+x10link_bak="$(x10 dc_backup_path "$X10S/steam-link.desktop")"
+mkdir -p "$(dirname "$x10link_bak")"
+printf '[Desktop Entry]\nName=Steam\nExec=steam %%U\n' > "$x10link_bak"
+ln -s "$X10/elsewhere.desktop" "$X10S/steam-link.desktop"
+x10 dc_restore_one "$X10S/steam-link.desktop" "$X10/priv"
+check "a privileged restore replaces our link with its original" "regular:Exec=steam %U" \
+  "$([ -L "$X10S/steam-link.desktop" ] && echo link || echo regular):$(grep -m1 '^Exec=' "$X10S/steam-link.desktop")"
+check "privileged commands name no file in the user's folders" "" \
+  "$(grep -F -e "$X10T/" -e "$X10B/" "$X10LOG")"
+
 # Guardian command shims make serialization and cache ordering observable.
 GUARDIAN_EVENTS="$TMP/guardian-events"
 FLOCK_SHIM="$TMP/flock-shim"

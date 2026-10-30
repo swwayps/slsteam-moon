@@ -1285,7 +1285,8 @@ restore_or_remove_desktop() {
 
 	if [ -f "$backup" ]; then
 		log_info "Restoring $f from backup"
-		if $sudo_cmd cp -- "$backup" "$f"; then
+		# The user's shell opens the backup; sudo only writes the entry.
+		if $sudo_cmd install -m 0644 /dev/stdin "$f" < "$backup"; then
 			rm -f -- "$backup"
 			log_success "Restored $f"
 		fi

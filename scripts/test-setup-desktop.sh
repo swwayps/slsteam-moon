@@ -175,8 +175,11 @@ chmod 0755 "$LEGACY_BIN/sudo"
 HOME="$LEGACY_HOME" PATH="$LEGACY_BIN:$PATH" SLS_SETUP_LIB_ONLY=1 \
   bash -c 'source "$1/setup.sh"; restore_or_remove_desktop "$2" sudo' \
   bash "$HERE" "$LEGACY_DESKTOP" > /dev/null 2>&1
-ck "legacy desktop restore copies through the given sudo" \
-   "$(grep -qxF "cp -- $LEGACY_BACKUP $LEGACY_DESKTOP" "$LEGACY_TMP/sudo.log" 2>/dev/null && echo yes || echo no)"
+ck "legacy desktop restore writes through the given sudo" \
+   "$(grep -q " $LEGACY_DESKTOP\$" "$LEGACY_TMP/sudo.log" 2>/dev/null && echo yes || echo no)"
+# The backup sits in the user's home, so the user's shell opens it, not root.
+ck "legacy desktop restore never names the backup to sudo" \
+   "$(grep -qF "$LEGACY_BACKUP" "$LEGACY_TMP/sudo.log" 2>/dev/null && echo no || echo yes)"
 ck "legacy desktop restore puts the entry back and drops the backup" \
    "$(grep -q 'Exec=steam' "$LEGACY_DESKTOP" && [ ! -e "$LEGACY_BACKUP" ] && echo yes || echo no)"
 rm -rf "$LEGACY_TMP"

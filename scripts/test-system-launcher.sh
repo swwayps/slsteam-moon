@@ -447,6 +447,7 @@ mkdir -p "$PRIV_BIN" "$(dirname "$PRIV_MIRRORED")" "$PRIV_ROOT/steam-root"
 cat > "$PRIV_ROOT/fake-sudo" <<'EOF'
 #!/bin/sh
 printf '%s\n' "$1" >> "$SLS_PRIV_LOG"
+printf '%s\n' "$*" >> "$SLS_PRIV_LOG.argv"
 cmd="$1"
 shift
 "$cmd" "$@"
@@ -466,6 +467,29 @@ check "configured privilege command handles backup operations" "yes" \
   "$(ls_install_shims && grep -q '^cp$' "$PRIV_LOG" && grep -q '^chmod$' "$PRIV_LOG" && echo yes || echo no)"
 check "privileged backup keeps refreshed original" "PRIV-NEW" \
   "$(sh "$PRIV_MIRRORED" | cut -d' ' -f1)"
+# A launcher the user cannot write is replaced through the privilege command,
+# which takes the new content on its stdin: the temp file and the captured
+# original sit in user folders, where the user could swap a file for a link.
+RO_ROOT="$TMP/readonly-launcher"
+RO_BIN="$RO_ROOT/usr/bin"
+mkdir -p "$RO_BIN" "$RO_ROOT/steam-root" "$RO_ROOT/tmp"
+printf '#!/bin/sh\nprintf "RO-ORIG\\n"\n' > "$RO_BIN/steam"
+printf '#!/bin/sh\nexit 0\n' > "$RO_ROOT/steam-root/steam.sh"
+chmod 0555 "$RO_BIN/steam"
+chmod 0755 "$RO_ROOT/steam-root/steam.sh"
+LS_LAUNCHER_DIRS=("$RO_BIN")
+LS_BACKUP_ROOT="$RO_ROOT/backup"
+LS_STEAM_ROOT="$RO_ROOT/steam-root"
+export SLS_PRIV_LOG="$RO_ROOT/privilege.log"
+check "an unwritable launcher is wrapped through the privilege command" "yes" \
+  "$(TMPDIR="$RO_ROOT/tmp" ls_install_shims && ls_is_our_shim "$RO_BIN/steam" && echo yes || echo no)"
+chmod 0555 "$RO_BIN/steam"
+check "an unwritable launcher is restored through the privilege command" "RO-ORIG" \
+  "$(TMPDIR="$RO_ROOT/tmp" ls_restore_shims && sh "$RO_BIN/steam")"
+check "both launcher writes went through the privilege command" "2" \
+  "$(grep -c '^install ' "$SLS_PRIV_LOG.argv")"
+check "the privilege command reads launcher content only from stdin" "" \
+  "$(grep '^install ' "$SLS_PRIV_LOG.argv" | grep -v '^install -m 0755 /dev/stdin ' || true)"
 LS_SUDO=""
 unset SLS_PRIV_LOG
 
