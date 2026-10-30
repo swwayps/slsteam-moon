@@ -43,24 +43,29 @@ namespace
 
 std::atomic<uint64_t> g_sessionEpoch{1};
 
-void setOfflineStatus(bool offline)
+// The flags Lumen shows live next to config.yaml.
+void setFlag(const std::string& name, bool present)
 {
-	const char* home = std::getenv("HOME");
-	if (!home) return;
-	std::string path = std::string(home) + "/.config/SLSsteam/offline";
-	if (offline)
+	const std::string path = g_config.getDir() + "/" + name;
+	if (present)
 	{
-		std::ofstream f(path);
-		if (f.is_open())
-		{
-			f << "1\n";
-		}
+		std::ofstream f(path, std::ios::trunc);
+		if (f.is_open()) f << "1\n";
 	}
 	else
 	{
 		std::remove(path.c_str());
 	}
 }
+
+void setOfflineStatus(bool offline)
+{
+	setFlag("offline", offline);
+}
+
+// Depots of each game that this session installs from a local manifest.
+std::mutex g_fallbackLock;
+std::unordered_map<uint32_t, std::set<uint32_t>> g_fallbackDepots;
 
 std::mutex g_circuitLock;
 ProviderCircuit g_providerCircuit(
@@ -99,13 +104,14 @@ void finishProviderAttempt(uint64_t sessionEpoch,
 		    attemptToken, steadyNowMs(), success, rateLimited, transportFailure);
 		nowOffline = g_providerCircuit.open();
 	}
+	if (wasOffline == nowOffline) return;
 	setOfflineStatus(nowOffline);
-	if (!wasOffline && nowOffline)
+	if (nowOffline)
 	{
 		g_pLog->info(
 		    "ManifestFetch: manifest archive unreachable; marking providers offline until it recovers\n");
 	}
-	else if (wasOffline && !nowOffline)
+	else
 	{
 		g_pLog->info(
 		    "ManifestFetch: manifest archive reachable again; clearing offline state\n");
@@ -686,13 +692,32 @@ bool awaitManifestBlobFor(uint64_t manifestGid, uint32_t depotId,
 }
 
 
+void setDepotOnFallback(uint32_t appId, uint32_t depotId, bool onFallback)
+{
+	if (!appId || !depotId) return;
+	std::lock_guard lock(g_fallbackLock);
+	auto& depots = g_fallbackDepots[appId];
+	const bool wasFlagged = !depots.empty();
+	if (onFallback) depots.insert(depotId);
+	else depots.erase(depotId);
+	const bool flagged = !depots.empty();
+	if (!flagged) g_fallbackDepots.erase(appId);
+	if (wasFlagged != flagged) setFlag("offline_" + std::to_string(appId), flagged);
+}
+
 void clearOfflineFlags()
 {
-	const char* home = std::getenv("HOME");
-	if (!home) return;
-	const std::filesystem::path dir = std::filesystem::path(home) / ".config/SLSsteam";
+	{
+		std::lock_guard lock(g_fallbackLock);
+		g_fallbackDepots.clear();
+	}
+	const std::filesystem::path dir = g_config.getDir();
 	std::error_code ec;
 	std::filesystem::remove(dir / "offline", ec);
+	// Older versions kept the global flag below $HOME/.config even when
+	// XDG_CONFIG_HOME points elsewhere.
+	if (const char* home = std::getenv("HOME"))
+		std::filesystem::remove(std::filesystem::path(home) / ".config/SLSsteam/offline", ec);
 	for (std::filesystem::directory_iterator it(dir, ec), end; !ec && it != end;
 	     it.increment(ec))
 	{

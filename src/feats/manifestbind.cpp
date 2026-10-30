@@ -28,7 +28,6 @@
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
-#include <fstream>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -39,20 +38,6 @@
 
 namespace
 {
-	void setGameOfflineStatus(uint32_t appId, bool offline)
-	{
-		if (!appId) return;
-		std::string path = g_config.getDir() + "/offline_" + std::to_string(appId);
-		if (offline)
-		{
-			std::ofstream ofs(path, std::ios::trunc);
-			if (ofs.is_open()) ofs << "1";
-		}
-		else
-		{
-			std::remove(path.c_str());
-		}
-	}
 	// Two cooperating detours in CDepotDownloadMgr (see patterns.cpp
 	// CDepotDownloadMgr for the full RE).  Both share this 7-dword cdecl
 	// signature:
@@ -421,6 +406,12 @@ namespace
 		if (steamRoot.empty()) return manifestId;
 
 		const std::string dc = steamRoot + "/depotcache";
+		// The exact gid is on disk, so this depot needs no local manifest.
+		const auto exactReady = [&]
+		{
+			ManifestFetch::setDepotOnFallback(appId, depotId, false);
+			return freezePlanGid(depotId, manifestId, manifestId, consumeFrozen);
+		};
 
 		if (auto frozen =
 		        frozenPlanGid(depotId, manifestId, consumeFrozen))
@@ -440,8 +431,7 @@ namespace
 			{
 				ManifestStore::markPreferredGid(depotId, manifestId);
 			}
-			return freezePlanGid(
-			    depotId, manifestId, manifestId, consumeFrozen);
+			return exactReady();
 		}
 
 		// The planned gid is NOT in depotcache.  If the store holds this EXACT
@@ -456,8 +446,7 @@ namespace
 			             "from store (no internet needed)\n",
 			             site, depotId,
 			             static_cast<unsigned long long>(manifestId));
-			return freezePlanGid(
-			    depotId, manifestId, manifestId, consumeFrozen);
+			return exactReady();
 		}
 
 		// BuildDepotDependency normally started this exact fetch already.
@@ -478,8 +467,7 @@ namespace
 			g_pLog->info(
 			    "ManifestBind[%s]: depot=%u exact gid=%llu ready from provider\n",
 			    site, depotId, static_cast<unsigned long long>(manifestId));
-			return freezePlanGid(
-			    depotId, manifestId, manifestId, consumeFrozen);
+			return exactReady();
 		}
 
 		// Exact gid failed, timed out, or was confirmed absent. Prefer the
@@ -529,7 +517,7 @@ namespace
 			    depotId, manifestId, manifestId, consumeFrozen);
 		}
 
-		setGameOfflineStatus(appId, true);
+		ManifestFetch::setDepotOnFallback(appId, depotId, true);
 
 		g_pLog->info(
 		    "ManifestBind[%s]: depot=%u public gid=%llu not staged; "

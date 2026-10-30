@@ -270,6 +270,10 @@ namespace ManifestFetch
 
 	bool areProvidersOffline();
 
+	// Record whether a depot is installed from a local manifest instead of its
+	// public one; offline_<appId> exists while any depot of the game is.
+	void setDepotOnFallback(uint32_t appId, uint32_t depotId, bool onFallback);
+
 	// Remove the offline flags of the previous session. Called from load(), so
 	// only the client that runs the session clears them.
 	void clearOfflineFlags();
