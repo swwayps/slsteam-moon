@@ -606,6 +606,11 @@ bool Pattern_t::find(const MemHlp::CodeSegments& code)
 				matchAddress = LM_ADDRESS_BAD;
 			}
 		}
+		// The loaded local catalog lacked this locator (an optional one the
+		// writing boot did not resolve, or one added since): keep it for the
+		// next boot instead of scanning for it again.
+		LocalCatalogState& local = localStateFor(*this);
+		if (address != LM_ADDRESS_BAD && local.catalog) local.dirty = true;
 	}
 	const bool resolved = address != LM_ADDRESS_BAD;
 
