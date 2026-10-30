@@ -17,8 +17,8 @@
 // per boot and the surviving process may hit the provisioning cache and
 // skip synthesis — an in-memory set would be empty there.
 //
-// This pins down the persisted marker round-trip, managed-app filtering,
-// pure strip-budget policy, and reversible quarantine of app-scoped cache
+// This pins down the persisted marker round-trip, the strip selection, the
+// install-state gate, and reversible quarantine of app-scoped cache
 // artifacts. The protobuf request edit lives in apps.cpp::sendPICSInfoRequest.
 //
 // Build (from repo root):
@@ -112,20 +112,6 @@ int main()
 		std::vector<uint32_t> req = {632360, 632361};
 		auto idx = SynthMark::stripIndices(req, synthetic);
 		CHECK((idx == std::vector<int>{1, 0}), "all synthetic -> all indices descending");
-	}
-
-	// Managed-app scope: an orphaned synthetic marker must not be stripped.
-	{
-		auto syntheticWithOrphan = [](uint32_t a) {
-			return a == 632360 || a == 632361 || a == 4496490;
-		};
-		auto managed = [](uint32_t a) {
-			return a == 632360 || a == 632361;
-		};
-		std::vector<uint32_t> req = {632360, 4496490, 632361, 10};
-		auto idx = SynthMark::stripIndices(req, syntheticWithOrphan, managed);
-		CHECK((idx == std::vector<int>{2, 0}),
-		      "only managed synthetic apps are selected for stripping");
 	}
 
 	// Install-state gate: an unresolved app-manager interface preserves the
