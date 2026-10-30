@@ -91,6 +91,7 @@ struct Handle
 	std::size_t (*write)(char*, std::size_t, std::size_t, void*) = nullptr;
 	void* writeData = nullptr;
 	bool connectOnly = false;
+	long redirProtocols = -1;
 	std::string host;
 	std::string tx, rx;
 	bool upgraded = false;
@@ -114,6 +115,9 @@ class ScriptedCms final : public FakeCurl
 {
 public:
 	std::map<std::string, ScriptedEndpoint> endpoints;
+	std::size_t directoryPadding = 0; // spaces inside the CM directory JSON
+	std::size_t directoryAccepted = 0; // bytes the write callback kept
+	long directoryRedirect = -1; // CURLOPT_REDIR_PROTOCOLS of the directory GET
 
 	CURL* init() override { return reinterpret_cast<CURL*>(new Handle); }
 
@@ -125,6 +129,7 @@ public:
 			h.write = reinterpret_cast<std::size_t (*)(char*, std::size_t, std::size_t, void*)>(pointer);
 		else if (option == CURLOPT_WRITEDATA) h.writeData = pointer;
 		else if (option == CURLOPT_CONNECT_ONLY) h.connectOnly = number != 0;
+		else if (option == CURLOPT_REDIR_PROTOCOLS) h.redirProtocols = number;
 		return CURLE_OK;
 	}
 
@@ -141,8 +146,16 @@ public:
 				if (body.back() == '}') body += ',';
 				body += "{\"endpoint\":\"" + host + ":443\"}";
 			}
-			body += "]}}";
-			h.write(body.data(), 1, body.size(), h.writeData);
+			body += std::string(directoryPadding, ' ') + "]}}";
+			directoryRedirect = h.redirProtocols;
+			// Delivered in chunks, like libcurl: a short count ends the transfer.
+			for (std::size_t at = 0; at < body.size(); at += 65536)
+			{
+				const std::size_t chunk = std::min<std::size_t>(65536, body.size() - at);
+				if (h.write(body.data() + at, 1, chunk, h.writeData) != chunk)
+					return CURLE_WRITE_ERROR;
+				directoryAccepted += chunk;
+			}
 			return CURLE_OK;
 		}
 		const std::size_t start = std::strlen("https://");
@@ -358,6 +371,16 @@ int main()
 		CHECK(cms.endpoints["cm-a.test"].requests.size() == 1 &&
 		          cms.endpoints["cm-b.test"].requests.empty(),
 		      "one healthy CM serves the batch in one request");
+		CHECK(cms.directoryRedirect == CURLPROTO_HTTPS,
+		      "the CM directory GET follows redirects to https only");
+	}
+	{
+		ScriptedCms cms;
+		cms.directoryPadding = 2u << 20;
+		cms.endpoints["cm-a.test"];
+		(void)fetch(cms, {1, 2, 3});
+		CHECK(cms.directoryAccepted <= (1u << 20),
+		      "a CM directory answer over 1 MiB is not buffered");
 	}
 	{
 		// The first CM drops partway through its answer.

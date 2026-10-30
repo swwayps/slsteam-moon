@@ -35,6 +35,7 @@
 #include "base64/base64.hpp"
 
 #include "../utils/curl_api.hpp"
+#include "../utils/curl_sink.hpp"
 #include <curl/curl.h>
 
 #include <algorithm>
@@ -107,11 +108,6 @@ private:
 };
 
 
-std::size_t writeCb(const char* p, std::size_t sz, std::size_t n, std::string* dst)
-{
-	dst->append(p, sz * n);
-	return sz * n;
-}
 
 // Plain HTTPS GET (one-shot, not CONNECT_ONLY) for the CM list.
 AppInfoProvision::NetworkFailure httpsGet(const std::string& url,
@@ -124,10 +120,13 @@ AppInfoProvision::NetworkFailure httpsGet(const std::string& url,
 	CURL* c = curlApi()->easy_init();
 	if (!c) return AppInfoProvision::NetworkFailure::Provider;
 	body.clear();
+	// The CM list is a few KB.
+	CurlBodySink sink{&body, 1u << 20};
 	curlApi()->easy_setopt(c, CURLOPT_URL, url.c_str());
 	curlApi()->easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1L);
-	curlApi()->easy_setopt(c, CURLOPT_WRITEFUNCTION, writeCb);
-	curlApi()->easy_setopt(c, CURLOPT_WRITEDATA, &body);
+	curlApi()->easy_setopt(c, CURLOPT_REDIR_PROTOCOLS, curlRedirectProtocols(url));
+	curlApi()->easy_setopt(c, CURLOPT_WRITEFUNCTION, curlBodySinkWrite);
+	curlApi()->easy_setopt(c, CURLOPT_WRITEDATA, &sink);
 	curlApi()->easy_setopt(c, CURLOPT_TIMEOUT_MS, timeoutMs);
 	curlApi()->easy_setopt(c, CURLOPT_CONNECTTIMEOUT_MS, std::min(timeoutMs, 5000L));
 	curlApi()->easy_setopt(c, CURLOPT_NOSIGNAL, 1L);

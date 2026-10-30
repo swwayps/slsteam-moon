@@ -9,6 +9,7 @@
 #include "../sdk/IClientAppManager.hpp"
 
 #include "curl_api.hpp"
+#include "curl_sink.hpp"
 #include <curl/curl.h>
 
 #include <algorithm>
@@ -160,17 +161,6 @@ void clearArchiveMiss(uint32_t depotId, uint64_t gid)
 	g_archiveMisses.erase({depotId, gid});
 }
 
-struct BodySink { std::string* out; std::size_t limit; };
-
-std::size_t curlWriteCb(const char* p, std::size_t sz, std::size_t n, BodySink* sink)
-{
-	if (sz && n > SIZE_MAX / sz) return 0;
-	const std::size_t bytes = sz * n;
-	if (bytes > sink->limit - sink->out->size()) return 0;
-	sink->out->append(p, bytes);
-	return bytes;
-}
-
 
 struct TransferControl
 {
@@ -219,7 +209,7 @@ HttpResponse httpGet(const std::string& url, const JobBudget* budget = nullptr,
 		return r;
 	}
 	curl_slist* requestHeaders = nullptr;
-	BodySink sink{&r.body, maxBodyBytes};
+	CurlBodySink sink{&r.body, maxBodyBytes};
 	if (!hostHeader.empty())
 	{
 		const std::string host = "Host: " + std::string(hostHeader);
@@ -235,12 +225,8 @@ HttpResponse httpGet(const std::string& url, const JobBudget* budget = nullptr,
 	}
 	curlApi()->easy_setopt(c, CURLOPT_URL, url.c_str());
 	curlApi()->easy_setopt(c, CURLOPT_FOLLOWLOCATION, method == "POST" ? 0L : 1L);
-	// A redirect never downgrades an https request to plain http.
-	curlApi()->easy_setopt(c, CURLOPT_REDIR_PROTOCOLS,
-	                       url.rfind("https://", 0) == 0
-	                           ? static_cast<long>(CURLPROTO_HTTPS)
-	                           : static_cast<long>(CURLPROTO_HTTP | CURLPROTO_HTTPS));
-	curlApi()->easy_setopt(c, CURLOPT_WRITEFUNCTION, curlWriteCb);
+	curlApi()->easy_setopt(c, CURLOPT_REDIR_PROTOCOLS, curlRedirectProtocols(url));
+	curlApi()->easy_setopt(c, CURLOPT_WRITEFUNCTION, curlBodySinkWrite);
 	curlApi()->easy_setopt(c, CURLOPT_WRITEDATA, &sink);
 	curlApi()->easy_setopt(c, CURLOPT_ACCEPT_ENCODING, "");
 	if (method == "HEAD") curlApi()->easy_setopt(c, CURLOPT_NOBODY, 1L);

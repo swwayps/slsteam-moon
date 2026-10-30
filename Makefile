@@ -67,7 +67,7 @@ endif
 .PHONY: test-manifestdonor test-manifestdonor-runtime test-manifestfetch
 .PHONY: test-reconcilepin-scan
 .PHONY: test-depotkey-recv-policy
-.PHONY: test-pin-lookup test-private-apps test-config-settings test-config-tolerance test-config-watch test-config-create test-plugin-config test-curl-child test-legacy-cdkey test-utils-number test-launch-options
+.PHONY: test-curl-sink test-pin-lookup test-private-apps test-config-settings test-config-tolerance test-config-watch test-config-create test-plugin-config test-curl-child test-legacy-cdkey test-utils-number test-launch-options
 
 test-manifestdonor:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror \
@@ -342,6 +342,10 @@ test-catalog-trust: $(objs) $(libs)
 		$(objs) $(libs) -Wl,--wrap=LM_EnumSegments -lpthread -ldl \
 		-o /tmp/test_catalog_trust
 	/tmp/test_catalog_trust
+test-curl-sink:
+	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror -I include \
+		tools/test_curl_sink.cpp -o /tmp/test_curl_sink
+	/tmp/test_curl_sink
 test-cmclient-loader:
 	$(CXX) -std=c++20 -ffunction-sections -fdata-sections -I include -I src \
 		tools/test_cmclient_loader.cpp src/feats/cmclient.cpp \
