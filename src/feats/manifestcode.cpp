@@ -484,98 +484,126 @@ void resetSession()
 
 
 
+// Our work inside a Steam hook failed (an allocation, the logger): note it
+// once per hook. Steam's own call still runs.
+static void noteHookFailure(std::atomic<bool>& noted, const char* hook) noexcept
+{
+	if (noted.exchange(true, std::memory_order_relaxed)) return;
+	try
+	{
+		if (g_pLog) g_pLog->warn("%s: our work failed; Steam's call goes ahead\n", hook);
+	}
+	catch (...)
+	{
+	}
+}
+
+// Our side of BBuildAndAsyncSendFrame: let the message features read and
+// rewrite a copy of the frame, and pick the bytes Steam sends. `packet` owns
+// the copy and `replacement` a rebuilt frame; the hook frees and sends them.
+static void prepareSendFrame(void* pConnection, EWebSocketOpCode eOpCode,
+                             const uint8_t* pubData, uint32_t cubData,
+                             CNetPacket& packet, std::vector<uint8_t>& replacement,
+                             uint8_t*& sendData, uint32_t& sendSize)
+{
+	// The scratch packet below is read through the packet field layout, which
+	// the first received packet can still change; until then frames go out
+	// as they came (nothing rewritten here is sent before the first receive).
+	if (eOpCode != k_eWebSocketOpCode_Binary || !CNetPacket::layoutSettled()) return;
+	packet.setBody(reinterpret_cast<CNetPacketBody*>(Steam::Plat_Alloc(cubData)));
+	if (!packet.body()) return;
+	std::memcpy(packet.body(), pubData, cubData);
+	packet.setSize(cubData);
+	if (packet.isValid() && packet.isProtoBuf())
+	{
+		Lua::fireCallback(Lua::Callbacks::Network_SendPkt, &packet);
+		Apps::sendMsg(&packet);
+		FakeAppIds::sendMsg(&packet);
+		DepotKey::sendMsg(&packet);
+	}
+	sendData = reinterpret_cast<uint8_t*>(packet.body());
+	sendSize = packet.sizeBytes();
+
+	uint32_t eMsg = 0;
+	const uint8_t* pHdr  = nullptr;
+	const uint8_t* pBody = nullptr;
+	uint32_t cbHdr = 0, cbBody = 0;
+	if (!decodeFrame(sendData, sendSize, eMsg, pHdr, cbHdr, pBody, cbBody)) return;
+	uint64_t contextGeneration = 0;
+	{
+		std::lock_guard donorLock(g_DonorLock);
+		if (!g_DonorResetting)
+			contextGeneration = g_DonorContextGeneration;
+	}
+	if (eMsg == k_EMsgServiceMethodCallFromClient &&
+	    cbHdr && cbHdr <= kMaxHdrSize)
+	{
+		CMsgProtoBufHeader header;
+		if (header.ParseFromArray(pHdr, cbHdr) &&
+		    header.has_target_job_name() &&
+		    header.has_steamid() && header.steamid() &&
+		    header.has_client_sessionid() && header.client_sessionid())
+		{
+			// Never block Steam's send thread: requestCode() copies
+			// the context under this lock before it sends, so a
+			// newer capture cannot disturb a send in flight. A
+			// re-entrant send from the donor's own call is skipped.
+			std::lock_guard donorLock(g_DonorLock);
+			if (t_DonorSendDepth == 0 &&
+			    pConnection && contextGeneration && !g_DonorResetting &&
+			    contextGeneration == g_DonorContextGeneration)
+			{
+				const bool first = g_DonorHeader.empty();
+				g_DonorConnection = pConnection;
+				g_DonorConnectionVptr =
+					*static_cast<const void* const*>(pConnection);
+				g_DonorHeader.assign(pHdr, pHdr + cbHdr);
+				if (first)
+					g_pLog->infoOnce(
+					    "Donor: authenticated Steam send context captured\n");
+			}
+		}
+	}
+	dispatchSend(eMsg, pBody, cbBody, pHdr, cbHdr, replacement);
+	if (!replacement.empty())
+	{
+		sendData = replacement.data();
+		sendSize = static_cast<uint32_t>(replacement.size());
+	}
+}
+
 bool hkBBuildAndAsyncSendFrame(void* pConnection,
                                EWebSocketOpCode eOpCode,
                                uint8_t* pubData,
                                uint32_t cubData)
 {
-	// The scratch packet below is read through the packet field layout, which
-	// the first received packet can still change; until then frames go out
-	// as they came (nothing rewritten here is sent before the first receive).
-	if (eOpCode == k_eWebSocketOpCode_Binary && CNetPacket::layoutSettled())
+	// Steam's send thread: whatever our work throws, Steam sends the frame it
+	// handed us.
+	CNetPacket packet{};
+	std::vector<uint8_t> replacement;
+	uint8_t* sendData = pubData;
+	uint32_t sendSize = cubData;
+	try
 	{
-		CNetPacket packet{};
-		packet.setBody(reinterpret_cast<CNetPacketBody*>(Steam::Plat_Alloc(cubData)));
-		if (packet.body())
-		{
-			std::memcpy(packet.body(), pubData, cubData);
-			packet.setSize(cubData);
-			if (packet.isValid() && packet.isProtoBuf())
-			{
-				Lua::fireCallback(Lua::Callbacks::Network_SendPkt, &packet);
-				Apps::sendMsg(&packet);
-				FakeAppIds::sendMsg(&packet);
-				DepotKey::sendMsg(&packet);
-			}
-			pubData = reinterpret_cast<uint8_t*>(packet.body());
-			cubData = packet.sizeBytes();
-
-			uint32_t eMsg = 0;
-			const uint8_t* pHdr  = nullptr;
-			const uint8_t* pBody = nullptr;
-			uint32_t cbHdr = 0, cbBody = 0;
-			if (decodeFrame(pubData, cubData, eMsg, pHdr, cbHdr, pBody, cbBody))
-			{
-				uint64_t contextGeneration = 0;
-				{
-					std::lock_guard donorLock(g_DonorLock);
-					if (!g_DonorResetting)
-						contextGeneration = g_DonorContextGeneration;
-				}
-				if (eMsg == k_EMsgServiceMethodCallFromClient &&
-				    cbHdr && cbHdr <= kMaxHdrSize)
-				{
-					CMsgProtoBufHeader header;
-					if (header.ParseFromArray(pHdr, cbHdr) &&
-					    header.has_target_job_name() &&
-					    header.has_steamid() && header.steamid() &&
-					    header.has_client_sessionid() && header.client_sessionid())
-					{
-						// Never block Steam's send thread: requestCode() copies
-						// the context under this lock before it sends, so a
-						// newer capture cannot disturb a send in flight. A
-						// re-entrant send from the donor's own call is skipped.
-						std::lock_guard donorLock(g_DonorLock);
-						if (t_DonorSendDepth == 0 &&
-						    pConnection && contextGeneration && !g_DonorResetting &&
-						    contextGeneration == g_DonorContextGeneration)
-						{
-							const bool first = g_DonorHeader.empty();
-							g_DonorConnection = pConnection;
-							g_DonorConnectionVptr =
-								*static_cast<const void* const*>(pConnection);
-							g_DonorHeader.assign(pHdr, pHdr + cbHdr);
-							if (first)
-								g_pLog->infoOnce(
-								    "Donor: authenticated Steam send context captured\n");
-						}
-					}
-				}
-				std::vector<uint8_t> replacement;
-				dispatchSend(eMsg, pBody, cbBody, pHdr, cbHdr, replacement);
-				if (!replacement.empty())
-				{
-					const bool success =
-						Hooks::CWebSocketConnection_BBuildAndAsyncSendFrame.tramp.fn(
-							pConnection, eOpCode, replacement.data(),
-							static_cast<uint32_t>(replacement.size()));
-					packet.free();
-					return success;
-				}
-			}
-
-			const bool success =
-				Hooks::CWebSocketConnection_BBuildAndAsyncSendFrame.tramp.fn(
-					pConnection, eOpCode, pubData, cubData);
-			packet.free();
-			return success;
-		}
+		prepareSendFrame(pConnection, eOpCode, pubData, cubData, packet, replacement,
+		                 sendData, sendSize);
 	}
-	return Hooks::CWebSocketConnection_BBuildAndAsyncSendFrame.tramp.fn(
-	    pConnection, eOpCode, pubData, cubData);
+	catch (...)
+	{
+		static std::atomic<bool> noted{false};
+		noteHookFailure(noted, "BBuildAndAsyncSendFrame");
+		sendData = pubData;
+		sendSize = cubData;
+	}
+	const bool success = Hooks::CWebSocketConnection_BBuildAndAsyncSendFrame.tramp.fn(
+	    pConnection, eOpCode, sendData, sendSize);
+	if (packet.body()) packet.free();
+	return success;
 }
 
-bool hkBRouteMsgToJob(void* pJobMgr, void* arg2, void* pMsg, void* pJob)
+// Our side of BRouteMsgToJob: hand a GetManifestRequestCode answer to the
+// donor. Steam routes the message afterwards in every case.
+static void observeRoutedMessage(void* pMsg, void* pJob)
 {
 	// Reject not just null but any implausible pointer before dereferencing.
 	// A Steam client ABI change can shift the message/job structs these offsets
@@ -602,7 +630,7 @@ bool hkBRouteMsgToJob(void* pJobMgr, void* arg2, void* pMsg, void* pJob)
 	const uint32_t eMsg = peek32(pJob, 0x10);
 	if (eMsg != k_EMsgServiceMethodResponse)
 	{
-		return Hooks::CJobMgr_BRouteMsgToJob.tramp.fn(pJobMgr, arg2, pMsg, pJob);
+		return;
 	}
 
 	auto* pInner = reinterpret_cast<uint8_t*>(peek32(pMsg, 0xc));
@@ -618,7 +646,7 @@ bool hkBRouteMsgToJob(void* pJobMgr, void* arg2, void* pMsg, void* pJob)
 	// routing on a layout this code does not recognize, instead of crashing.
 	if (!plausible(pBuf) || cbBuf < sizeof(MsgHdr) + 1 || cbBuf > (64u * 1024 * 1024))
 	{
-		return Hooks::CJobMgr_BRouteMsgToJob.tramp.fn(pJobMgr, arg2, pMsg, pJob);
+		return;
 	}
 
 	const auto* hdrPtr = reinterpret_cast<const MsgHdr*>(pBuf);
@@ -627,7 +655,7 @@ bool hkBRouteMsgToJob(void* pJobMgr, void* arg2, void* pMsg, void* pJob)
 	// a garbage length near 2^32 and would pass.
 	if (cbProtoHdr == 0 || cbProtoHdr > cbBuf - sizeof(MsgHdr))
 	{
-		return Hooks::CJobMgr_BRouteMsgToJob.tramp.fn(pJobMgr, arg2, pMsg, pJob);
+		return;
 	}
 
 	CMsgProtoBufHeader hdr;
@@ -637,12 +665,12 @@ bool hkBRouteMsgToJob(void* pJobMgr, void* arg2, void* pMsg, void* pJob)
 			g_pLog->debug("BRouteMsgToJob service method response: %s\n", hdr.target_job_name().c_str());
 		if (fnvHash(hdr.target_job_name().c_str()) != kHashGetManifestRequestCode)
 		{
-			return Hooks::CJobMgr_BRouteMsgToJob.tramp.fn(pJobMgr, arg2, pMsg, pJob);
+			return;
 		}
 	}
 	else
 	{
-		return Hooks::CJobMgr_BRouteMsgToJob.tramp.fn(pJobMgr, arg2, pMsg, pJob);
+		return;
 	}
 
 	const uint32_t bodyOffset = sizeof(MsgHdr) + cbProtoHdr;
@@ -651,10 +679,26 @@ bool hkBRouteMsgToJob(void* pJobMgr, void* arg2, void* pMsg, void* pJob)
 	// code is injected into Steam's response and the message routes through
 	// unchanged.
 	resolveDonorResponse(jobIdTarget, hdr, pBuf + bodyOffset, cbBuf - bodyOffset);
+}
+
+bool hkBRouteMsgToJob(void* pJobMgr, void* arg2, void* pMsg, void* pJob)
+{
+	try
+	{
+		observeRoutedMessage(pMsg, pJob);
+	}
+	catch (...)
+	{
+		static std::atomic<bool> noted{false};
+		noteHookFailure(noted, "BRouteMsgToJob");
+	}
 	return Hooks::CJobMgr_BRouteMsgToJob.tramp.fn(pJobMgr, arg2, pMsg, pJob);
 }
 
-bool hkCDepotDownloadMgr_BYldRequestDepotManifest(void* pthis, uint32_t appId, uint32_t depotId, uint64_t manifestId, const char* branch, void* arg20)
+// Our side of BYldRequestDepotManifest: stage the manifest Steam is about to
+// request. Steam's request runs afterwards in every case.
+static void prepareDepotManifest(uint32_t appId, uint32_t depotId, uint64_t manifestId,
+                                 const char* branch)
 {
 	const bool inScope = DepotKey::manifestInManagedScope(
 	    appId, depotId, g_config.getManifestPinForPlanner(appId, depotId) != 0);
@@ -665,7 +709,7 @@ bool hkCDepotDownloadMgr_BYldRequestDepotManifest(void* pthis, uint32_t appId, u
 	{
 		g_pLog->debug("BYldRequestDepotManifest: app=%u depot=%u manifest=%llu not in scope, calling original function\n",
 		              appId, depotId, static_cast<unsigned long long>(manifestId));
-		return Hooks::CDepotDownloadMgr_BYldRequestDepotManifest.tramp.fn(pthis, appId, depotId, manifestId, branch, arg20);
+		return;
 	}
 
 	std::string steamRoot;
@@ -731,6 +775,19 @@ bool hkCDepotDownloadMgr_BYldRequestDepotManifest(void* pthis, uint32_t appId, u
 		g_pLog->warn("BYldRequestDepotManifest: could not resolve Steam root\n");
 	}
 
+}
+
+bool hkCDepotDownloadMgr_BYldRequestDepotManifest(void* pthis, uint32_t appId, uint32_t depotId, uint64_t manifestId, const char* branch, void* arg20)
+{
+	try
+	{
+		prepareDepotManifest(appId, depotId, manifestId, branch);
+	}
+	catch (...)
+	{
+		static std::atomic<bool> noted{false};
+		noteHookFailure(noted, "BYldRequestDepotManifest");
+	}
 	return Hooks::CDepotDownloadMgr_BYldRequestDepotManifest.tramp.fn(pthis, appId, depotId, manifestId, branch, arg20);
 }
 
