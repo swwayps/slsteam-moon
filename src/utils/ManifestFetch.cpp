@@ -565,9 +565,11 @@ std::shared_ptr<BlobJob> launchOrJoinBlob(uint64_t gid, uint32_t depotId,
 	job->sessionEpoch = sessionEpoch;
 	detail::promoteArchiveMissBypass(job->bypassArchiveMiss,
 	                                bypassArchiveMiss);
-	g_blobInflight.emplace(key, job);
-
-	const bool accepted = blobExecutor().submit(
+	// Everything that can throw (the executor, the task's storage) runs before
+	// the entry is published: an entry whose task never started keeps a
+	// promise nobody sets, and every later wait for it would get a broken one.
+	auto& executor = blobExecutor();
+	std::function<void()> task =
 	    [gid, depotId, depotcacheDir, completion, job, key]
 	    {
 	        bool ok = false;
@@ -617,15 +619,16 @@ std::shared_ptr<BlobJob> launchOrJoinBlob(uint64_t gid, uint32_t depotId,
 	                g_blobInflight.erase(entry);
 	            break;
 	        }
-	    });
-	if (!accepted)
+	    };
+	g_blobInflight.emplace(key, job);
+	if (!executor.submit(std::move(task)))
 	{
-		g_pLog->debug(
-		    "ManifestFetch: blob depot=%u gid=%llu executor queue unavailable\n",
-		    depotId, static_cast<unsigned long long>(gid));
 		job->budget->cancel();
 		try { completion->set_value(false); } catch (...) {}
 		g_blobInflight.erase(key);
+		g_pLog->debug(
+		    "ManifestFetch: blob depot=%u gid=%llu executor queue unavailable\n",
+		    depotId, static_cast<unsigned long long>(gid));
 	}
 	return job;
 }
