@@ -801,10 +801,20 @@ extern "C" unsigned int la_version(unsigned int)
 // CloudRedirect) at the host's copy. The 64-bit client runs inside
 // pressure-vessel, where host libraries are not at those paths, so lookups are
 // left to the loader.
+namespace { void writeRawLog(const char* text) noexcept; }
+
 extern "C" char* la_objsearch(const char* name,
                               __attribute__((unused)) uintptr_t* cookie,
                               __attribute__((unused)) unsigned int flag)
 {
+	if (AuditBinding::isRefusedObject(name))
+	{
+		// Loader callback: a one-shot raw write, no logger.
+		static std::atomic_flag logged;
+		if (!logged.test_and_set(std::memory_order_relaxed))
+			writeRawLog("[Info] audit: kept crashhandler.so from loading\n");
+		return nullptr;
+	}
 	return const_cast<char*>(name);
 }
 

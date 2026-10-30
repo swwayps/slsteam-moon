@@ -38,6 +38,14 @@ namespace AuditBinding
 			|| hasSuffix(objectName, "/cloud_redirect.so");
 	}
 
+	// la_objsearch refuses these, as upstream abafc49 does: Steam's crash
+	// handler writes minidumps that carry SLSsteam paths and $HOME and uploads
+	// them to Valve.
+	inline bool isRefusedObject(const char* objectName) noexcept
+	{
+		return hasSuffix(objectName, "crashhandler.so");
+	}
+
 	inline bool isBindingTarget(const char* objectName) noexcept
 	{
 		return hasSuffix(objectName, "/libc.so.6")

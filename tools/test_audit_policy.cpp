@@ -251,6 +251,15 @@ int main()
 		std::remove(logPath);
 	}
 
+	// Upstream abafc49: Steam's crash handler is never loaded.
+	check(AuditBinding::isRefusedObject("/steam/steamrt64/crashhandler.so"),
+	      "the crash handler is refused");
+	check(AuditBinding::isRefusedObject("crashhandler.so"),
+	      "a bare crash handler name is refused");
+	check(!AuditBinding::isRefusedObject("/steam/steamrt64/steamclient.so"),
+	      "steamclient is not refused");
+	check(!AuditBinding::isRefusedObject(nullptr),
+	      "a missing name is not refused");
 	if (failures != 0)
 	{
 		std::fprintf(stderr, "test_audit_policy: %d failure(s)\n", failures);
