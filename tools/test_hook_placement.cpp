@@ -3,15 +3,19 @@
 // unmodified instead of reporting success with the hook missing. TraceIPC
 // only logs, so it is not required.
 // Build: make test-hook-placement (links the whole object set).
+#include "../src/config.hpp"
 #include "../src/hooks.hpp"
 #include "../src/log.hpp"
 #include "../src/patterns.hpp"
+#include "../src/sdk/CNetPacket.hpp"
+#include "../src/sdk/protobufs/steammessages_base.pb.h"
 #include "../src/vftableinfo.hpp"
 
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <memory>
+#include <new>
 #include <string>
 #include <sys/mman.h>
 #include <sys/wait.h>
@@ -24,6 +28,23 @@ static int g_failures = 0;
 		if (!(cond)) { std::printf("FAIL: %s\n", msg); ++g_failures; } \
 		else         { std::printf("ok:   %s\n", msg); }               \
 	} while (0)
+
+// Once armed, the next allocation on this thread fails.
+static thread_local bool t_failNextAllocation = false;
+static thread_local bool t_allocationFailed = false;
+void* operator new(std::size_t size)
+{
+	if (t_failNextAllocation)
+	{
+		t_failNextAllocation = false;
+		t_allocationFailed = true;
+		throw std::bad_alloc();
+	}
+	if (void* p = std::malloc(size ? size : 1)) return p;
+	throw std::bad_alloc();
+}
+void operator delete(void* p) noexcept { std::free(p); }
+void operator delete(void* p, std::size_t) noexcept { std::free(p); }
 
 namespace
 {
@@ -124,6 +145,34 @@ int main()
 		      return patched && std::memcmp(bytes, before.data(), 4096) == 0;
 	      }),
 	      "Hooks::remove() restores every hook Hooks::setup() placed");
+
+	// The CM receive hook's own work before the dispatch boundary (packet
+	// layout, logging, the Family Share decision) can run out of memory on
+	// Steam's receive thread: the hook still hands the packet to Steam.
+	CHECK(inChild([code] {
+		      pointRequiredHooksAt(reinterpret_cast<lm_address_t>(code), 64);
+		      if (!Hooks::setup()) return false;
+		      g_config.disableFamilyLock.set(true);
+		      CMsgProtoBufHeader header;
+		      header.set_target_job_name("FamilyGroupsClient.NotifyRunningApps#1");
+		      const std::string bytes = header.SerializeAsString();
+		      std::vector<unsigned char> storage(sizeof(CNetPacketBody) + bytes.size());
+		      auto* body = reinterpret_cast<CNetPacketBody*>(storage.data());
+		      body->type = CNetPacket::PROTOBUF_TYPE_MASK | 146;
+		      body->headerSize = bytes.size();
+		      std::memcpy(storage.data() + sizeof(CNetPacketBody), bytes.data(), bytes.size());
+		      CNetPacket packet{};
+		      packet.setBody(body);
+		      packet.setSize(storage.size());
+		      using RecvPkt = void (*)(void*, CNetPacket*);
+		      const auto recv = reinterpret_cast<RecvPkt>(
+		          VFTIndexes::CCMInterface::RecvPkt.address);
+		      t_failNextAllocation = true;
+		      recv(nullptr, &packet);
+		      t_failNextAllocation = false;
+		      return t_allocationFailed;
+	      }),
+	      "an allocation failure before the CM dispatch does not unwind into Steam");
 
 	if (g_failures == 0) std::printf("\nall hook placement checks passed\n");
 	else std::printf("\n%d hook placement check(s) FAILED\n", g_failures);

@@ -377,29 +377,61 @@ bool LuaHook::remove()
 	return true;
 }
 
+// Our work in the CM receive hook failed (an allocation, the logger): note it
+// once and let Steam have the packet.
+static void noteRecvFailure() noexcept
+{
+	static std::atomic<bool> logged{false};
+	if (logged.exchange(true, std::memory_order_relaxed)) return;
+	try
+	{
+		if (g_pLog)
+			g_pLog->warn("RecvPkt: our pre-dispatch work failed; Steam keeps the packet\n");
+	}
+	catch (...)
+	{
+	}
+}
+
 static void hkCMInterface_RecvPkt(void* pCMInterface, CNetPacket* pNetPacket)
 {
-	// Settle the packet field layout from the first live Steam-owned packet
-	// before any field is read.  No-op once settled; stays at shift 0 (the
-	// stable layout) unless a packet fails to validate there.
-	CNetPacket::detectLayout(pNetPacket);
-
-	if (g_config.extendedLogging.get())
+	// Everything before the dispatch boundary runs on Steam's receive thread,
+	// so nothing it throws may unwind into Steam.
+	bool choke = false;
+	try
 	{
-		g_pLog->debug(
-			"RecvPkt %u\n",
-			pNetPacket ? pNetPacket->getType() : CNetPacket::INVALID_MESSAGE_TYPE);
+		// Settle the packet field layout from the first live Steam-owned packet
+		// before any field is read.  No-op once settled; stays at shift 0 (the
+		// stable layout) unless a packet fails to validate there.
+		CNetPacket::detectLayout(pNetPacket);
+
+		if (g_config.extendedLogging.get())
+		{
+			g_pLog->debug(
+				"RecvPkt %u\n",
+				pNetPacket ? pNetPacket->getType() : CNetPacket::INVALID_MESSAGE_TYPE);
+		}
+
+		if (pNetPacket && pNetPacket->isProtoBuf() &&
+		    FamilyShare::shouldChoke(g_config.disableFamilyLock.get(), *pNetPacket))
+		{
+			choke = true;
+			g_pLog->debug("Choking Family Share message %u\n",
+			              static_cast<uint32_t>(pNetPacket->getProtoBufType()));
+		}
+	}
+	catch (...)
+	{
+		noteRecvFailure();
+	}
+	if (choke)
+	{
+		pNetPacket->free();
+		return;
 	}
 
 	if (pNetPacket && pNetPacket->isProtoBuf())
 	{
-		if (FamilyShare::shouldChoke(g_config.disableFamilyLock.get(), *pNetPacket))
-		{
-			g_pLog->debug("Choking Family Share message %u\n",
-			              static_cast<uint32_t>(pNetPacket->getProtoBufType()));
-			pNetPacket->free();
-			return;
-		}
 
 		// Route the CM protobuf frame through the message features (depot key,
 		// PICS, ticket, wallet/email, license list, login-state).
