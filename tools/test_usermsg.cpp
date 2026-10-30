@@ -33,8 +33,6 @@ static const UserMsg kAll[] = {
 	UserMsg::LoadSuccess,
 	UserMsg::BirthdayGreeting,
 	UserMsg::InitializationFailed,
-	UserMsg::ContentServersUnavailable,
-	UserMsg::DownloadAuthUnavailable,
 	UserMsg::DownloadTimedOut,
 	UserMsg::ManifestNotReady,
 	UserMsg::GamePreparationFailed,
@@ -87,10 +85,10 @@ int main()
 	// 3) The two languages actually differ for a representative error (so a
 	//    Portuguese user doesn't silently get English).
 	{
-		const UiMessage en = messageFor(UserMsg::ContentServersUnavailable, Lang::English);
-		const UiMessage pt = messageFor(UserMsg::ContentServersUnavailable, Lang::Portuguese);
+		const UiMessage en = messageFor(UserMsg::DownloadTimedOut, Lang::English);
+		const UiMessage pt = messageFor(UserMsg::DownloadTimedOut, Lang::Portuguese);
 		CHECK(std::strcmp(en.body, pt.body) != 0,
-		      "ContentServersUnavailable differs EN vs PT");
+		      "DownloadTimedOut differs EN vs PT");
 	}
 
 	{
@@ -116,12 +114,12 @@ int main()
 		      "empty detail leaves no dangling sentinel");
 	}
 
-	// 5) The HTTP-carrying message actually uses the sentinel, so the code
-	//    can be shown ("HTTP 503") without baking it into the catalog.
+	// 5) A message that names its subject uses the sentinel, so the app id
+	//    can be shown without baking it into the catalog.
 	{
-		const UiMessage en = messageFor(UserMsg::ContentServersUnavailable, Lang::English);
+		const UiMessage en = messageFor(UserMsg::GameMetadataUnavailable, Lang::English);
 		CHECK(contains(en.body, "{detail}"),
-		      "ContentServersUnavailable body has a {detail} slot for the HTTP code");
+		      "GameMetadataUnavailable body has a {detail} slot for the app id");
 	}
 
 	// A preparation failure caused by incomplete install data is not repaired
@@ -158,8 +156,8 @@ int main()
 	{
 		CHECK(messageFor(UserMsg::LoadSuccess, Lang::English).severity == Severity::Info,
 		      "LoadSuccess is Info severity");
-		CHECK(messageFor(UserMsg::ContentServersUnavailable, Lang::English).severity == Severity::Error,
-		      "ContentServersUnavailable is Error severity");
+		CHECK(messageFor(UserMsg::InitializationFailed, Lang::English).severity == Severity::Error,
+		      "InitializationFailed is Error severity");
 	}
 
 	// 7) Suppressed-count suffix: when the throttle hid N repeats of the same
