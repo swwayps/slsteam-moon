@@ -5,6 +5,7 @@
 #include "../src/config.hpp"
 #include "../src/feats/appinfo_provision.hpp"
 #include "../src/feats/appinfo_vdf.hpp"
+#include "../src/feats/dlc_metadata.hpp"
 #include "../src/feats/pics.hpp"
 #include "../src/log.hpp"
 #include "../src/utils/process_lock.hpp"
@@ -288,6 +289,65 @@ int main()
 		setenv("XDG_CONFIG_HOME", home, 1);
 		CHECK(!spliceThrew && spliced == 0,
 		      "an unusable config folder does not throw out of the boot splice");
+	}
+
+	// The pair validator, the appinfo.vdf splice and the DLC normalizer read
+	// KV1 text by the same rules.
+	{
+		const uint32_t dlc = 48;
+		g_config.managedAppIds.set({dlc});
+		g_config.addedAppIds.set({dlc});
+		const auto wireNamed = [](const std::string& name)
+		{
+			return "\"appinfo\"\n{\n\t\"appid\"\t\t\"48\"\n\t\"common\"\n\t{\n"
+			       "\t\t\"name\"\t\t\"" + name + "\"\n\t\t\"type\"\t\t\"DLC\"\n"
+			       "\t\t\"parent\"\t\t\"42\"\n\t}\n\t\"depots\"\n\t{\n\t\t\"43\"\n\t\t{\n"
+			       "\t\t\t\"config\"\n\t\t\t{\n\t\t\t\t\"oslist\"\t\t\"linux\"\n\t\t\t}\n"
+			       "\t\t\t\"manifests\"\n\t\t\t{\n\t\t\t\t\"public\"\n\t\t\t\t{\n"
+			       "\t\t\t\t\t\"gid\"\t\t\"1234567890\"\n\t\t\t\t}\n\t\t\t}\n"
+			       "\t\t}\n\t}\n}\n";
+		};
+		const std::string balanced = wireNamed("Extra");
+		const std::string truncated =
+			balanced.substr(0, balanced.find("\"1234567890\"") + 13);
+		const struct
+		{
+			const char* name;
+			std::string wire;
+			bool valid;
+		} corpus[] = {
+			{"a balanced buffer", balanced, true},
+			{"a buffer cut after a depot gid", truncated, false},
+			{"a buffer with a token after its object", balanced + "\"extra\"\n", false},
+			{"an escaped quote", wireNamed("Say \\\"hi\\\""), true},
+		};
+		const std::string appinfo = std::string(home) + "/corpus_appinfo.vdf";
+		for (const auto& entry : corpus)
+		{
+			replaceFile(cache + "/picsbuffer_48.bin", entry.wire);
+			replaceFile(cache + "/picsbuffer_48.yaml", metadataFor(entry.wire, dlc));
+			// An empty v41 appinfo.vdf: header, no apps, empty string table.
+			{
+				std::ofstream out(appinfo, std::ios::binary | std::ios::trunc);
+				const uint32_t magic = 0x07564429u, universe = 1, footer = 0, strings = 0;
+				const int64_t tableOffset = 20;
+				out.write(reinterpret_cast<const char*>(&magic), 4);
+				out.write(reinterpret_cast<const char*>(&universe), 4);
+				out.write(reinterpret_cast<const char*>(&tableOffset), 8);
+				out.write(reinterpret_cast<const char*>(&footer), 4);
+				out.write(reinterpret_cast<const char*>(&strings), 4);
+			}
+			std::string pair, normalized;
+			const bool validated = AppInfoProvision::readValidatedCacheBuffer(dlc, pair);
+			const bool spliced = AppInfoVdf::injectAllCached(appinfo) == 1;
+			const bool normalizedOk = DlcMetadata::normalize(entry.wire, dlc, 42, normalized);
+			CHECK(validated == entry.valid && spliced == entry.valid &&
+			      normalizedOk == entry.valid,
+			      (std::string(entry.name) + (entry.valid ? " is read" : " is refused") +
+			       " by all three readers (validator " + std::to_string(validated) +
+			       ", splice " + std::to_string(spliced) + ", DLC " +
+			       std::to_string(normalizedOk) + ")").c_str());
+		}
 	}
 
 	if (g_failures == 0) std::printf("\nall cache validation checks passed\n");

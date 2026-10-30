@@ -14,6 +14,7 @@
 
 #include "appinfo_text.hpp"
 #include "base64/base64.hpp"
+#include "kvtext.hpp"
 #include "provision_cache.hpp"
 #include "synthmark.hpp"
 #include "yaml-cpp/yaml.h"
@@ -277,97 +278,8 @@ bool readV41(const std::string& path, AppInfoFile& out, std::string& err)
 //
 // PICS responses deliver KeyValues in *text* format (quoted strings,
 // {} blocks, whitespace).  We tokenize the text and emit binary KV1 with
-// keys as string-table indices.
-//
-// The text grammar is small:
-//   document := pair*
-//   pair    := string string | string '{' pair* '}'
-//   string  := '"' (escaped chars)* '"' | bare_word
-// We accept '\\' '\"' '\n' '\t' as escapes inside quoted strings.
+// keys as string-table indices (lexer: kvtext.hpp).
 // ---------------------------------------------------------------------------
-
-class TextLexer
-{
-public:
-	TextLexer(const char* p, const char* end) : p_(p), end_(end) {}
-
-	enum class Tok { String, OpenBrace, CloseBrace, End };
-
-	Tok next(std::string& out)
-	{
-		out.clear();
-		skipWs();
-		if (p_ >= end_) return Tok::End;
-
-		const char c = *p_;
-		if (c == '{') { ++p_; return Tok::OpenBrace; }
-		if (c == '}') { ++p_; return Tok::CloseBrace; }
-		if (c == '"') return readQuoted(out);
-		return readBare(out);
-	}
-
-private:
-	void skipWs()
-	{
-		while (p_ < end_)
-		{
-			const unsigned char c = static_cast<unsigned char>(*p_);
-			if (c == ' ' || c == '\t' || c == '\r' || c == '\n')
-			{
-				++p_;
-				continue;
-			}
-			// Skip "// ..." line comments (rare but legal in KV1 text).
-			if (c == '/' && p_ + 1 < end_ && p_[1] == '/')
-			{
-				while (p_ < end_ && *p_ != '\n') ++p_;
-				continue;
-			}
-			break;
-		}
-	}
-
-	Tok readQuoted(std::string& out)
-	{
-		++p_; // opening quote
-		while (p_ < end_)
-		{
-			const char c = *p_++;
-			if (c == '"') return Tok::String;
-			if (c == '\\' && p_ < end_)
-			{
-				const char e = *p_++;
-				switch (e)
-				{
-					case 'n':  out.push_back('\n'); break;
-					case 't':  out.push_back('\t'); break;
-					case 'r':  out.push_back('\r'); break;
-					case '"':  out.push_back('"');  break;
-					case '\\': out.push_back('\\'); break;
-					default:   out.push_back(e);    break;
-				}
-				continue;
-			}
-			out.push_back(c);
-		}
-		return Tok::End; // unterminated string treated as EOF
-	}
-
-	Tok readBare(std::string& out)
-	{
-		while (p_ < end_)
-		{
-			const unsigned char c = static_cast<unsigned char>(*p_);
-			if (c == ' ' || c == '\t' || c == '\r' || c == '\n' ||
-			    c == '{' || c == '}' || c == '"') break;
-			out.push_back(*p_++);
-		}
-		return Tok::String;
-	}
-
-	const char* p_;
-	const char* end_;
-};
 
 // Try to encode a value as Int32 if it parses cleanly; otherwise emit String.
 // PICS appinfo text doesn't tag types, so we mirror what Steam does: read
@@ -386,24 +298,24 @@ void emitString(std::vector<uint8_t>& out, AppInfoFile& f,
 	out.push_back(0);
 }
 
-bool emitObject(TextLexer& lex, AppInfoFile& f,
+bool emitObject(KvText::Lexer& lex, AppInfoFile& f,
                 std::vector<uint8_t>& out, std::string& err);
 
 // Emit a single pair starting from a key.  Caller has just read `key` as a
 // string token; this consumes either another string (-> leaf) or an open
 // brace (-> nested object) and writes the pair.
-bool emitPair(TextLexer& lex, AppInfoFile& f,
+bool emitPair(KvText::Lexer& lex, AppInfoFile& f,
               const std::string& key, std::vector<uint8_t>& out,
               std::string& err)
 {
 	std::string tok;
 	const auto t = lex.next(tok);
-	if (t == TextLexer::Tok::String)
+	if (t == KvText::Lexer::Tok::String)
 	{
 		emitString(out, f, key, tok);
 		return true;
 	}
-	if (t == TextLexer::Tok::OpenBrace)
+	if (t == KvText::Lexer::Tok::OpenBrace)
 	{
 		const uint32_t idx = f.internStringIndex(key);
 		out.push_back(KV::ChildObject);
@@ -415,24 +327,24 @@ bool emitPair(TextLexer& lex, AppInfoFile& f,
 	return false;
 }
 
-bool emitObject(TextLexer& lex, AppInfoFile& f,
+bool emitObject(KvText::Lexer& lex, AppInfoFile& f,
                 std::vector<uint8_t>& out, std::string& err)
 {
 	std::string tok;
 	while (true)
 	{
 		const auto t = lex.next(tok);
-		if (t == TextLexer::Tok::CloseBrace)
+		if (t == KvText::Lexer::Tok::CloseBrace)
 		{
 			out.push_back(KV::End);
 			return true;
 		}
-		if (t == TextLexer::Tok::End)
+		if (t == KvText::Lexer::Tok::End || t == KvText::Lexer::Tok::Invalid)
 		{
 			err = "unterminated object";
 			return false;
 		}
-		if (t != TextLexer::Tok::String)
+		if (t != KvText::Lexer::Tok::String)
 		{
 			err = "expected key";
 			return false;
@@ -448,28 +360,23 @@ bool translateWireToIndexed(const std::string& wire,
 {
 	if (wire.empty()) { err = "empty wire buffer"; return false; }
 
-	// PICS-wire buffer is null-terminated text.  Trim the trailing null
-	// (and any trailing whitespace) before lexing.
-	size_t len = wire.size();
-	while (len > 0 && (wire[len - 1] == '\0' || wire[len - 1] == '\n' ||
-	                   wire[len - 1] == ' '  || wire[len - 1] == '\t' ||
-	                   wire[len - 1] == '\r'))
-	{
-		--len;
-	}
-
-	TextLexer lex(wire.data(), wire.data() + len);
-
-	// The PICS buffer is a single top-level pair: "appinfo" { ... }.
+	// The PICS buffer is one top-level pair, "appinfo" { ... }, ending in a
+	// NUL; nothing may follow it.
+	KvText::Lexer lex(KvText::trimmed(wire));
 	std::string topKey;
-	const auto topTok = lex.next(topKey);
-	if (topTok != TextLexer::Tok::String)
+	if (lex.next(topKey) != KvText::Lexer::Tok::String || topKey != "appinfo")
 	{
-		err = "wire buffer doesn't start with a key";
+		err = "wire buffer doesn't start with \"appinfo\"";
 		return false;
 	}
 
 	if (!emitPair(lex, f, topKey, outVdf, err)) return false;
+	std::string trailing;
+	if (lex.next(trailing) != KvText::Lexer::Tok::End)
+	{
+		err = "data after the appinfo object";
+		return false;
+	}
 
 	// Append the trailing root-level End that v41 binary KV expects.
 	outVdf.push_back(KV::End);

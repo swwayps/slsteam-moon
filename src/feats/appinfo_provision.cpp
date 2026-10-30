@@ -15,6 +15,7 @@
 #include "dlcids.hpp"
 #include "dlc_metadata.hpp"
 #include "hotreload.hpp"
+#include "kvtext.hpp"
 #include "manifeststore.hpp"
 #include "manifeststore_io.hpp"
 #include "manifestsynth.hpp"
@@ -325,102 +326,6 @@ std::string expandUrl(const std::string& tmpl, uint32_t appId)
 		}
 	}
 	return out;
-}
-
-// ---------------------------------------------------------------------------
-// VDF text writer.
-// ---------------------------------------------------------------------------
-//
-// `AppInfoVdf::translateWireToIndexed` accepts the same KV1-text dialect
-// that PICS uses on the wire ("appinfo" { ... } with quoted keys/values
-// and braces).  We emit a strict subset of that here: every leaf is a
-// quoted string (Steam's appinfo schema is all-strings anyway).
-
-void emitEscaped(std::string& out, const std::string& s)
-{
-	out.push_back('"');
-	for (char c : s)
-	{
-		if (c == '\\' || c == '"') out.push_back('\\');
-		out.push_back(c);
-	}
-	out.push_back('"');
-}
-
-void emitNode(std::string& out, const YAML::Node& node, int depth);
-
-void emitMap(std::string& out, const YAML::Node& node, int depth)
-{
-	for (auto it = node.begin(); it != node.end(); ++it)
-	{
-		const std::string key = it->first.as<std::string>();
-		// SteamCMD JSON adds "_change_number", "_sha", "_size",
-		// "_missing_token" sibling fields at the top level.  These
-		// belong to the *envelope*, not the appinfo body, so the
-		// caller filters them before calling emitMap.
-		out.append(depth, '\t');
-		emitEscaped(out, key);
-		const auto& val = it->second;
-		if (val.IsMap())
-		{
-			out.append("\n");
-			out.append(depth, '\t');
-			out.append("{\n");
-			emitNode(out, val, depth + 1);
-			out.append(depth, '\t');
-			out.append("}\n");
-		}
-		else if (val.IsScalar())
-		{
-			out.append("\t\t");
-			emitEscaped(out, val.as<std::string>());
-			out.append("\n");
-		}
-		else if (val.IsSequence())
-		{
-			// Sequences shouldn't appear in appinfo, but if they do,
-			// render as an indexed map: "0" "v0" "1" "v1"...
-			out.append("\n");
-			out.append(depth, '\t');
-			out.append("{\n");
-			int idx = 0;
-			for (const auto& child : val)
-			{
-				out.append(depth + 1, '\t');
-				emitEscaped(out, std::to_string(idx++));
-				if (child.IsMap())
-				{
-					out.append("\n");
-					out.append(depth + 1, '\t');
-					out.append("{\n");
-					emitNode(out, child, depth + 2);
-					out.append(depth + 1, '\t');
-					out.append("}\n");
-				}
-				else
-				{
-					out.append("\t\t");
-					emitEscaped(out, child.IsScalar() ? child.as<std::string>() : std::string{});
-					out.append("\n");
-				}
-			}
-			out.append(depth, '\t');
-			out.append("}\n");
-		}
-		else
-		{
-			// Null / undefined → empty string
-			out.append("\t\t\"\"\n");
-		}
-	}
-}
-
-void emitNode(std::string& out, const YAML::Node& node, int depth)
-{
-	if (node.IsMap())
-	{
-		emitMap(out, node, depth);
-	}
 }
 
 // A depot's config.oslist, or "" when it has none or it is unreadable.
@@ -848,10 +753,7 @@ SourceResult renderAppinfoBuffer(
 	// active/baseline manifest read.
 
 	// Steam's appinfo wire format wraps the document in "appinfo" { ... }.
-	wireOut.clear();
-	wireOut.append("\"appinfo\"\n{\n");
-	emitNode(wireOut, body, 1);
-	wireOut.append("}\n");
+	wireOut = KvText::emitAppinfo(body);
 	return SourceResult::Success;
 }
 
@@ -1320,136 +1222,6 @@ bool injectProtonMappings()
 	return true;
 }
 
-// ---------------------------------------------------------------------------
-// Native CM provider: parse the wire-text VDF buffer the anonymous CM
-// returns into the same YAML::Node shape extractAppNode produces from
-// steamcmd's JSON, so it flows through the identical prune/render/persist
-// path.  The CM buffer is `"appinfo" { ... }` KV1 text;
-// we parse its inner body into a map.
-// ---------------------------------------------------------------------------
-
-// Minimal KV1-text reader: builds a YAML::Node tree from a VDF-text body.
-// `p`/`end` bracket the buffer.  Returns the node for the object whose
-// opening brace has already been consumed by the caller (or, at top
-// level, the single "appinfo" wrapper's body).  Defensive: bails to an
-// empty node on malformed input.
-class CmVdfReader
-{
-public:
-	CmVdfReader(const char* p, const char* end) : p_(p), end_(end) {}
-
-	// Parse the top-level `"appinfo" { ... }` and return the inner body
-	// node (equivalent to steamcmd's data[appid]).  Empty on failure.
-	YAML::Node parseAppinfo()
-	{
-		std::string key;
-		Tok t = next(key);
-		if (t != Tok::String) return YAML::Node(YAML::NodeType::Undefined);
-		t = next(key /*reused as scratch*/);
-		// After the top key we expect an opening brace.
-		if (t != Tok::OpenBrace) return YAML::Node(YAML::NodeType::Undefined);
-		return parseObject();
-	}
-
-private:
-	enum class Tok { String, OpenBrace, CloseBrace, End };
-
-	YAML::Node parseObject()
-	{
-		YAML::Node node(YAML::NodeType::Map);
-		std::string key;
-		for (;;)
-		{
-			Tok t = next(key);
-			if (t == Tok::CloseBrace || t == Tok::End) break;
-			if (t != Tok::String) break; // malformed
-			std::string val;
-			Tok vt = next(val);
-			if (vt == Tok::OpenBrace)
-			{
-				node[key] = parseObject();
-			}
-			else if (vt == Tok::String)
-			{
-				node[key] = val;
-			}
-			else
-			{
-				break; // malformed
-			}
-		}
-		return node;
-	}
-
-	Tok next(std::string& out)
-	{
-		out.clear();
-		skipWs();
-		if (p_ >= end_) return Tok::End;
-		const char c = *p_;
-		if (c == '{') { ++p_; return Tok::OpenBrace; }
-		if (c == '}') { ++p_; return Tok::CloseBrace; }
-		if (c == '"') return readQuoted(out);
-		return readBare(out);
-	}
-
-	void skipWs()
-	{
-		while (p_ < end_)
-		{
-			const unsigned char c = static_cast<unsigned char>(*p_);
-			if (c == ' ' || c == '\t' || c == '\r' || c == '\n') { ++p_; continue; }
-			if (c == '/' && p_ + 1 < end_ && p_[1] == '/')
-			{
-				while (p_ < end_ && *p_ != '\n') ++p_;
-				continue;
-			}
-			break;
-		}
-	}
-
-	Tok readQuoted(std::string& out)
-	{
-		++p_;
-		while (p_ < end_)
-		{
-			const char c = *p_++;
-			if (c == '"') return Tok::String;
-			if (c == '\\' && p_ < end_)
-			{
-				const char e = *p_++;
-				switch (e)
-				{
-					case 'n':  out.push_back('\n'); break;
-					case 't':  out.push_back('\t'); break;
-					case 'r':  out.push_back('\r'); break;
-					case '"':  out.push_back('"');  break;
-					case '\\': out.push_back('\\'); break;
-					default:   out.push_back(e);    break;
-				}
-				continue;
-			}
-			out.push_back(c);
-		}
-		return Tok::End;
-	}
-
-	Tok readBare(std::string& out)
-	{
-		while (p_ < end_)
-		{
-			const unsigned char c = static_cast<unsigned char>(*p_);
-			if (c == ' ' || c == '\t' || c == '\r' || c == '\n' ||
-			    c == '{' || c == '}' || c == '"') break;
-			out.push_back(*p_++);
-		}
-		return Tok::String;
-	}
-
-	const char* p_;
-	const char* end_;
-};
-
 bool requiresProtonFromBody(const YAML::Node& body) noexcept
 {
 	try
@@ -1491,8 +1263,7 @@ bool cachedWireRequiresProton(const std::string& wire) noexcept
 	try
 	{
 		if (wire.empty()) return false;
-		CmVdfReader reader(wire.data(), wire.data() + wire.size());
-		return requiresProtonFromBody(reader.parseAppinfo());
+		return requiresProtonFromBody(KvText::parseAppinfo(wire));
 	}
 	catch (...)
 	{
@@ -1599,8 +1370,7 @@ bool readValidatedCacheBufferLocked(uint32_t appId, std::string& wireOut,
 		const std::string actualSha(
 		    reinterpret_cast<const char*>(digestBytes), sizeof(digestBytes));
 
-		CmVdfReader reader(wire.data(), wire.data() + wire.size());
-		const YAML::Node appNode = reader.parseAppinfo();
+		const YAML::Node appNode = KvText::parseAppinfo(wire);
 		const bool parsed = appNode && appNode.IsMap() && appNode.size() > 0;
 		const cache::CacheRecordFacts facts{
 		    .requestedAppId = appId,
@@ -1853,8 +1623,7 @@ SourceResult provisionAppFromCmBuffer(uint32_t appId, const std::string& cmWire,
                                       ProvisionPassContext& context)
 {
 	if (cmWire.empty()) return SourceResult::InvalidResponse;
-	CmVdfReader reader(cmWire.data(), cmWire.data() + cmWire.size());
-	YAML::Node appNode = reader.parseAppinfo();
+	YAML::Node appNode = KvText::parseAppinfo(cmWire);
 	if (!appNode || !appNode.IsMap() || appNode.size() == 0)
 	{
 		g_pLog->info("AppInfoProvision: app=%u CM buffer parse failed, fallback\n", appId);
