@@ -52,7 +52,7 @@ namespace
 }
 namespace HotReload
 {
-	void publish(const std::unordered_set<std::uint32_t>& managed, bool) noexcept
+	void publish(const std::unordered_set<std::uint32_t>& managed) noexcept
 	{
 		const std::lock_guard lock(g_mutex);
 		g_published.push_back(managed);

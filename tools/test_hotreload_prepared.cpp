@@ -34,14 +34,14 @@ int main()
 	// Bases managed at initialize() start ready, so 42 is added afterwards.
 	HotReload::initialize();
 	g_config.managedAppIds.set({42});
-	HotReload::publish({42}, true);
+	HotReload::publish({42});
 	// The next reload added 43 to the config but has not published it yet.
 	g_config.managedAppIds.set({42, 43});
 	const auto token = AppInfoProvision::snapshotCachePublication(42);
 	(void)HotReload::publishPreparedBase(42, token.generation);
 
 	// That reload then publishes its own set.
-	HotReload::publish({42, 43}, true);
+	HotReload::publish({42, 43});
 
 	std::stringstream log;
 	log << std::ifstream(logPath).rdbuf();

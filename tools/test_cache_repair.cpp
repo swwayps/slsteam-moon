@@ -36,7 +36,7 @@ int main()
 	g_config.addedAppIds.set({42, 43});
 	g_config.managedAppIds.set({42, 43});
 	HotReload::initialize();
-	HotReload::publish({42, 43}, true);
+	HotReload::publish({42, 43});
 	const auto repairs = HotReload::takeMissingCacheRepairRequests();
 	CHECK(repairs.size() == 1 && repairs.front().appId == 43,
 	      "a base with a terminal verdict leaves the startup repair rotation");

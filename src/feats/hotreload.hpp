@@ -16,11 +16,10 @@ namespace HotReload
 	// store and publish the first managed-source snapshot.
 	void initialize() noexcept;
 
-	// Publish the complete stplug-in/luaappids source union. Equivalent source
-	// sets are a no-op; legacy compatibility ids never enter this API.
-	void publish(
-		const std::unordered_set<std::uint32_t>& managedAppIds,
-		bool forceSourceRefresh = false) noexcept;
+	// Publish the complete stplug-in/luaappids source union. An unchanged set
+	// publishes only when an app's local inputs (depot keys, archived
+	// manifests) changed; legacy compatibility ids never enter this API.
+	void publish(const std::unordered_set<std::uint32_t>& managedAppIds) noexcept;
 
 	// Publish a base into package ownership only after its local appinfo has
 	// completed the live splice/reload boundary. With `busy`, a held lock is

@@ -342,7 +342,7 @@ static void onFileChange()
 
 	// Steam-owned package and license work is serialized by OwnerWork.  Only
 	// the stplug-in/luaappids union enters this complete desired-state snapshot.
-	HotReload::publish(afterManaged, true);
+	HotReload::publish(afterManaged);
 	g_pLog->notify("Config reloaded!");
 }
 

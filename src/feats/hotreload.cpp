@@ -97,15 +97,10 @@ std::vector<std::uint32_t> difference(
 bool publishLocked(
 	CoordinatorState& state,
 	const std::unordered_set<std::uint32_t>& managedAppIds,
-	bool force,
 	bool allowBackgroundRefresh)
 {
 	const bool initialPublication = state.generation == 0;
 	const bool membershipChanged = managedAppIds != state.managedAppIds;
-	if (!HotReloadPublishPolicy::shouldEvaluateInputs(
-		initialPublication, membershipChanged, force))
-		return false;
-
 	const auto added = difference(managedAppIds, state.managedAppIds);
 	const auto removed = difference(state.managedAppIds, managedAppIds);
 	const std::uint64_t nextGeneration = state.generation + 1;
@@ -305,8 +300,7 @@ void initialize() noexcept
 		// visible; failure remains restart-recoverable in PackagePatch.
 		const bool guardReady = AppInfoState::setup(membershipStore());
 		state.initialized = true;
-		(void)publishLocked(
-			state, g_config.managedAppIds.get(), true, false);
+		(void)publishLocked(state, g_config.managedAppIds.get(), false);
 
 		if (!guardReady && g_pLog != nullptr)
 		{
@@ -322,9 +316,7 @@ void initialize() noexcept
 	}
 }
 
-void publish(
-	const std::unordered_set<std::uint32_t>& managedAppIds,
-	bool forceSourceRefresh) noexcept
+void publish(const std::unordered_set<std::uint32_t>& managedAppIds) noexcept
 {
 	try
 	{
@@ -332,8 +324,7 @@ void publish(
 		std::lock_guard<std::mutex> lock(state.mutex);
 		if (!state.initialized)
 			return;
-		(void)publishLocked(
-			state, managedAppIds, forceSourceRefresh, true);
+		(void)publishLocked(state, managedAppIds, true);
 	}
 	catch (...)
 	{

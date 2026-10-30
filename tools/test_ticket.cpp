@@ -103,7 +103,7 @@ int main()
 	CHECK(configText.find("Ticket::forgetApp") != std::string::npos,
 	      "config watcher invalidates ticket state on removal");
 	const auto keyImport = configText.find("DepotKey::reloadLuaScripts();");
-	const auto hotAddDetection = configText.find("HotReload::publish(afterManaged, true);");
+	const auto hotAddDetection = configText.find("HotReload::publish(afterManaged);");
 	CHECK(keyImport != std::string::npos &&
 	      hotAddDetection != std::string::npos &&
 	      keyImport < hotAddDetection,

@@ -12,14 +12,6 @@
 
 namespace HotReloadPublishPolicy
 {
-inline constexpr bool shouldEvaluateInputs(
-	bool initialPublication,
-	bool membershipChanged,
-	bool forceSourceRefresh) noexcept
-{
-	return initialPublication || membershipChanged || forceSourceRefresh;
-}
-
 inline constexpr bool shouldPublish(
 	bool initialPublication,
 	bool membershipChanged,

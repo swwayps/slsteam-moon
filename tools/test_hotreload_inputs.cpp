@@ -142,14 +142,10 @@ int main()
 		pending.cacheMtimeSecs.at(1245620) == 300,
 		"pending child metadata keeps the first runtime topology unresolved");
 
-	check(HotReloadPublishPolicy::shouldEvaluateInputs(
-		/*initialPublication=*/false, /*membershipChanged=*/false,
-		/*forceSourceRefresh=*/true),
-		"a forced source event evaluates local inputs");
 	check(!HotReloadPublishPolicy::shouldPublish(
 		/*initialPublication=*/false, /*membershipChanged=*/false,
 		/*fingerprintsChanged=*/false),
-		"an unchanged duplicate forced event does not publish");
+		"an unchanged duplicate event does not publish");
 	check(HotReloadPublishPolicy::shouldPublish(
 		/*initialPublication=*/true, /*membershipChanged=*/false,
 		/*fingerprintsChanged=*/false),
@@ -162,10 +158,6 @@ int main()
 		/*initialPublication=*/false, /*membershipChanged=*/false,
 		/*fingerprintsChanged=*/true),
 		"a key or archived fallback change publishes");
-	check(!HotReloadPublishPolicy::shouldEvaluateInputs(
-		/*initialPublication=*/false, /*membershipChanged=*/false,
-		/*forceSourceRefresh=*/false),
-		"an ordinary unchanged event skips fingerprint evaluation");
 	check(HotReloadPublishPolicy::shouldAwaitDlcMetadata(
 		/*initialPublication=*/false, /*addedBaseNeedsMetadata=*/true),
 		"a runtime addition stays pending until its child metadata is live");
