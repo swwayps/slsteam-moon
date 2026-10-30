@@ -587,7 +587,7 @@ bool answerHiddenApps(const std::vector<std::uint32_t>& appIds,
 	bool added = false;
 	for (const std::uint32_t appId : appIds)
 	{
-		const auto identity = AppInfoProvision::validatedPairIdentity(appId);
+		const auto identity = AppInfoVdf::heldEntry(appId);
 		if (!identity || identity->sha.size() != 20) continue;
 		const auto& apps = resp.apps();
 		if (std::any_of(apps.begin(), apps.end(),

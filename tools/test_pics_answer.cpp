@@ -5,6 +5,7 @@
 // Build: make test-pics-answer (links the whole object set).
 #include "../src/config.hpp"
 #include "../src/feats/appinfo_provision.hpp"
+#include "../src/feats/appinfo_vdf.hpp"
 #include "../src/feats/apps.hpp"
 #include "../src/feats/cmrecv.hpp"
 #include "../src/log.hpp"
@@ -112,26 +113,50 @@ int main()
 	Steam::Plat_Alloc = [](int size) -> void* { return std::malloc(static_cast<std::size_t>(size)); };
 	Steam::Plat_Free = [](void* memory) { std::free(memory); };
 
-	// App 42's validated pair.
+	// App 42's pair, spliced into appinfo.vdf as at boot: Steam holds change
+	// 7 and this SHA-1.
 	const std::string cache = std::string(home) + "/SLSsteam/cache";
 	std::filesystem::create_directories(cache);
-	const std::string wire =
-		"\"appinfo\"\n{\n\t\"appid\"\t\t\"42\"\n\t\"depots\"\n\t{\n\t\t\"43\"\n\t\t{\n"
-		"\t\t\t\"manifests\"\n\t\t\t{\n\t\t\t\t\"public\"\n\t\t\t\t{\n"
-		"\t\t\t\t\t\"gid\"\t\t\"1234567890\"\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n}\n";
-	std::uint8_t sha[20]{};
-	AppInfoProvision::sha1Bytes(wire.data(), wire.size(), sha);
-	const std::string shaBytes(reinterpret_cast<const char*>(sha), sizeof sha);
-	std::ofstream(cache + "/picsbuffer_42.bin", std::ios::binary) << wire;
-	std::ofstream(cache + "/picsbuffer_42.yaml")
-		<< "appid: 42\nchange_number: 7\nwire_size: " << wire.size()
-		<< "\nsha_b64: " << base64::to_base64(shaBytes)
-		<< "\nnormalized: true\nsynthetic: false\n";
+	const auto pairFor = [&](const char* gid, uint32_t change)
+	{
+		const std::string wire =
+			"\"appinfo\"\n{\n\t\"appid\"\t\t\"42\"\n\t\"depots\"\n\t{\n\t\t\"43\"\n\t\t{\n"
+			"\t\t\t\"manifests\"\n\t\t\t{\n\t\t\t\t\"public\"\n\t\t\t\t{\n"
+			"\t\t\t\t\t\"gid\"\t\t\"" + std::string(gid) + "\"\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n}\n";
+		std::uint8_t sha[20]{};
+		AppInfoProvision::sha1Bytes(wire.data(), wire.size(), sha);
+		const std::string shaBytes(reinterpret_cast<const char*>(sha), sizeof sha);
+		std::ofstream(cache + "/picsbuffer_42.bin.tmp", std::ios::binary) << wire;
+		std::filesystem::rename(cache + "/picsbuffer_42.bin.tmp", cache + "/picsbuffer_42.bin");
+		std::ofstream(cache + "/picsbuffer_42.yaml.tmp")
+			<< "appid: 42\nchange_number: " << change << "\nwire_size: " << wire.size()
+			<< "\nsha_b64: " << base64::to_base64(shaBytes)
+			<< "\nnormalized: true\nsynthetic: false\n";
+		std::filesystem::rename(cache + "/picsbuffer_42.yaml.tmp", cache + "/picsbuffer_42.yaml");
+		return shaBytes;
+	};
+	const std::string shaBytes = pairFor("1234567890", 7);
 	g_config.addedAppIds.set({kApp});
 	g_config.managedAppIds.set({kApp});
+	{
+		const std::string appinfo = std::string(home) + "/appinfo.vdf";
+		std::ofstream out(appinfo, std::ios::binary);
+		const uint32_t magic = 0x07564429u, universe = 1, footer = 0, strings = 0;
+		const int64_t tableOffset = 20;
+		out.write(reinterpret_cast<const char*>(&magic), 4);
+		out.write(reinterpret_cast<const char*>(&universe), 4);
+		out.write(reinterpret_cast<const char*>(&tableOffset), 8);
+		out.write(reinterpret_cast<const char*>(&footer), 4);
+		out.write(reinterpret_cast<const char*>(&strings), 4);
+		out.close();
+		CHECK(AppInfoVdf::injectAllCached(appinfo) == 1, "the boot splice gives Steam app 42");
+	}
+	// A later refresh rewrites the pair; it is not published live, so Steam
+	// still holds change 7.
+	pairFor("1234567891", 8);
 	CHECK(AppInfoProvision::probeCache(kApp, AppInfoProvision::CacheProbeMode::BlockingValidate)
 	          .readiness != AppInfoProvision::CacheReadiness::Invalid,
-	      "app 42's pair is valid");
+	      "app 42's rewritten pair is valid");
 
 	CMsgClientPICSProductInfoRequest sent;
 	const auto answered = exchange(77, 77, true, &sent);
@@ -140,7 +165,21 @@ int main()
 	const auto* entry = entryFor(answered, kApp);
 	CHECK(entry && entry->change_number() == 7 && entry->sha() == shaBytes &&
 	      entry->buffer().empty() && entryFor(answered, kOther),
-	      "Steam receives app 42's metadata from its pair with the CM's answer");
+	      "Steam receives the metadata it holds for app 42 with the CM's answer");
+
+	// A runtime splice of the new pair counts once Steam reloaded the file.
+	{
+		const std::string appinfo = std::string(home) + "/appinfo.vdf";
+		const bool spliced = AppInfoVdf::injectCachedApps(appinfo, {kApp}) == 1;
+		const auto first = exchange(81, 81, true, nullptr);
+		const auto* before = entryFor(first, kApp);
+		const bool unchanged = before && before->change_number() == 7;
+		AppInfoVdf::commitLiveEntries({kApp});
+		const auto second = exchange(82, 82, true, nullptr);
+		const auto* after = entryFor(second, kApp);
+		CHECK(spliced && unchanged && after && after->change_number() == 8,
+		      "a runtime splice changes the answer only after Steam reloaded it");
+	}
 
 	CHECK(!entryFor(exchange(78, 79, true, nullptr), kApp),
 	      "an answer to another job gets nothing added");

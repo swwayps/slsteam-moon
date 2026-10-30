@@ -51,9 +51,9 @@ namespace PICS
 	// The apps hidden from the request a response answers; each request's
 	// list is handed out once.
 	std::vector<std::uint32_t> takeHiddenApps(std::uint64_t jobId);
-	// Adds to `resp` the metadata Steam already holds for each hidden app with
-	// a validated pair: its change number and SHA-1, so Steam sees it as
-	// current. False when nothing was added.
+	// Adds to `resp` the metadata Steam holds for each hidden app from our
+	// splice (AppInfoVdf::heldEntry): its change number and SHA-1, so Steam
+	// sees it as current. False when nothing was added.
 	bool answerHiddenApps(const std::vector<std::uint32_t>& appIds,
 	                      CMsgClientPICSProductInfoResponse& resp);
 

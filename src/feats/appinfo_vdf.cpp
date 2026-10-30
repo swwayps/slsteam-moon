@@ -28,6 +28,7 @@
 #include <filesystem>
 #include <fstream>
 #include <ios>
+#include <mutex>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -961,6 +962,57 @@ bool injectApp(const std::string& path,
 	return true;
 }
 
+namespace
+{
+// Entries Steam holds from our splices, and those a runtime splice wrote but
+// Steam has not reloaded yet. Steam's CM thread reads them, so readers only
+// try the lock.
+std::mutex g_heldEntriesMu;
+std::unordered_map<uint32_t, HeldEntry> g_heldEntries;
+std::unordered_map<uint32_t, HeldEntry> g_stagedEntries;
+
+void recordEntries(std::unordered_map<uint32_t, HeldEntry>& into,
+                   std::vector<std::pair<uint32_t, HeldEntry>> entries)
+{
+	std::lock_guard<std::mutex> lock(g_heldEntriesMu);
+	for (auto& [appId, entry] : entries) into[appId] = std::move(entry);
+}
+} // namespace
+
+std::optional<HeldEntry> heldEntry(uint32_t appId) noexcept
+{
+	try
+	{
+		std::unique_lock<std::mutex> lock(g_heldEntriesMu, std::try_to_lock);
+		if (!lock.owns_lock()) return std::nullopt;
+		const auto found = g_heldEntries.find(appId);
+		if (found == g_heldEntries.end()) return std::nullopt;
+		return found->second;
+	}
+	catch (...)
+	{
+		return std::nullopt;
+	}
+}
+
+void commitLiveEntries(const std::vector<uint32_t>& appIds) noexcept
+{
+	try
+	{
+		std::lock_guard<std::mutex> lock(g_heldEntriesMu);
+		for (const uint32_t appId : appIds)
+		{
+			const auto staged = g_stagedEntries.find(appId);
+			if (staged == g_stagedEntries.end()) continue;
+			g_heldEntries[appId] = std::move(staged->second);
+			g_stagedEntries.erase(staged);
+		}
+	}
+	catch (...)
+	{
+	}
+}
+
 int injectAllCached(const std::string& path)
 {
 	const auto cacheDir = g_config.getDir() + "/cache";
@@ -1038,6 +1090,7 @@ int injectAllCached(const std::string& path)
 			  return a.path < b.path;
 	          });
 
+	std::vector<std::pair<uint32_t, HeldEntry>> spliced;
 	int injected = 0;
 	bool changed = false;
 	for (const auto& record : metadata)
@@ -1066,6 +1119,7 @@ int injectAllCached(const std::string& path)
 		{
 			++injected;
 			changed = changed || entryChanged;
+			spliced.push_back({cb.appid, {cb.change_number, cb.sha, cb.buffer.size()}});
 		}
 		else
 		{
@@ -1087,6 +1141,8 @@ int injectAllCached(const std::string& path)
 			return 0;
 		}
 	}
+	// The boot splice runs before Steam reads the file.
+	recordEntries(g_heldEntries, std::move(spliced));
 	if (injected > 0)
 	{
 		g_pLog->debug("AppInfoVdf: injectAllCached -> %d entries\n", injected);
@@ -1137,6 +1193,7 @@ int injectCachedApps(const std::string& path,
 
 	const auto managed = g_config.managedAppIds.get();
 	const auto cacheDir = g_config.getDir() + "/cache";
+	std::vector<std::pair<uint32_t, HeldEntry>> spliced;
 	int injected = 0;
 	bool changed = false;
 	for (const uint32_t appId : requestedApps)
@@ -1162,6 +1219,7 @@ int injectCachedApps(const std::string& path,
 		}
 		++injected;
 		changed = changed || entryChanged;
+		spliced.push_back({cb.appid, {cb.change_number, cb.sha, cb.buffer.size()}});
 	}
 	if (changed)
 	{
@@ -1173,6 +1231,8 @@ int injectCachedApps(const std::string& path,
 			return 0;
 		}
 	}
+	// Steam holds these only after it reloads the file (commitLiveEntries).
+	recordEntries(g_stagedEntries, std::move(spliced));
 	return injected;
 }
 

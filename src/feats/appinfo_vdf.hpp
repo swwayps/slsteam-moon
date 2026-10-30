@@ -52,6 +52,7 @@
 #ifdef APPINFO_VDF_TESTING
 #include <functional>
 #endif
+#include <optional>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -97,6 +98,21 @@ namespace AppInfoVdf
 	// Steam replaces appinfo.vdf while this transaction is in flight.
 	int injectCachedApps(const std::string& path,
 	                     const std::unordered_set<uint32_t>& requestedApps);
+
+	// The entry this process gave Steam for an app: by the boot splice, or by
+	// a runtime splice once Steam reloaded the file (commitLiveEntries).
+	struct HeldEntry
+	{
+		std::uint32_t changeNumber = 0;
+		std::string sha; // 20 raw bytes, SHA-1 of the wire text
+		std::uint64_t size = 0;
+	};
+	// Empty when this process spliced no entry for the app or the lock is
+	// busy; safe on Steam's threads.
+	std::optional<HeldEntry> heldEntry(std::uint32_t appId) noexcept;
+	// Steam reloaded appinfo.vdf after injectCachedApps: what it spliced for
+	// these apps is what Steam holds now.
+	void commitLiveEntries(const std::vector<std::uint32_t>& appIds) noexcept;
 
 	// Atomically insert missing, already-validated metadata-only child records.
 	// Existing Steam records are preserved byte-for-byte so their content
