@@ -8,6 +8,7 @@
 #include "../config.hpp"
 #include "../globals.hpp"
 #include "../log.hpp"
+#include "../runtime_dependencies.hpp"
 #include "../thread_start.hpp"
 #include "steamstub_warmup.hpp"
 #include "steamstub_launchopt.hpp"
@@ -680,6 +681,15 @@ void onLaunchApp(uint32_t appId)
 	{
 		g_pLog->warn("SteamStub: --steamless set for %u but the Steamless kit is "
 		             "unavailable; leaving the executable untouched\n", appId);
+		return;
+	}
+
+	// Only --steamless needs the helper's tools, so they are looked up on the
+	// first launch that asks for it; the notice comes once per session.
+	if (!RuntimeDependencies::check())
+	{
+		g_pLog->warn("SteamStub: --steamless set for %u but the helper's tools are "
+		             "missing; leaving the executable untouched\n", appId);
 		return;
 	}
 

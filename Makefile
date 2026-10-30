@@ -777,6 +777,7 @@ test-config-watch: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
 test-steamstub-launch: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
 		obj/api.o obj/feats/depotkey.o \
 		obj/feats/librarydates.o obj/ownerwork.o obj/feats/steamstub.o \
+		obj/runtime_dependencies.o \
 		obj/sdk/protobufs/steammessages_clientserver_appinfo.pb.o \
 		obj/sdk/protobufs/steammessages_base.pb.o
 	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \

@@ -16,7 +16,6 @@
 #include "ownerwork.hpp"
 #include "patterns.hpp"
 #include "runtime_attestation.hpp"
-#include "runtime_dependencies.hpp"
 #include "utils.hpp"
 #include "utils/ManifestFetch.hpp"
 #include "utils/process_lock.hpp"
@@ -264,8 +263,6 @@ static void setup()
 
 	g_auditDiagnosticsEnabled.store(g_config.extendedLogging.get(),
 	                               std::memory_order_release);
-
-	RuntimeDependencies::check();
 
 	// Decide this session's CEF debug port ONCE, as EARLY as possible (this is
 	// la_preinit, before the client can spawn the webhelper) so g_cefSessionPort

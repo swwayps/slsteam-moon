@@ -129,6 +129,35 @@ int main()
 		      "a file without our marker is left alone");
 	}
 
+	// Only --steamless needs python3 and timeout, so they are looked up when a
+	// launch asks for it: one notice per session, none for other launches.
+	{
+		namespace fs = std::filesystem;
+		const auto missingNotices = [&] {
+			std::ifstream file(root + "/test.log");
+			const std::string text((std::istreambuf_iterator<char>(file)), {});
+			std::size_t count = 0;
+			for (auto at = text.find("Runtime dependencies missing"); at != std::string::npos;
+			     at = text.find("Runtime dependencies missing", at + 1))
+				++count;
+			return count;
+		};
+		const std::string bare = root + "/bare-path";
+		fs::create_directories(bare);
+		const char* inherited = std::getenv("PATH");
+		const std::string savedPath = inherited ? inherited : "";
+		setenv("PATH", bare.c_str(), 1);
+		SteamStub::onLaunchApp(123);
+		check(missingNotices() == 0, "a launch without --steamless looks up no tools");
+		fs::create_directories(steam + "/userdata/1/config");
+		std::ofstream(steam + "/userdata/1/config/localconfig.vdf")
+			<< "\"apps\"\n{\n\t\"123\"\n\t{\n\t\t\"LaunchOptions\"\t\t\"--steamless %command%\"\n\t}\n}\n";
+		SteamStub::onLaunchApp(123);
+		SteamStub::onLaunchApp(123);
+		check(missingNotices() == 1, "a --steamless launch without python3 warns once per session");
+		setenv("PATH", savedPath.c_str(), 1);
+	}
+
 	std::filesystem::remove_all(root);
 	if (failures != 0)
 	{
