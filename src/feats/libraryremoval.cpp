@@ -115,13 +115,13 @@ void processOneRemoval(void* controller)
 		{
 			auto* const flags = reinterpret_cast<std::uint32_t*>(
 				static_cast<std::uint8_t*>(app) + g_ownershipFlagsOffset);
-			*flags = LibraryRemovalPolicy::hiddenOwnershipFlags(*flags);
+			// A removed app shows none of the ownership presentation flags.
+			*flags = 0;
 		}
 	}
 
-	// MarkAppChange is invoked through its original trampoline. This avoids a
-	// recursive capture. Queue::begin already published the effective state, so
-	// a synchronous complete-change callback observes the right removed list.
+	// MarkAppChange is invoked through its original trampoline, which avoids a
+	// recursive capture.
 	mark(source, appId->appId, kAppInfoOrConfig);
 
 	if (g_pLog != nullptr)

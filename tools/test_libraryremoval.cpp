@@ -45,8 +45,6 @@ int main()
 	      "a SIB-addressed read is rejected");
 	check(!LibraryRemovalPolicy::deriveOwnershipOffset(unalignedOffset),
 	      "unaligned ownership field is rejected");
-	check(LibraryRemovalPolicy::hiddenOwnershipFlags(0x0803) == 0,
-	      "visual removal clears every ownership presentation flag");
 
 	LibraryRemovalPolicy::Queue queue(4);
 	check(queue.push(10), "first removal queues");
@@ -69,15 +67,6 @@ int main()
 	queue.finish(*remove20);
 
 	queue.cancel(10);
-	check(queue.appliedSnapshot() == std::vector<std::uint32_t>({20}),
-	      "full snapshots retain only removals that are still desired");
-	queue.requestFullReassert();
-	const auto reassert20 = queue.drainOne();
-	check(reassert20 && reassert20->appId == 20 &&
-	      reassert20->action == LibraryRemovalPolicy::Action::Remove,
-	      "full rebuild reasserts only ids that remain removed");
-	check(queue.begin(*reassert20), "reasserted removal begins");
-	queue.finish(*reassert20);
 
 	check(queue.push(99), "a new removal can enter the race fixture");
 	const auto racingRemove = queue.drainOne();
@@ -92,8 +81,9 @@ int main()
 	      "a re-add racing an in-flight removal queues compensation");
 	check(queue.begin(*restore10), "current restoration begins");
 	queue.finish(*restore10);
-	check(queue.appliedSnapshot() == std::vector<std::uint32_t>({20}),
-	      "compensation restores the authoritative present state");
+	queue.readyToRestore(99);
+	check(!queue.drainOne().has_value(),
+	      "compensation leaves the re-added app with nothing left to restore");
 
 	check(queue.push(98), "inverse race fixture queues removal");
 	const auto first98 = queue.drainOne();

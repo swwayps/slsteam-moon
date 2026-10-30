@@ -11,15 +11,9 @@
 #include <optional>
 #include <span>
 #include <unordered_set>
-#include <vector>
 
 namespace LibraryRemovalPolicy
 {
-inline constexpr std::uint32_t hiddenOwnershipFlags(
-	std::uint32_t) noexcept
-{
-	return 0;
-}
 
 inline std::optional<std::size_t> deriveOwnershipOffset(
 	std::span<const std::uint8_t> instruction) noexcept
@@ -104,19 +98,6 @@ public:
 		if (closed_ || inFlight_.has_value())
 			return std::nullopt;
 
-		if (reassertRequested_)
-		{
-			std::vector<std::uint32_t> sorted(effectiveRemoved_.begin(),
-			                                  effectiveRemoved_.end());
-			std::sort(sorted.begin(), sorted.end());
-			for (const std::uint32_t appId : sorted)
-			{
-				if (desired_.count(appId) != 0)
-					enqueueLocked({appId, Action::Remove});
-			}
-			reassertRequested_ = false;
-		}
-
 		while (!pending_.empty())
 		{
 			const Work work = pending_.front();
@@ -134,8 +115,7 @@ public:
 		return std::nullopt;
 	}
 
-	// Publish the effect before MarkAppChange: that call may synchronously enter
-	// the complete-change hook, which must observe the new effective state.
+	// Publishes the effective state; the caller runs MarkAppChange afterwards.
 	bool begin(const Work& work)
 	{
 		std::lock_guard<std::mutex> lock(mutex_);
@@ -176,38 +156,16 @@ public:
 		reconcileLocked(work.appId);
 	}
 
-	std::vector<std::uint32_t> appliedSnapshot() const
-	{
-		std::lock_guard<std::mutex> lock(mutex_);
-		std::vector<std::uint32_t> result;
-		result.reserve(effectiveRemoved_.size());
-		for (const std::uint32_t appId : effectiveRemoved_)
-		{
-			if (!closed_ && desired_.count(appId) != 0)
-				result.push_back(appId);
-		}
-		std::sort(result.begin(), result.end());
-		return result;
-	}
-
 	bool desiredRemoved(std::uint32_t appId) const
 	{
 		std::lock_guard<std::mutex> lock(mutex_);
 		return !closed_ && desired_.count(appId) != 0;
 	}
 
-	void requestFullReassert()
-	{
-		std::lock_guard<std::mutex> lock(mutex_);
-		if (!closed_)
-			reassertRequested_ = true;
-	}
-
 	void close()
 	{
 		std::lock_guard<std::mutex> lock(mutex_);
 		closed_ = true;
-		reassertRequested_ = false;
 		pending_.clear();
 		pendingRemovals_.clear();
 		pendingRestores_.clear();
@@ -221,7 +179,6 @@ public:
 	{
 		std::lock_guard<std::mutex> lock(mutex_);
 		closed_ = false;
-		reassertRequested_ = false;
 		pending_.clear();
 		pendingRemovals_.clear();
 		pendingRestores_.clear();
@@ -288,7 +245,6 @@ private:
 	const std::size_t capacity_;
 	mutable std::mutex mutex_;
 	bool closed_ = false;
-	bool reassertRequested_ = false;
 	std::deque<Work> pending_;
 	std::unordered_set<std::uint32_t> pendingRemovals_;
 	std::unordered_set<std::uint32_t> pendingRestores_;
