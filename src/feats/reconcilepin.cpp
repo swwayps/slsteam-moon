@@ -175,8 +175,9 @@ namespace
 
 	// --- the TARGET-LOCAL fix (the -0x90(ebp) CUtlVector) -----------------
 	//
-	// The divergent gid can sit in this local instead of [ctx+0x78]. It is filled
-	// after entry, so EvaluateConfigChanges' own builder call is redirected.
+	// The divergent gid can sit in this local instead of the context depot
+	// vector. It is filled after entry, so EvaluateConfigChanges' own builder
+	// call is redirected.
 	//
 	// CUtlVector<DepotEntry>: element base @ +0x0, count @ +0xc.
 	constexpr size_t kVecBaseOff = 0x00;

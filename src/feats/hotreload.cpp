@@ -68,8 +68,9 @@ std::unordered_set<std::uint32_t> publishAppInfoScopes(
 		managedAppIds, g_config.addedAppIds.get());
 	const auto guardedAppIds = HotReloadPublishPolicy::guardedAppInfoIds(
 		managedAppIds, plannerAppIds, authoritative);
-	// Publish authority first: a newly guarded record must never be observable
-	// with a real SHA during the gap before its skip policy becomes active.
+	// Publish authority before membership: the incoming changelist filter and
+	// the outgoing PICS checks must know a newly guarded record before the
+	// lookup guard starts managing it.
 	AppInfoState::publishAuthoritative(authoritative);
 	(void)membershipStore().publish(guardedAppIds);
 	return authoritative;

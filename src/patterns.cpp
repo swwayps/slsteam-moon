@@ -432,7 +432,7 @@ namespace
 		}
 
 		// The local catalog is attempted before SHA-256 attestation.  If it is
-		// absent or disabled, retain the existing signed remote catalog path;
+		// absent or disabled, retain the published, identity-checked catalog path;
 		// otherwise a warm boot does no full-module hashing at all.
 		if (!g_steamClientLocal.catalog)
 			g_steamClientCatalog = loadCatalog("steamclient", "steamclient.so", g_modSteamClient);
@@ -1007,7 +1007,7 @@ namespace Patterns
 		// loader.  The current Linux i386 entry is RVA 0x00FC89F0 and takes the
 		// CAppInfoCache pointer as its sole cdecl argument.  The 0x110c-byte
 		// parser frame plus the saved cache argument makes this prologue unique
-		// in the current module (one full match); signed catalogs can replace the
+		// in the current module (one full match); published catalogs can replace the
 		// optional locator independently when a client update changes the frame.
 		Pattern_t ThreadedReadFromDisk
 		{
@@ -1157,8 +1157,9 @@ namespace Patterns
 		//     static RE).  Emits the
 		//     content_log "AppID %u ...config changed : added/removed/updated
 		//     depots %s" lines and decides "Update Required".  It diffs the
-		//     app's installed depot vector (ptr @ ctx+0x78, count @ ctx+0x84,
-		//     stride 0x20, ManifestGid @ +0x8) against an appinfo-derived
+		//     app's installed depot vector (decoded at setup: ctx+0x78 before
+		//     the 2026-10 client, ctx+0x90 on it; count at +0xc, stride 0x20,
+		//     ManifestGid @ +0x8) against an appinfo-derived
 		//     target list, flagging a depot "updated" when the two gids differ
 		//     (the movq/pxor compare at VA 0xfe4598).  THIS is what perpetually
 		//     re-flags a downgraded (pinned) install whose appinfo still

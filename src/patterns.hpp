@@ -12,7 +12,7 @@ struct Pattern_t
 {
 public:
 	const std::string name;
-	// Stable C++ registry identity used by signed locator catalogs.  Runtime
+	// Stable C++ registry identity used by published locator catalogs.  Runtime
 	// display names are not sufficient because a few legacy entries deliberately
 	// use the name of the Steam function they locate instead of their C++ symbol.
 	const std::string symbol;
