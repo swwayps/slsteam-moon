@@ -238,15 +238,17 @@ find_donor_desktop() {
 # Stop any running Steam so the wrapper / desktop entry takes effect on next
 # launch. Tries graceful shutdown first, falls back to SIGTERM then SIGKILL.
 kill_steam() {
-	if ! pgrep -x steam >/dev/null 2>&1 \
-	   && ! pgrep -f '/steam$|/steam ' >/dev/null 2>&1 \
-	   && ! pgrep -f 'steamwebhelper' >/dev/null 2>&1; then
+	# Steam's own processes, by name: the client, its launcher scripts and the
+	# web helper. A command-line match would also hit an editor or a shell
+	# that merely names a path ending in /steam.
+	local uid names
+	uid="$(id -u)"
+	names='steam|steam\.sh|steamwebhelper'
+	if ! pgrep -u "$uid" -x "$names" >/dev/null 2>&1; then
 		log_success "No running Steam process detected"
 		return 0
 	fi
-
 	log_info "Stopping running Steam processes"
-
 	if command -v steam >/dev/null 2>&1; then
 		# Sandboxed launchers replicate the caller's cwd inside their sandbox.
 		# The installer may still be inside a temporary extraction directory,
@@ -259,30 +261,24 @@ kill_steam() {
 	fi
 
 	for _ in 1 2 3 4 5; do
-		if ! pgrep -x steam >/dev/null 2>&1 \
-		   && ! pgrep -f 'steamwebhelper' >/dev/null 2>&1; then
+		if ! pgrep -u "$uid" -x "$names" >/dev/null 2>&1; then
 			log_success "Steam stopped"
 			return 0
 		fi
 		sleep 1
 	done
-
-	pkill -TERM -x steam 2>/dev/null || true
-	pkill -TERM -f 'steamwebhelper' 2>/dev/null || true
-	pkill -TERM -f '/steam$|/steam ' 2>/dev/null || true
+	pkill -TERM -u "$uid" -x "$names" 2>/dev/null || true
 	sleep 2
-
-	if pgrep -x steam >/dev/null 2>&1 \
-	   || pgrep -f 'steamwebhelper' >/dev/null 2>&1 \
-	   || pgrep -f '/steam$|/steam ' >/dev/null 2>&1; then
+	if pgrep -u "$uid" -x "$names" >/dev/null 2>&1; then
 		log_warn "Steam still running — sending SIGKILL"
-		pkill -KILL -x steam 2>/dev/null || true
-		pkill -KILL -f 'steamwebhelper' 2>/dev/null || true
-		pkill -KILL -f '/steam$|/steam ' 2>/dev/null || true
+		pkill -KILL -u "$uid" -x "$names" 2>/dev/null || true
 		sleep 1
 	fi
-
-	log_success "Steam stopped"
+	if pgrep -u "$uid" -x "$names" >/dev/null 2>&1; then
+		log_warn "Steam is still running"
+	else
+		log_success "Steam stopped"
+	fi
 }
 
 # ============================================================================

@@ -65,5 +65,63 @@ else
 	bad "shutdown launcher ran from $(cat "$PWD_CAPTURE" 2>/dev/null || echo '<unknown>')"
 fi
 
+# Only Steam's own processes are signalled: an editor open on the wrapper
+# (its command line ends in /steam) survives. The stubs answer from a process
+# table of "name<TAB>command line" rows: -x matches the name, -f the line.
+PROCS="$TMP_DIR/procs" KILLS="$TMP_DIR/kills"
+export PROCS KILLS
+printf 'steam\t%s/.steam/steam/ubuntu12_32/steam -srt-logger-opened\nnano\tnano %s/.local/share/SLSsteam/path/steam\n' \
+	"$HOME_DIR" "$HOME_DIR" > "$PROCS"
+: > "$KILLS"
+cat > "$BIN_DIR/proctable" <<'PT'
+#!/bin/bash
+# proctable <pgrep|pkill> <args...>
+tool="$1"; shift
+signal=TERM full=0 exact=0 pattern=""
+while [ $# -gt 0 ]; do
+	case "$1" in
+		-f) full=1 ;;
+		-x) exact=1 ;;
+		-u) shift ;;
+		-TERM|-KILL) signal="${1#-}" ;;
+		*) pattern="$1" ;;
+	esac
+	shift
+done
+hit=1 keep=""
+while IFS=$'\t' read -r name line; do
+	if [ "$full" = 1 ]; then subject="$line"; else subject="$name"; fi
+	if [ "$exact" = 1 ]; then re="^($pattern)\$"; else re="$pattern"; fi
+	if printf '%s\n' "$subject" | grep -Eq "$re"; then
+		hit=0
+		if [ "$tool" = pkill ]; then
+			echo "$signal $name" >> "$KILLS"
+			continue
+		fi
+	fi
+	keep="$keep$name"$'\t'"$line"$'\n'
+done < "$PROCS"
+printf '%s' "$keep" > "$PROCS"
+exit "$hit"
+PT
+printf '#!/bin/sh\nexec proctable pgrep "$@"\n' > "$BIN_DIR/pgrep"
+printf '#!/bin/sh\nexec proctable pkill "$@"\n' > "$BIN_DIR/pkill"
+printf '#!/bin/sh\nexit 0\n' > "$BIN_DIR/steam"
+chmod +x "$BIN_DIR/proctable" "$BIN_DIR/pgrep" "$BIN_DIR/pkill" "$BIN_DIR/steam"
+(
+	PATH="$BIN_DIR:/usr/bin:/bin"
+	export PATH
+	log_info() { :; }
+	log_success() { :; }
+	log_warn() { :; }
+	sleep() { :; }
+	eval "$FN"
+	kill_steam
+)
+if grep -q '^TERM steam$' "$KILLS" && ! grep -q 'nano' "$KILLS"; then
+	ok "only Steam's own processes are signalled"
+else
+	bad "signals sent: $(tr '\n' ',' < "$KILLS")"
+fi
 echo "== total: $PASS passed, $FAIL failed =="
 [ "$FAIL" -eq 0 ]
