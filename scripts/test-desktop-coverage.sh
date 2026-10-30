@@ -236,6 +236,23 @@ check "post-bootstrap installer shortcut is patched" "patched" \
 check "post-bootstrap conversion captures the original" "yes" \
   "$([ -f "$PREBOOT_BACKUP_ROOT/${PREBOOT_SYMLINK#/}" ] && echo yes || echo no)"
 
+# A shortcut link the user made to a vanilla launcher is patched into a regular
+# file. Only a link to our own menu entry (what older versions made, also when
+# the user had no shortcut) is removed when no backup exists for it.
+X9="$TMP/x9home"; mkdir -p "$X9/.local/share/applications" "$X9/Desktop" "$TMP/x9sys"
+printf '[Desktop Entry]\n%s\nName=Steam\nExec=%s %%U\n' "$DC_TAG" "$WRAPPER" \
+  > "$X9/.local/share/applications/steam.desktop"
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/games/steam %%U\n' > "$TMP/x9sys/steam.desktop"
+ln -s "$TMP/x9sys/steam.desktop" "$X9/Desktop/steam.desktop"
+DC_HOME="$X9" DC_BACKUP_ROOT="$X9/backup" DC_STEAM_INSTALLED=1 dc_patch_shortcut "$X9/Desktop/steam.desktop"
+check "a user link to a vanilla launcher is patched, not removed" "patched:regular" \
+  "$(dc_classify "$X9/Desktop/steam.desktop"):$([ -f "$X9/Desktop/steam.desktop" ] && [ ! -L "$X9/Desktop/steam.desktop" ] && echo regular || echo other)"
+rm -f "$X9/Desktop/steam.desktop"
+ln -s "$X9/.local/share/applications/steam.desktop" "$X9/Desktop/steam.desktop"
+DC_HOME="$X9" DC_BACKUP_ROOT="$X9/backup-ours" DC_STEAM_INSTALLED=1 dc_patch_shortcut "$X9/Desktop/steam.desktop"
+check "an unbacked link to our menu entry is removed" "no" \
+  "$({ [ -e "$X9/Desktop/steam.desktop" ] || [ -L "$X9/Desktop/steam.desktop" ]; } && echo yes || echo no)"
+
 # dc_run --user patches menu + autostart but NOT the stub; --system also stub
 H="$TMP/home"; mkdir -p "$H/.local/share/applications" "$H/.config/autostart"
 SYS="$TMP/sys"; mkdir -p "$SYS"

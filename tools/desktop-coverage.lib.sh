@@ -669,7 +669,13 @@ dc_patch_shortcut() {
 			# after bootstrap.
 			:
 		else
-			rm -f "$sc"
+			# Older versions linked the shortcut to our menu entry, also when
+			# the user had none, so an unbacked link there is ours to remove.
+			# A link the user made elsewhere is patched below instead.
+			case "$(readlink "$sc")" in
+				"$(dc_data_home)/applications/steam.desktop"|"$DC_HOME/.local/share/applications/steam.desktop")
+					rm -f "$sc" ;;
+			esac
 		fi
 		[ -e "$sc" ] || return 0
 	fi
