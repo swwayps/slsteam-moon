@@ -214,6 +214,17 @@ static void setup()
 	{
 		(void)AuditLog::reopen(g_rawLog, g_rawLogPath);
 	}
+	// Upstream 424f57b warns about the audit TLS bug; libcurl transfers run on
+	// their own thread on these versions (runCurlTransfer).
+	{
+		int major = 0;
+		int minor = 0;
+		if (Utils::isGLIBCBugged(&major, &minor))
+		{
+			g_pLog->warn("glibc %d.%d has the audit-module TLS bug fixed in 2.43; "
+			             "network transfers run on their own thread\n", major, minor);
+		}
+	}
 
 	// Publish the environment-only audit policy before taking the process-wide
 	// setup lock. Each audit namespace has its own statics; a secondary copy

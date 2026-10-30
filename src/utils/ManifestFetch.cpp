@@ -182,12 +182,10 @@ int curlTransferProgress(void* userdata,
 	       && !control->keepRunning->load(std::memory_order_acquire) ? 1 : 0;
 }
 
-HttpResponse httpGet(const std::string& url, const JobBudget* budget = nullptr,
-                     std::string_view hostHeader = {},
-                     std::string_view method = "GET", std::string_view postBody = {},
-                     std::size_t maxBodyBytes = 64u * 1024u * 1024u,
-                     long timeoutMs = 10000,
-                     const std::atomic<bool>* keepRunning = nullptr)
+HttpResponse httpGetHere(const std::string& url, const JobBudget* budget,
+                         std::string_view hostHeader, std::string_view method,
+                         std::string_view postBody, std::size_t maxBodyBytes,
+                         long timeoutMs, const std::atomic<bool>* keepRunning)
 {
 	HttpResponse r;
 	if ((budget != nullptr && budget->shouldStop()) ||
@@ -304,6 +302,19 @@ HttpResponse httpGet(const std::string& url, const JobBudget* budget = nullptr,
 	if (requestHeaders) curlApi()->slist_free_all(requestHeaders);
 	curlApi()->easy_cleanup(c);
 	return r;
+}
+
+HttpResponse httpGet(const std::string& url, const JobBudget* budget = nullptr,
+                     std::string_view hostHeader = {},
+                     std::string_view method = "GET", std::string_view postBody = {},
+                     std::size_t maxBodyBytes = 64u * 1024u * 1024u,
+                     long timeoutMs = 10000,
+                     const std::atomic<bool>* keepRunning = nullptr)
+{
+	return runCurlTransfer([&] {
+		return httpGetHere(url, budget, hostHeader, method, postBody,
+		                   maxBodyBytes, timeoutMs, keepRunning);
+	});
 }
 
 } // namespace

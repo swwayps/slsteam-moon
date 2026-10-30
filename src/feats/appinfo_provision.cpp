@@ -227,8 +227,8 @@ std::size_t curlWriteCb(const char* p, std::size_t sz, std::size_t n, std::strin
 	return sz * n;
 }
 
-NetworkFailure httpGetJson(const std::string& url, std::string& body,
-                           std::string& diag, long timeoutMs)
+NetworkFailure httpGetJsonHere(const std::string& url, std::string& body,
+                               std::string& diag, long timeoutMs)
 {
 	if (!curlApi()) { diag = "libcurl unavailable"; return NetworkFailure::Provider; }
 	if (timeoutMs <= 0)
@@ -281,6 +281,12 @@ NetworkFailure httpGetJson(const std::string& url, std::string& body,
 	}
 	if (body.empty()) { diag = "empty body"; return NetworkFailure::Provider; }
 	return NetworkFailure::None;
+}
+NetworkFailure httpGetJson(const std::string& url, std::string& body,
+                           std::string& diag, long timeoutMs)
+{
+	return runCurlTransfer(
+	    [&] { return httpGetJsonHere(url, body, diag, timeoutMs); });
 }
 
 // ---------------------------------------------------------------------------

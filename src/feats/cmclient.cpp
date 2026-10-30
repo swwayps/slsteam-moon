@@ -698,7 +698,7 @@ bool prepareForThreadedFetch()
 	return curlApi() != nullptr;
 }
 
-FetchResult fetchProductInfoDetailed(
+static FetchResult fetchProductInfoHere(
     const std::vector<uint32_t>& appids,
     std::unordered_map<uint32_t, std::string>& out,
     std::unordered_map<uint32_t, uint32_t>* changesOut)
@@ -794,6 +794,17 @@ FetchResult fetchProductInfoDetailed(
 	}
 	g_pLog->info("CmClient: all CM attempts failed, falling back\n");
 	return FetchResult::Failed;
+}
+
+// The CM list GET and the websocket session share this one transfer, so on a
+// glibc with the audit TLS bug they all run on one fresh thread.
+FetchResult fetchProductInfoDetailed(
+    const std::vector<uint32_t>& appids,
+    std::unordered_map<uint32_t, std::string>& out,
+    std::unordered_map<uint32_t, uint32_t>* changesOut)
+{
+	return runCurlTransfer(
+	    [&] { return fetchProductInfoHere(appids, out, changesOut); });
 }
 
 } // namespace CmClient

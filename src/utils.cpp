@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <cstring>
 #include <cstdio>
-#include <gnu/libc-version.h>
 #include <fstream>
 #include <iomanip>
 #include <sstream>
@@ -218,30 +217,6 @@ namespace
 			for (int j = 0; j < 8; ++j)
 				hash[i + j*4] = (uint8_t)(ctx.state[j] >> (24 - i * 8));
 	}
-}
-
-bool Utils::isGLIBCBugged(int* pMajorVer, int* pMinorVer)
-{
-	// glibc < 2.43 crashes in thread-local storage of libraries loaded by an
-	// audit module (upstream dev-X86_64 056dfc3).
-	static int major = 0;
-	static int minor = 0;
-	if (!major && std::sscanf(gnu_get_libc_version(), "%d.%d", &major, &minor) != 2)
-	{
-		major = 0;
-		minor = 0;
-	}
-
-	if (pMajorVer)
-	{
-		*pMajorVer = major;
-	}
-	if (pMinorVer)
-	{
-		*pMinorVer = minor;
-	}
-
-	return major == 2 && minor <= 42;
 }
 
 std::string Utils::getFileSHA256(const char *filePath)

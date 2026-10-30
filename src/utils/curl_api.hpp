@@ -1,8 +1,15 @@
 #pragma once
 
+#include "../utils.hpp"
+
 #include <curl/curl.h>
 #include <dlfcn.h>
+#include <exception>
+#include <optional>
+#include <system_error>
+#include <thread>
 #include <type_traits>
+#include <utility>
 
 // libcurl entry points, resolved at run time: SLSsteam does not link libcurl,
 // and a dlopen from this audit namespace gets the Steam runtime's copy.
@@ -46,4 +53,34 @@ inline const CurlApi* curlApi()
 		return complete ? &resolved : nullptr;
 	}();
 	return api;
+}
+
+// glibc < 2.43 crashes in the thread-local storage of libraries an audit
+// module loaded; a thread started for the transfer is not affected, so on
+// those versions `transfer` runs on a fresh thread and the caller waits for
+// it, as upstream dev-X86_64 056dfc3 does for its curl calls. Everything that
+// uses one libcurl handle must stay inside one `transfer`. When no thread can
+// be started the transfer runs here, as it did before.
+template <typename Transfer>
+auto runCurlTransfer(Transfer&& transfer) -> decltype(transfer())
+{
+	if (!Utils::isGLIBCBugged())
+		return transfer();
+	using Result = decltype(transfer());
+	std::optional<Result> result;
+	std::exception_ptr error;
+	try
+	{
+		std::thread worker([&]() noexcept {
+			try { result.emplace(transfer()); }
+			catch (...) { error = std::current_exception(); }
+		});
+		worker.join();
+	}
+	catch (const std::system_error&)
+	{
+		return transfer();
+	}
+	if (error) std::rethrow_exception(error);
+	return std::move(*result);
 }
