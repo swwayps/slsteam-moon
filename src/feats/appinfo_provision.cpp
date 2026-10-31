@@ -1005,8 +1005,18 @@ bool persistBuffer(uint32_t appId, uint32_t changeNumber,
 	// so the generation gate above already covers it: nothing can change the
 	// generation while this thread holds the publication mutex and cache lock.
 	const bool markerBefore = SynthMark::isMarked(getCacheDir(), appId);
+	// A refresh that renders the pair already on disk changes nothing:
+	// writing it again would only cost backups and fsyncs and drop the base's
+	// DLC metadata, which is still valid for these bytes.
+	std::string onDisk;
+	const bool unchanged = markerBefore == markSynthetic &&
+		readTextFileBounded(getMetaPath(appId), metadata.size(), onDisk) &&
+		onDisk == metadata &&
+		readTextFileBounded(getBufferPath(appId), wire.size(), onDisk) &&
+		onDisk == wire;
 	std::string writeError;
-	if (!publishCachePairLocked(appId, wire, metadata, markSynthetic,
+	if (!unchanged &&
+	    !publishCachePairLocked(appId, wire, metadata, markSynthetic,
 	                            markerBefore, writeError))
 	{
 		g_pLog->debug(
