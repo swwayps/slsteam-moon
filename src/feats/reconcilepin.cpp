@@ -2,6 +2,7 @@
 //
 // See reconcilepin.hpp for the design.
 
+#include "reconcilepin_guard.hpp"
 #include "reconcilepin.hpp"
 
 #include "../config.hpp"
@@ -216,14 +217,8 @@ namespace
 	                    void* a4, void* ctx, void* a6, void* a7)
 	{
 		void* r = g_origBuild(a0, appId, a2, targetVec, a4, ctx, a6, a7);
-		try
-		{
-			if (targetVec) patchTargetVec(targetVec, appId);
-		}
-		catch (...)
-		{
-			notePatchFailure();
-		}
+		if (targetVec)
+			ReconcilePin::detail::runPatched([&] { patchTargetVec(targetVec, appId); }, notePatchFailure);
 		return r;
 	}
 
@@ -318,18 +313,14 @@ namespace
 	{
 		if (ctx)
 		{
-			try
+			ReconcilePin::detail::runPatched([&]
 			{
 				const auto* c = reinterpret_cast<const uint8_t*>(ctx);
 				const uint32_t appId = *reinterpret_cast<const uint32_t*>(c + kCtxAppIdOff);
 				const uint32_t flags = *reinterpret_cast<const uint32_t*>(c + kCtxFlagsOff);
 
 				patchTargetCtx(ctx, appId, flags);
-			}
-			catch (...)
-			{
-				notePatchFailure();
-			}
+			}, notePatchFailure);
 		}
 		return g_orig(mgr, ctx, a1, a2);
 	}
