@@ -73,6 +73,8 @@ int main()
 	CNetPacket packet{};
 	packet.setBody(body);
 	packet.setSize(storage.size());
+	// The receive hook settles the field layout on the first live packet.
+	CNetPacket::detectLayout(&packet);
 
 	// The handler runs out of memory.
 	bool escaped = false;

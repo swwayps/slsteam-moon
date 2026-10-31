@@ -149,6 +149,8 @@ int main()
 	CNetPacket validPacket{};
 	validPacket.setBody(validBody);
 	validPacket.setSize(validStorage.size());
+	// The receive hook settles the field layout on the first live packet.
+	CNetPacket::detectLayout(&validPacket);
 	CMsgProtoBufHeader parsedHeader;
 	expect(
 		validPacket.deserializeHeader(parsedHeader)

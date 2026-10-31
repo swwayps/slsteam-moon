@@ -91,12 +91,15 @@ int main()
 		if (child == 0)
 		{
 			CNetPacket::detectLayout(reinterpret_cast<const CNetPacket*>(unknown));
-			std::_Exit(CNetPacket::layoutSettled() ? 1 : 0);
+			if (CNetPacket::layoutSettled()) std::_Exit(1);
+			// Until a shift settles, the packet type is not read through the body.
+			std::_Exit(reinterpret_cast<const CNetPacket*>(unknown)->isProtoBuf() ? 2 : 0);
 		}
 		int status = -1;
 		waitpid(child, &status, 0);
 		CHECK(mapped && WIFEXITED(status) && WEXITSTATUS(status) == 0,
-		      "layout detection skips a body pointer into unmapped memory");
+		      "layout detection skips a body pointer into unmapped memory, and the "
+		      "packet type is not read through it before the layout settles");
 	}
 
 	// A received packet on the classic layout settles the shift at 0.

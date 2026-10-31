@@ -55,6 +55,8 @@ void fill(CNetPacket& packet, uint32_t eMsg, const CMsgProtoBufHeader& header,
 	packet.setBody(body);
 	packet.setOriginalBody(body);
 	packet.setSize(size);
+	// The receive hook settles the field layout on the first live packet.
+	CNetPacket::detectLayout(&packet);
 }
 
 // Steam asks for the metadata of 42 (local pair) and 50 in job `job`; the
