@@ -2,12 +2,16 @@
 // cleared by load(), not when the library image loads: a second steam process
 // (a steam:// handoff) must not clear the running session's flags, and an
 // unusable config directory must not abort it. A game's flag follows its
-// depots; the global flag changes only when the archive circuit opens or closes.
-// Build: make test-offline-flags (links the whole object set, as SLSsteam.so).
+// depots; the global flag changes only when the archive circuit opens or
+// closes, and a probe after the cooldown closes it once the archive answers.
+// Build: make test-offline-flags (links the whole object set, as SLSsteam.so,
+// with tools/fake_libcurl.cpp standing in for libcurl).
 #include "../src/log.hpp"
 #include "../src/utils/ManifestFetch.hpp"
+#include "fake_libcurl.hpp"
 #include <atomic>
 #include <cerrno>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
@@ -16,6 +20,7 @@
 #include <string>
 #include <string_view>
 #include <sys/wait.h>
+#include <thread>
 #include <unistd.h>
 static int g_failures = 0;
 #define CHECK(cond, msg)                                               \
@@ -38,6 +43,62 @@ extern "C" int remove(const char* path) noexcept
 namespace
 {
 namespace fs = std::filesystem;
+
+// The manifest archive: every manifest GET fails to connect, and the root
+// answers 200 once `reachable` is set.
+class Archive final : public FakeCurl
+{
+public:
+	std::atomic<bool> reachable{false};
+	std::atomic<int> probes{0};
+	std::atomic<std::int64_t> firstProbeMs{0};
+
+	CURL* init() override { return reinterpret_cast<CURL*>(new Handle); }
+	CURLcode setopt(CURL* c, CURLoption option, long, void* pointer) override
+	{
+		if (option == CURLOPT_URL)
+			reinterpret_cast<Handle*>(c)->url = static_cast<const char*>(pointer);
+		return CURLE_OK;
+	}
+	CURLcode perform(CURL* c) override
+	{
+		Handle& h = *reinterpret_cast<Handle*>(c);
+		if (h.url != "https://manifest.luastools.xyz/") return CURLE_COULDNT_CONNECT;
+		std::int64_t none = 0;
+		firstProbeMs.compare_exchange_strong(none, nowMs());
+		++probes;
+		if (!reachable) return CURLE_COULDNT_CONNECT;
+		h.status = 200;
+		return CURLE_OK;
+	}
+	void cleanup(CURL* c) override { delete reinterpret_cast<Handle*>(c); }
+	CURLcode getinfo(CURL* c, CURLINFO info, void* out) override
+	{
+		if (info == CURLINFO_RESPONSE_CODE)
+			*static_cast<long*>(out) = reinterpret_cast<Handle*>(c)->status;
+		return CURLE_OK;
+	}
+	CURLcode send(CURL*, const void*, std::size_t, std::size_t*) override
+	{
+		return CURLE_UNSUPPORTED_PROTOCOL;
+	}
+	CURLcode recv(CURL*, void*, std::size_t, std::size_t*) override
+	{
+		return CURLE_UNSUPPORTED_PROTOCOL;
+	}
+	static std::int64_t nowMs()
+	{
+		return std::chrono::duration_cast<std::chrono::milliseconds>(
+		    std::chrono::steady_clock::now().time_since_epoch()).count();
+	}
+
+private:
+	struct Handle
+	{
+		std::string url;
+		long status = 0;
+	};
+};
 
 // Runs this binary again so the image loads with that HOME (and
 // XDG_CONFIG_HOME when given).
@@ -105,18 +166,27 @@ int circuitChild()
 	const std::string home = env("HOME");
 	fs::create_directories(home + "/.steam/steam/depotcache");
 	std::ofstream(home + "/.steam/steam/steam.sh") << "#!/bin/sh\n";
-	// Every archive request is refused: no proxy listens on the discard port.
-	setenv("https_proxy", "http://127.0.0.1:9", 1);
-	setenv("ALL_PROXY", "http://127.0.0.1:9", 1);
-	unsetenv("NO_PROXY");
-	unsetenv("no_proxy");
+	static Archive archive;
+	g_fakeCurl = &archive;
 	// One transport failure leaves the circuit closed, the second opens it.
 	(void)ManifestFetch::awaitManifestBlobFor(111, 7, 15000, false, false);
 	CHECK(g_offlineRemoves.load() == 0,
 	      "an attempt that leaves the circuit closed does not touch the offline flag");
 	(void)ManifestFetch::awaitManifestBlobFor(222, 7, 15000, false, false);
-	CHECK(fs::exists(env("XDG_CONFIG_HOME") + "/SLSsteam/offline"),
-	      "an opened circuit sets the offline flag in the config folder");
+	const std::int64_t openedMs = Archive::nowMs();
+	const std::string flag = env("XDG_CONFIG_HOME") + "/SLSsteam/offline";
+	CHECK(fs::exists(flag), "an opened circuit sets the offline flag in the config folder");
+
+	// The archive answers again while no download asks for a manifest. The
+	// circuit's cooldown is 30 s; after it, a probe closes the circuit.
+	archive.reachable = true;
+	for (int i = 0; i < 450 && fs::exists(flag); ++i)
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	const std::int64_t waitedMs = archive.firstProbeMs.load() - openedMs;
+	CHECK(archive.probes.load() >= 1 && waitedMs >= 29000 && !fs::exists(flag),
+	      ("after the cooldown a probe of the archive clears the offline flag (" +
+	       std::to_string(archive.probes.load()) + " probe(s), the first after " +
+	       std::to_string(archive.probes.load() ? waitedMs : 0) + " ms)").c_str());
 	return g_failures;
 }
 }

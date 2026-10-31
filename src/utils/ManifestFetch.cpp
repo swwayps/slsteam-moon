@@ -31,6 +31,7 @@
 #include <string_view>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <thread>
 #include <unistd.h>
 #include <unordered_map>
 #include <vector>
@@ -78,6 +79,13 @@ std::int64_t steadyNowMs()
 	    std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
+// The session whose open circuit has a probe loop running (0: none).
+// Guarded by g_circuitLock.
+uint64_t g_probeEpoch = 0;
+
+BoundedExecutor& blobExecutor();
+void probeArchiveUntilReachable(uint64_t sessionEpoch);
+
 uint64_t beginProviderAttempt(uint64_t sessionEpoch)
 {
 	std::lock_guard<std::mutex> lock(g_circuitLock);
@@ -93,6 +101,7 @@ void finishProviderAttempt(uint64_t sessionEpoch,
 {
 	bool wasOffline = false;
 	bool nowOffline = false;
+	bool startProbe = false;
 	{
 		std::lock_guard<std::mutex> lock(g_circuitLock);
 		if (sessionEpoch != g_sessionEpoch.load(std::memory_order_acquire))
@@ -104,6 +113,29 @@ void finishProviderAttempt(uint64_t sessionEpoch,
 		g_providerCircuit.finishAttempt(
 		    attemptToken, steadyNowMs(), success, rateLimited, transportFailure);
 		nowOffline = g_providerCircuit.open();
+		// Only a reachable answer closes the circuit, and Lumen reads only the
+		// offline flag: probe the archive once the cooldown ends instead of
+		// waiting for a manifest download, which an up-to-date library never
+		// starts.
+		startProbe = nowOffline && g_probeEpoch != sessionEpoch;
+		if (startProbe) g_probeEpoch = sessionEpoch;
+	}
+	if (startProbe)
+	{
+		bool submitted = false;
+		try
+		{
+			submitted = blobExecutor().submit(
+			    [sessionEpoch] { probeArchiveUntilReachable(sessionEpoch); });
+		}
+		catch (...)
+		{
+		}
+		if (!submitted)
+		{
+			std::lock_guard<std::mutex> lock(g_circuitLock);
+			if (g_probeEpoch == sessionEpoch) g_probeEpoch = 0;
+		}
 	}
 	if (wasOffline == nowOffline) return;
 	setOfflineStatus(nowOffline);
@@ -296,6 +328,43 @@ HttpResponse httpGet(const std::string& url, const JobBudget* budget = nullptr,
 	if (requestHeaders) curlApi()->slist_free_all(requestHeaders);
 	curlApi()->easy_cleanup(c);
 	return r;
+}
+
+// Runs on a blob worker while the session's circuit is open: once the
+// cooldown ends it asks the archive root for headers (any answer but a 5xx or
+// a 429 counts as reachable), and again after each failed probe, until the
+// circuit closes or the session ends.
+void probeArchiveUntilReachable(uint64_t sessionEpoch)
+{
+	for (;;)
+	{
+		std::int64_t waitMs = 0;
+		{
+			std::lock_guard<std::mutex> lock(g_circuitLock);
+			if (sessionEpoch != g_sessionEpoch.load(std::memory_order_acquire) ||
+			    !g_providerCircuit.open())
+			{
+				if (g_probeEpoch == sessionEpoch) g_probeEpoch = 0;
+				return;
+			}
+			waitMs = g_providerCircuit.retryAtMs() - steadyNowMs();
+		}
+		// Sleep in short steps: a new session, or a download that closed the
+		// circuit, ends the wait. A download that holds the one attempt the
+		// open circuit admits makes beginProviderAttempt return 0.
+		const uint64_t token = waitMs > 0 ? 0 : beginProviderAttempt(sessionEpoch);
+		if (token == 0)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(
+			    std::clamp<std::int64_t>(waitMs, 100, 1000)));
+			continue;
+		}
+		const HttpResponse answer = httpGet(
+		    "https://manifest.luastools.xyz/", nullptr, {}, "HEAD", {}, 64u * 1024u, 10000);
+		const auto outcome = classifyArchiveOutcome(answer.networkError, answer.status);
+		finishProviderAttempt(sessionEpoch, token, outcome.success,
+		                      outcome.rateLimited, outcome.transportFailure);
+	}
 }
 
 } // namespace

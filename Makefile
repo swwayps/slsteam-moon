@@ -337,9 +337,13 @@ test-ticket-cache: $(objs) $(libs)
 		$(objs) $(libs) -lpthread -ldl -o /tmp/test_ticket_cache
 	/tmp/test_ticket_cache
 test-offline-flags: $(objs) $(libs)
+	mkdir -p /tmp/fakecurl-offline
+	$(CXX) -m32 -std=c++20 -shared -fPIC -Wl,-soname,libcurl.so.4 \
+		tools/fake_libcurl.cpp -o /tmp/fakecurl-offline/libcurl.so.4
 	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
 		-I include -isysteminclude tools/test_offline_flags.cpp \
-		$(objs) $(libs) -lpthread -ldl -o /tmp/test_offline_flags
+		$(objs) $(libs) /tmp/fakecurl-offline/libcurl.so.4 \
+		-Wl,-rpath,/tmp/fakecurl-offline -lpthread -ldl -o /tmp/test_offline_flags
 	/tmp/test_offline_flags
 test-download-activity: $(objs) $(libs)
 	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \

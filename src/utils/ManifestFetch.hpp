@@ -171,6 +171,8 @@ namespace ManifestFetch
 
 
 		bool open() const noexcept { return m_open; }
+		// When an open circuit admits its probe.
+		std::int64_t retryAtMs() const noexcept { return m_retryAtMs; }
 		// Open and not yet due for its probe. Updates are held back only for
 		// this window: after it, the next update plan is the probe.
 		bool coolingDown(std::int64_t nowMs) const noexcept
