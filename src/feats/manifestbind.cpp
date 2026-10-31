@@ -33,6 +33,8 @@
 #include <string>
 #include <sys/stat.h>
 #include <unordered_map>
+#include <atomic>
+#include <cstring>
 #include <vector>
 
 
@@ -413,13 +415,14 @@ namespace
 			return freezePlanGid(depotId, manifestId, manifestId, consumeFrozen);
 		};
 
-		if (auto frozen =
-		        frozenPlanGid(depotId, manifestId, consumeFrozen))
+		if (auto frozen = frozenPlanGid(depotId, manifestId, false))
 		{
 			g_pLog->debug(
 			    "ManifestBind[%s]: depot=%u gid=%llu reusing frozen choice=%llu\n",
 			    site, depotId, static_cast<unsigned long long>(manifestId),
 			    static_cast<unsigned long long>(*frozen));
+			// Consumed only after the log line, so a failure there keeps it.
+			if (consumeFrozen) (void)frozenPlanGid(depotId, manifestId, true);
 			return *frozen;
 		}
 
@@ -532,19 +535,65 @@ namespace
 		    depotId, manifestId, decision.gid, consumeFrozen);
 	}
 
+	// Our work inside a download-plan hook failed (an allocation, the logger):
+	// note it once per hook. Steam's own call still runs.
+	void noteHookFailure(std::atomic<bool>& noted, const char* hook) noexcept
+	{
+		if (noted.exchange(true, std::memory_order_relaxed)) return;
+		try
+		{
+			if (g_pLog) g_pLog->warn("ManifestBind: %s failed; Steam plans as it would\n", hook);
+		}
+		catch (...)
+		{
+		}
+	}
+
+	// Both stages must use one gid: after a failure, take the choice the
+	// other stage froze, if any, else Steam's own.
+	uint64_t gidAfterFailure(uint32_t depotId, uint64_t manifestId, bool consume) noexcept
+	{
+		try
+		{
+			if (const auto frozen = frozenPlanGid(depotId, manifestId, consume)) return *frozen;
+		}
+		catch (...)
+		{
+		}
+		return manifestId;
+	}
+
 	void* hkProcessDepot(void* ctx, uint32_t a0C, uint32_t appId,
 	                     uint32_t depotId, uint64_t manifestId, uint32_t a20)
 	{
-		const uint64_t useGid =
-		    redirectGid("leaf", appId, depotId, manifestId, false);
+		uint64_t useGid = manifestId;
+		try
+		{
+			useGid = redirectGid("leaf", appId, depotId, manifestId, false);
+		}
+		catch (...)
+		{
+			static std::atomic<bool> noted{false};
+			noteHookFailure(noted, "ProcessDepotManifest");
+			useGid = gidAfterFailure(depotId, manifestId, false);
+		}
 		return g_leaf.orig(ctx, a0C, appId, depotId, useGid, a20);
 	}
 
 	void* hkPrepareDepot(void* ctx, uint32_t a0C, uint32_t appId,
 	                     uint32_t depotId, uint64_t manifestId, uint32_t a20)
 	{
-		const uint64_t useGid =
-		    redirectGid("plan", appId, depotId, manifestId, true);
+		uint64_t useGid = manifestId;
+		try
+		{
+			useGid = redirectGid("plan", appId, depotId, manifestId, true);
+		}
+		catch (...)
+		{
+			static std::atomic<bool> noted{false};
+			noteHookFailure(noted, "PrepareDepotDownload");
+			useGid = gidAfterFailure(depotId, manifestId, true);
+		}
 		return g_planner.orig(ctx, a0C, appId, depotId, useGid, a20);
 	}
 
@@ -558,7 +607,7 @@ namespace
 	//
 	// Defensive: bail on an implausible vector (null base / out-of-range count)
 	// so a signature/ABI drift degrades to a harmless pass-through.
-	void* hkBuildDepot(void* ctx, uint32_t flag, void* depots, uint32_t a3)
+	void planDepots(uint32_t flag, void* depots)
 	{
 		if (depots)
 		{
@@ -578,6 +627,10 @@ namespace
 			if (base && ManifestSelection::validVectorBounds(
 			                count, capacity, kDepotEntryStride))
 			{
+				// Filter a copy and publish it whole below: a failure half-way
+				// leaves Steam's list as it came, never half-compacted.
+				std::vector<char> plan(base, base + static_cast<size_t>(count) * kDepotEntryStride);
+				char* const work = plan.data();
 				// Start every first-import pin before waiting on any one of
 				// them. The bounded executor may then fetch concurrently while
 				// the rewrite loop below joins each job against one shared
@@ -587,7 +640,7 @@ namespace
 					for (int32_t i = 0; i < count; ++i)
 					{
 						const char* const e =
-						    base + static_cast<size_t>(i) * kDepotEntryStride;
+						    work + static_cast<size_t>(i) * kDepotEntryStride;
 						const uint32_t depotId =
 						    *reinterpret_cast<const uint32_t*>(e);
 						const uint32_t entryAppId =
@@ -606,7 +659,7 @@ namespace
 				int32_t writeIdx = 0;
 				for (int32_t i = 0; i < count; ++i)
 				{
-					char* e = base + static_cast<size_t>(i) * kDepotEntryStride;
+					char* e = work + static_cast<size_t>(i) * kDepotEntryStride;
 					const uint32_t depotId =
 					    *reinterpret_cast<const uint32_t*>(e);
 					auto* const sizep =
@@ -714,11 +767,12 @@ namespace
 
 					if (writeIdx != i)
 					{
-						char* dest = base + static_cast<size_t>(writeIdx) * kDepotEntryStride;
+						char* dest = work + static_cast<size_t>(writeIdx) * kDepotEntryStride;
 						std::memcpy(dest, e, kDepotEntryStride);
 					}
 					++writeIdx;
 				}
+				std::memcpy(base, work, static_cast<size_t>(writeIdx) * kDepotEntryStride);
 				*countPtr = writeIdx;
 			}
 			else
@@ -728,6 +782,19 @@ namespace
 				    "(base=%p count=%d capacity=%d); passing through\n",
 				    static_cast<void*>(base), count, capacity);
 			}
+		}
+	}
+
+	void* hkBuildDepot(void* ctx, uint32_t flag, void* depots, uint32_t a3)
+	{
+		try
+		{
+			planDepots(flag, depots);
+		}
+		catch (...)
+		{
+			static std::atomic<bool> noted{false};
+			noteHookFailure(noted, "BuildDepotDependency");
 		}
 		return g_builder.orig(ctx, flag, depots, a3);
 	}

@@ -816,9 +816,10 @@ static bool hkClientAppManager_BCanRemotePlayTogether(void* pClientAppManager, u
 	return true;
 }
 
-static void* hkClientAppManager_LaunchApp(void* pClientAppManager, uint32_t* pAppId, void* a2, void* a3, void* a4)
+void Hooks::launchAppWork(void* pClientAppManager, uint32_t appId,
+                          void* a2, void* a3, void* a4) noexcept
 {
-	if (pAppId)
+	try
 	{
 		g_pLog->debugOnce
 		(
@@ -826,16 +827,33 @@ static void* hkClientAppManager_LaunchApp(void* pClientAppManager, uint32_t* pAp
 
 			Hooks::IClientAppManager_LaunchApp.name.c_str(),
 			pClientAppManager,
-			*pAppId,
+			appId,
 			a2,
 			a3,
 			a4
 		);
 
-		Ticket::launchApp(*pAppId);
-		SteamStub::onLaunchApp(*pAppId);
+		Ticket::launchApp(appId);
+		SteamStub::onLaunchApp(appId);
 	}
+	catch (...)
+	{
+		static std::atomic<bool> logged{false};
+		if (logged.exchange(true, std::memory_order_relaxed)) return;
+		try
+		{
+			if (g_pLog) g_pLog->warn("LaunchApp: our launch work failed; Steam launches as it would\n");
+		}
+		catch (...)
+		{
+		}
+	}
+}
 
+static void* hkClientAppManager_LaunchApp(void* pClientAppManager, uint32_t* pAppId, void* a2, void* a3, void* a4)
+{
+	// Steam's IPC thread: our work never unwinds into the launch.
+	if (pAppId) Hooks::launchAppWork(pClientAppManager, *pAppId, a2, a3, a4);
 	return Hooks::IClientAppManager_LaunchApp.originalFn.fn(pClientAppManager, pAppId, a2, a3, a4);
 }
 

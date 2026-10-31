@@ -4,6 +4,8 @@
 // only logs, so it is not required.
 // Build: make test-hook-placement (links the whole object set).
 #include "../src/config.hpp"
+#include "../src/feats/depotkey.hpp"
+#include "../src/feats/manifestbind.hpp"
 #include "../src/hooks.hpp"
 #include "../src/log.hpp"
 #include "../src/patterns.hpp"
@@ -32,8 +34,12 @@ static int g_failures = 0;
 // Once armed, the next allocation on this thread fails.
 static thread_local bool t_failNextAllocation = false;
 static thread_local bool t_allocationFailed = false;
+// Counts down allocations on this thread; the one that reaches zero fails.
+static thread_local int t_failIn = 0;
 void* operator new(std::size_t size)
 {
+	if (t_failIn > 0 && --t_failIn == 0)
+		t_failNextAllocation = true;
 	if (t_failNextAllocation)
 	{
 		t_failNextAllocation = false;
@@ -173,6 +179,108 @@ int main()
 		      return t_allocationFailed;
 	      }),
 	      "an allocation failure before the CM dispatch does not unwind into Steam");
+
+	// The download-plan hooks run our work on Steam's planning thread. An
+	// allocation that fails anywhere in it must not unwind into Steam, and
+	// the depot list Steam plans from must stay whole: either filtered as a
+	// whole (the managed size-0 depot dropped) or left as it came.
+	int planRounds = 0;
+	bool planSafe = true;
+	for (int k = 1; k <= 300; ++k)
+	{
+		int pipeFds[2];
+		if (pipe(pipeFds) != 0) return 2;
+		std::fflush(stdout);
+		const pid_t pid = fork();
+		if (pid == 0)
+		{
+			close(pipeFds[0]);
+			const auto base = reinterpret_cast<lm_address_t>(code);
+			Patterns::CDepotDownloadMgr::ProcessDepotManifest.address = base + 10 * 64;
+			Patterns::CDepotDownloadMgr::PrepareDepotDownload.address = base + 11 * 64;
+			Patterns::CDepotDownloadMgr::BuildDepotDependency.address = base + 12 * 64;
+			if (!ManifestBind::setup()) std::_Exit(3);
+			(void)DepotKey::saveKeyToCache(42, 4202, std::string(32, 'k'), true);
+			alignas(8) unsigned char entries[4 * 0x20] = {};
+			const uint32_t depots[4] = {4201, 4202, 4203, 4204};
+			const uint64_t sizes[4] = {100, 0, 100, 100};
+			for (int i = 0; i < 4; ++i)
+			{
+				const uint32_t app = 42;
+				const uint64_t gid = 7;
+				std::memcpy(entries + i * 0x20, &depots[i], 4);
+				std::memcpy(entries + i * 0x20 + 0x04, &app, 4);
+				std::memcpy(entries + i * 0x20 + 0x08, &gid, 8);
+				std::memcpy(entries + i * 0x20 + 0x10, &sizes[i], 8);
+			}
+			alignas(8) unsigned char vec[0x10] = {};
+			void* entryBase = entries;
+			const int32_t capacity = 4;
+			int32_t count = 4;
+			std::memcpy(vec, &entryBase, sizeof(entryBase));
+			std::memcpy(vec + 0x04, &capacity, 4);
+			std::memcpy(vec + 0x0c, &count, 4);
+			using DepotFn = void* (*)(void*, uint32_t, uint32_t, uint32_t, uint64_t, uint32_t);
+			using BuildFn = void* (*)(void*, uint32_t, void*, uint32_t);
+			t_allocationFailed = false;
+			t_failIn = k;
+			reinterpret_cast<BuildFn>(base + 12 * 64)(nullptr, 0, vec, 0);
+			reinterpret_cast<DepotFn>(base + 10 * 64)(nullptr, 0, 42, 4201, 7, 0);
+			reinterpret_cast<DepotFn>(base + 11 * 64)(nullptr, 0, 42, 4201, 7, 0);
+			t_failIn = 0;
+			t_failNextAllocation = false;
+			std::memcpy(&count, vec + 0x0c, 4);
+			uint32_t seen[4] = {};
+			for (int i = 0; i < 4; ++i) std::memcpy(&seen[i], entries + i * 0x20, 4);
+			const bool whole =
+				(count == 3 && seen[0] == 4201 && seen[1] == 4203 && seen[2] == 4204)
+				|| (count == 4 && seen[0] == 4201 && seen[1] == 4202 && seen[2] == 4203
+				    && seen[3] == 4204);
+			const char result[2] = {static_cast<char>(t_allocationFailed), static_cast<char>(whole)};
+			(void)!write(pipeFds[1], result, 2);
+			std::_Exit(0);
+		}
+		close(pipeFds[1]);
+		char result[2] = {0, 0};
+		const bool reported = read(pipeFds[0], result, 2) == 2;
+		close(pipeFds[0]);
+		int status = 0;
+		waitpid(pid, &status, 0);
+		if (!reported || !WIFEXITED(status) || WEXITSTATUS(status) != 0)
+		{
+			planSafe = false;
+			std::printf("allocation %d: the plan hooks did not return\n", k);
+			break;
+		}
+		if (!result[0]) break; // the calls no longer reach their k-th allocation
+		++planRounds;
+		if (!result[1])
+		{
+			planSafe = false;
+			std::printf("allocation %d: the depot list was left half-filtered\n", k);
+			break;
+		}
+	}
+	CHECK(planRounds > 0 && planSafe,
+	      "an allocation failure in the plan hooks does not reach Steam or split the depot list");
+
+	// LaunchApp's work (the ticket, the SteamStub check) runs on Steam's IPC
+	// thread before the launch: a failure there must not stop the launch.
+	int launchRounds = 0;
+	bool launchSafe = true;
+	for (int k = 1; k <= 200; ++k)
+	{
+		t_allocationFailed = false;
+		t_failIn = k;
+		try { Hooks::launchAppWork(nullptr, 4242, nullptr, nullptr, nullptr); }
+		catch (...) { launchSafe = false; }
+		t_failIn = 0;
+		t_failNextAllocation = false;
+		if (!t_allocationFailed) break;
+		++launchRounds;
+	}
+	CHECK(launchRounds > 0 && launchSafe,
+	      "an allocation failure in LaunchApp's work does not reach Steam's launch");
 
 	if (g_failures == 0) std::printf("\nall hook placement checks passed\n");
 	else std::printf("\n%d hook placement check(s) FAILED\n", g_failures);
