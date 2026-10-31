@@ -2543,6 +2543,10 @@ int provisionAppsPass(const std::unordered_set<uint32_t>& added,
 	                       const char* origin)
 {
 	if (added.empty()) return 0;
+	// This pass runs in setup(), before Steam shows anything, and writes a
+	// cache pair or a verdict per app: one flush when it ends (after the pass
+	// lock is released) instead of an fsync of each file and of its folder.
+	AtomicFile::DeferSync bulkWrites;
 	ProvisionPassSummary summary;
 	summary.requested = added.size();
 

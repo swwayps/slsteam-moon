@@ -1,5 +1,6 @@
 // A cold-start pass walks the manifest store once: the terminal verdicts and
 // the depot synthesis of every app reuse the index the pass was primed with.
+// It flushes its cache writes once, at its end.
 // A mirror answer is capped at 16 MiB and its redirects stay on https. A
 // force-full changes answer refreshes the locally authoritative apps, and a
 // refresh that renders the pair on disk does not write it again.
@@ -62,6 +63,27 @@ extern "C" DIR* fdopendir(int fd)
 		if (n > 0 && std::string_view(target, static_cast<std::size_t>(n)) == g_storeDir)
 			++g_storeOpens;
 	}
+	return real(fd);
+}
+
+// fsync and syncfs calls while armed.
+static std::atomic<bool> g_countSyncs{false};
+static std::atomic<int> g_fsyncs{0};
+static std::atomic<int> g_syncfs{0};
+
+extern "C" int fsync(int fd)
+{
+	using Real = int (*)(int);
+	static const Real real = reinterpret_cast<Real>(dlsym(RTLD_NEXT, "fsync"));
+	if (g_countSyncs) ++g_fsyncs;
+	return real(fd);
+}
+
+extern "C" int syncfs(int fd)
+{
+	using Real = int (*)(int);
+	static const Real real = reinterpret_cast<Real>(dlsym(RTLD_NEXT, "syncfs"));
+	if (g_countSyncs) ++g_syncfs;
 	return real(fd);
 }
 
@@ -209,13 +231,21 @@ int main()
 	g_config.managedAppIds.set(apps);
 
 	g_countOpens = true;
+	g_countSyncs = true;
 	AppInfoProvision::provisionColdStartApps(apps);
+	g_countSyncs = false;
 	g_countOpens = false;
 	const int walks = g_storeOpens.load();
 	CHECK(provider.requests == 20, "the provider is asked once for each app");
 	CHECK(walks == 1,
 	      ("the pass walks the manifest store once (" + std::to_string(walks) +
 	       " walks for 20 apps)").c_str());
+	// Each fsync costs a journal commit (about 20 ms on a virtual disk), and
+	// this pass runs before Steam shows anything.
+	CHECK(g_fsyncs == 0 && g_syncfs == 1,
+	      ("the pass flushes its cache writes once, at its end (" +
+	       std::to_string(g_fsyncs.load()) + " fsync, " +
+	       std::to_string(g_syncfs.load()) + " syncfs for 20 apps)").c_str());
 	const std::string cache = std::string(home) + "/SLSsteam/cache";
 	CHECK(std::filesystem::exists(cache + "/picsbuffer_1000.bin"),
 	      "a depot-less app is rebuilt from its archived manifest");
