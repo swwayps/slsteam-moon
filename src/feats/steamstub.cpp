@@ -460,16 +460,21 @@ namespace
 				backupStr.substr(0, backupStr.size() - std::strlen(".original.exe"));
 
 			// Only our own output is reverted. The helper writes the marker
-			// after the swap: without one the file belongs to the game, and a
-			// live exe newer than the marker came from a Steam update, which
-			// the stale backup must not replace.
+			// right after it swaps Steamless's fresh output in (Steamless runs
+			// for at most 90 s), so our output is at most moments older than
+			// the marker. Without a marker the file belongs to the game. A live
+			// exe newer than the marker came from a Steam update, and one well
+			// older than it was put there by something else (extracting a fix
+			// or mod keeps the archive's time): the stale backup replaces
+			// neither.
+			constexpr auto ourOutputAge = std::chrono::minutes(5);
 			const std::string markerStr = liveStr + ".steamless_done";
 			std::error_code markerEc;
 			const auto markerTime = std::filesystem::last_write_time(markerStr, markerEc);
 			if (markerEc) continue;
 			std::error_code liveEc;
 			const auto liveTime = std::filesystem::last_write_time(liveStr, liveEc);
-			if (!liveEc && liveTime > markerTime)
+			if (!liveEc && (liveTime > markerTime || markerTime - liveTime > ourOutputAge))
 			{
 				std::error_code rmEc;
 				std::filesystem::remove(backup, rmEc);

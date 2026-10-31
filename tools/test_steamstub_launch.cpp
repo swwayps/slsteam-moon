@@ -196,18 +196,30 @@ int main(int argc, char** argv)
 		std::ofstream(game + "/Game.exe.steamless_done") << "";
 		fs::last_write_time(game + "/Game.exe.original.exe", hourAgo);
 		fs::last_write_time(game + "/Game.exe.steamless_done", hourAgo);
-		// A fresh Steamless result: the marker is newer than the exe.
+		// A Steamless result: the helper writes the marker right after it
+		// swaps Steamless's fresh output in.
 		std::ofstream(game + "/Tool.exe") << "MZstripped";
 		std::ofstream(game + "/Tool.exe.original.exe") << "MZorig";
 		std::ofstream(game + "/Tool.exe.steamless_done") << "";
 		fs::last_write_time(game + "/Tool.exe", hourAgo);
+		fs::last_write_time(game + "/Tool.exe.steamless_done", hourAgo + std::chrono::seconds(2));
+		// A fix replaced our output after Steamless ran; extracting it kept
+		// the archive's time, which is older than the marker.
+		std::ofstream(game + "/Fix.exe") << "MZfix";
+		std::ofstream(game + "/Fix.exe.original.exe") << "MZstub";
+		std::ofstream(game + "/Fix.exe.steamless_done") << "";
+		fs::last_write_time(game + "/Fix.exe", hourAgo - std::chrono::hours(1));
+		fs::last_write_time(game + "/Fix.exe.steamless_done", hourAgo);
 		// A file of the game itself that happens to end in .original.exe.
 		std::ofstream(game + "/Data.original.exe") << "MZgame";
 		SteamStub::onLaunchApp(123);
 		check(readAll(game + "/Game.exe") == "MZnew" && !fs::exists(game + "/Game.exe.original.exe"),
 		      "a backup older than the live exe is dropped, not restored over it");
 		check(readAll(game + "/Tool.exe") == "MZorig",
-		      "a fresh Steamless result is reverted");
+		      "a Steamless result is reverted");
+		check(readAll(game + "/Fix.exe") == "MZfix" && !fs::exists(game + "/Fix.exe.original.exe") &&
+		          !fs::exists(game + "/Fix.exe.steamless_done"),
+		      "an exe replaced after Steamless ran stays, even with an older time");
 		check(fs::exists(game + "/Data.original.exe") && !fs::exists(game + "/Data"),
 		      "a file without our marker is left alone");
 	}
