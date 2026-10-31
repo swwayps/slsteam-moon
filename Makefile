@@ -976,3 +976,127 @@ endif
 
 release:
 	bash scripts/release.sh
+
+# Header-only and small-source tests (scripts/test-make-targets.sh checks that
+# every tools/test_*.cpp has a target).
+.PHONY: test-appdata-layout test-appinfo-text test-appticket test-audit-guards test-cainfo
+.PHONY: test-cefport test-clientapps test-cmlist-cache test-compattool test-confload
+.PHONY: test-confnormalize test-depotquarantine test-depotquarantine-store test-dir-walks
+.PHONY: test-emptydepot test-hotreload-state test-license-refresh test-loadlock
+.PHONY: test-manageddepotfilter test-manifestpins test-manifestsynth test-notify
+.PHONY: test-playerstats test-provision-network test-reconcilepin-guard
+.PHONY: test-reconcilepin-pattern test-runtime-attestation test-runtimedir test-sha1
+.PHONY: test-strsplit test-usabledepot test-usermsg
+test-appdata-layout:
+	$(CXX) -std=c++20 -I include -I src tools/test_appdata_layout.cpp -pthread \
+		-o /tmp/test_appdata_layout
+	/tmp/test_appdata_layout
+test-appinfo-text:
+	$(CXX) -std=c++20 -I include tools/test_appinfo_text.cpp -o /tmp/test_appinfo_text
+	/tmp/test_appinfo_text
+test-appticket:
+	$(CXX) -std=c++20 -I include tools/test_appticket.cpp -o /tmp/test_appticket
+	/tmp/test_appticket
+test-audit-guards:
+	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic tools/test_audit_guards.cpp \
+		-o /tmp/test_audit_guards
+	/tmp/test_audit_guards
+test-cainfo:
+	$(CXX) -std=c++20 -I include tools/test_cainfo.cpp -o /tmp/test_cainfo
+	/tmp/test_cainfo
+test-cefport:
+	$(CXX) -std=c++20 -I include tools/test_cefport.cpp -o /tmp/test_cefport
+	/tmp/test_cefport
+test-clientapps:
+	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -I include -I src \
+		tools/test_clientapps.cpp src/sdk/IClientApps.cpp -pthread -o /tmp/test_clientapps
+	/tmp/test_clientapps
+test-cmlist-cache:
+	$(CXX) -std=c++20 -I include tools/test_cmlist_cache.cpp -o /tmp/test_cmlist_cache
+	/tmp/test_cmlist_cache
+test-compattool:
+	$(CXX) -std=c++20 -I include tools/test_compattool.cpp -o /tmp/test_compattool
+	/tmp/test_compattool
+test-confload:
+	$(CXX) -O3 -flto=auto -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -I include -I src \
+		tools/test_confload.cpp lib/libyaml-cpp.a -lpthread -o /tmp/test_confload
+	/tmp/test_confload
+test-confnormalize:
+	$(CXX) -O3 -flto=auto -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -I include -I src \
+		tools/test_confnormalize.cpp lib/libyaml-cpp.a -lpthread -o /tmp/test_confnormalize
+	/tmp/test_confnormalize
+test-depotquarantine:
+	$(CXX) -std=c++20 tools/test_depotquarantine.cpp -o /tmp/test_depotquarantine
+	/tmp/test_depotquarantine
+test-depotquarantine-store:
+	$(CXX) -std=c++20 tools/test_depotquarantine_store.cpp -o /tmp/test_depotquarantine_store
+	/tmp/test_depotquarantine_store
+# test_dir_walks defines both readdir and readdir64, which the 64-bit file
+# offset define in CXX would turn into one symbol.
+test-dir-walks:
+	$(CXX) -U_FILE_OFFSET_BITS -std=c++20 -Wall -Wextra -I src -I include \
+		tools/test_dir_walks.cpp -ldl -o /tmp/test_dir_walks
+	/tmp/test_dir_walks
+test-emptydepot:
+	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -I include \
+		tools/test_emptydepot.cpp lib/libyaml-cpp.a -o /tmp/test_emptydepot
+	/tmp/test_emptydepot
+test-hotreload-state:
+	$(CXX) -std=c++20 -I include -I src tools/test_hotreload_state.cpp -pthread \
+		-o /tmp/test_hotreload_state
+	/tmp/test_hotreload_state
+test-license-refresh:
+	$(CXX) -std=c++20 -I include -I src tools/test_license_refresh.cpp -pthread \
+		-o /tmp/test_license_refresh
+	/tmp/test_license_refresh
+test-loadlock:
+	$(CXX) -std=c++20 tools/test_loadlock.cpp -o /tmp/test_loadlock
+	/tmp/test_loadlock
+test-manageddepotfilter:
+	$(CXX) -std=c++20 tools/test_manageddepotfilter.cpp -o /tmp/test_manageddepotfilter
+	/tmp/test_manageddepotfilter
+test-manifestpins:
+	$(CXX) -std=c++20 -I include tools/test_manifestpins.cpp -o /tmp/test_manifestpins
+	/tmp/test_manifestpins
+test-manifestsynth:
+	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -I include \
+		tools/test_manifestsynth.cpp lib/libyaml-cpp.a -o /tmp/test_manifestsynth
+	/tmp/test_manifestsynth
+test-notify:
+	$(CXX) -std=c++20 -I include tools/test_notify.cpp -o /tmp/test_notify
+	/tmp/test_notify
+test-playerstats:
+	$(CXX) -std=c++20 -I include tools/test_playerstats.cpp -o /tmp/test_playerstats
+	/tmp/test_playerstats
+test-provision-network:
+	$(CXX) -std=c++20 -I include tools/test_provision_network.cpp \
+		-o /tmp/test_provision_network
+	/tmp/test_provision_network
+test-reconcilepin-guard:
+	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src tools/test_reconcilepin_guard.cpp \
+		-o /tmp/test_reconcilepin_guard
+	/tmp/test_reconcilepin_guard
+test-reconcilepin-pattern:
+	$(CXX) -std=c++20 -I src tools/test_reconcilepin_pattern.cpp \
+		-o /tmp/test_reconcilepin_pattern
+	/tmp/test_reconcilepin_pattern "$(STEAMCLIENT)"
+test-runtime-attestation:
+	$(CXX) -std=c++20 -I include -I src tools/test_runtime_attestation.cpp -pthread \
+		-o /tmp/test_runtime_attestation
+	/tmp/test_runtime_attestation
+test-runtimedir:
+	$(CXX) -std=c++20 -I include tools/test_runtimedir.cpp -o /tmp/test_runtimedir
+	/tmp/test_runtimedir
+test-sha1:
+	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src tools/test_sha1.cpp -o /tmp/test_sha1
+	/tmp/test_sha1
+test-strsplit:
+	$(CXX) -std=c++20 -I include tools/test_strsplit.cpp src/utils.cpp -o /tmp/test_strsplit
+	/tmp/test_strsplit
+test-usabledepot:
+	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -I include \
+		tools/test_usabledepot.cpp lib/libyaml-cpp.a -o /tmp/test_usabledepot
+	/tmp/test_usabledepot
+test-usermsg:
+	$(CXX) -std=c++20 -I include tools/test_usermsg.cpp -o /tmp/test_usermsg
+	/tmp/test_usermsg

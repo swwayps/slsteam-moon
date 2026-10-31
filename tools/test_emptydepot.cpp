@@ -8,9 +8,7 @@
 // Steam never plans them.  This predicate is the pure decision; it only
 // touches yaml-cpp so it is host-unit-testable.
 //
-// Build (from repo root):
-//   g++ -std=c++20 -I include tools/test_emptydepot.cpp lib/libyaml-cpp.a \
-//       -o /tmp/test_emptydepot && /tmp/test_emptydepot
+// Build: make test-emptydepot
 
 #include "../src/feats/emptydepot.hpp"
 #include "yaml-cpp/yaml.h"

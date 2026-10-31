@@ -2,7 +2,7 @@
 // production locator must find EvaluateConfigChanges' call to the builder that
 // CUserAppManager::BuildDepotDependency resolves to, and the context's
 // depot-vector offset must decode with the helper the hook uses at runtime.
-// Build with: g++ -std=c++20 -I src tools/test_reconcilepin_pattern.cpp -o /tmp/test_reconcilepin_pattern
+// Build: make test-reconcilepin-pattern (STEAMCLIENT=<path> names the client)
 #include "feats/reconcilepin.hpp"
 #include <algorithm>
 #include <cstdint>

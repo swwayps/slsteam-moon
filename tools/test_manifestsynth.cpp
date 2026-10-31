@@ -22,9 +22,7 @@
 // body that already has real depots).  The disk gather (DepotKey cache +
 // ManifestStore) lives in appinfo_provision.cpp.
 //
-// Build (from repo root):
-//   g++ -std=c++20 -I include tools/test_manifestsynth.cpp \
-//       lib/libyaml-cpp.a -o /tmp/test_manifestsynth && /tmp/test_manifestsynth
+// Build: make test-manifestsynth
 
 #include "../src/feats/manifestsynth.hpp"
 
