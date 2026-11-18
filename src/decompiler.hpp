@@ -15,7 +15,7 @@ typedef Elf64_Ehdr Elf_Ehdr;
 //typedef Elf32_Shdr Elf_Shdr;
 typedef SectionHdr_t Elf_Shdr;
 
-struct VFTable
+struct VFTable_t
 {
 	struct TypeInfo
 	{
@@ -29,11 +29,13 @@ struct VFTable
 	lm_address_t address;
 	TypeInfo* typeInfo;
 	std::vector<lm_address_t> functions;
-	std::map<unsigned int, VFTable> subclasses;
+	std::map<unsigned int, VFTable_t> subclasses;
 
 	void init(const lm_address_t addr, const lm_module_t& mod);
 	unsigned int analyze();
 };
+
+using VFTable = VFTable_t;
 
 
 namespace Decompiler
@@ -43,7 +45,8 @@ namespace Decompiler
 	extern std::unordered_map<std::string, Elf_Shdr> sections;
 	extern std::unordered_map<lm_address_t, std::string> picThunks;
 	extern std::unordered_map<lm_address_t, std::string> strings;
-	extern std::unordered_map<std::string, VFTable> vftables;
+	extern std::unordered_map<lm_address_t, std::string> typeInfos;
+	extern std::unordered_map<std::string, VFTable_t> vftables;
 
 	unsigned int getString(const lm_address_t addr, std::string* outStr);
 	lm_address_t extractHexNum(const std::string& str);
@@ -54,6 +57,7 @@ namespace Decompiler
 	Elf_Shdr* getSection(const lm_module_t& mod, const char* name);
 
 	void collectStrings(const lm_module_t& mod, const Elf_Shdr& section);
+	void collectTypeInfos(const lm_module_t& mod, const Elf_Shdr& section);
 	bool collectVFTables(const lm_module_t& mod, const Elf_Shdr& section);
 
 	bool parseHeader(const lm_module_t& mod);

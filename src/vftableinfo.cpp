@@ -1,10 +1,12 @@
 #include "vftableinfo.hpp"
 
+#include "ascii.hpp"
 #include "config.hpp"
 #include "decompiler.hpp"
 #include "log.hpp"
 
 #include <sstream>
+#include <string_view>
 #include <unordered_map>
 
 namespace
@@ -451,9 +453,30 @@ bool VFTIndexes::init()
 
 	if (g_config.dumpInterfaceMaps.copy())
 	{
-		for (const auto& tbl : tableMap)
+		const auto isClientInterfaceMap = [](std::string_view name) noexcept -> bool
 		{
-			dump(tbl.first, tbl.second);
+			std::size_t digits = 0;
+			while (digits < name.size() &&
+			       Ascii::isDigit(static_cast<unsigned char>(name[digits])))
+			{
+				++digits;
+			}
+			if (digits == 0)
+			{
+				return false;
+			}
+			name.remove_prefix(digits);
+			return name.starts_with("IClient") && name.ends_with("Map");
+		};
+
+		for (const auto& [name, vft] : Decompiler::vftables)
+		{
+			(void)vft;
+			if (!isClientInterfaceMap(name))
+			{
+				continue;
+			}
+			dump(name.c_str(), Decompiler::parseInterfaceMapBase(name.c_str()));
 		}
 	}
 

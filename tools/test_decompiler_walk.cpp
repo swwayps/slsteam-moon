@@ -64,5 +64,19 @@ int main()
 	waitpid(child, &status, 0);
 	check(unmapped && WIFEXITED(status) && WEXITSTATUS(status) == 0,
 	      "an address no mapped segment holds ends the walk without reading it");
+
+	check(Decompiler::extractHexNum("rdi, [rip - 0x8]") == 0x8,
+	      "extractHexNum parses a single-digit RIP displacement");
+	check(Decompiler::extractHexNum("rdi, [rip - 0x0]") == 0x0,
+	      "extractHexNum parses a zero RIP displacement");
+	check(Decompiler::extractHexNum("rsi, [rip - 0x1a2b]") == 0x1a2b,
+	      "extractHexNum parses a multi-digit RIP displacement");
+	check(Decompiler::extractHexNum("rdi, [rip - 0x]") == LM_ADDRESS_BAD,
+	      "extractHexNum rejects an empty 0x prefix");
+
+	std::string out = "stale";
+	const unsigned char binary[] = {0x01, 0x00};
+	(void)Decompiler::getString(reinterpret_cast<lm_address_t>(binary), &out);
+	check(out.empty(), "getString clears outStr when no printable string is found");
 	return failures == 0 ? 0 : 1;
 }

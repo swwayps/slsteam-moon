@@ -7,25 +7,27 @@
 #include "libmem/libmem.h"
 
 #include <algorithm>
+#include <charconv>
 #include <cstdio>
 #include <cstring>
 #include <dlfcn.h>
 #include <elf.h>
 #include <sstream>
 #include <string>
+#include <system_error>
 #include <vector>
 
 
-void VFTable::init(const lm_address_t addr, const lm_module_t& mod)
+void VFTable_t::init(const lm_address_t addr, const lm_module_t& mod)
 {
 	this->moduleBase = mod.base;
 	this->address = addr;
 	this->typeInfo = reinterpret_cast<TypeInfo*>(addr + sizeof(this->address));
 	this->functions = std::vector<lm_address_t>();
-	this->subclasses = std::map<unsigned int, VFTable>();
+	this->subclasses = std::map<unsigned int, VFTable_t>();
 }
 
-unsigned int VFTable::analyze()
+unsigned int VFTable_t::analyze()
 {
 	//*(address + 0) = 0
 	//*(address + sizeof(lm_address_t)) = TypeInfo*
@@ -71,7 +73,8 @@ unsigned int VFTable::analyze()
 std::unordered_map<std::string, Elf_Shdr> Decompiler::sections = std::unordered_map<std::string, Elf_Shdr>();
 std::unordered_map<lm_address_t, std::string> Decompiler::picThunks = std::unordered_map<lm_address_t, std::string>();
 std::unordered_map<lm_address_t, std::string> Decompiler::strings = std::unordered_map<lm_address_t, std::string>();
-std::unordered_map<std::string, VFTable> Decompiler::vftables = std::unordered_map<std::string, VFTable>();
+std::unordered_map<lm_address_t, std::string> Decompiler::typeInfos = std::unordered_map<lm_address_t, std::string>();
+std::unordered_map<std::string, VFTable_t> Decompiler::vftables = std::unordered_map<std::string, VFTable_t>();
 
 unsigned int Decompiler::getString(const lm_address_t addr, std::string* outStr)
 {
@@ -95,10 +98,17 @@ unsigned int Decompiler::getString(const lm_address_t addr, std::string* outStr)
 		}
 	}
 
-	if (i && outStr && nullTerminated)
+	if (outStr)
 	{
-		*outStr = std::string(pChAddr, i);
-}
+		if (i && nullTerminated)
+		{
+			*outStr = std::string(pChAddr, i);
+		}
+		else
+		{
+			outStr->clear();
+		}
+	}
 
 	//i = offset
 	//i + 1 = size/num read
@@ -107,46 +117,22 @@ unsigned int Decompiler::getString(const lm_address_t addr, std::string* outStr)
 
 lm_address_t Decompiler::extractHexNum(const std::string& str)
 {
-	unsigned int start = 0;
-	unsigned int end = 0;
-
-	for (unsigned int i = 0; i < str.size(); i++)
-	{
-		const char c = str.at(i);
-
-		if (c == '0' && i + 2 < str.size())
-		{
-			const char n = str.at(i + 1);
-			if (n != 'x')
-			{
-				continue;
-			}
-
-			start = i + 2;
-			i++;
-			continue;
-		}
-
-		if (!Ascii::isHexDigit(static_cast<unsigned char>(c)))
-		{
-			if (start)
-			{
-				break;
-			}
-
-			continue;
-		}
-
-		end = i;
-	}
-
-	if (start >= end)
+	const auto pos = str.find("0x");
+	if (pos == std::string::npos)
 	{
 		return LM_ADDRESS_BAD;
 	}
 
-	const std::string numStr = str.substr(start, end - start + 1);
-	return std::stoull(numStr, nullptr, 16);
+	const char* first = str.data() + pos + 2;
+	const char* last = str.data() + str.size();
+	lm_address_t value = 0;
+	const auto [ptr, ec] = std::from_chars(first, last, value, 16);
+	if (ec != std::errc{} || ptr == first)
+	{
+		return LM_ADDRESS_BAD;
+	}
+
+	return value;
 }
 
 bool Decompiler::getRelativeTarget(const lm_inst_t& instr, lm_address_t& target)
@@ -332,16 +318,10 @@ void Decompiler::collectStrings(const lm_module_t& mod, const Elf_Shdr& section)
 	}
 }
 
-bool Decompiler::collectVFTables(const lm_module_t& mod, const Elf_Shdr& section)
+void Decompiler::collectTypeInfos(const lm_module_t& mod, const Elf_Shdr& section)
 {
 	const lm_address_t start = mod.base + section.rva;
 	const lm_address_t end = start + section.size;
-
-	auto typeInfos = std::unordered_map<lm_address_t, std::string>();
-
-	//TODO: Iterate the section backwards to do it all in one pass
-	//TODO: Improve typeInfo detection, since it also detects arbitrary strings at TypeInfos
-	//Potential solutions: Matching the name via regex
 
 	//First pass to collect all typeInfos. Luckily .data.rel.ro seems to be sizeof(lm_address_t) byte aligned
 	for (lm_address_t addr = start; addr < end; addr += sizeof(addr))
@@ -370,10 +350,16 @@ bool Decompiler::collectVFTables(const lm_module_t& mod, const Elf_Shdr& section
 			const lm_address_t typeInfo = addr - sizeof(addr);
 			const auto& name = strings.at(ptr);
 
-			//LOG_DEBUG("TypeInfo for %s at 0x%x\n", name.c_str(), typeInfo);
+			//LOG_DEBUG("TypeInfo for %s at 0x%lx\n", name.c_str(), typeInfo);
 			typeInfos[typeInfo] = name;
 		}
 	}
+}
+
+bool Decompiler::collectVFTables(const lm_module_t& mod, const Elf_Shdr& section)
+{
+	const lm_address_t start = mod.base + section.rva;
+	const lm_address_t end = start + section.size;
 
 	//Second pass to find actual VFTables by looking up the TypeInfos
 	for (lm_address_t addr = start; addr < end; addr += sizeof(addr))
@@ -401,7 +387,7 @@ bool Decompiler::collectVFTables(const lm_module_t& mod, const Elf_Shdr& section
 			const lm_address_t vftAddr = addr - sizeof(addr);
 			const auto& name = typeInfos.at(ptr);
 
-			auto vft = VFTable();
+			auto vft = VFTable_t();
 			vft.init(vftAddr, mod);
 
 			if (vftables.contains(name))
@@ -412,7 +398,7 @@ bool Decompiler::collectVFTables(const lm_module_t& mod, const Elf_Shdr& section
 			}
 
 			vftables[name] = vft;
-			//LOG_DEBUG("VFTable %s at 0x%x\n", name.c_str(), vft.address);
+			//LOG_DEBUG("VFTable %s at 0x%lx\n", name.c_str(), vft.address);
 		}
 	}
 
@@ -467,11 +453,24 @@ void Decompiler::parseModule(const lm_module_t &mod)
 	}
 
 	const Elf_Shdr* shDataRelRO = getSection(mod, ".data.rel.ro");
+	const Elf_Shdr* shDataRelROLocal = getSection(mod, ".data.rel.ro.local");
+	if (shDataRelRO)
+	{
+		collectTypeInfos(mod, *shDataRelRO);
+	}
+	if (shDataRelROLocal)
+	{
+		collectTypeInfos(mod, *shDataRelROLocal);
+	}
 	if (shDataRelRO)
 	{
 		LOG_DEBUG("Scanning .data.rel.ro for VFTables in %s\n", mod.name);
-		//Use collected strings to identify typeInfos, then cross reference those to find VFTables
 		collectVFTables(mod, *shDataRelRO);
+	}
+	if (shDataRelROLocal)
+	{
+		LOG_DEBUG("Scanning .data.rel.ro.local for VFTables in %s\n", mod.name);
+		collectVFTables(mod, *shDataRelROLocal);
 	}
 }
 
@@ -722,5 +721,6 @@ void Decompiler::cleanUp()
 	sections.clear();
 	picThunks.clear();
 	strings.clear();
+	typeInfos.clear();
 	vftables.clear();
 }

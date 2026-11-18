@@ -364,6 +364,75 @@ bool MemHlp::fixPICThunkCall(const char*, lm_address_t, lm_address_t)
 	return true;
 }
 
+bool MemHlp::fixRelativeInstructions(lm_address_t oldLocation, lm_address_t newLocation, size_t size)
+{
+	if (oldLocation == LM_ADDRESS_BAD || newLocation == LM_ADDRESS_BAD || size == 0)
+	{
+		return false;
+	}
+
+	const lm_arch_t arch = LM_GetArchitecture();
+	lm_inst_t* instsBuf = nullptr;
+	const size_t instsDisassembled = LM_DisassembleEx(newLocation, arch, size, 0, oldLocation, &instsBuf);
+	if (instsDisassembled == 0 || instsBuf == nullptr)
+	{
+		LM_FreeInstructions(instsBuf);
+		return false;
+	}
+
+	bool hasRelative = false;
+	std::ostringstream instsSS;
+	for (size_t i = 0; i < instsDisassembled; i++)
+	{
+		const lm_inst_t& inst = instsBuf[i];
+		if (std::strstr(inst.op_str, "rip") != nullptr ||
+		    inst.mnemonic[0] == 'j' ||
+		    std::strcmp(inst.mnemonic, "call") == 0)
+		{
+			hasRelative = true;
+		}
+		if (i > 0)
+		{
+			instsSS << " ; ";
+		}
+		instsSS << inst.mnemonic << " " << inst.op_str;
+	}
+	LM_FreeInstructions(instsBuf);
+
+	if (!hasRelative)
+	{
+		return true;
+	}
+
+	const std::string instsStr = instsSS.str();
+	lm_byte_t* newBytes = nullptr;
+	const size_t newSize = LM_AssembleEx(instsStr.c_str(), arch, newLocation, &newBytes);
+	bool success = false;
+	if (newBytes == nullptr || newSize == 0 || newSize > size)
+	{
+		g_pLog->warn("Fixed relative instructions do not fit in trampoline (%zu -> %zu bytes)\n",
+		             size, newSize);
+	}
+	else
+	{
+		lm_prot_t oldProt{};
+		if (LM_ProtMemory(newLocation, size, LM_PROT_XRW, &oldProt))
+		{
+			std::memcpy(reinterpret_cast<void*>(newLocation), newBytes, newSize);
+			if (newSize < size)
+			{
+				std::memset(reinterpret_cast<unsigned char*>(newLocation) + newSize, 0x90, size - newSize);
+			}
+			LM_ProtMemory(newLocation, size, oldProt, nullptr);
+			LOG_DEBUG("Rewrote trampoline instructions at 0x%lx with %s\n", newLocation, instsStr.c_str());
+			success = true;
+		}
+	}
+
+	LM_FreePayload(newBytes);
+	return success;
+}
+
 // Finds the offset of the member object whose vtable belongs to `typeName`
 // (Itanium mangled, e.g. "12CUserAppInfo") inside `object`. The x86-64 port
 // uses this where the i386 client exposed the offset as an instruction
@@ -419,11 +488,46 @@ lm_address_t MemHlp::searchOffsetByTypeName(const void* object, const char* type
 	return LM_ADDRESS_BAD;
 }
 
-const char* MemHlp::getTypeName(void* pClass)
+const char* MemHlp::getTypeName(const void* pClass)
 {
-	const lm_address_t vft = *reinterpret_cast<lm_address_t*>(pClass);
-	const lm_address_t typeInfo = *reinterpret_cast<lm_address_t*>(vft - sizeof(lm_address_t));
-	const char* name = *reinterpret_cast<const char**>(typeInfo + sizeof(lm_address_t));
+	if (!pClass)
+	{
+		return nullptr;
+	}
+
+	const auto isReadable = [](lm_address_t addr, lm_size_t bytes) -> bool
+	{
+		lm_segment_t seg{};
+		return LM_FindSegment(addr, &seg) && (seg.prot & LM_PROT_R) &&
+		       addr >= seg.base && seg.end > addr && seg.end - addr >= bytes;
+	};
+
+	const auto clsAddr = reinterpret_cast<lm_address_t>(pClass);
+	if (!isReadable(clsAddr, sizeof(lm_address_t)))
+	{
+		return nullptr;
+	}
+
+	lm_address_t vft = 0;
+	std::memcpy(&vft, pClass, sizeof(vft));
+	if (vft < sizeof(lm_address_t) || !isReadable(vft - sizeof(lm_address_t), sizeof(lm_address_t)))
+	{
+		return nullptr;
+	}
+
+	lm_address_t typeInfo = 0;
+	std::memcpy(&typeInfo, reinterpret_cast<const void*>(vft - sizeof(lm_address_t)), sizeof(typeInfo));
+	if (!isReadable(typeInfo + sizeof(lm_address_t), sizeof(lm_address_t)))
+	{
+		return nullptr;
+	}
+
+	const char* name = nullptr;
+	std::memcpy(&name, reinterpret_cast<const void*>(typeInfo + sizeof(lm_address_t)), sizeof(name));
+	if (!name || !isReadable(reinterpret_cast<lm_address_t>(name), 1))
+	{
+		return nullptr;
+	}
 
 	return name;
 }

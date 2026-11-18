@@ -201,8 +201,9 @@ namespace MemHlp
 
 	//TODO: Create hooking wrapper that calls this automatically
 	bool fixPICThunkCall(const char* name, lm_address_t fn, lm_address_t tramp);
+	bool fixRelativeInstructions(lm_address_t oldLocation, lm_address_t newLocation, size_t size);
 
-	const char* getTypeName(void* pClass);
+	const char* getTypeName(const void* pClass);
 	lm_address_t searchOffsetByTypeName(const void* object, const char* typeName, lm_size_t maxOffset = 0x10000);
 	
 	template<typename tFN, typename ...Args>

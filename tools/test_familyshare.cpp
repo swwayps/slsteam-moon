@@ -91,8 +91,8 @@ LogLevel CLog::getMinLevel() { return LogLevel::None; }
 int main()
 {
 	expect(
-		blocks(true, kSharedLibraryStopPlaying, false, {}),
-		"enabled policy blocks SharedLibraryStopPlaying");
+		!blocks(true, kSharedLibraryStopPlaying, false, {}),
+		"enabled policy forwards SharedLibraryStopPlaying");
 	expect(
 		blocks(true, kServiceMethod, true, kNotifyRunningApps),
 		"enabled policy blocks the FamilyGroups running-app service method");
@@ -125,11 +125,11 @@ int main()
 	bool repeatedForward = true;
 	for (unsigned int decision = 0; decision < 100; ++decision)
 	{
-		repeatedBlock &= blocks(true, kSharedLibraryStopPlaying, false, {});
-		repeatedForward &= !blocks(true, kServiceMethod, false, {});
+		repeatedBlock &= blocks(true, kServiceMethod, true, kNotifyRunningApps);
+		repeatedForward &= !blocks(true, kSharedLibraryStopPlaying, false, {});
 	}
-	expect(repeatedBlock, "repeated SharedLibraryStopPlaying decisions remain blocked");
-	expect(repeatedForward, "repeated unrelated decisions remain forwarded");
+	expect(repeatedBlock, "repeated running-app service decisions remain blocked");
+	expect(repeatedForward, "repeated SharedLibraryStopPlaying decisions remain forwarded");
 
 	CMsgProtoBufHeader sourceHeader;
 	sourceHeader.set_target_job_name(std::string(kNotifyRunningApps));
@@ -169,6 +169,13 @@ int main()
 	g_countAllocations = false;
 	expect(!choked && g_allocations == 0,
 	       "an unrelated packet is forwarded without parsing its header");
+	validBody->type = CNetPacket::PROTOBUF_TYPE_MASK | kSharedLibraryStopPlaying;
+	g_allocations = 0;
+	g_countAllocations = true;
+	const bool stopChoked = FamilyShare::shouldChoke(true, validPacket);
+	g_countAllocations = false;
+	expect(!stopChoked && g_allocations == 0,
+	       "SharedLibraryStopPlaying is forwarded without parsing its header");
 	validBody->type = CNetPacket::PROTOBUF_TYPE_MASK | kServiceMethod;
 
 	CNetPacket nullPacket{};

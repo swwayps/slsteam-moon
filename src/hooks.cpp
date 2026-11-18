@@ -174,9 +174,15 @@ template<typename T>
 bool DetourHook<T>::place()
 {
 	this->size = LM_HookCode(this->originalFn.address, this->hookFn.address, &this->tramp.address);
-	if (this->size)
-		MemHlp::fixPICThunkCall(this->name.c_str(), this->originalFn.address, this->tramp.address);
-	else
+	if (this->size &&
+	    (!MemHlp::fixPICThunkCall(this->name.c_str(), this->originalFn.address, this->tramp.address) ||
+	     !MemHlp::fixRelativeInstructions(this->originalFn.address, this->tramp.address, this->size)))
+	{
+		LM_UnhookCode(this->originalFn.address, this->tramp.address, this->size);
+		this->tramp.address = LM_ADDRESS_BAD;
+		this->size = 0;
+	}
+	if (!this->size)
 		g_pLog->warn("Unable to place the %s hook\n", this->name.c_str());
 
 	if (RuntimeAttestation::enabled())
@@ -359,7 +365,14 @@ void* LuaHook::place()
 		return nullptr;
 	}
 
-	MemHlp::fixPICThunkCall(name.c_str(), fn, tramp);
+	if (!MemHlp::fixPICThunkCall(name.c_str(), fn, tramp) ||
+	    !MemHlp::fixRelativeInstructions(fn, tramp, size))
+	{
+		LM_UnhookCode(fn, tramp, size);
+		tramp = LM_ADDRESS_BAD;
+		size = 0;
+		return nullptr;
+	}
 	LOG_DEBUG("Placed LuaHook %s from %p to %p\n", name.c_str(),
 	          reinterpret_cast<void*>(fn), reinterpret_cast<void*>(hookFn));
 	return reinterpret_cast<void*>(tramp);

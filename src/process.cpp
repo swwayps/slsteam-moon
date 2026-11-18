@@ -216,9 +216,11 @@ bool CPortableExecutableFile::parseSections()
 			return false;
 		}
 
+		#pragma GCC diagnostic push
+		#pragma GCC diagnostic ignored "-Wstringop-truncation"
 		char name[SECTION_HEADER_NAME_SIZE + 1] { }; //Zero allocate buffer for null termination
 		strncpy(name, reinterpret_cast<char*>(sectHdr), sizeof(name) - 1);
-		//snprintf(name, sizeof(name), "%s", reinterpret_cast<char*>(sectHdr));
+		#pragma GCC diagnostic pop
 
 		const uint32_t rva = *reinterpret_cast<uint32_t*>(&sectHdr[0xC]);
 		const uint32_t size = *reinterpret_cast<uint32_t*>(&sectHdr[0x10]);
@@ -481,7 +483,7 @@ bool CELFExecutableFile::parseSections()
 		return false;
 	}
 
-	if (hdr64.e_ident[EI_CLASS] == ELFCLASS32 && hdr64.e_machine == ISA_X86)
+	if (hdr64.e_ident[EI_CLASS] == ELFCLASS32 && (hdr64.e_machine == EM_386 || hdr64.e_machine == EM_ARM))
 	{
 		if (g_pLog) g_pLog->debug("Parsing as 32 bit file\n");
 
@@ -490,7 +492,7 @@ bool CELFExecutableFile::parseSections()
 		Elf32_Ehdr hdr32 = *reinterpret_cast<Elf32_Ehdr*>(&hdr64);
 		return parseElf32Headers(hdr32);
 	}
-	else if (hdr64.e_ident[EI_CLASS] == ELFCLASS64 && hdr64.e_machine == ISA_AMD64)
+	else if (hdr64.e_ident[EI_CLASS] == ELFCLASS64 && (hdr64.e_machine == EM_X86_64 || hdr64.e_machine == EM_AARCH64))
 	{
 		if (g_pLog) g_pLog->debug("Parsing as 64 bit file\n");
 		return parseElf64Headers(hdr64);

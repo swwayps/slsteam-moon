@@ -19,19 +19,18 @@ inline bool shouldBlock(
 	std::string_view targetJobName)
 {
 	return enabled
-	    && (protobufType == kSharedLibraryStopPlaying
-	        || (protobufType == kServiceMethod
-	            && hasTargetJobName
-	            && targetJobName == kNotifyRunningApps));
+	    && protobufType == kServiceMethod
+	    && hasTargetJobName
+	    && targetJobName == kNotifyRunningApps;
 }
 
 // The CM receive hook's decision for one protobuf packet. Every CM packet
-// passes here and only the two family types can be blocked, so only those
-// have their header parsed.
+// passes here and only the FamilyGroups running-apps service method can be
+// blocked, so only service-method frames have their header parsed.
 inline bool shouldChoke(bool enabled, const CNetPacket& packet)
 {
 	const std::uint32_t type = packet.getProtoBufType();
-	if (!enabled || (type != kServiceMethod && type != kSharedLibraryStopPlaying))
+	if (!enabled || type != kServiceMethod)
 		return false;
 	CMsgProtoBufHeader header;
 	if (!packet.deserializeHeader(header)) return false;

@@ -513,7 +513,7 @@ bool CConfig::loadSettings()
 
 	__loadErrors = std::string("");
 
-	disableFamilyLock = getSetting<bool>(node, "DisableFamilyShareLock", true);
+	disableFamilyLock = getSetting<bool>(node, "DisableFamilyShareLock", false);
 	disableParentalRestrictions = getSetting<bool>(node, "DisableParentalRestrictions", false);
 	useWhiteList = getSetting<bool>(node, "UseWhitelist", false);
 	maxSchemaTries = getSetting<uint32_t>(node, "MaxSchemaTries", 10);

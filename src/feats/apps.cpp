@@ -220,10 +220,17 @@ MTVariable<std::unordered_set<AppId_t>> Apps::privateApps;
 
 bool Apps::unlockApp(uint32_t appId, AppOwnershipInfo_t* info, const CSteamId& ownerId)
 {
-	//Changing the purchased field is enough, but just for nicety in the Steamclient UI we change the owner too
-	info->owner = ownerId.accountId();
-	info->realOwner = 0;
-	info->familyShared = info->owner != g_currentSteamId.accountId();
+	if (!info->familyShared)
+	{
+		//Changing the purchased field is enough, but just for nicety in the Steamclient UI we change the owner too
+		info->owner = ownerId.accountId();
+		info->realOwner = 0;
+		info->familyShared = info->owner != g_currentSteamId.accountId();
+	}
+	else
+	{
+		g_pLog->once("Not taking ownership of %u since it's a family shared title\n", appId);
+	}
 
 	info->licensePermanent = !info->familyShared;
 	info->retailLicense = false;
@@ -366,7 +373,7 @@ void Apps::getAppStateInfo(uint32_t appId, AppStateInfo_t* info)
 {
 	// Games read their borrowed state here (upstream 5882bed); the Steam
 	// client's own calls (app id 0) keep the real answer.
-	if (!info || !g_config.disableFamilyLock.get())
+	if (!info)
 	{
 		return;
 	}
@@ -634,11 +641,6 @@ void Apps::sendGamesPlayed(CNetPacket* pkt)
 			continue;
 		}
 
-		if (g_config.disableFamilyLock.get())
-		{
-			game->set_owner_id(1);
-		}
-
 		if (titles.contains(gameId))
 		{
 			game->set_game_extra_info(titles[gameId]);
@@ -680,12 +682,19 @@ void Apps::sendGamesPlayed(CNetPacket* pkt)
 			game->set_game_id(statusApp.appId);
 			game->set_game_extra_info(statusApp.title);
 			game->set_game_flags(0);
-
-			if (g_config.disableFamilyLock.get())
-			{
-				game->set_owner_id(1);
-			}
 			//game->set_game_flags(k_EGameFlagMultiplayer);
+
+			AppOwnershipInfo_t info{};
+			CUser* usr = getLocalUser();
+			if (usr && usr->checkAppOwnership(statusApp.appId, &info))
+			{
+				//Lock the selected license
+				game->set_owner_id(info.owner);
+			}
+			else
+			{
+				game->set_owner_id(g_currentSteamId.accountId());
+			}
 		}
 	}
 

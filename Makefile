@@ -38,7 +38,7 @@ CXXFLAGS := -O3 -flto=auto -fPIC -std=c++20 \
             $(WARNFLAGS) \
             -D_GLIBCXX_USE_CXX11_ABI=0
 
-LDFLAGS := -shared -Wl,--no-undefined -lpthread -ldl
+LDFLAGS := -shared -Wl,--no-undefined -Wl,--as-needed -lpthread -ldl
 
 # 64-bit file offsets and inode numbers on every compile line (a no-op on
 # x86-64; the i386 build needs it). Tests link our objects, so their own lines
@@ -50,7 +50,7 @@ ifeq ($(shell echo $$NATIVE),1)
 endif
 
 # Optional speed-ups picked up if installed.
-ifeq ($(shell type ccache &> /dev/null && echo "found"),found)
+ifneq (,$(shell command -v ccache))
 	export PATH := /usr/lib/ccache/bin:$(PATH)
 endif
 #ifeq ($(shell type mold &> /dev/null && echo "found"),found)

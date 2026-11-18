@@ -72,9 +72,11 @@ bool install(
 	}
 
 	detour.original = reinterpret_cast<Fn>(detour.trampoline);
-	if (repairPicThunk &&
-		!MemHlp::fixPICThunkCall(
-			pattern.name.c_str(), detour.target, detour.trampoline))
+	if ((repairPicThunk &&
+	     !MemHlp::fixPICThunkCall(
+	         pattern.name.c_str(), detour.target, detour.trampoline)) ||
+	    !MemHlp::fixRelativeInstructions(
+	        detour.target, detour.trampoline, detour.size))
 	{
 		uninstall(detour);
 		return false;
