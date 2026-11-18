@@ -563,9 +563,35 @@ namespace
 		return manifestId;
 	}
 
+	struct ActivePlannerCall
+	{
+		bool active = false;
+		uint32_t depotId = 0;
+		uint64_t gid = 0;
+	};
+	thread_local ActivePlannerCall t_activePlannerCall{};
+
+	struct PlannerCallScope
+	{
+		ActivePlannerCall previous;
+		PlannerCallScope(uint32_t depotId, uint64_t gid) noexcept
+		    : previous(t_activePlannerCall)
+		{
+			t_activePlannerCall = {true, depotId, gid};
+		}
+		~PlannerCallScope() noexcept { t_activePlannerCall = previous; }
+	};
+
 	void* hkProcessDepot(void* ctx, uint32_t a0C, uint32_t appId,
 	                     uint32_t depotId, uint64_t manifestId, uint32_t a20)
 	{
+		// PrepareDepotDownload calls this leaf with the gid it already chose.
+		if (t_activePlannerCall.active &&
+		    t_activePlannerCall.depotId == depotId &&
+		    t_activePlannerCall.gid == manifestId)
+		{
+			return g_leaf.orig(ctx, a0C, appId, depotId, manifestId, a20);
+		}
 		uint64_t useGid = manifestId;
 		try
 		{
@@ -594,6 +620,7 @@ namespace
 			noteHookFailure(noted, "PrepareDepotDownload");
 			useGid = gidAfterFailure(depotId, manifestId, true);
 		}
+		PlannerCallScope nested(depotId, useGid);
 		return g_planner.orig(ctx, a0C, appId, depotId, useGid, a20);
 	}
 

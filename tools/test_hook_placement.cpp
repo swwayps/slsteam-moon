@@ -12,10 +12,13 @@
 #include "../src/sdk/CNetPacket.hpp"
 #include "../src/sdk/protobufs/steammessages_base.pb.h"
 #include "../src/vftableinfo.hpp"
+#include "fake_libcurl.hpp"
 
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
 #include <memory>
 #include <new>
 #include <string>
@@ -82,6 +85,67 @@ void pointRequiredHooksAt(lm_address_t target, lm_address_t stride = 0)
 		target += stride;
 	}
 	VFTIndexes::CCMInterface::RecvPkt.address = target;
+}
+
+class NotFoundCurl final : public FakeCurl
+{
+public:
+	CURL* init() override { return reinterpret_cast<CURL*>(this); }
+	CURLcode setopt(CURL*, CURLoption, long, void*) override { return CURLE_OK; }
+	CURLcode perform(CURL*) override { return CURLE_OK; }
+	void cleanup(CURL*) override {}
+	CURLcode getinfo(CURL*, CURLINFO info, void* out) override
+	{
+		if (info == CURLINFO_RESPONSE_CODE) *static_cast<long*>(out) = 404;
+		return CURLE_OK;
+	}
+	CURLcode send(CURL*, const void*, std::size_t, std::size_t*) override
+	{
+		return CURLE_UNSUPPORTED_PROTOCOL;
+	}
+	CURLcode recv(CURL*, void*, std::size_t, std::size_t*) override
+	{
+		return CURLE_UNSUPPORTED_PROTOCOL;
+	}
+};
+
+using DepotFn = void* (__attribute__((cdecl)) *)(void*, uint32_t, uint32_t, uint32_t, uint64_t, uint32_t);
+static uint64_t g_plannerReceivedGid = 0;
+static uint64_t g_leafReceivedGid = 0;
+static volatile DepotFn g_nestedLeafTarget = nullptr;
+
+__attribute__((noinline, cdecl)) void* stubProcessDepot(
+	void* ctx, uint32_t a0C, uint32_t appId, uint32_t depotId, uint64_t manifestId, uint32_t a20)
+{
+	asm volatile("nop\n\tnop\n\tnop\n\tnop\n\tnop\n\tnop\n\tnop\n\tnop\n\t" ::: "memory");
+	(void)ctx; (void)a0C; (void)appId; (void)depotId; (void)a20;
+	g_leafReceivedGid = manifestId;
+	return nullptr;
+}
+
+__attribute__((noinline, cdecl)) void* stubPrepareDepot(
+	void* ctx, uint32_t a0C, uint32_t appId, uint32_t depotId, uint64_t manifestId, uint32_t a20)
+{
+	asm volatile("nop\n\tnop\n\tnop\n\tnop\n\tnop\n\tnop\n\tnop\n\tnop\n\t" ::: "memory");
+	const bool hadFailNext = t_failNextAllocation;
+	const int remainingFailIn = t_failIn;
+	g_plannerReceivedGid = manifestId;
+	const DepotFn leaf = g_nestedLeafTarget;
+	void* out = leaf ? leaf(ctx, a0C, appId, depotId, manifestId, a20) : nullptr;
+	(void)hadFailNext; (void)remainingFailIn;
+	return out;
+}
+
+void writeValidManifest(const std::filesystem::path& path)
+{
+	std::filesystem::create_directories(path.parent_path());
+	std::ofstream out(path, std::ios::binary);
+	const uint32_t magic = 0x71F617D0u;
+	const uint32_t zeros[2] = {0, 0};
+	const uint32_t end = 0x32C415ABu;
+	out.write(reinterpret_cast<const char*>(&magic), sizeof(magic));
+	out.write(reinterpret_cast<const char*>(zeros), sizeof(zeros));
+	out.write(reinterpret_cast<const char*>(&end), sizeof(end));
 }
 
 } // namespace
@@ -263,6 +327,107 @@ int main()
 	}
 	CHECK(planRounds > 0 && planSafe,
 	      "an allocation failure in the plan hooks does not reach Steam or split the depot list");
+
+	// R3-M-1: PrepareDepotDownload calls ProcessDepotManifest with the gid it
+	// chose. The nested leaf call must keep that gid (leaving offline_<app> in
+	// place on a local fallback, and never diverging after a planner failure).
+	static NotFoundCurl notFoundCurl;
+	g_fakeCurl = &notFoundCurl;
+	CHECK(inChild([code, &home] {
+		      const std::filesystem::path steamRoot = std::filesystem::path(home) / ".steam" / "steam";
+		      std::filesystem::create_directories(steamRoot / "depotcache");
+		      std::ofstream(steamRoot / "steam.sh") << "#!/bin/sh\n";
+		      const std::filesystem::path store =
+		          std::filesystem::path(home) / ".config" / "SLSsteam" / "manifests";
+		      writeValidManifest(store / "4201_8.manifest");
+		      std::ofstream(store / ".preferred_4201") << "8\n";
+		      g_config.addedAppIds.set({42});
+		      g_config.managedAppIds.set({42});
+		      (void)DepotKey::saveKeyToCache(42, 4201, std::string(32, 'k'), true);
+
+		      const auto base = reinterpret_cast<lm_address_t>(code);
+		      Patterns::CDepotDownloadMgr::ProcessDepotManifest.address =
+		          reinterpret_cast<lm_address_t>(&stubProcessDepot);
+		      Patterns::CDepotDownloadMgr::PrepareDepotDownload.address =
+		          reinterpret_cast<lm_address_t>(&stubPrepareDepot);
+		      Patterns::CDepotDownloadMgr::BuildDepotDependency.address = base + 12 * 64;
+		      g_nestedLeafTarget = &stubProcessDepot;
+		      if (!ManifestBind::setup()) return false;
+
+		      stubPrepareDepot(nullptr, 0, 42, 4201, 7, 0);
+		      return g_plannerReceivedGid == 8 && g_leafReceivedGid == 8 &&
+		             std::filesystem::exists(std::filesystem::path(home) / "SLSsteam" / "offline_42");
+	      }),
+	      "a fallback plan keeps offline_<app> across PrepareDepotDownload's nested leaf call");
+
+	int nestedRounds = 0;
+	bool nestedConsistent = true;
+	for (int k = 1; k <= 300; ++k)
+	{
+		int pipeFds[2];
+		if (pipe(pipeFds) != 0) return 2;
+		std::fflush(stdout);
+		const pid_t pid = fork();
+		if (pid == 0)
+		{
+			close(pipeFds[0]);
+			const std::filesystem::path steamRoot = std::filesystem::path(home) / ".steam" / "steam";
+			std::filesystem::remove_all(steamRoot / "depotcache");
+			std::filesystem::create_directories(steamRoot / "depotcache");
+			std::ofstream(steamRoot / "steam.sh") << "#!/bin/sh\n";
+			const std::filesystem::path store =
+			    std::filesystem::path(home) / ".config" / "SLSsteam" / "manifests";
+			writeValidManifest(store / "4201_8.manifest");
+			std::ofstream(store / ".preferred_4201") << "8\n";
+			g_config.addedAppIds.set({42});
+			g_config.managedAppIds.set({42});
+			(void)DepotKey::saveKeyToCache(42, 4201, std::string(32, 'k'), true);
+
+			const auto base = reinterpret_cast<lm_address_t>(code);
+			Patterns::CDepotDownloadMgr::ProcessDepotManifest.address =
+			    reinterpret_cast<lm_address_t>(&stubProcessDepot);
+			Patterns::CDepotDownloadMgr::PrepareDepotDownload.address =
+			    reinterpret_cast<lm_address_t>(&stubPrepareDepot);
+			Patterns::CDepotDownloadMgr::BuildDepotDependency.address = base + 12 * 64;
+			g_nestedLeafTarget = &stubProcessDepot;
+			if (!ManifestBind::setup()) std::_Exit(3);
+
+			g_plannerReceivedGid = 0;
+			g_leafReceivedGid = 0;
+			t_allocationFailed = false;
+			t_failIn = k;
+			stubPrepareDepot(nullptr, 0, 42, 4201, 7, 0);
+			t_failIn = 0;
+			t_failNextAllocation = false;
+			const char res[2] = {
+				static_cast<char>(t_allocationFailed),
+				static_cast<char>(g_plannerReceivedGid == g_leafReceivedGid && g_plannerReceivedGid != 0),
+			};
+			(void)!write(pipeFds[1], res, 2);
+			std::_Exit(0);
+		}
+		close(pipeFds[1]);
+		char res[2] = {0, 0};
+		const bool okRead = read(pipeFds[0], res, 2) == 2;
+		close(pipeFds[0]);
+		int status = 0;
+		waitpid(pid, &status, 0);
+		if (!okRead || !WIFEXITED(status) || WEXITSTATUS(status) != 0)
+		{
+			nestedConsistent = false;
+			break;
+		}
+		if (!res[0]) break;
+		++nestedRounds;
+		if (!res[1])
+		{
+			nestedConsistent = false;
+			std::printf("allocation %d: planner and nested leaf disagreed on gid\n", k);
+			break;
+		}
+	}
+	CHECK(nestedRounds > 0 && nestedConsistent,
+	      "an allocation failure in PrepareDepotDownload never makes the nested leaf pick another gid");
 
 	// LaunchApp's work (the ticket, the SteamStub check) runs on Steam's IPC
 	// thread before the launch: a failure there must not stop the launch.

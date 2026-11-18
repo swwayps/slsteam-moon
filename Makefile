@@ -301,9 +301,13 @@ test-cache-repair: $(objs) $(libs)
 		$(objs) $(libs) -lpthread -ldl -o /tmp/test_cache_repair
 	/tmp/test_cache_repair
 test-hook-placement: $(objs) $(libs)
+	mkdir -p /tmp/fakecurl-hooks
+	$(CXX) -m32 -std=c++20 -shared -fPIC -Wl,-soname,libcurl.so.4 \
+		tools/fake_libcurl.cpp -o /tmp/fakecurl-hooks/libcurl.so.4
 	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
 		-I include -isysteminclude tools/test_hook_placement.cpp \
-		$(objs) $(libs) -lpthread -ldl -o /tmp/test_hook_placement
+		$(objs) $(libs) /tmp/fakecurl-hooks/libcurl.so.4 \
+		-Wl,-rpath,/tmp/fakecurl-hooks -lpthread -ldl -o /tmp/test_hook_placement
 	/tmp/test_hook_placement
 test-cache-validation: $(objs) $(libs)
 	$(CXX) -m32 -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
