@@ -19,10 +19,14 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <fcntl.h>
 #include <filesystem>
 #include <fstream>
 #include <memory>
 #include <string>
+#include <sys/file.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 static int g_failures = 0;
 #define CHECK(cond, msg)                                               \
@@ -119,23 +123,32 @@ int main()
 	// 7 and this SHA-1.
 	const std::string cache = std::string(home) + "/SLSsteam/cache";
 	std::filesystem::create_directories(cache);
-	const auto pairFor = [&](const char* gid, uint32_t change)
+	const auto pairForApp = [&](uint32_t appId, const char* gid, uint32_t change)
 	{
+		const std::string idStr = std::to_string(appId);
+		const std::string depotStr = std::to_string(appId + 1);
 		const std::string wire =
-			"\"appinfo\"\n{\n\t\"appid\"\t\t\"42\"\n\t\"depots\"\n\t{\n\t\t\"43\"\n\t\t{\n"
+			"\"appinfo\"\n{\n\t\"appid\"\t\t\"" + idStr + "\"\n\t\"depots\"\n\t{\n\t\t\"" +
+			depotStr + "\"\n\t\t{\n"
 			"\t\t\t\"manifests\"\n\t\t\t{\n\t\t\t\t\"public\"\n\t\t\t\t{\n"
 			"\t\t\t\t\t\"gid\"\t\t\"" + std::string(gid) + "\"\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n}\n";
 		std::uint8_t sha[20]{};
 		AppInfoProvision::sha1Bytes(wire.data(), wire.size(), sha);
 		const std::string shaBytes(reinterpret_cast<const char*>(sha), sizeof sha);
-		std::ofstream(cache + "/picsbuffer_42.bin.tmp", std::ios::binary) << wire;
-		std::filesystem::rename(cache + "/picsbuffer_42.bin.tmp", cache + "/picsbuffer_42.bin");
-		std::ofstream(cache + "/picsbuffer_42.yaml.tmp")
-			<< "appid: 42\nchange_number: " << change << "\nwire_size: " << wire.size()
+		std::ofstream(cache + "/picsbuffer_" + idStr + ".bin.tmp", std::ios::binary) << wire;
+		std::filesystem::rename(cache + "/picsbuffer_" + idStr + ".bin.tmp",
+		                        cache + "/picsbuffer_" + idStr + ".bin");
+		std::ofstream(cache + "/picsbuffer_" + idStr + ".yaml.tmp")
+			<< "appid: " << appId << "\nchange_number: " << change << "\nwire_size: " << wire.size()
 			<< "\nsha_b64: " << base64::to_base64(shaBytes)
 			<< "\nnormalized: true\nsynthetic: false\n";
-		std::filesystem::rename(cache + "/picsbuffer_42.yaml.tmp", cache + "/picsbuffer_42.yaml");
+		std::filesystem::rename(cache + "/picsbuffer_" + idStr + ".yaml.tmp",
+		                        cache + "/picsbuffer_" + idStr + ".yaml");
 		return shaBytes;
+	};
+	const auto pairFor = [&](const char* gid, uint32_t change)
+	{
+		return pairForApp(kApp, gid, change);
 	};
 	const std::string shaBytes = pairFor("1234567890", 7);
 	g_config.addedAppIds.set({kApp});
@@ -187,6 +200,116 @@ int main()
 	      "an answer to another job gets nothing added");
 	CHECK(!entryFor(exchange(80, 80, false, nullptr), kApp),
 	      "a request for full data is not answered from the pair");
+
+	// R3-P-1(a): When another login instance holds the appinfo.vdf lock briefly,
+	// the surviving process waits for it and records the spliced entries instead
+	// of leaving hidden apps unanswered.
+	{
+		const std::string lockPath = std::string(home) + "/appinfo.vdf.slssteam.lock";
+		int readyPipe[2]{};
+		if (pipe(readyPipe) != 0) return 2;
+		std::fflush(stdout);
+		const pid_t holder = fork();
+		if (holder == 0)
+		{
+			close(readyPipe[0]);
+			const int fd = open(lockPath.c_str(), O_CREAT | O_RDWR | O_CLOEXEC, 0600);
+			if (fd < 0 || flock(fd, LOCK_EX) != 0) std::_Exit(2);
+			(void)!write(readyPipe[1], "1", 1);
+			close(readyPipe[1]);
+			usleep(200 * 1000);
+			std::_Exit(0);
+		}
+		close(readyPipe[1]);
+		char ready = 0;
+		(void)!read(readyPipe[0], &ready, 1);
+		close(readyPipe[0]);
+
+		const pid_t survivor = fork();
+		if (survivor == 0)
+		{
+			const std::string sha43Bytes = pairForApp(43, "2234567890", 11);
+			g_config.addedAppIds.set({kApp, 43});
+			g_config.managedAppIds.set({kApp, 43});
+			const int n = AppInfoVdf::injectAllCached(std::string(home) + "/appinfo.vdf");
+
+			CMsgProtoBufHeader reqHdr;
+			reqHdr.set_jobid_source(91);
+			CMsgClientPICSProductInfoRequest req;
+			req.add_apps()->set_appid(43);
+			req.add_apps()->set_appid(kOther);
+			req.set_meta_data_only(true);
+			CNetPacket outPkt{};
+			fill(outPkt, k_EMsgClientPICSProductInfoRequest, reqHdr, req);
+			Apps::sendMsg(&outPkt);
+			const auto sentReq = outPkt.deserializeBody<CMsgClientPICSProductInfoRequest>();
+			outPkt.free();
+
+			CMsgProtoBufHeader respHdr;
+			respHdr.set_jobid_target(91);
+			CMsgClientPICSProductInfoResponse resp;
+			resp.set_meta_data_only(true);
+			resp.add_apps()->set_appid(kOther);
+			CNetPacket inPkt{};
+			fill(inPkt, k_EMsgClientPICSProductInfoResponse, respHdr, resp);
+			CmRecv::dispatchNetPacket(&inPkt);
+			const auto got = inPkt.deserializeBody<CMsgClientPICSProductInfoResponse>();
+			inPkt.free();
+			const auto* e43 = entryFor(got, 43);
+			const bool ok = n == 2 && sentReq.apps_size() == 1 &&
+			                sentReq.apps(0).appid() == kOther &&
+			                e43 && e43->change_number() == 11 && e43->sha() == sha43Bytes;
+			std::_Exit(ok ? 0 : 1);
+		}
+		int holderStatus = 0, survivorStatus = 0;
+		waitpid(holder, &holderStatus, 0);
+		waitpid(survivor, &survivorStatus, 0);
+		std::filesystem::remove(cache + "/picsbuffer_43.bin");
+		std::filesystem::remove(cache + "/picsbuffer_43.yaml");
+		CHECK(WIFEXITED(survivorStatus) && WEXITSTATUS(survivorStatus) == 0,
+		      "the boot splice waits for a competing writer and answers the spliced app");
+	}
+
+	// R3-P-1(b): A pair written after the boot splice (such as a startup repair)
+	// that this process never spliced into appinfo.vdf is not hidden unanswered.
+	{
+		constexpr uint32_t kUnspliced = 44;
+		pairForApp(kUnspliced, "3234567890", 9);
+		g_config.addedAppIds.set({kApp, kUnspliced});
+		g_config.managedAppIds.set({kApp, kUnspliced});
+
+		CMsgProtoBufHeader reqHdr;
+		reqHdr.set_jobid_source(92);
+		CMsgClientPICSProductInfoRequest req;
+		req.add_apps()->set_appid(kUnspliced);
+		req.add_apps()->set_appid(kOther);
+		req.set_meta_data_only(true);
+		CNetPacket outPkt{};
+		fill(outPkt, k_EMsgClientPICSProductInfoRequest, reqHdr, req);
+		Apps::sendMsg(&outPkt);
+		const auto sentReq = outPkt.deserializeBody<CMsgClientPICSProductInfoRequest>();
+		outPkt.free();
+		bool keptUnspliced = false;
+		for (const auto& a : sentReq.apps())
+			if (a.appid() == kUnspliced) keptUnspliced = true;
+		CHECK(keptUnspliced,
+		      "an app whose pair was never spliced in this process stays in Steam's request");
+
+		// A staged runtime splice answers until committed, and un-hides when dropped.
+		const std::string appinfo = std::string(home) + "/appinfo.vdf";
+		const bool staged44 = AppInfoVdf::injectCachedApps(appinfo, {kUnspliced}) == 1;
+		AppInfoVdf::dropStagedEntries({kUnspliced});
+		CNetPacket afterDrop{};
+		fill(afterDrop, k_EMsgClientPICSProductInfoRequest, reqHdr, req);
+		Apps::sendMsg(&afterDrop);
+		const auto afterDropReq = afterDrop.deserializeBody<CMsgClientPICSProductInfoRequest>();
+		afterDrop.free();
+		bool unhiddenAfterDrop = false;
+		for (const auto& a : afterDropReq.apps())
+			if (a.appid() == kUnspliced) unhiddenAfterDrop = true;
+		CHECK(staged44 && unhiddenAfterDrop,
+		      "dropping an uncommitted runtime splice leaves the app unhidden again");
+	}
 
 	if (g_failures == 0) std::printf("\nall pics answer checks passed\n");
 	else std::printf("\n%d pics answer check(s) FAILED\n", g_failures);

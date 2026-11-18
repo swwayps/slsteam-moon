@@ -15,6 +15,7 @@
 #include "../globals.hpp"
 
 #include "appinfo_provision.hpp"
+#include "appinfo_vdf.hpp"
 #include "appinfostate.hpp"
 #include "fakeappid.hpp"
 #include "pics.hpp"
@@ -199,12 +200,9 @@ namespace
 			fullyInstalled = (g_pClientAppManager->getAppInstallState(appId) &
 			                  k_EAppStateFullyInstalled) != 0;
 		}
-		// cachePairMtimeSecs() is a two-stat probe of the on-disk pair; it takes
-		// no lock and cannot be withdrawn by a validation miss, so it keeps the
-		// filter armed when the published set is incomplete.
-		const bool locallyAuthoritative = SynthMark::localAppInfoAuthority(
-		    AppInfoState::isAuthoritative(appId),
-		    AppInfoProvision::cachePairMtimeSecs(appId) > 0);
+		// Hide only apps this process spliced into appinfo.vdf: we have an entry
+		// to protect from a denied refresh and to answer metadata requests with.
+		const bool locallyAuthoritative = AppInfoVdf::hasSplicedEntry(appId);
 		return SynthMark::installStateAllowsStrip(
 		    locallyAuthoritative,
 		    g_config.isAddedAppId(appId), appManagerResolved, fullyInstalled);

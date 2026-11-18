@@ -3121,12 +3121,14 @@ std::vector<std::uint32_t> publishRuntimeAppInfo(
 	switch (reloaded.status)
 	{
 		case AppInfoReload::Status::Unavailable:
+			AppInfoVdf::dropStagedEntries(selected);
 			g_pLog->warn(
 				"AppInfoProvision: live appinfo disk reload unavailable for %zu "
 				"app(s); restart remains available\n",
 				selected.size());
 			return {};
 		case AppInfoReload::Status::ReadFailed:
+			AppInfoVdf::dropStagedEntries(selected);
 			g_pLog->warn(
 				"AppInfoProvision: Steam rejected live appinfo disk reload for %zu "
 				"app(s); restart remains available\n",
@@ -3135,6 +3137,7 @@ std::vector<std::uint32_t> publishRuntimeAppInfo(
 		case AppInfoReload::Status::Loaded:
 			if (!AppInfoReload::allRequestedPresent(reloaded, selected.size()))
 			{
+				AppInfoVdf::dropStagedEntries(selected);
 				g_pLog->warn(
 					"AppInfoProvision: live appinfo reload found %zu/%zu current "
 					"app(s); restart remains available\n",

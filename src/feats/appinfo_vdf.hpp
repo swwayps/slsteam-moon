@@ -110,9 +110,14 @@ namespace AppInfoVdf
 	// Empty when this process spliced no entry for the app or the lock is
 	// busy; safe on Steam's threads.
 	std::optional<HeldEntry> heldEntry(std::uint32_t appId) noexcept;
+	// True when this process holds a spliced or staged entry for the app;
+	// lock-free on Steam's threads.
+	bool hasSplicedEntry(std::uint32_t appId) noexcept;
 	// Steam reloaded appinfo.vdf after injectCachedApps: what it spliced for
 	// these apps is what Steam holds now.
 	void commitLiveEntries(const std::vector<std::uint32_t>& appIds) noexcept;
+	// Drop staged entries whose live reload did not commit.
+	void dropStagedEntries(const std::vector<std::uint32_t>& appIds) noexcept;
 
 	// Atomically insert missing, already-validated metadata-only child records.
 	// Existing Steam records are preserved byte-for-byte so their content
