@@ -518,6 +518,33 @@ ls_write_shim() {
 	ls_is_our_shim "$launcher"
 }
 
+ls_shim_matches_backup() {
+	local launcher="$1" backup="$2" temp matched=1
+	ls_is_our_shim "$launcher" || return 1
+	ls_shim_references_backup "$launcher" "$backup" || return 1
+	ls_backup_is_usable "$backup" || return 1
+	temp="$(mktemp 2>/dev/null)" || return 1
+	if ls_shim_content "$backup" > "$temp" 2>/dev/null && cmp -s "$launcher" "$temp" 2>/dev/null; then
+		matched=0
+	fi
+	rm -f -- "$temp"
+	return "$matched"
+}
+
+ls_any_shim_uses_home_backup() {
+	local launcher home_mirror legacy
+	while IFS= read -r launcher; do
+		[ -n "$launcher" ] || continue
+		home_mirror="$(ls_mirror_path "$LS_BACKUP_ROOT" "$launcher")"
+		legacy="$(ls_legacy_backup_path "$launcher")"
+		if ls_shim_references_backup "$launcher" "$home_mirror" || \
+		   ls_shim_references_backup "$launcher" "$legacy"; then
+			return 0
+		fi
+	done < <(ls_wrapped_paths)
+	return 1
+}
+
 ls_install_one_shim() {
 	local launcher="$1" backup legacy home_mirror old=""
 	# Never capture or replace a package installer stub before Steam has created
@@ -528,6 +555,10 @@ ls_install_one_shim() {
 	if ls_is_our_shim "$launcher" && \
 	   ls_shim_references_backup "$launcher" "$(ls_mirror_path "$LS_SYSTEM_BACKUP_ROOT" "$launcher")"; then
 		backup="$(ls_mirror_path "$LS_SYSTEM_BACKUP_ROOT" "$launcher")"
+	fi
+	if ls_shim_matches_backup "$launcher" "$backup"; then
+		ls_refresh_backup_alias "$backup" 2>/dev/null || true
+		return 0
 	fi
 	legacy="$(ls_legacy_backup_path "$launcher")"
 	home_mirror="$(ls_mirror_path "$LS_BACKUP_ROOT" "$launcher")"

@@ -926,11 +926,18 @@ setup_system_launcher() {
 
 	LS_SLSDIR="$SLSDIR"
 	LS_BACKUP_ROOT="$SLSDIR/system-launcher-backup"
-	local launcher launcher_detected=0 launcher_needs_sudo=0
+	local launcher launcher_detected=0 launcher_needs_sudo=0 expected_backup
 	while IFS= read -r launcher; do
 		[ -n "$launcher" ] || continue
 		launcher_detected=1
-		[ -w "$launcher" ] || launcher_needs_sudo=1
+		expected_backup="$(ls_backup_path "$launcher")"
+		if ls_is_our_shim "$launcher" && \
+		   ls_shim_references_backup "$launcher" "$(ls_mirror_path "$LS_SYSTEM_BACKUP_ROOT" "$launcher")"; then
+			expected_backup="$(ls_mirror_path "$LS_SYSTEM_BACKUP_ROOT" "$launcher")"
+		fi
+		if ! [ -w "$launcher" ] && ! ls_shim_matches_backup "$launcher" "$expected_backup"; then
+			launcher_needs_sudo=1
+		fi
 	done < <(ls_detect_launchers)
 	if [ "$launcher_detected" = 0 ]; then
 		log_warn "No eligible distro Steam launcher was found"
@@ -942,9 +949,13 @@ setup_system_launcher() {
 		LS_SUDO="sudo -A"
 	elif [ "${SLSM_SUDO_PRIMED:-0}" = 1 ] && command -v sudo >/dev/null 2>&1; then
 		LS_SUDO="sudo"
-	elif [ "${SLSM_SUDO_DENIED:-0}" != 1 ] && command -v sudo >/dev/null 2>&1 \
-	     && sudo -v 2>/dev/null; then
-		LS_SUDO="sudo"
+	elif [ "${SLSM_SUDO_DENIED:-0}" != 1 ] && command -v sudo >/dev/null 2>&1; then
+		if sudo -v 2>/dev/null; then
+			LS_SUDO="sudo"
+		else
+			SLSM_SUDO_DENIED=1
+			LS_SUDO=""
+		fi
 	else
 		LS_SUDO=""
 	fi
@@ -1085,6 +1096,11 @@ setup_path_and_desktop()
 	local coverage_status_file="$SLSDIR/coverage-policy.effective"
 	if setup_system_launcher; then
 		coverage_policy=launcher
+	elif dc_launcher_coverage_active; then
+		coverage_policy=launcher
+		if ls_any_shim_uses_home_backup; then
+			log_warn "An older system launcher shim remains in use until the installer runs with administrator access"
+		fi
 	fi
 	if ! dc_write_policy "$coverage_policy"; then
 		log_warn "Could not persist launch coverage policy; keeping the desktop fallback"

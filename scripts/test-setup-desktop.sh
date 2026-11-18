@@ -64,6 +64,8 @@ wire() {
     ls_install_shims() { say "ls_install_shims sudo=$LS_SUDO"; }
     has no-launcher && setup_system_launcher() { say setup_system_launcher; return 1; }
     has launcher && setup_system_launcher() { say setup_system_launcher; return 0; }
+    dc_launcher_coverage_active() { has launcher-active && { say dc_launcher_coverage_active; return 0; }; return 1; }
+    ls_any_shim_uses_home_backup() { has launcher-home-shim; }
     has declined && SLSM_SUDO_DENIED=1
     unset SUDO_ASKPASS SLSM_SUDO_PRIMED
     "$WIRE_FN"; say "status $?"
@@ -116,6 +118,15 @@ ck "declined sudo warns that the per-user entry still covers launches" \
 ck "declined sudo does not abort the install" "$(has_line "$LOG" 'status 0')"
 LOG="$(wire setup_path_and_desktop no-launcher declined)"
 eq "access declined earlier in the run is not asked for again" "no" "$(has_prefix "$LOG" 'sudo ')"
+
+# R3-X-3: When setup_system_launcher cannot refresh without sudo, an active
+# live shim still keeps launcher coverage policy instead of flipping to desktop,
+# and warns when the surviving shim still points into the home backup tree.
+LOG="$(wire setup_path_and_desktop no-launcher launcher-active launcher-home-shim declined)"
+ck "active live shim keeps launcher policy when refresh lacked sudo" \
+   "$(has_line "$LOG" 'dc_write_policy launcher')"
+ck "shim still pointing into home backup warns to re-run with sudo" \
+   "$(printf '%s\n' "$LOG" | grep '^warn ' | grep -qi 'older.*shim' && echo yes || echo no)"
 
 # Immutable host: user coverage only.
 LOG="$(wire setup_path_and_desktop no-launcher immutable)"

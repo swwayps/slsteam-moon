@@ -732,5 +732,58 @@ check "legacy conflict leaves mirror unchanged" "STALE-ASSOCIATION-CONFLICT" \
 check "legacy conflict retains legacy backup" "yes" \
   "$([ -f "$CONFLICT_LEGACY" ] && echo yes || echo no)"
 
+# R3-X-3: A live shim that already equals what ls_shim_content produces and
+# references a usable backup in LS_SYSTEM_BACKUP_ROOT needs no privilege on a
+# reinstall without sudo.
+CURRENT_ROOT="$TMP/current-shim"
+CURRENT_SYS_BACKUP="$CURRENT_ROOT/var-lib"
+CURRENT_BIN="$CURRENT_ROOT/usr/bin"
+mkdir -p "$CURRENT_BIN" "$CURRENT_ROOT/steam-root" "$CURRENT_ROOT/home/.local/share/SLSsteam/path"
+printf '#!/bin/sh\nexit 0\n' > "$CURRENT_ROOT/steam-root/steam.sh"
+printf '#!/bin/sh\nprintf "CURRENT-ORIG\\n"\n' > "$CURRENT_BIN/steam"
+printf '#!/bin/sh\nexit 0\n' > "$CURRENT_ROOT/home/.local/share/SLSsteam/path/steam"
+chmod 0755 "$CURRENT_ROOT/steam-root/steam.sh" "$CURRENT_BIN/steam" \
+  "$CURRENT_ROOT/home/.local/share/SLSsteam/path/steam"
+mkdir -p "$CURRENT_ROOT/home/.steam"
+ln -s "$CURRENT_ROOT/steam-root" "$CURRENT_ROOT/home/.steam/steam"
+chmod 0555 "$CURRENT_BIN"
+if [ "$(id -u)" -eq 0 ]; then
+  printf 'skip - current shim no-sudo check (root can write anything)\n'
+else
+  CURRENT_FAKE_SUDO() {
+    chmod u+w "$CURRENT_BIN"
+    "$@"
+    local rc=$?
+    chmod 0555 "$CURRENT_BIN"
+    return $rc
+  }
+  HOME="$CURRENT_ROOT/home"
+  LS_SLSDIR="$HOME/.local/share/SLSsteam"
+  LS_BACKUP_ROOT="$LS_SLSDIR/system-launcher-backup"
+  LS_SYSTEM_BACKUP_ROOT="$CURRENT_SYS_BACKUP"
+  LS_LAUNCHER_DIRS=("$CURRENT_BIN")
+  LS_STEAM_ROOT="$CURRENT_ROOT/steam-root"
+  LS_SUDO="CURRENT_FAKE_SUDO"
+  chmod u+w "$CURRENT_BIN/steam"
+  CURRENT_FAKE_SUDO chmod 0555 "$CURRENT_BIN/steam"
+  check "initial privileged shim install succeeds" "yes" \
+    "$(ls_install_shims && echo yes || echo no)"
+  CURRENT_SHIM_HASH="$(sha256sum "$CURRENT_BIN/steam" | awk '{print $1}')"
+  LS_SUDO=""
+  chmod_guard() {
+    case "$*" in
+      *"$CURRENT_SYS_BACKUP"*) return 1 ;;
+    esac
+    command chmod "$@"
+  }
+  chmod() { chmod_guard "$@"; }
+  check "already-current shim reinstalls without sudo" "yes" \
+    "$(ls_install_shims && echo yes || echo no)"
+  unset -f chmod
+  check "already-current shim stays byte-identical" "$CURRENT_SHIM_HASH" \
+    "$(sha256sum "$CURRENT_BIN/steam" | awk '{print $1}')"
+  chmod 0755 "$CURRENT_BIN" "$CURRENT_BIN/steam" 2>/dev/null || true
+fi
+
 [ "$fail" = 0 ] && echo "ALL PASS" || echo "FAILURES"
 exit "$fail"
