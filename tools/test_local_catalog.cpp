@@ -10,6 +10,7 @@
 #include "../src/utils.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -178,6 +179,35 @@ int main()
 	      && !has(pass, "Pattern catalog: loaded steamclient"),
 	      "the next pass reads the local cache instead of the published catalog");
 
+	// R3-I-1: When pattern-refresh activates a higher published revision into
+	// the component folder, the older local cache is stale for one pass and is
+	// then rewritten with the new revision's result.
+	{
+		std::string rev2 = publishedCatalog(self);
+		const auto revAt = rev2.find("revision = 1\n");
+		if (revAt != std::string::npos) rev2.replace(revAt, 13, "revision = 2\n");
+		const auto tmpToml = catalogDir / "activate.tmp";
+		std::ofstream(tmpToml, std::ios::binary) << rev2;
+		if (!local.empty())
+		{
+			const auto back = std::filesystem::file_time_type::clock::now() -
+			                  std::chrono::seconds(5);
+			std::filesystem::last_write_time(local, back);
+		}
+		std::filesystem::rename(tmpToml, catalogDir / (Utils::getFileSHA256(self.c_str()) + ".toml"));
+		mark = slurp(logPath).size();
+		CHECK(Patterns::init(), "a pass after a newer published revision activates succeeds");
+		pass = logSince(logPath, mark);
+		CHECK(has(pass, "Pattern catalog: loaded steamclient revision 2"),
+		      "a newer published catalog folder invalidates the older local cache once");
+		mark = slurp(logPath).size();
+		CHECK(Patterns::init(), "the pass after refreshing from revision 2 succeeds");
+		pass = logSince(logPath, mark);
+		CHECK(has(pass, "Pattern cache: loaded steamclient local catalog")
+		      && !has(pass, "Pattern catalog: loaded steamclient"),
+		      "the refreshed local cache serves subsequent boots again");
+	}
+
 	// A local cache from an older locator policy is replaced as well, instead
 	// of being rejected again on every later boot.
 	if (!local.empty())
@@ -191,7 +221,7 @@ int main()
 	CHECK(Patterns::init(), "a pass with a stale local cache succeeds");
 	pass = logSince(logPath, mark);
 	CHECK(has(pass, "changed compiled locator policy")
-	      && has(pass, "Pattern catalog: loaded steamclient revision 1"),
+	      && has(pass, "Pattern catalog: loaded steamclient revision 2"),
 	      "it rejects the stale cache and uses the published catalog");
 	mark = slurp(logPath).size();
 	CHECK(Patterns::init(), "the pass after it succeeds");

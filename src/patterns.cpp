@@ -82,6 +82,22 @@ namespace
 		return root / "local" / identity.component / key;
 	}
 
+	bool publishedFolderNewer(
+		const std::filesystem::path& publishedDir,
+		const std::filesystem::path& cachePath
+	) noexcept
+	{
+		struct stat dirStat {};
+		struct stat cacheStat {};
+		if (stat(publishedDir.c_str(), &dirStat) != 0 || !S_ISDIR(dirStat.st_mode))
+			return false;
+		if (stat(cachePath.c_str(), &cacheStat) != 0 || !S_ISREG(cacheStat.st_mode))
+			return false;
+		if (dirStat.st_mtim.tv_sec != cacheStat.st_mtim.tv_sec)
+			return dirStat.st_mtim.tv_sec > cacheStat.st_mtim.tv_sec;
+		return dirStat.st_mtim.tv_nsec > cacheStat.st_mtim.tv_nsec;
+	}
+
 	LocalCatalogState loadLocalCatalog(
 		const char* component,
 		const char* moduleName,
@@ -96,10 +112,14 @@ namespace
 		if (!state.identity || !root)
 			return state;
 
+		const std::filesystem::path cachePath = localCatalogPath(*root, *state.identity);
+		if (publishedFolderNewer(*root / component, cachePath))
+		{
+			state.writeEligible = true;
+			return state;
+		}
 		std::string error;
-		state.catalog = PatternCache::load(
-			localCatalogPath(*root, *state.identity), *state.identity, &error
-		);
+		state.catalog = PatternCache::load(cachePath, *state.identity, &error);
 		if (!state.catalog)
 			state.writeEligible = true;
 		return state;
