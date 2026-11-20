@@ -16,7 +16,8 @@
 //     empty node, so the caller falls back to built-in defaults and boots.
 //
 // It never throws (every YAML::Load is wrapped). The normalised text is parsed
-// first, so only flat lists with mixed indentation are rewritten.
+// first; repairSeqIndent changes only items of one list that are indented
+// differently, so a valid nested structure is not rewritten.
 
 #include "confnormalize.hpp"
 #include "yaml-cpp/yaml.h"

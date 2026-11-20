@@ -238,15 +238,17 @@ find_donor_desktop() {
 # Stop any running Steam so the wrapper / desktop entry takes effect on next
 # launch. Tries graceful shutdown first, falls back to SIGTERM then SIGKILL.
 kill_steam() {
-	if ! pgrep -x steam >/dev/null 2>&1 \
-	   && ! pgrep -f '/steam$|/steam ' >/dev/null 2>&1 \
-	   && ! pgrep -f 'steamwebhelper' >/dev/null 2>&1; then
+	# Steam's own processes, by name: the client, its launcher scripts and the
+	# web helper. A command-line match would also hit an editor or a shell
+	# that merely names a path ending in /steam.
+	local uid names
+	uid="$(id -u)"
+	names='steam|steam\.sh|steamwebhelper'
+	if ! pgrep -u "$uid" -x "$names" >/dev/null 2>&1; then
 		log_success "No running Steam process detected"
 		return 0
 	fi
-
 	log_info "Stopping running Steam processes"
-
 	if command -v steam >/dev/null 2>&1; then
 		# Sandboxed launchers replicate the caller's cwd inside their sandbox.
 		# The installer may still be inside a temporary extraction directory,
@@ -259,30 +261,24 @@ kill_steam() {
 	fi
 
 	for _ in 1 2 3 4 5; do
-		if ! pgrep -x steam >/dev/null 2>&1 \
-		   && ! pgrep -f 'steamwebhelper' >/dev/null 2>&1; then
+		if ! pgrep -u "$uid" -x "$names" >/dev/null 2>&1; then
 			log_success "Steam stopped"
 			return 0
 		fi
 		sleep 1
 	done
-
-	pkill -TERM -x steam 2>/dev/null || true
-	pkill -TERM -f 'steamwebhelper' 2>/dev/null || true
-	pkill -TERM -f '/steam$|/steam ' 2>/dev/null || true
+	pkill -TERM -u "$uid" -x "$names" 2>/dev/null || true
 	sleep 2
-
-	if pgrep -x steam >/dev/null 2>&1 \
-	   || pgrep -f 'steamwebhelper' >/dev/null 2>&1 \
-	   || pgrep -f '/steam$|/steam ' >/dev/null 2>&1; then
+	if pgrep -u "$uid" -x "$names" >/dev/null 2>&1; then
 		log_warn "Steam still running — sending SIGKILL"
-		pkill -KILL -x steam 2>/dev/null || true
-		pkill -KILL -f 'steamwebhelper' 2>/dev/null || true
-		pkill -KILL -f '/steam$|/steam ' 2>/dev/null || true
+		pkill -KILL -u "$uid" -x "$names" 2>/dev/null || true
 		sleep 1
 	fi
-
-	log_success "Steam stopped"
+	if pgrep -u "$uid" -x "$names" >/dev/null 2>&1; then
+		log_warn "Steam is still running"
+	else
+		log_success "Steam stopped"
+	fi
 }
 
 # ============================================================================
@@ -513,11 +509,12 @@ slsm_exec_vanilla() {
 # Debian's Install Steam package stub is a valid executable before the client
 # root exists, but it is not a Steam client and must never receive injection.
 # Explicit test/pinned binaries remain eligible; captured originals from our
-# system-launcher backup are shim-originated and still require bootstrap.
+# launcher backups (root's tree or the user's) are shim-originated and still
+# require bootstrap.
 slsm_bootstrap_guard() {
 	if [ "${SLSM_EXPLICIT_STEAM_BIN:-0}" = 1 ]; then
 		case "$SLSM_POLICY_BIN" in
-			"$SLSDIR/system-launcher-backup/"*) ;;
+			"$SLSDIR/system-launcher-backup/"*|/var/lib/slsteam-moon/launcher-backup/*) ;;
 			*) return 0 ;;
 		esac
 	else
@@ -902,7 +899,7 @@ EOF
 }
 
 # The autostart override lives in desktop-coverage.lib.sh as
-# dc_seed_autostart_override, run by dc_run.
+# dc_seed_autostart_override, run by the guardian's user pass.
 
 # ---------------------------------------------------------------------------
 # System launcher interception
@@ -933,11 +930,18 @@ setup_system_launcher() {
 
 	LS_SLSDIR="$SLSDIR"
 	LS_BACKUP_ROOT="$SLSDIR/system-launcher-backup"
-	local launcher launcher_detected=0 launcher_needs_sudo=0
+	local launcher launcher_detected=0 launcher_needs_sudo=0 expected_backup
 	while IFS= read -r launcher; do
 		[ -n "$launcher" ] || continue
 		launcher_detected=1
-		[ -w "$launcher" ] || launcher_needs_sudo=1
+		expected_backup="$(ls_backup_path "$launcher")"
+		if ls_is_our_shim "$launcher" && \
+		   ls_shim_references_backup "$launcher" "$(ls_mirror_path "$LS_SYSTEM_BACKUP_ROOT" "$launcher")"; then
+			expected_backup="$(ls_mirror_path "$LS_SYSTEM_BACKUP_ROOT" "$launcher")"
+		fi
+		if ! [ -w "$launcher" ] && ! ls_shim_matches_backup "$launcher" "$expected_backup"; then
+			launcher_needs_sudo=1
+		fi
 	done < <(ls_detect_launchers)
 	if [ "$launcher_detected" = 0 ]; then
 		log_warn "No eligible distro Steam launcher was found"
@@ -949,9 +953,13 @@ setup_system_launcher() {
 		LS_SUDO="sudo -A"
 	elif [ "${SLSM_SUDO_PRIMED:-0}" = 1 ] && command -v sudo >/dev/null 2>&1; then
 		LS_SUDO="sudo"
-	elif [ "${SLSM_SUDO_DENIED:-0}" != 1 ] && command -v sudo >/dev/null 2>&1 \
-	     && sudo -v 2>/dev/null; then
-		LS_SUDO="sudo"
+	elif [ "${SLSM_SUDO_DENIED:-0}" != 1 ] && command -v sudo >/dev/null 2>&1; then
+		if sudo -v 2>/dev/null; then
+			LS_SUDO="sudo"
+		else
+			SLSM_SUDO_DENIED=1
+			LS_SUDO=""
+		fi
 	else
 		LS_SUDO=""
 	fi
@@ -989,25 +997,13 @@ restore_system_launchers() {
 	if ls_restore_shims; then
 		return 0
 	fi
-	# A failed restore may be recoverable with the retained original. If no
-	# usable mirrored or exactly-associated legacy backup exists, the wrapper
-	# tree itself must survive uninstall so the shim remains operational.
-	local launcher backup
+	# A failed restore may be recoverable with the retained original. If a live
+	# shim names no usable captured original, the wrapper tree itself must
+	# survive uninstall so the shim remains operational.
+	local launcher
 	while IFS= read -r launcher; do
 		[ -n "$launcher" ] || continue
-		backup="$(ls_backup_path "$launcher")"
-		if [ -f "$backup" ] && ls_backup_is_usable "$backup" && \
-		   ls_shim_references_backup "$launcher" "$backup"; then
-			continue
-		fi
-		# A mirrored file is a safe retry fallback only when this live shim
-		# explicitly names it. Otherwise try the exactly-associated legacy file;
-		# if neither is safe, keep the complete helper tree alive.
-		backup="$(ls_legacy_backup_path "$launcher")"
-		if ! ls_legacy_backup_is_unambiguous_restore "$backup" || \
-		   ! ls_shim_references_backup "$launcher" "$backup"; then
-			SLSM_KEEP_LAUNCHER_TREE=1
-		fi
+		ls_referenced_backup "$launcher" >/dev/null || SLSM_KEEP_LAUNCHER_TREE=1
 	done < <(ls_wrapped_paths)
 	SLSM_KEEP_LAUNCHER_BACKUP=1
 	log_warn "Some system launcher shims could not be restored; retaining their backups for a later retry"
@@ -1104,6 +1100,11 @@ setup_path_and_desktop()
 	local coverage_status_file="$SLSDIR/coverage-policy.effective"
 	if setup_system_launcher; then
 		coverage_policy=launcher
+	elif dc_launcher_coverage_active; then
+		coverage_policy=launcher
+		if ls_any_shim_uses_home_backup; then
+			log_warn "An older system launcher shim remains in use until the installer runs with administrator access"
+		fi
 	fi
 	if ! dc_write_policy "$coverage_policy"; then
 		log_warn "Could not persist launch coverage policy; keeping the desktop fallback"
@@ -1132,7 +1133,6 @@ setup_path_and_desktop()
 		else
 			DC_SUDO="sudo"
 			export DC_SUDO
-			dc_migrate_legacy_backups --system
 			if SLSM_COVERAGE_POLICY=desktop DC_FORCE=1 dc_run --system; then
 				system_desktop_changed=1
 				log_success "Patched optional system Steam desktop entries"
@@ -1202,38 +1202,32 @@ install_steamstub()
 
 	log_info "Installing Steamless helper"
 	mkdir -p "$TARGET/steamstub-bypass"
-	cp -v "$HELPERSRC/run-steamless.sh"     "$TARGET/steamstub-bypass/"
-	cp -v "$HELPERSRC/install-steamless.sh" "$TARGET/steamstub-bypass/"
-	cp -v "$HELPERSRC/scan-all.sh"          "$TARGET/steamstub-bypass/"
-	chmod u+x "$TARGET/steamstub-bypass/run-steamless.sh" \
-	          "$TARGET/steamstub-bypass/install-steamless.sh" \
-	          "$TARGET/steamstub-bypass/scan-all.sh"
+	cp -v "$HELPERSRC/run-steamless.sh" "$TARGET/steamstub-bypass/"
+	chmod u+x "$TARGET/steamstub-bypass/run-steamless.sh"
+	# Older releases also installed scan-all.sh, which processed every app
+	# whether or not its launch options opted in, and install-steamless.sh,
+	# which installed whatever upstream released last, unverified.
+	rm -f "$TARGET/steamstub-bypass/scan-all.sh" \
+	      "$TARGET/steamstub-bypass/install-steamless.sh"
 
 	echo ""
 
-	# Prefer the Steamless kit bundled in the release (offline, no
-	# network).  Only fall back to the GitHub download if the bundle is
-	# absent (e.g. a dev tree).  The download path is the historical
-	# silent-failure source behind "Application load error 6".
+	# Releases bundle the Steamless kit (scripts/package.sh refuses to build
+	# without it), so only a dev tree can lack it.
 	if [ -f "./tools/steamless-bin/Steamless.CLI.exe" ]; then
 		log_info "Installing bundled Steamless kit"
 		mkdir -p "$TARGET/steamless-bin"
 		cp -r ./tools/steamless-bin/. "$TARGET/steamless-bin/"
-	else
-		log_warn "No bundled Steamless kit; fetching from upstream (needs internet)"
-		bash "$TARGET/steamstub-bypass/install-steamless.sh" \
-			--target "$TARGET/steamless-bin" || true
 	fi
 
-	# Verify the kit actually landed.  A missing CLI means the SteamStub
-	# bypass is silently disabled at runtime and DRM-locked games fail
-	# with "Application load error 6" — make that loud here.
+	# Without the kit a --steamless launch keeps the original executable, and
+	# a game that needs it processed fails with "Application load error 6".
 	if [ -f "$TARGET/steamless-bin/Steamless.CLI.exe" ]; then
 		log_success "Steamless ready ($TARGET/steamless-bin)"
 	else
-		log_warn "Steamless kit NOT installed — games with Steam DRM will"
-		log_warn "fail to launch (Application load error 6). To fix later:"
-		log_warn "  bash $TARGET/steamstub-bypass/install-steamless.sh --target $TARGET/steamless-bin"
+		log_warn "Steamless kit NOT installed: games launched with --steamless keep"
+		log_warn "their original executable (Application load error 6 for those"
+		log_warn "that need it processed). Reinstall from a release to restore it."
 	fi
 	echo ""
 }
@@ -1289,7 +1283,8 @@ restore_or_remove_desktop() {
 
 	if [ -f "$backup" ]; then
 		log_info "Restoring $f from backup"
-		if $sudo_cmd cp -- "$backup" "$f"; then
+		# The user's shell opens the backup; sudo only writes the entry.
+		if $sudo_cmd install -m 0644 /dev/stdin "$f" < "$backup"; then
 			rm -f -- "$backup"
 			log_success "Restored $f"
 		fi
@@ -1357,24 +1352,26 @@ uninstall()
 			sudo update-desktop-database "/usr/share/applications" >/dev/null 2>&1 || true
 	fi
 
-	# Legacy: /usr/games/steam patch from older versions.
-	if ! is_immutable_distro && [ -f "/usr/games/steam" ] && grep -q "SLSsteam" "/usr/games/steam" 2>/dev/null; then
-		log_info "Found legacy /usr/games/steam modification"
-		if [ -f "/usr/games/steam.slsteam-backup" ]; then
-			log_info "Restoring original /usr/games/steam (requires sudo)"
-			sudo cp "/usr/games/steam.slsteam-backup" "/usr/games/steam"
-			sudo rm "/usr/games/steam.slsteam-backup"
-			log_success "Restored /usr/games/steam"
-		else
-			log_warn "Legacy modification found but no backup exists"
-		fi
-	fi
-
 	# Restore any wrapped system launchers before removing the dir.
 	if restore_system_launchers; then
 		launcher_restore_complete=1
 	else
 		launcher_restore_complete=0
+	fi
+	# Legacy: the in-place /usr/games/steam patch of older versions. The
+	# current shim at that path names SLSsteam too and is restored above.
+	local legacy="${SLSM_LEGACY_LAUNCHER:-/usr/games/steam}"
+	if ! is_immutable_distro && [ -f "$legacy" ] && ! ls_is_our_shim "$legacy" &&
+	   grep -q "SLSsteam" "$legacy" 2>/dev/null; then
+		log_info "Found legacy $legacy modification"
+		if [ -f "$legacy.slsteam-backup" ]; then
+			log_info "Restoring original $legacy (requires sudo)"
+			sudo cp "$legacy.slsteam-backup" "$legacy"
+			sudo rm "$legacy.slsteam-backup"
+			log_success "Restored $legacy"
+		else
+			log_warn "Legacy modification found but no backup exists"
+		fi
 	fi
 
 	# Policy state lives outside SLSDIR. Forget it only after launcher restore;

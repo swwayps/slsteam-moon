@@ -3,9 +3,11 @@
 // Write a complete file to a private temporary inode, fsync it, and publish it
 // with rename(). Readers therefore see either the previous complete record or
 // the new complete record; never a truncated buffer or half-written YAML.
+// Inside a DeferSync scope the fsyncs wait for the end of the scope.
 
 #pragma once
 
+#include <algorithm>
 #include <atomic>
 #include <cerrno>
 #include <cstdint>
@@ -17,6 +19,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <utility>
+#include <vector>
 
 #if defined(__linux__)
 #include <linux/fs.h>
@@ -63,6 +66,9 @@ namespace detail
 
 inline std::atomic<unsigned long> sequence{0};
 
+// The folders the DeferSync scope open on this thread flushes; null outside one.
+inline thread_local std::vector<std::string>* deferredFolders = nullptr;
+
 inline bool writeAll(int fd, const char* data, std::size_t size)
 {
 	std::size_t written = 0;
@@ -84,6 +90,13 @@ inline void syncParent(const std::string& path)
 {
 	const auto parent = std::filesystem::path(path).parent_path();
 	const std::string parentPath = parent.empty() ? "." : parent.string();
+	if (deferredFolders != nullptr)
+	{
+		if (std::find(deferredFolders->begin(), deferredFolders->end(), parentPath) ==
+		    deferredFolders->end())
+			deferredFolders->push_back(parentPath);
+		return;
+	}
 	const int fd = ::open(parentPath.c_str(), O_RDONLY | O_DIRECTORY | O_CLOEXEC);
 	if (fd < 0) return;
 	(void)::fsync(fd);
@@ -173,7 +186,7 @@ inline bool prepareTemp(const std::string& path,
 
 	bool ok = writeAll(fd, data, size);
 	if (ok && ::fchmod(fd, mode) != 0) ok = false;
-	if (ok && ::fsync(fd) != 0) ok = false;
+	if (ok && deferredFolders == nullptr && ::fsync(fd) != 0) ok = false;
 	const int closeResult = ::close(fd);
 	if (closeResult != 0) ok = false;
 
@@ -214,6 +227,36 @@ inline void setBeforeConditionalRollbackHook(std::function<void()> hook)
 	detail::beforeConditionalRollbackHook() = std::move(hook);
 }
 #endif
+
+// While one is open on this thread, writes skip their fsyncs, and the scope
+// flushes the file systems they touched with one syncfs when it closes. For
+// rebuildable caches written in bulk: rename still makes each write atomic,
+// and only durability across a power loss waits for the end of the scope.
+class DeferSync
+{
+public:
+	DeferSync() noexcept
+	{
+		if (detail::deferredFolders == nullptr) detail::deferredFolders = &folders_;
+	}
+	~DeferSync()
+	{
+		if (detail::deferredFolders != &folders_) return; // nested in another scope
+		detail::deferredFolders = nullptr;
+		for (const std::string& folder : folders_)
+		{
+			const int fd = ::open(folder.c_str(), O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+			if (fd < 0) continue;
+			(void)::syncfs(fd);
+			::close(fd);
+		}
+	}
+	DeferSync(const DeferSync&) = delete;
+	DeferSync& operator=(const DeferSync&) = delete;
+
+private:
+	std::vector<std::string> folders_;
+};
 
 inline bool write(const std::string& path, const char* data, std::size_t size,
                  std::string& error)

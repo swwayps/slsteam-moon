@@ -44,6 +44,19 @@ namespace PICS
 	void cleanShaderHitCaches(const std::unordered_set<uint32_t>& appIds);
 	void recvChangesSinceResponse(CMsgClientPICSChangesSinceResponse* resp);
 
+	// Apps the request hook hid from Steam's metadata request `jobId`. Their
+	// answer is given from the local pairs, or Steam asks for them again and
+	// again (answerHiddenApps).
+	void noteHiddenApps(std::uint64_t jobId, std::vector<std::uint32_t> appIds);
+	// The apps hidden from the request a response answers; each request's
+	// list is handed out once.
+	std::vector<std::uint32_t> takeHiddenApps(std::uint64_t jobId);
+	// Adds to `resp` the metadata Steam holds for each hidden app from our
+	// splice (AppInfoVdf::heldEntry): its change number and SHA-1, so Steam
+	// sees it as current. False when nothing was added.
+	bool answerHiddenApps(const std::vector<std::uint32_t>& appIds,
+	                      CMsgClientPICSProductInfoResponse& resp);
+
 	// Whether a serialized product-info answer names an app `isAdded`
 	// accepts, read from the wire without copying the app buffers. An answer
 	// that does not walk cleanly counts as naming one and gets the full parse.

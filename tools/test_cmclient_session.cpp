@@ -11,11 +11,13 @@
 #include "../src/sdk/protobufs/steammessages_base.pb.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <dlfcn.h>
 #include <filesystem>
+#include <fstream>
 #include <map>
 #include <memory>
 #include <numeric>
@@ -91,6 +93,7 @@ struct Handle
 	std::size_t (*write)(char*, std::size_t, std::size_t, void*) = nullptr;
 	void* writeData = nullptr;
 	bool connectOnly = false;
+	long redirProtocols = -1;
 	std::string host;
 	std::string tx, rx;
 	bool upgraded = false;
@@ -106,6 +109,8 @@ struct ScriptedEndpoint
 	bool fragment = false; // send each answer as a frame without FIN plus a continuation
 	bool corruptSecond = false; // send an unreadable body as the second answer
 	bool closeAfterFinal = false; // send a close frame right after the last answer
+	bool badGzip = false; // send each answer in a Multi whose body is not gzip
+	uint32_t logonEresult = 1; // the logon answer; the socket stays open either way
 	std::vector<std::vector<uint32_t>> requests;
 	std::unordered_set<uint32_t> delivered; // apps sent with a buffer
 };
@@ -114,6 +119,10 @@ class ScriptedCms final : public FakeCurl
 {
 public:
 	std::map<std::string, ScriptedEndpoint> endpoints;
+	std::size_t directoryPadding = 0; // spaces inside the CM directory JSON
+	std::size_t directoryAccepted = 0; // bytes the write callback kept
+	long directoryRedirect = -1; // CURLOPT_REDIR_PROTOCOLS of the directory GET
+	std::string directoryUrl; // URL of the last directory GET
 
 	CURL* init() override { return reinterpret_cast<CURL*>(new Handle); }
 
@@ -125,6 +134,7 @@ public:
 			h.write = reinterpret_cast<std::size_t (*)(char*, std::size_t, std::size_t, void*)>(pointer);
 		else if (option == CURLOPT_WRITEDATA) h.writeData = pointer;
 		else if (option == CURLOPT_CONNECT_ONLY) h.connectOnly = number != 0;
+		else if (option == CURLOPT_REDIR_PROTOCOLS) h.redirProtocols = number;
 		return CURLE_OK;
 	}
 
@@ -141,8 +151,17 @@ public:
 				if (body.back() == '}') body += ',';
 				body += "{\"endpoint\":\"" + host + ":443\"}";
 			}
-			body += "]}}";
-			h.write(body.data(), 1, body.size(), h.writeData);
+			body += std::string(directoryPadding, ' ') + "]}}";
+			directoryRedirect = h.redirProtocols;
+			directoryUrl = h.url;
+			// Delivered in chunks, like libcurl: a short count ends the transfer.
+			for (std::size_t at = 0; at < body.size(); at += 65536)
+			{
+				const std::size_t chunk = std::min<std::size_t>(65536, body.size() - at);
+				if (h.write(body.data() + at, 1, chunk, h.writeData) != chunk)
+					return CURLE_WRITE_ERROR;
+				directoryAccepted += chunk;
+			}
 			return CURLE_OK;
 		}
 		const std::size_t start = std::strlen("https://");
@@ -248,7 +267,7 @@ private:
 			assigned.set_steamid((1ULL << 56) | (10ULL << 52) | 1);
 			assigned.set_client_sessionid(7);
 			CMsgClientLogonResponse logon;
-			logon.set_eresult(1);
+			logon.set_eresult(endpoints[h.host].logonEresult);
 			queue(h, 751, assigned.SerializeAsString(), logon.SerializeAsString());
 			return;
 		}
@@ -284,7 +303,14 @@ private:
 			}
 			const bool last = end == ids.size();
 			response.set_response_pending(!last || endpoint.withholdFinal);
-			if (endpoint.gzip)
+			if (endpoint.badGzip)
+			{
+				CMsgMulti multi;
+				multi.set_size_unzipped(4096);
+				multi.set_message_body("not a gzip stream");
+				queue(h, 1, CMsgProtoBufHeader().SerializeAsString(), multi.SerializeAsString());
+			}
+			else if (endpoint.gzip)
 			{
 				const std::string inner = CmWire::packPacket(
 				    8904, CMsgProtoBufHeader().SerializeAsString(), response.SerializeAsString());
@@ -358,6 +384,35 @@ int main()
 		CHECK(cms.endpoints["cm-a.test"].requests.size() == 1 &&
 		          cms.endpoints["cm-b.test"].requests.empty(),
 		      "one healthy CM serves the batch in one request");
+		CHECK(cms.directoryRedirect == CURLPROTO_HTTPS,
+		      "the CM directory GET follows redirects to https only");
+	}
+	{
+		ScriptedCms cms;
+		cms.directoryPadding = 2u << 20;
+		cms.endpoints["cm-a.test"];
+		(void)fetch(cms, {1, 2, 3});
+		CHECK(cms.directoryAccepted <= (1u << 20),
+		      "a CM directory answer over 1 MiB is not buffered");
+	}
+	{
+		// The directory orders CMs by the cell it is given; Steam stores the
+		// user's cell in config.vdf.
+		const std::string config = std::string(configHome) + "/.steam/steam/config";
+		std::filesystem::create_directories(config);
+		std::ofstream(config + "/config.vdf")
+			<< "\"InstallConfigStore\"\n{\n\t\"Software\"\n\t{\n\t\t\"Valve\"\n\t\t{\n"
+			   "\t\t\t\"Steam\"\n\t\t\t{\n\t\t\t\t\"CellIDServerOverride\"\t\t\"153\"\n"
+			   "\t\t\t}\n\t\t}\n\t}\n}\n";
+		const char* home = std::getenv("HOME");
+		const std::string savedHome = home ? home : "";
+		setenv("HOME", configHome, 1);
+		ScriptedCms cms;
+		cms.endpoints["cm-a.test"];
+		(void)fetch(cms, {1, 2, 3});
+		setenv("HOME", savedHome.c_str(), 1);
+		CHECK(cms.directoryUrl.find("cellid=153&") != std::string::npos,
+		      ("the CM directory is asked for Steam's cell (" + cms.directoryUrl + ")").c_str());
 	}
 	{
 		// The first CM drops partway through its answer.
@@ -435,6 +490,23 @@ int main()
 		CHECK(f.result == FetchResult::Success && f.buffers.size() == 2 &&
 		          cms.endpoints["cm-b.test"].requests.empty(),
 		      "a close after the final answer still completes the request");
+	}
+	// A CM whose answers this session cannot use ends it at once; the next CM
+	// is asked well within the batch budget.
+	for (const bool refuse : {false, true})
+	{
+		ScriptedCms cms;
+		cms.endpoints["cm-a.test"].badGzip = !refuse;
+		cms.endpoints["cm-a.test"].logonEresult = refuse ? 48 : 1; // TryAnotherCM
+		cms.endpoints["cm-b.test"];
+		const auto start = std::chrono::steady_clock::now();
+		const Fetch f = fetch(cms, batch);
+		const auto took = std::chrono::steady_clock::now() - start;
+		CHECK(f.result == FetchResult::Success && f.buffers.size() == knownIn(batch) &&
+		          !cms.endpoints["cm-b.test"].requests.empty() &&
+		          took < std::chrono::seconds(5),
+		      refuse ? "a refused logon ends the session and the next CM serves the batch"
+		             : "an answer that cannot be inflated ends the session and the next CM serves the batch");
 	}
 	{
 		ScriptedCms cms;

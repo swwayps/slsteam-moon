@@ -87,6 +87,8 @@ CNetPacket packet(uint32_t eMsg, const CMsgProtoBufHeader& header, const std::ve
 	CNetPacket out{};
 	out.setBody(frame);
 	out.setSize(size);
+	// The receive hook settles the field layout on the first live packet.
+	CNetPacket::detectLayout(&out);
 	return out;
 }
 std::vector<uint8_t> packetBody(const CNetPacket& pkt) {

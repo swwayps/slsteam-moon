@@ -40,6 +40,14 @@ public:
 		const auto lock = std::shared_lock(mutex);
 		return instance.contains(key);
 	}
+	// Runs fn on the value in place under the shared lock and returns its
+	// result; fn must not use this variable again.
+	template<typename Fn>
+	auto read(Fn&& fn)
+	{
+		const auto lock = std::shared_lock(mutex);
+		return fn(static_cast<const T&>(instance));
+	}
 
 	void set(T value)
 	{

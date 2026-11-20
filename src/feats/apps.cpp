@@ -15,8 +15,10 @@
 #include "../globals.hpp"
 
 #include "appinfo_provision.hpp"
+#include "appinfo_vdf.hpp"
 #include "appinfostate.hpp"
 #include "fakeappid.hpp"
+#include "pics.hpp"
 #include "synthmark.hpp"
 #include "../utils/ManifestFetch.hpp"
 
@@ -198,12 +200,9 @@ namespace
 			fullyInstalled = (g_pClientAppManager->getAppInstallState(appId) &
 			                  k_EAppStateFullyInstalled) != 0;
 		}
-		// cachePairMtimeSecs() is a two-stat probe of the on-disk pair; it takes
-		// no lock and cannot be withdrawn by a validation miss, so it keeps the
-		// filter armed when the published set is incomplete.
-		const bool locallyAuthoritative = SynthMark::localAppInfoAuthority(
-		    AppInfoState::isAuthoritative(appId),
-		    AppInfoProvision::cachePairMtimeSecs(appId) > 0);
+		// Hide only apps this process spliced into appinfo.vdf: we have an entry
+		// to protect from a denied refresh and to answer metadata requests with.
+		const bool locallyAuthoritative = AppInfoVdf::hasSplicedEntry(appId);
 		return SynthMark::installStateAllowsStrip(
 		    locallyAuthoritative,
 		    g_config.isAddedAppId(appId), appManagerResolved, fullyInstalled);
@@ -720,12 +719,21 @@ void Apps::sendPICSInfoRequest(CNetPacket* pkt)
 		const auto strip = SynthMark::stripIndices(
 		    requested, [](uint32_t appId) { return permitSynthStrip(appId); });
 
+		std::vector<uint32_t> hidden;
+		hidden.reserve(strip.size());
 		for (int idx : strip) // descending, safe for in-place delete
 		{
 			g_pLog->debugOnce("PICS-request: stripping locally authoritative app %u\n",
 			                  msg.apps(idx).appid());
+			hidden.push_back(msg.apps(idx).appid());
 			msg.mutable_apps()->DeleteSubrange(idx, 1);
 		}
+		// Steam asks for an app's metadata until it gets an answer, so the
+		// answer to this request also carries the hidden apps' metadata.
+		CMsgProtoBufHeader header;
+		if (!hidden.empty() && msg.meta_data_only() &&
+		    pkt->deserializeHeader(header) && header.has_jobid_source())
+			PICS::noteHiddenApps(header.jobid_source(), std::move(hidden));
 	}
 
 	// We intentionally do NOT add AdditionalApps to Steam's outgoing PICS

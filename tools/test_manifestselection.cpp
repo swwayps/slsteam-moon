@@ -18,36 +18,15 @@ static int g_failures = 0;
 	} while (0)
 
 using ManifestSelection::ChoiceSource;
-using ManifestSelection::ExactState;
 
 int main()
 {
-	// The exact public gid always wins when it is ready, even if older local
-	// versions are available.
-	{
-		const auto d = ManifestSelection::choose(
-		    900, ExactState::Ready, /*preferredLocal=*/800, /*legacyLocal=*/700);
-		CHECK(d.final && d.gid == 900 && d.source == ChoiceSource::Exact,
-		      "ready exact gid wins over every local fallback");
-	}
-
-	// While the exact fetch is still running, do not prematurely freeze a
-	// fallback decision. The caller may wait within the shared plan budget.
-	{
-		const auto d = ManifestSelection::choose(
-		    900, ExactState::Pending, /*preferredLocal=*/800, /*legacyLocal=*/700);
-		CHECK(!d.final && d.gid == 900,
-		      "pending exact gid remains unresolved");
-	}
-
 	// Once the exact gid is confirmed unavailable (404, provider outage, or
 	// plan timeout), prefer the last server-observed local gid.
 	{
 		const auto d = ManifestSelection::choose(
-		    900, ExactState::Unavailable,
-		    /*preferredLocal=*/800, /*legacyLocal=*/850);
-		CHECK(d.final && d.gid == 800 &&
-		          d.source == ChoiceSource::PreferredLocal,
+		    900, /*preferredLocal=*/800, /*legacyLocal=*/850);
+		CHECK(d.gid == 800 && d.source == ChoiceSource::PreferredLocal,
 		      "unavailable exact gid falls back to last observed local gid");
 	}
 
@@ -56,7 +35,7 @@ int main()
 	// gid.
 	{
 		const auto d = ManifestSelection::choose(
-		    100, ExactState::Unavailable,
+		    100,
 		    /*preferredLocal=*/20, /*legacyLocal=*/999999);
 		CHECK(d.gid == 20 && d.source == ChoiceSource::PreferredLocal,
 		      "manifest recency never depends on numeric gid ordering");
@@ -66,7 +45,7 @@ int main()
 	// the legacy newest-archived fallback as the compatibility path.
 	{
 		const auto d = ManifestSelection::choose(
-		    900, ExactState::Unavailable,
+		    900,
 		    /*preferredLocal=*/0, /*legacyLocal=*/700);
 		CHECK(d.gid == 700 && d.source == ChoiceSource::LegacyLocal,
 		      "legacy archived manifest is used when no preferred marker exists");
@@ -76,7 +55,7 @@ int main()
 	// suppress a usable older local manifest.
 	{
 		const auto d = ManifestSelection::choose(
-		    900, ExactState::Unavailable,
+		    900,
 		    /*preferredLocal=*/900, /*legacyLocal=*/700);
 		CHECK(d.gid == 700 && d.source == ChoiceSource::LegacyLocal,
 		      "failed exact gid is excluded from fallback candidates");
@@ -87,20 +66,10 @@ int main()
 	// be unsafe.
 	{
 		const auto d = ManifestSelection::choose(
-		    900, ExactState::Unavailable, 0, 0);
-		CHECK(d.final && d.gid == 900 &&
-		          d.source == ChoiceSource::ExactUnavailable,
+		    900, 0, 0);
+		CHECK(d.gid == 900 && d.source == ChoiceSource::ExactUnavailable,
 		      "no local fallback leaves the requested gid unchanged");
 	}
-
-	// One budget is shared by the whole plan. It is clamped at zero instead
-	// of restarting for every depot.
-	CHECK(ManifestSelection::remainingBudgetMs(12000, 3000) == 9000,
-	      "plan budget subtracts elapsed time");
-	CHECK(ManifestSelection::remainingBudgetMs(12000, 12000) == 0,
-	      "plan budget reaches zero at the deadline");
-	CHECK(ManifestSelection::remainingBudgetMs(12000, 15000) == 0,
-	      "plan budget never becomes negative");
 
 	// A first-import pin has no cached size until its asynchronous manifest
 	// fetch completes. The initial Validate must update both fields after the

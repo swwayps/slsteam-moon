@@ -22,8 +22,10 @@
 #include "yaml-cpp/yaml.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cstdint>
 #include <cstring>
+#include <deque>
 #include <filesystem>
 #include <fstream>
 #include <ios>
@@ -140,7 +142,7 @@ bool persistAppBuffer(uint32_t appId, uint32_t changeNumber,
 	std::lock_guard<std::mutex> publicationLock(
 	    AppInfoProvision::cachePublicationMutex());
 	ProcessLock::FileLock cacheLock(AppInfoProvision::cacheLockPath(), false);
-	if (!cacheLock.acquired())
+	if (AppInfoProvision::cacheLockHeldElsewhere(cacheLock))
 	{
 		g_pLog->info("PICS: unable to lock cache pair for app=%u\n", appId);
 		return false;
@@ -539,6 +541,70 @@ void recvUnmanagedProductInfoResponse()
 	queueCallbackRepairs(AppInfoVdf::findExistingPath(), {});
 }
 
+namespace
+{
+// Metadata requests the send hook hid apps from. A request is answered within
+// seconds; the bound covers jobs that never get an answer.
+struct HiddenRequest
+{
+	std::uint64_t jobId = 0;
+	std::vector<std::uint32_t> appIds;
+	std::chrono::steady_clock::time_point sent;
+};
+std::mutex g_hiddenMu;
+std::deque<HiddenRequest> g_hidden;
+constexpr std::size_t kHiddenRequestCap = 64;
+constexpr auto kHiddenRequestLifetime = std::chrono::minutes(2);
+} // namespace
+
+void noteHiddenApps(std::uint64_t jobId, std::vector<std::uint32_t> appIds)
+{
+	if (appIds.empty()) return;
+	const auto now = std::chrono::steady_clock::now();
+	std::lock_guard<std::mutex> lock(g_hiddenMu);
+	while (!g_hidden.empty() && (g_hidden.size() >= kHiddenRequestCap ||
+	                             now - g_hidden.front().sent > kHiddenRequestLifetime))
+		g_hidden.pop_front();
+	g_hidden.push_back({jobId, std::move(appIds), now});
+}
+
+std::vector<std::uint32_t> takeHiddenApps(std::uint64_t jobId)
+{
+	std::lock_guard<std::mutex> lock(g_hiddenMu);
+	for (auto it = g_hidden.begin(); it != g_hidden.end(); ++it)
+	{
+		if (it->jobId != jobId) continue;
+		auto appIds = std::move(it->appIds);
+		g_hidden.erase(it);
+		return appIds;
+	}
+	return {};
+}
+
+bool answerHiddenApps(const std::vector<std::uint32_t>& appIds,
+                      CMsgClientPICSProductInfoResponse& resp)
+{
+	bool added = false;
+	for (const std::uint32_t appId : appIds)
+	{
+		const auto identity = AppInfoVdf::heldEntry(appId);
+		if (!identity || identity->sha.size() != 20) continue;
+		const auto& apps = resp.apps();
+		if (std::any_of(apps.begin(), apps.end(),
+		                [appId](const auto& app) { return app.appid() == appId; }))
+			continue;
+		auto* app = resp.add_apps();
+		app->set_appid(appId);
+		app->set_change_number(identity->changeNumber);
+		app->set_sha(identity->sha);
+		app->set_size(static_cast<std::uint32_t>(identity->size));
+		added = true;
+	}
+	if (added)
+		g_pLog->debugOnce("PICS: answering hidden apps from their local pairs\n");
+	return added;
+}
+
 void recvChangesSinceResponse(CMsgClientPICSChangesSinceResponse* resp)
 {
 	if (!resp) return;
@@ -589,9 +655,12 @@ void recvChangesSinceResponse(CMsgClientPICSChangesSinceResponse* resp)
 	std::vector<AppInfoProvision::RefreshRequest> refreshRequests;
 	if (resp->force_full_app_update())
 	{
-		refreshRequests.reserve(suppressedManagedApps.size());
-		for (const uint32_t appId : suppressedManagedApps)
+		// A force-full answer need not list the changed apps, so every managed
+		// app whose appinfo comes from a local pair is refreshed here; Steam
+		// never refreshes those pairs itself.
+		for (const uint32_t appId : managed)
 		{
+			if (!AppInfoState::isAuthoritative(appId)) continue;
 			const auto publication =
 				AppInfoProvision::snapshotCachePublication(appId);
 			refreshRequests.push_back({

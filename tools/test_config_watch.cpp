@@ -49,10 +49,15 @@ namespace
 		++g_throwingCalls;
 		throw std::runtime_error("callback failed");
 	}
+	std::atomic<int> g_countingCalls{0};
+	void countingCallback()
+	{
+		++g_countingCalls;
+	}
 }
 namespace HotReload
 {
-	void publish(const std::unordered_set<std::uint32_t>& managed, bool) noexcept
+	void publish(const std::unordered_set<std::uint32_t>& managed) noexcept
 	{
 		const std::lock_guard lock(g_mutex);
 		g_published.push_back(managed);
@@ -106,6 +111,7 @@ namespace
 
 int main()
 {
+	setvbuf(stdout, nullptr, _IONBF, 0);
 	const std::string root = "/tmp/slssteam-config-watch." + std::to_string(getpid());
 	const std::string dir = root + "/config/SLSsteam";
 	std::filesystem::create_directories(dir);
@@ -160,6 +166,27 @@ int main()
 			std::this_thread::sleep_for(std::chrono::milliseconds(20));
 	}
 	check(g_throwingCalls >= 2, "a callback that throws does not stop the watcher");
+	// The plugin folder counts only *.lua files, so a plugin that writes its
+	// own state next to itself does not reload every plugin forever.
+	{
+		const std::string plugins = root + "/plugins";
+		std::filesystem::create_directories(plugins);
+		CFileWatcher pluginWatcher(countingCallback);
+		check(pluginWatcher.addFile(plugins.c_str(), {}, ".lua") && pluginWatcher.start(),
+		      "a plugin folder watcher starts");
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		std::ofstream(plugins + "/state.json") << "{}\n";
+		std::this_thread::sleep_for(std::chrono::milliseconds(800));
+		check(g_countingCalls.load() == 0, "a non-Lua file in the plugin folder does not reload");
+		std::ofstream(plugins + "/x.lua") << "-- plugin\n";
+		const auto end = std::chrono::steady_clock::now() + std::chrono::seconds(3);
+		while (g_countingCalls.load() == 0 && std::chrono::steady_clock::now() < end)
+			std::this_thread::sleep_for(std::chrono::milliseconds(20));
+		check(g_countingCalls.load() >= 1, "a Lua file in the plugin folder reloads");
+		// stop() cancels the thread: let the last burst finish first.
+		std::this_thread::sleep_for(std::chrono::milliseconds(500));
+		pluginWatcher.stop();
+	}
 	watcher.stop();
 
 	std::filesystem::remove_all(root);

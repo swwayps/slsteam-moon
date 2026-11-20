@@ -35,10 +35,12 @@
 #include "base64/base64.hpp"
 
 #include "../utils/curl_api.hpp"
+#include "../utils/curl_sink.hpp"
 #include <curl/curl.h>
 
 #include <algorithm>
 #include <cerrno>
+#include <charconv>
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
@@ -48,6 +50,7 @@
 #include <dlfcn.h>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <random>
 #include <sstream>
 #include <string>
@@ -107,11 +110,6 @@ private:
 };
 
 
-std::size_t writeCb(const char* p, std::size_t sz, std::size_t n, std::string* dst)
-{
-	dst->append(p, sz * n);
-	return sz * n;
-}
 
 // Plain HTTPS GET (one-shot, not CONNECT_ONLY) for the CM list.
 AppInfoProvision::NetworkFailure httpsGet(const std::string& url,
@@ -124,10 +122,13 @@ AppInfoProvision::NetworkFailure httpsGet(const std::string& url,
 	CURL* c = curlApi()->easy_init();
 	if (!c) return AppInfoProvision::NetworkFailure::Provider;
 	body.clear();
+	// The CM list is a few KB.
+	CurlBodySink sink{&body, 1u << 20};
 	curlApi()->easy_setopt(c, CURLOPT_URL, url.c_str());
 	curlApi()->easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1L);
-	curlApi()->easy_setopt(c, CURLOPT_WRITEFUNCTION, writeCb);
-	curlApi()->easy_setopt(c, CURLOPT_WRITEDATA, &body);
+	curlApi()->easy_setopt(c, CURLOPT_REDIR_PROTOCOLS, curlRedirectProtocols(url));
+	curlApi()->easy_setopt(c, CURLOPT_WRITEFUNCTION, curlBodySinkWrite);
+	curlApi()->easy_setopt(c, CURLOPT_WRITEDATA, &sink);
 	curlApi()->easy_setopt(c, CURLOPT_TIMEOUT_MS, timeoutMs);
 	curlApi()->easy_setopt(c, CURLOPT_CONNECTTIMEOUT_MS, std::min(timeoutMs, 5000L));
 	curlApi()->easy_setopt(c, CURLOPT_NOSIGNAL, 1L);
@@ -233,6 +234,37 @@ void writeCachedCmList(const std::vector<Endpoint>& eps)
 	for (const auto& e : eps) ofs << e.host << ':' << e.port << '\n';
 }
 
+// The cell Steam stores in config.vdf ("CellIDServerOverride"); 0 when there
+// is none. The directory lists the CMs nearest to that cell first.
+uint32_t steamCellId()
+{
+	const char* home = std::getenv("HOME");
+	if (!home) return 0;
+	for (const char* root : {"/.steam/steam", "/.steam/debian-installation", "/.local/share/Steam"})
+	{
+		std::ifstream in(std::string(home) + root + "/config/config.vdf");
+		if (!in) continue;
+		const std::string text((std::istreambuf_iterator<char>(in)), {});
+		const std::string key = "\"CellIDServerOverride\"";
+		const auto at = text.find(key);
+		const auto open = at == std::string::npos ? at : text.find('"', at + key.size());
+		if (open == std::string::npos) return 0;
+		uint32_t cell = 0;
+		const char* begin = text.data() + open + 1;
+		const char* end = text.data() + text.size();
+		const auto parsed = std::from_chars(begin, end, cell);
+		return parsed.ec == std::errc{} && parsed.ptr != begin && parsed.ptr < end &&
+		       *parsed.ptr == '"' ? cell : 0;
+	}
+	return 0;
+}
+
+std::string cmListUrl()
+{
+	return "https://api.steampowered.com/ISteamDirectory/GetCMListForConnect/v1/"
+	       "?cellid=" + std::to_string(steamCellId()) + "&cmtype=websockets&format=json";
+}
+
 std::vector<Endpoint> fetchCmList(AppInfoProvision::NetworkFailure& failure,
                                   const BatchBudget& budget)
 {
@@ -250,9 +282,7 @@ std::vector<Endpoint> fetchCmList(AppInfoProvision::NetworkFailure& failure,
 	}
 
 	std::vector<Endpoint> out;
-	const std::string url =
-		"https://api.steampowered.com/ISteamDirectory/GetCMListForConnect/v1/"
-		"?cellid=0&cmtype=websockets&format=json";
+	const std::string url = cmListUrl();
 	std::string body;
 	failure = httpsGet(url, body, budget);
 	if (failure != AppInfoProvision::NetworkFailure::None) return out;
@@ -317,9 +347,12 @@ bool gzipInflate(const std::string& in, uint32_t expected, std::string& out)
 {
 	const ZlibApi* const z = zlibApi();
 	if (!z || in.empty()) return false;
-	// Cap the inflate so a malicious/oversized stream can't exhaust memory.
-	const size_t cap = expected ? (static_cast<size_t>(expected) + 64)
-	                            : (64u * 1024u * 1024u);
+	// Cap the inflate so a malicious/oversized stream can't exhaust memory: no
+	// answer is larger than a frame (32 MiB, to fit a 32-bit process), whatever
+	// size the server declares.
+	constexpr size_t kMaxInflated = 32u * 1024u * 1024u;
+	const size_t cap = (expected ? std::min<size_t>(expected, kMaxInflated)
+	                             : kMaxInflated) + 64;
 	constexpr int kGzipWindow = 15 + 16;
 	constexpr int kOk = 0, kStreamEnd = 1, kNoFlush = 0;
 	ZStream stream {};
@@ -568,12 +601,13 @@ std::string buildCmPacket(uint32_t emsg, const std::string& body,
 
 // Dispatch one decoded CM packet.  Recurses into Multi.  Updates `out`
 // for PICS apps, `session` on logon response, and sets `picsDone` when a
-// PICS response with response_pending==false arrives.  Returns false for
-// a PICS response it cannot read, which ends the session.
+// PICS response with response_pending==false arrives.  Returns false for an
+// answer it cannot read (a PICS response, or a Multi that does not parse or
+// inflate, which may carry one), which ends the session.
 bool handlePacket(const std::string& pkt, Session& session,
                   std::unordered_map<uint32_t, std::string>& out,
                   std::unordered_map<uint32_t, uint32_t>* changes,
-                  bool& gotLogon, bool& picsDone)
+                  bool& logonAnswered, bool& gotLogon, bool& picsDone)
 {
 	uint32_t emsg = 0;
 	std::string hdrBytes, body;
@@ -582,16 +616,17 @@ bool handlePacket(const std::string& pkt, Session& session,
 	if (emsg == EMSG_MULTI)
 	{
 		CMsgMulti multi;
-		if (!multi.ParseFromString(body)) return true;
+		if (!multi.ParseFromString(body)) return false;
 		std::string payload = multi.message_body();
 		if (multi.size_unzipped() > 0)
 		{
 			std::string inflated;
-			if (!gzipInflate(payload, multi.size_unzipped(), inflated)) return true;
+			if (!gzipInflate(payload, multi.size_unzipped(), inflated)) return false;
 			payload.swap(inflated);
 		}
 		for (const auto& inner : CmWire::expandMultiBody(payload))
-			if (!handlePacket(inner, session, out, changes, gotLogon, picsDone))
+			if (!handlePacket(inner, session, out, changes, logonAnswered, gotLogon,
+			                  picsDone))
 				return false;
 		return true;
 	}
@@ -608,6 +643,7 @@ bool handlePacket(const std::string& pkt, Session& session,
 		CMsgClientLogonResponse resp;
 		if (resp.ParseFromString(body))
 		{
+			logonAnswered = true;
 			gotLogon = (resp.eresult() == 1); // k_EResultOK
 			session.loggedOn = gotLogon;
 		}
@@ -630,7 +666,8 @@ template <typename Pred>
 bool pumpUntil(TlsSocket& sock, Session& session,
                std::unordered_map<uint32_t, std::string>& out,
                std::unordered_map<uint32_t, uint32_t>* changes,
-               bool& gotLogon, bool& picsDone, Pred predicate)
+               bool& logonAnswered, bool& gotLogon, bool& picsDone,
+               Pred predicate)
 {
 	for (;;)
 	{
@@ -646,7 +683,8 @@ bool pumpUntil(TlsSocket& sock, Session& session,
 			if (opcode == 0x8) return predicate();    // close: done if answered
 			if (opcode == 0x9 || opcode == 0xA) continue; // ping/pong: ignore
 			if (opcode == 0x2 &&
-			    !handlePacket(payload, session, out, changes, gotLogon, picsDone))
+			    !handlePacket(payload, session, out, changes, logonAnswered,
+			                  gotLogon, picsDone))
 				return false;
 		}
 		if (predicate()) return true;
@@ -668,14 +706,15 @@ bool runSession(const Endpoint& ep, std::vector<uint32_t>& pending,
 	if (!wsHandshake(sock, ep)) return false;
 
 	Session session;
-	bool gotLogon = false, picsDone = false;
+	bool logonAnswered = false, gotLogon = false, picsDone = false;
 
-	// Anonymous logon.
+	// Anonymous logon. A refusal (TryAnotherCM during maintenance, say) ends
+	// the session at once: the CM may keep the socket open.
 	const std::string logonBody = CmWire::buildAnonLogon();
 	if (!sock.sendAll(wsFrame(buildCmPacket(EMSG_CLIENT_LOGON, logonBody, session))))
 		return false;
-	if (!pumpUntil(sock, session, out, changes, gotLogon, picsDone,
-	               [&] { return gotLogon; }))
+	if (!pumpUntil(sock, session, out, changes, logonAnswered, gotLogon, picsDone,
+	               [&] { return logonAnswered; }))
 		return false;
 	if (!gotLogon) return false;
 
@@ -683,7 +722,7 @@ bool runSession(const Endpoint& ep, std::vector<uint32_t>& pending,
 	                                        CmWire::buildPicsRequest(pending),
 	                                        session))))
 		return false;
-	if (!pumpUntil(sock, session, out, changes, gotLogon, picsDone,
+	if (!pumpUntil(sock, session, out, changes, logonAnswered, gotLogon, picsDone,
 	               [&] { return picsDone; }))
 		return false;
 	pending.clear();
@@ -759,9 +798,7 @@ static FetchResult fetchProductInfoHere(
 			std::error_code ec;
 			std::filesystem::remove(cmListCachePath(), ec);
 			std::vector<Endpoint> fresh;
-			const std::string url =
-				"https://api.steampowered.com/ISteamDirectory/GetCMListForConnect/v1/"
-				"?cellid=0&cmtype=websockets&format=json";
+			const std::string url = cmListUrl();
 			std::string body;
 			const auto freshFailure = httpsGet(url, body, budget);
 			if (freshFailure == AppInfoProvision::NetworkFailure::None)

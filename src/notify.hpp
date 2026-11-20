@@ -8,8 +8,7 @@
 //
 // Note: urgency=critical notifications are "resident" in some desktop environments
 // and ignore the expire timeout, staying on screen forever if no timeout is specified.
-// Here every notifying level gets an explicit timeout AND a non-critical
-// urgency, so they all auto-dismiss.
+// Callers pass an explicit timeout and a non-critical urgency.
 
 #include <atomic>
 #include <chrono>
@@ -150,44 +149,16 @@ namespace Notify
 			+ "/.local/share/Lumen/notifications", title, body, timeoutMs);
 	}
 
-	struct Spec
-	{
-		bool        enabled;   // does this level raise a desktop popup?
-		int         timeoutMs; // notify-send -t (auto-dismiss after this)
-		const char* urgency;   // notify-send -u; never "critical" (resident)
-	};
-
-	// Maps a log level to how its desktop notification should behave.
-	// Non-notifying levels return {enabled=false}.
-	inline Spec specForLevel(LogLevel lvl)
-	{
-		switch (lvl)
-		{
-			case LogLevel::NotifyShort: return { true, 10000, "normal" };
-			case LogLevel::NotifyLong:  return { true, 30000, "normal" };
-			// Warn used to be urgency=critical with no timeout, so it never
-			// auto-dismissed.  Give it the long timeout + normal urgency so
-			// it behaves like the other popups.
-			case LogLevel::Warn:        return { true, 30000, "normal" };
-			default:                    return { false, 0, "normal" };
-		}
-	}
-
-	// Escape a string for safe inclusion inside a double-quoted shell word.
-	// Without this a stray `"`, `$`, or backtick in a log message could break
-	// the system() command or inject into the shell (fixes the old TODO in
-	// log.hpp about breakage on a single `"`).
+	// Escape a string for a double-quoted shell word: drop NULs (system()
+	// would stop at one and lose the closing quote) and backslash-escape
+	// `\`, `"`, `$` and backtick, so a message cannot break or inject into
+	// the command.
 	inline std::string shellEscapeDoubleQuoted(const std::string& s)
 	{
 		std::string out;
 		out.reserve(s.size() + 8);
 		for (char c : s)
 		{
-			// Drop embedded NULs.  __log builds its message with
-			// snprintf(size)+1 then resize(size), so the std::string it
-			// hands us carries a trailing '\0'.  If we copied that into the
-			// command, system()'s c_str() would truncate there and lose the
-			// closing quote -> shell syntax error -> no notification.
 			if (c == '\0')
 			{
 				continue;
@@ -201,31 +172,10 @@ namespace Notify
 		return out;
 	}
 
-	// Build the full notify-send command for a level, or "" for a
-	// non-notifying level (caller then skips system()).
-	inline std::string buildCommand(LogLevel lvl, const std::string& body)
-	{
-		const Spec s = specForLevel(lvl);
-		if (!s.enabled)
-		{
-			return {};
-		}
-
-		std::string cmd = "notify-send -t ";
-		cmd += std::to_string(s.timeoutMs);
-		cmd += " -u \"";
-		cmd += s.urgency;
-		cmd += "\" \"SLSsteam-moon\" \"";
-		cmd += shellEscapeDoubleQuoted(body);
-		cmd += "\"";
-		return cmd;
-	}
-
 	// Build a notify-send command from explicit parts. The user-facing popup
 	// path (CLog::notifyUser) decides title/body/timeout/urgency from the
-	// message catalog + severity, rather than from a LogLevel. Same shell
-	// escaping as buildCommand so a stray quote / metachar in the body can't
-	// break or inject into system().
+	// message catalog + severity. The body goes through
+	// shellEscapeDoubleQuoted.
 	inline std::string buildCommandRaw(const std::string& title,
 	                                   const std::string& body,
 	                                   int timeoutMs,

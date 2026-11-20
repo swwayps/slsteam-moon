@@ -17,7 +17,6 @@
 #include "patterns.hpp"
 #include "runtime_attestation.hpp"
 #include "hostexec.hpp"
-#include "runtime_dependencies.hpp"
 #include "utils.hpp"
 #include "utils/ManifestFetch.hpp"
 #include "utils/process_lock.hpp"
@@ -287,8 +286,6 @@ static void setup()
 	g_auditDiagnosticsEnabled.store(g_config.extendedLogging.get(),
 	                               std::memory_order_release);
 
-	RuntimeDependencies::check();
-
 	// Decide this session's CEF debug port ONCE, as EARLY as possible (this is
 	// la_preinit, before the client can spawn the webhelper) so g_cefSessionPort
 	// is already set when the exec hook fires and stays fixed across webhelper
@@ -457,14 +454,11 @@ static void load()
 		return;
 	}
 
-	// The i386 client maps steamclient.so first, the 64-bit one steamui.so:
-	// wait for the other module's la_objopen. Tearing down here stopped the
-	// manifest donor and hot reload for the whole session.
-	if (!LM_FindModule("steamclient.so", &g_modSteamClient))
-	{
-		return;
-	}
-	if (!LM_FindModule("steamui.so", &g_modSteamUI))
+	// Either module can map first (steamui.so does on the 64-bit client); the
+	// next la_objopen retries. Nothing is set up yet, so nothing is torn down:
+	// a teardown here stops the manifest donor and hot reload for the whole session.
+	if (!LM_FindModule("steamclient.so", &g_modSteamClient) ||
+	    !LM_FindModule("steamui.so", &g_modSteamUI))
 	{
 		return;
 	}

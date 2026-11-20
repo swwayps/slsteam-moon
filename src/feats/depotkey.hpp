@@ -2,8 +2,8 @@
 //
 // Depot decryption key feature.
 //
-// Intercepts CMsgClientGetDepotDecryptionKey requests/responses inside the
-// existing CProtoBufMsgBase hooks (already provided by SLSsteam).
+// Sees CMsgClientGetDepotDecryptionKey requests in the websocket send hook and
+// their responses on the CM receive path.
 //
 // Behaviour summary:
 //   - Outgoing requests: track (depot_id -> app_id) so we can correlate the
@@ -35,6 +35,7 @@
 #include <map>
 #include <mutex>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 class CNetPacket;
@@ -81,6 +82,10 @@ namespace DepotKey
 	// Returns deduped depot ids; empty on any error / no $HOME.
 	std::vector<uint32_t> managedDepotsForApp(uint32_t appId);
 
+	// Every cached depot whose entry records one of `appIds`, observed keys
+	// included: the depots package 0 lists for the apps it holds.
+	std::vector<uint32_t> depotsForApps(const std::unordered_set<uint32_t>& appIds);
+
 	// Importer for community-format Lua scripts.  Called at startup;
 	// scans `config/stplug-in/*.lua` (under Steam) and ingests every
 	// `addappid(depotId, 1, "<64 hex chars>")` into our cache, idempotently.
@@ -108,9 +113,7 @@ namespace DepotKey
 	// RecvAction + classifyRecv (the pure substitution decision) live in
 	// depotkey_recv_policy.hpp so they can be unit-tested without protobuf.
 
-	// Specific protobuf-typed handlers. recvDepotKey returns true iff it
-	// rewrote the response in place (so the CNetPacket CM-receive path
-	// reserializes the packet); the classic CProtoBufMsgBase path ignores it.
+	// Returns true iff it rewrote the response in place, so the CM receive
+	// path reserializes the packet.
 	bool recvDepotKey(CMsgClientGetDepotDecryptionKeyResponse* resp);
-	void sendDepotKey(CMsgClientGetDepotDecryptionKey* req);
 }

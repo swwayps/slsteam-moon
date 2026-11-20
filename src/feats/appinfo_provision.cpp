@@ -15,6 +15,7 @@
 #include "dlcids.hpp"
 #include "dlc_metadata.hpp"
 #include "hotreload.hpp"
+#include "kvtext.hpp"
 #include "manifeststore.hpp"
 #include "manifeststore_io.hpp"
 #include "manifestsynth.hpp"
@@ -47,6 +48,7 @@
 #include "yaml-cpp/emitter.h"
 
 #include "../utils/curl_api.hpp"
+#include "../utils/curl_sink.hpp"
 #include <curl/curl.h>
 
 #include <algorithm>
@@ -221,11 +223,6 @@ void noteColdRetryOutcome(std::uint32_t appId, bool unresolved)
 
 
 
-std::size_t curlWriteCb(const char* p, std::size_t sz, std::size_t n, std::string* dst)
-{
-	dst->append(p, sz * n);
-	return sz * n;
-}
 
 NetworkFailure httpGetJsonHere(const std::string& url, std::string& body,
                                std::string& diag, long timeoutMs)
@@ -240,10 +237,13 @@ NetworkFailure httpGetJsonHere(const std::string& url, std::string& body,
 	if (!c) { diag = "curl_easy_init failed"; return NetworkFailure::Provider; }
 
 	body.clear();
+	// A provider answer becomes a cache pair, which is at most 16 MiB.
+	CurlBodySink sink{&body, 16u << 20};
 	curlApi()->easy_setopt(c, CURLOPT_URL, url.c_str());
 	curlApi()->easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1L);
-	curlApi()->easy_setopt(c, CURLOPT_WRITEFUNCTION, curlWriteCb);
-	curlApi()->easy_setopt(c, CURLOPT_WRITEDATA, &body);
+	curlApi()->easy_setopt(c, CURLOPT_REDIR_PROTOCOLS, curlRedirectProtocols(url));
+	curlApi()->easy_setopt(c, CURLOPT_WRITEFUNCTION, curlBodySinkWrite);
+	curlApi()->easy_setopt(c, CURLOPT_WRITEDATA, &sink);
 	// Bounded timeouts.  AppInfoProvision runs in setup() on the startup
 	// path, so we must not stall Steam's launch for too long if
 	// steamcmd.net is slow or unreachable.  The fetch is now wrapped in a
@@ -332,102 +332,6 @@ std::string expandUrl(const std::string& tmpl, uint32_t appId)
 		}
 	}
 	return out;
-}
-
-// ---------------------------------------------------------------------------
-// VDF text writer.
-// ---------------------------------------------------------------------------
-//
-// `AppInfoVdf::translateWireToIndexed` accepts the same KV1-text dialect
-// that PICS uses on the wire ("appinfo" { ... } with quoted keys/values
-// and braces).  We emit a strict subset of that here: every leaf is a
-// quoted string (Steam's appinfo schema is all-strings anyway).
-
-void emitEscaped(std::string& out, const std::string& s)
-{
-	out.push_back('"');
-	for (char c : s)
-	{
-		if (c == '\\' || c == '"') out.push_back('\\');
-		out.push_back(c);
-	}
-	out.push_back('"');
-}
-
-void emitNode(std::string& out, const YAML::Node& node, int depth);
-
-void emitMap(std::string& out, const YAML::Node& node, int depth)
-{
-	for (auto it = node.begin(); it != node.end(); ++it)
-	{
-		const std::string key = it->first.as<std::string>();
-		// SteamCMD JSON adds "_change_number", "_sha", "_size",
-		// "_missing_token" sibling fields at the top level.  These
-		// belong to the *envelope*, not the appinfo body, so the
-		// caller filters them before calling emitMap.
-		out.append(depth, '\t');
-		emitEscaped(out, key);
-		const auto& val = it->second;
-		if (val.IsMap())
-		{
-			out.append("\n");
-			out.append(depth, '\t');
-			out.append("{\n");
-			emitNode(out, val, depth + 1);
-			out.append(depth, '\t');
-			out.append("}\n");
-		}
-		else if (val.IsScalar())
-		{
-			out.append("\t\t");
-			emitEscaped(out, val.as<std::string>());
-			out.append("\n");
-		}
-		else if (val.IsSequence())
-		{
-			// Sequences shouldn't appear in appinfo, but if they do,
-			// render as an indexed map: "0" "v0" "1" "v1"...
-			out.append("\n");
-			out.append(depth, '\t');
-			out.append("{\n");
-			int idx = 0;
-			for (const auto& child : val)
-			{
-				out.append(depth + 1, '\t');
-				emitEscaped(out, std::to_string(idx++));
-				if (child.IsMap())
-				{
-					out.append("\n");
-					out.append(depth + 1, '\t');
-					out.append("{\n");
-					emitNode(out, child, depth + 2);
-					out.append(depth + 1, '\t');
-					out.append("}\n");
-				}
-				else
-				{
-					out.append("\t\t");
-					emitEscaped(out, child.IsScalar() ? child.as<std::string>() : std::string{});
-					out.append("\n");
-				}
-			}
-			out.append(depth, '\t');
-			out.append("}\n");
-		}
-		else
-		{
-			// Null / undefined → empty string
-			out.append("\t\t\"\"\n");
-		}
-	}
-}
-
-void emitNode(std::string& out, const YAML::Node& node, int depth)
-{
-	if (node.IsMap())
-	{
-		emitMap(out, node, depth);
-	}
 }
 
 // A depot's config.oslist, or "" when it has none or it is unreadable.
@@ -666,6 +570,22 @@ bool readValidatedCacheBufferLocked(uint32_t appId, std::string& wireOut,
                                     std::string& diag,
                                     bool* requiresProton = nullptr);
 
+struct ProvisionPassContext
+{
+	std::unordered_map<uint32_t, std::string> cmBuffers;
+	std::unordered_map<uint32_t, uint32_t> cmChanges;
+	std::unordered_map<uint32_t, CachePublicationToken> cachePublications;
+	// The newest archived gid per depot. The store is walked on first use and
+	// the index then serves every fingerprint and depot rebuild of the pass.
+	std::optional<ManifestStore::ArchivedGidIndex> archivedGids;
+
+	const ManifestStore::ArchivedGidIndex& archived()
+	{
+		if (!archivedGids) archivedGids = ManifestStore::archivedGidIndex();
+		return *archivedGids;
+	}
+};
+
 // Rebuild a missing `depots` block for a token-locked app from data we
 // already hold on disk.  Some titles (e.g. Risk of Rain 2, app 632360)
 // have their PICS product-info gated behind an app access token Valve
@@ -679,19 +599,18 @@ bool readValidatedCacheBufferLocked(uint32_t appId, std::string& wireOut,
 // CompatTool mapping downstream.  No-op when the body already has real
 // depots (see ManifestSynth::injectSynthesizedDepots).  Mutates `body`;
 // returns the number of depots synthesized.
-int synthesizeDepotsFromStore(YAML::Node& body, uint32_t appId)
+int synthesizeDepotsFromStore(YAML::Node& body, uint32_t appId,
+                              ProvisionPassContext& context)
 {
 	std::vector<ManifestSynth::SynthDepot> depots;
 	// Accumulate file lists per OS across all of the app's depots so we can
 	// synthesize one launch entry per platform (native + forced-Proton).
 	std::vector<std::string> winFiles, linFiles, macFiles;
-	// One walk of the store for every depot, instead of one per depot.
-	std::optional<ManifestStore::ArchivedGidIndex> archived;
 	for (uint32_t depotId : DepotKey::managedDepotsForApp(appId))
 	{
-		if (!archived) archived = ManifestStore::archivedGidIndex();
-		const auto found = archived->find(depotId);
-		const uint64_t gid = found == archived->end() ? 0 : found->second;
+		const auto& archived = context.archived();
+		const auto found = archived.find(depotId);
+		const uint64_t gid = found == archived.end() ? 0 : found->second;
 		if (gid == 0) continue; // no archived manifest -> can't plan it
 
 		// Read the archived manifest, derive the depot's OS from its parsed
@@ -778,7 +697,8 @@ bool isDlcApp(const YAML::Node& body)
 
 SourceResult renderAppinfoBuffer(
     const YAML::Node& appNode, uint32_t appId, std::string& wireOut,
-    const CachePublicationToken& publication, bool* synthesizedOut)
+    const CachePublicationToken& publication, ProvisionPassContext& context,
+    bool* synthesizedOut)
 {
 	if (synthesizedOut) *synthesizedOut = false;
 	if (!appNode.IsMap()) return SourceResult::InvalidResponse;
@@ -809,7 +729,7 @@ SourceResult renderAppinfoBuffer(
 	// tail below runs unchanged.  No-op when real depots are present.
 	if (YAML::Node d = body["depots"]; !d || !d.IsMap() || d.size() == 0)
 	{
-		const int n = synthesizeDepotsFromStore(body, appId);
+		const int n = synthesizeDepotsFromStore(body, appId, context);
 		if (n > 0)
 		{
 			if (synthesizedOut) *synthesizedOut = true;
@@ -839,10 +759,7 @@ SourceResult renderAppinfoBuffer(
 	// active/baseline manifest read.
 
 	// Steam's appinfo wire format wraps the document in "appinfo" { ... }.
-	wireOut.clear();
-	wireOut.append("\"appinfo\"\n{\n");
-	emitNode(wireOut, body, 1);
-	wireOut.append("}\n");
+	wireOut = KvText::emitAppinfo(body);
 	return SourceResult::Success;
 }
 
@@ -951,7 +868,7 @@ void persistPendingProtonMappings(bool waitForLock)
 	if (g_needProton.empty() && g_pendingProtonRemovals.empty()) return;
 	(void)getCacheDir();
 	ProcessLock::FileLock cacheLock(cacheLockPath(), !waitForLock);
-	if (!cacheLock.acquired()) return;
+	if (cacheLockHeldElsewhere(cacheLock)) return;
 
 	const auto existing = readPendingProtonFileLocked();
 	if (existing.status == PendingProtonFileStatus::Invalid)
@@ -1059,7 +976,7 @@ bool persistBuffer(uint32_t appId, uint32_t changeNumber,
 	(void)getCacheDir();
 	std::lock_guard<std::mutex> publicationLock(g_cachePublicationMu);
 	ProcessLock::FileLock cacheLock(cacheLockPath(), false);
-	if (!cacheLock.acquired())
+	if (cacheLockHeldElsewhere(cacheLock))
 	{
 		g_pLog->info("AppInfoProvision: unable to lock cache pair for app=%u\n", appId);
 		return false;
@@ -1094,8 +1011,18 @@ bool persistBuffer(uint32_t appId, uint32_t changeNumber,
 	// so the generation gate above already covers it: nothing can change the
 	// generation while this thread holds the publication mutex and cache lock.
 	const bool markerBefore = SynthMark::isMarked(getCacheDir(), appId);
+	// A refresh that renders the pair already on disk changes nothing:
+	// writing it again would only cost backups and fsyncs and drop the base's
+	// DLC metadata, which is still valid for these bytes.
+	std::string onDisk;
+	const bool unchanged = markerBefore == markSynthetic &&
+		readTextFileBounded(getMetaPath(appId), metadata.size(), onDisk) &&
+		onDisk == metadata &&
+		readTextFileBounded(getBufferPath(appId), wire.size(), onDisk) &&
+		onDisk == wire;
 	std::string writeError;
-	if (!publishCachePairLocked(appId, wire, metadata, markSynthetic,
+	if (!unchanged &&
+	    !publishCachePairLocked(appId, wire, metadata, markSynthetic,
 	                            markerBefore, writeError))
 	{
 		g_pLog->debug(
@@ -1229,7 +1156,7 @@ bool injectProtonMappings()
 	(void)getCacheDir();
 	const auto configLockPath = cacheLockPath();
 	ProcessLock::FileLock configLock(configLockPath, false);
-	if (!configLock.acquired())
+	if (cacheLockHeldElsewhere(configLock))
 	{
 		g_pLog->debug("AppInfoProvision: config.vdf writer lock is busy\n");
 		return false;
@@ -1311,136 +1238,6 @@ bool injectProtonMappings()
 	return true;
 }
 
-// ---------------------------------------------------------------------------
-// Native CM provider: parse the wire-text VDF buffer the anonymous CM
-// returns into the same YAML::Node shape extractAppNode produces from
-// steamcmd's JSON, so it flows through the identical prune/render/persist
-// path.  The CM buffer is `"appinfo" { ... }` KV1 text;
-// we parse its inner body into a map.
-// ---------------------------------------------------------------------------
-
-// Minimal KV1-text reader: builds a YAML::Node tree from a VDF-text body.
-// `p`/`end` bracket the buffer.  Returns the node for the object whose
-// opening brace has already been consumed by the caller (or, at top
-// level, the single "appinfo" wrapper's body).  Defensive: bails to an
-// empty node on malformed input.
-class CmVdfReader
-{
-public:
-	CmVdfReader(const char* p, const char* end) : p_(p), end_(end) {}
-
-	// Parse the top-level `"appinfo" { ... }` and return the inner body
-	// node (equivalent to steamcmd's data[appid]).  Empty on failure.
-	YAML::Node parseAppinfo()
-	{
-		std::string key;
-		Tok t = next(key);
-		if (t != Tok::String) return YAML::Node(YAML::NodeType::Undefined);
-		t = next(key /*reused as scratch*/);
-		// After the top key we expect an opening brace.
-		if (t != Tok::OpenBrace) return YAML::Node(YAML::NodeType::Undefined);
-		return parseObject();
-	}
-
-private:
-	enum class Tok { String, OpenBrace, CloseBrace, End };
-
-	YAML::Node parseObject()
-	{
-		YAML::Node node(YAML::NodeType::Map);
-		std::string key;
-		for (;;)
-		{
-			Tok t = next(key);
-			if (t == Tok::CloseBrace || t == Tok::End) break;
-			if (t != Tok::String) break; // malformed
-			std::string val;
-			Tok vt = next(val);
-			if (vt == Tok::OpenBrace)
-			{
-				node[key] = parseObject();
-			}
-			else if (vt == Tok::String)
-			{
-				node[key] = val;
-			}
-			else
-			{
-				break; // malformed
-			}
-		}
-		return node;
-	}
-
-	Tok next(std::string& out)
-	{
-		out.clear();
-		skipWs();
-		if (p_ >= end_) return Tok::End;
-		const char c = *p_;
-		if (c == '{') { ++p_; return Tok::OpenBrace; }
-		if (c == '}') { ++p_; return Tok::CloseBrace; }
-		if (c == '"') return readQuoted(out);
-		return readBare(out);
-	}
-
-	void skipWs()
-	{
-		while (p_ < end_)
-		{
-			const unsigned char c = static_cast<unsigned char>(*p_);
-			if (c == ' ' || c == '\t' || c == '\r' || c == '\n') { ++p_; continue; }
-			if (c == '/' && p_ + 1 < end_ && p_[1] == '/')
-			{
-				while (p_ < end_ && *p_ != '\n') ++p_;
-				continue;
-			}
-			break;
-		}
-	}
-
-	Tok readQuoted(std::string& out)
-	{
-		++p_;
-		while (p_ < end_)
-		{
-			const char c = *p_++;
-			if (c == '"') return Tok::String;
-			if (c == '\\' && p_ < end_)
-			{
-				const char e = *p_++;
-				switch (e)
-				{
-					case 'n':  out.push_back('\n'); break;
-					case 't':  out.push_back('\t'); break;
-					case 'r':  out.push_back('\r'); break;
-					case '"':  out.push_back('"');  break;
-					case '\\': out.push_back('\\'); break;
-					default:   out.push_back(e);    break;
-				}
-				continue;
-			}
-			out.push_back(c);
-		}
-		return Tok::End;
-	}
-
-	Tok readBare(std::string& out)
-	{
-		while (p_ < end_)
-		{
-			const unsigned char c = static_cast<unsigned char>(*p_);
-			if (c == ' ' || c == '\t' || c == '\r' || c == '\n' ||
-			    c == '{' || c == '}' || c == '"') break;
-			out.push_back(*p_++);
-		}
-		return Tok::String;
-	}
-
-	const char* p_;
-	const char* end_;
-};
-
 bool requiresProtonFromBody(const YAML::Node& body) noexcept
 {
 	try
@@ -1482,8 +1279,7 @@ bool cachedWireRequiresProton(const std::string& wire) noexcept
 	try
 	{
 		if (wire.empty()) return false;
-		CmVdfReader reader(wire.data(), wire.data() + wire.size());
-		return requiresProtonFromBody(reader.parseAppinfo());
+		return requiresProtonFromBody(KvText::parseAppinfo(wire));
 	}
 	catch (...)
 	{
@@ -1590,8 +1386,7 @@ bool readValidatedCacheBufferLocked(uint32_t appId, std::string& wireOut,
 		const std::string actualSha(
 		    reinterpret_cast<const char*>(digestBytes), sizeof(digestBytes));
 
-		CmVdfReader reader(wire.data(), wire.data() + wire.size());
-		const YAML::Node appNode = reader.parseAppinfo();
+		const YAML::Node appNode = KvText::parseAppinfo(wire);
 		const bool parsed = appNode && appNode.IsMap() && appNode.size() > 0;
 		const cache::CacheRecordFacts facts{
 		    .requestedAppId = appId,
@@ -1643,7 +1438,7 @@ bool cachedWireSizeMatches(uint32_t appId, long long actualSize)
 cache::CacheUse cacheUseForApp(uint32_t appId, bool refreshUnavailable)
 {
 	ProcessLock::FileLock cacheLock(cacheLockPath(), false);
-	if (!cacheLock.acquired()) return cache::CacheUse::None;
+	if (cacheLockHeldElsewhere(cacheLock)) return cache::CacheUse::None;
 
 	cache::CacheValidationKey key{};
 	const bool present = statBuffer(appId, key);
@@ -1724,7 +1519,7 @@ CacheProbe probeCacheImpl(uint32_t appId, CacheProbeMode mode)
 		return result;
 	};
 	ProcessLock::FileLock cacheLock(cacheLockPath(), false);
-	if (!cacheLock.acquired())
+	if (cacheLockHeldElsewhere(cacheLock))
 	{
 		probe.readiness = CacheReadiness::Invalid;
 		return remember(probe);
@@ -1794,12 +1589,13 @@ CacheProbe probeCacheImpl(uint32_t appId, CacheProbeMode mode)
 // number for the meta record.
 SourceResult renderAndPersist(uint32_t appId, const YAML::Node& appNode,
                               uint32_t changeNumber,
-                              const CachePublicationToken& publication)
+                              const CachePublicationToken& publication,
+                              ProvisionPassContext& context)
 {
 	std::string wire;
 	bool synthesized = false;
 	const SourceResult renderResult = renderAppinfoBuffer(
-	    appNode, appId, wire, publication, &synthesized);
+	    appNode, appId, wire, publication, context, &synthesized);
 	if (renderResult != SourceResult::Success)
 	{
 		const char* reason = "invalid response";
@@ -1839,25 +1635,18 @@ SourceResult renderAndPersist(uint32_t appId, const YAML::Node& appNode,
 // path's tail but skips the JSON parse — the CM buffer is already wire VDF.
 SourceResult provisionAppFromCmBuffer(uint32_t appId, const std::string& cmWire,
                                       uint32_t changeNumber,
-                                      const CachePublicationToken& publication)
+                                      const CachePublicationToken& publication,
+                                      ProvisionPassContext& context)
 {
 	if (cmWire.empty()) return SourceResult::InvalidResponse;
-	CmVdfReader reader(cmWire.data(), cmWire.data() + cmWire.size());
-	YAML::Node appNode = reader.parseAppinfo();
+	YAML::Node appNode = KvText::parseAppinfo(cmWire);
 	if (!appNode || !appNode.IsMap() || appNode.size() == 0)
 	{
 		g_pLog->info("AppInfoProvision: app=%u CM buffer parse failed, fallback\n", appId);
 		return SourceResult::InvalidResponse;
 	}
-	return renderAndPersist(appId, appNode, changeNumber, publication);
+	return renderAndPersist(appId, appNode, changeNumber, publication, context);
 }
-
-struct ProvisionPassContext
-{
-	std::unordered_map<uint32_t, std::string> cmBuffers;
-	std::unordered_map<uint32_t, uint32_t> cmChanges;
-	std::unordered_map<uint32_t, CachePublicationToken> cachePublications;
-};
 
 struct PendingProtonLoad
 {
@@ -1870,7 +1659,7 @@ struct PendingProtonLoad
 PendingProtonLoad loadPendingProtonMappings()
 {
 	ProcessLock::FileLock cacheLock(cacheLockPath(), false);
-	if (!cacheLock.acquired()) return {};
+	if (cacheLockHeldElsewhere(cacheLock)) return {};
 
 	const auto file = readPendingProtonFileLocked();
 	PendingProtonLoad result;
@@ -1930,7 +1719,7 @@ bool clearPendingProtonMappingsIfUnchanged(
     const std::set<uint32_t>& expectedFileIds)
 {
 	ProcessLock::FileLock cacheLock(cacheLockPath(), false);
-	if (!cacheLock.acquired()) return false;
+	if (cacheLockHeldElsewhere(cacheLock)) return false;
 
 	const auto current = readPendingProtonFileLocked();
 	if (current.status != PendingProtonFileStatus::Valid ||
@@ -2116,7 +1905,7 @@ bool memoizePublishedCachePairLocked(uint32_t appId)
 bool readValidatedCacheBuffer(uint32_t appId, std::string& buffer)
 {
 	ProcessLock::FileLock cacheLock(cacheLockPath(), false);
-	if (!cacheLock.acquired()) return false;
+	if (cacheLockHeldElsewhere(cacheLock)) return false;
 	std::string diag;
 	return readValidatedCacheBufferLocked(appId, buffer, diag);
 }
@@ -2305,7 +2094,7 @@ bool readValidatedDlcMetadataCache(
 	if (!managed) return false;
 
 	ProcessLock::FileLock cacheLock(cacheLockPath(), false);
-	if (!cacheLock.acquired()) return false;
+	if (cacheLockHeldElsewhere(cacheLock)) return false;
 	std::string validatedBaseWire;
 	std::string baseValidationDiag;
 	if (!readValidatedCacheBufferLocked(
@@ -2375,6 +2164,21 @@ static bool dlcMetadataPublicationMatchesBaseLocked(
 		metadata.changeNumber, currentSha);
 }
 
+bool cacheLockHeldElsewhere(const ProcessLock::FileLock& lock)
+{
+	if (!lock.usable())
+	{
+		// In-process writers are serialized by cachePublicationMutex(), pairs
+		// are replaced by rename and config.vdf through writeIfUnchanged, so
+		// the work stays safe without the cross-process lock.
+		static std::atomic<bool> warned{false};
+		if (!warned.exchange(true) && g_pLog)
+			g_pLog->warn("AppInfoProvision: cache lock %s cannot be used; "
+			             "cache work goes ahead without it\n", lock.path().c_str());
+	}
+	return lock.heldByAnother();
+}
+
 std::mutex& cachePublicationMutex()
 {
 	return g_cachePublicationMu;
@@ -2384,11 +2188,6 @@ std::uint64_t cachePublicationGenerationLocked(uint32_t appId)
 {
 	const auto it = g_cachePublicationGenerations.find(appId);
 	return it == g_cachePublicationGenerations.end() ? 0 : it->second;
-}
-
-std::string localContentFingerprint(uint32_t appId)
-{
-	return localContentFingerprint(appId, ManifestStore::archivedGidIndex());
 }
 
 std::string localContentFingerprint(
@@ -2456,7 +2255,7 @@ bool terminalProvisionResultKnown(uint32_t appId,
 		outcome, nullptr)) return true;
 	if (!g_config.isAddedAppId(appId)) return false;
 	ProcessLock::FileLock cacheLock(cacheLockPath(), false);
-	if (!cacheLock.acquired()) return false;
+	if (cacheLockHeldElsewhere(cacheLock)) return false;
 	const auto loaded = ProvisionTerminal::Store(getCacheDir()).load(appId);
 	if (loaded.status != ProvisionTerminal::LoadStatus::Valid)
 	{
@@ -2480,7 +2279,8 @@ bool terminalProvisionResultKnown(uint32_t appId,
 }
 
 bool noteTerminalProvisionResult(uint32_t appId, SourceResult result,
-	uint32_t changeNumber, const CachePublicationToken& publication)
+	uint32_t changeNumber, const CachePublicationToken& publication,
+	ProvisionPassContext& context)
 {
 	// IncompleteContent (no depot data at all) shares the NoUsableContent
 	// persistence shape: both are "no installable content" verdicts bound to
@@ -2498,11 +2298,11 @@ bool noteTerminalProvisionResult(uint32_t appId, SourceResult result,
 			: ProvisionTerminal::Kind::NoUsableContent,
 		.changeNumber = changeNumber,
 		.inputFingerprint = result == SourceResult::VirtualDlc
-			? "-" : localContentFingerprint(appId),
+			? "-" : localContentFingerprint(appId, context.archived()),
 	};
 	std::lock_guard<std::mutex> lock(g_cachePublicationMu);
 	ProcessLock::FileLock cacheLock(cacheLockPath(), false);
-	if (!cacheLock.acquired() || !cache::cachePublicationAllowed(
+	if (cacheLockHeldElsewhere(cacheLock) || !cache::cachePublicationAllowed(
 		publication.managed, publication.generation,
 		cachePublicationGenerationLocked(appId))) return false;
 	// Remove any previous verdict before attempting the replacement. A failed
@@ -2534,7 +2334,7 @@ void primeTerminalMemo(uint32_t appId, std::string_view fingerprint)
 	g_localContentFingerprints[appId] = fingerprint;
 	if (!g_config.isAddedAppId(appId)) return;
 	ProcessLock::FileLock cacheLock(cacheLockPath(), false);
-	if (!cacheLock.acquired()) return;
+	if (cacheLockHeldElsewhere(cacheLock)) return;
 	const auto loaded = ProvisionTerminal::Store(getCacheDir()).load(appId);
 	if (loaded.status != ProvisionTerminal::LoadStatus::Valid ||
 		!ProvisionTerminal::applies(
@@ -2568,10 +2368,11 @@ std::mutex& provisioningPassMutex()
 // the terminal verdict where one applies and maps the result to the outcome.
 ProvisionOutcome outcomeWithoutUpdate(uint32_t appId, SourceResult result,
                                       uint32_t changeNumber,
-                                      const CachePublicationToken& publication)
+                                      const CachePublicationToken& publication,
+                                      ProvisionPassContext& context)
 {
 	if (recordsTerminalVerdict(result))
-		noteTerminalProvisionResult(appId, result, changeNumber, publication);
+		noteTerminalProvisionResult(appId, result, changeNumber, publication, context);
 	switch (result)
 	{
 	case SourceResult::VirtualDlc:
@@ -2628,7 +2429,7 @@ ProvisionOutcome provisionAppDetailed(uint32_t appId,
 			if (auto ci = context.cmChanges.find(appId); ci != context.cmChanges.end())
 				cn = ci->second;
 			const SourceResult cmResult =
-			    provisionAppFromCmBuffer(appId, it->second, cn, publication);
+			    provisionAppFromCmBuffer(appId, it->second, cn, publication, context);
 			if (cmResult == SourceResult::Success)
 			{
 				g_pLog->debug("AppInfoProvision: app=%u provisioned via CM\n", appId);
@@ -2646,7 +2447,7 @@ ProvisionOutcome provisionAppDetailed(uint32_t appId,
 				            : cmResult == SourceResult::IncompleteContent
 				                ? "no depot data available anonymously"
 				                : "local cache write failed");
-				return outcomeWithoutUpdate(appId, cmResult, cn, publication);
+				return outcomeWithoutUpdate(appId, cmResult, cn, publication, context);
 			}
 			g_pLog->info("AppInfoProvision: app=%u CM response %s, trying steamcmd\n",
 			             appId,
@@ -2728,10 +2529,10 @@ ProvisionOutcome provisionAppDetailed(uint32_t appId,
 	}
 	const uint32_t changeNumber = pickChangeNumber(appNode);
 	const SourceResult result =
-	    renderAndPersist(appId, appNode, changeNumber, publication);
+	    renderAndPersist(appId, appNode, changeNumber, publication, context);
 	if (result == SourceResult::Success)
 		return ProvisionOutcome::Updated;
-	return outcomeWithoutUpdate(appId, result, changeNumber, publication);
+	return outcomeWithoutUpdate(appId, result, changeNumber, publication, context);
 }
 
 std::vector<std::uint32_t> publishRuntimeAppInfo(
@@ -2748,6 +2549,10 @@ int provisionAppsPass(const std::unordered_set<uint32_t>& added,
 	                       const char* origin)
 {
 	if (added.empty()) return 0;
+	// This pass runs in setup(), before Steam shows anything, and writes a
+	// cache pair or a verdict per app: one flush when it ends (after the pass
+	// lock is released) instead of an fsync of each file and of its folder.
+	AtomicFile::DeferSync bulkWrites;
 	ProvisionPassSummary summary;
 	summary.requested = added.size();
 
@@ -2774,10 +2579,6 @@ int provisionAppsPass(const std::unordered_set<uint32_t>& added,
 	// would short-circuit them anyway), so a warm relaunch makes no CM
 	// request at all.  Disable entirely via SLSSTEAM_DISABLE_CM=1.
 	ProvisionPassState pass;
-	// One walk of the manifest store per pass: every app's terminal check
-	// fingerprints its depots against it.
-	const ManifestStore::ArchivedGidIndex archivedGids = onlyMissing
-		? ManifestStore::ArchivedGidIndex{} : ManifestStore::archivedGidIndex();
 	const bool cmDisabled = [] {
 		const char* v = std::getenv("SLSSTEAM_DISABLE_CM");
 		return v && *v && std::string(v) != "0";
@@ -2788,10 +2589,10 @@ int provisionAppsPass(const std::unordered_set<uint32_t>& added,
 		for (uint32_t appId : added)
 		{
 			if (!onlyMissing)
-				primeTerminalMemo(appId, localContentFingerprint(appId, archivedGids));
+				primeTerminalMemo(appId, localContentFingerprint(appId, context.archived()));
 			const bool terminalKnown = onlyMissing
 				? observeTerminal(appId, 0).applies
-				: terminalProvisionResultKnown(appId, 0, nullptr, archivedGids);
+				: terminalProvisionResultKnown(appId, 0, nullptr, context.archived());
 			if (terminalKnown)
 				continue;
 			if (onlyMissing)
@@ -2846,7 +2647,7 @@ int provisionAppsPass(const std::unordered_set<uint32_t>& added,
 		const bool terminalKnown = onlyMissing
 			? observeTerminal(appId, observedChange).applies
 			: terminalProvisionResultKnown(
-				appId, observedChange, &outcome, archivedGids);
+				appId, observedChange, &outcome, context.archived());
 		if (!terminalKnown)
 			outcome = provisionAppDetailed(appId, pass, context);
 		if (fallbackApps && outcome == ProvisionOutcome::FallbackCache)
@@ -2991,13 +2792,6 @@ ProvisionPassSummary provisionRequestedApps(
 	fetch.reserve(accepted.size());
 	cachedPublish.reserve(accepted.size());
 	std::size_t busy = 0;
-	// Built on first use: a batch of cache hits never walks the store.
-	std::optional<ManifestStore::ArchivedGidIndex> archivedGids;
-	const auto archived = [&]() -> const ManifestStore::ArchivedGidIndex&
-	{
-		if (!archivedGids) archivedGids = ManifestStore::archivedGidIndex();
-		return *archivedGids;
-	};
 	for (const RefreshRequest& request : accepted)
 	{
 		const CacheProbe probe = probeCache(
@@ -3011,7 +2805,7 @@ ProvisionPassSummary provisionRequestedApps(
 			continue;
 		}
 		if (terminalProvisionResultKnown(
-			request.appId, request.minimumChangeNumber, nullptr, archived()))
+			request.appId, request.minimumChangeNumber, nullptr, context.archived()))
 		{
 			++summary.terminal;
 			continue;
@@ -3064,7 +2858,7 @@ ProvisionPassSummary provisionRequestedApps(
 		const uint32_t observed = change == context.cmChanges.end()
 			? request.minimumChangeNumber : change->second;
 		if (!terminalProvisionResultKnown(
-			request.appId, observed, &outcome, archived()))
+			request.appId, observed, &outcome, context.archived()))
 			outcome = provisionAppDetailed(
 				request.appId, pass, context, request.forceRefresh);
 		if (outcome == ProvisionOutcome::Updated) ++summary.updated;
@@ -3140,16 +2934,11 @@ int provisionColdStartApps(const std::unordered_set<uint32_t>& candidates)
 	});
 	// Prime the terminal memo from disk. One manifest observation index for the
 	// whole fleet keeps a network-free startup from scaling with apps ×
-	// archived manifests, as rebuilding it per app would.
-	{
-		const auto archivedGids = ManifestStore::archivedGidIndex();
-		for (const uint32_t appId : managedApps)
-		{
-			const std::string fingerprint =
-				localContentFingerprint(appId, archivedGids);
-			primeTerminalMemo(appId, fingerprint);
-		}
-	}
+	// archived manifests, as rebuilding it per app would; the cold pass below
+	// records its verdicts against the same index.
+	ProvisionPassContext context;
+	for (const uint32_t appId : managedApps)
+		primeTerminalMemo(appId, localContentFingerprint(appId, context.archived()));
 	// Validate persisted pairs and recover only missing or invalid ones; a
 	// validated stale pair is already usable and must not trigger synchronous
 	// provider work.
@@ -3192,7 +2981,6 @@ int provisionColdStartApps(const std::unordered_set<uint32_t>& candidates)
 
 	g_pLog->info("AppInfoProvision: cold-start fallback for %zu app(s)\n",
 	             cold.size());
-	ProvisionPassContext context;
 	const int provisioned = provisionAppsPass(
 		cold, true, context, &fallbackApps, "startup-cold");
 	std::size_t unresolvedCount = 0;
@@ -3262,7 +3050,7 @@ void flushPendingProtonMappings()
 		std::string wire;
 		std::string diag;
 		bool proton = false;
-		if (cacheLock.acquired() &&
+		if (!cacheLockHeldElsewhere(cacheLock) &&
 			readValidatedCacheBufferLocked(appId, wire, diag, &proton) && proton)
 		{
 			g_needProton.insert(appId);
@@ -3339,12 +3127,14 @@ std::vector<std::uint32_t> publishRuntimeAppInfo(
 	switch (reloaded.status)
 	{
 		case AppInfoReload::Status::Unavailable:
+			AppInfoVdf::dropStagedEntries(selected);
 			g_pLog->warn(
 				"AppInfoProvision: live appinfo disk reload unavailable for %zu "
 				"app(s); restart remains available\n",
 				selected.size());
 			return {};
 		case AppInfoReload::Status::ReadFailed:
+			AppInfoVdf::dropStagedEntries(selected);
 			g_pLog->warn(
 				"AppInfoProvision: Steam rejected live appinfo disk reload for %zu "
 				"app(s); restart remains available\n",
@@ -3353,6 +3143,7 @@ std::vector<std::uint32_t> publishRuntimeAppInfo(
 		case AppInfoReload::Status::Loaded:
 			if (!AppInfoReload::allRequestedPresent(reloaded, selected.size()))
 			{
+				AppInfoVdf::dropStagedEntries(selected);
 				g_pLog->warn(
 					"AppInfoProvision: live appinfo reload found %zu/%zu current "
 					"app(s); restart remains available\n",
@@ -3366,6 +3157,7 @@ std::vector<std::uint32_t> publishRuntimeAppInfo(
 					"appinfo cache\n",
 					reloaded.present);
 			}
+			AppInfoVdf::commitLiveEntries(selected);
 			return selected;
 	}
 	return {};
@@ -3539,7 +3331,7 @@ void enrichAndPublishDlcMetadata(
 		std::lock_guard<std::mutex> publicationLock(g_cachePublicationMu);
 		const auto managed = g_config.managedAppIds.get();
 		ProcessLock::FileLock cacheLock(cacheLockPath(), false);
-		if (!cacheLock.acquired()) return;
+		if (cacheLockHeldElsewhere(cacheLock)) return;
 		for (const auto& item : work)
 		{
 			if (!item.fetchComplete) continue;
@@ -3777,7 +3569,7 @@ DlcInjectionIds collectDlcAppIdsForAddedApps(bool* complete)
 	}
 
 	ProcessLock::FileLock cacheLock(cacheLockPath(), false);
-	if (!cacheLock.acquired())
+	if (cacheLockHeldElsewhere(cacheLock))
 	{
 		if (g_pLog)
 			g_pLog->debug(
@@ -3905,7 +3697,7 @@ bool forgetAppImpl(uint32_t appId, bool preserveTicketArtifacts)
 	{
 		std::lock_guard<std::mutex> publicationLock(g_cachePublicationMu);
 		ProcessLock::FileLock cacheLock(cacheLockPath(), false);
-		if (!cacheLock.acquired()) return false;
+		if (cacheLockHeldElsewhere(cacheLock)) return false;
 		ProvisionTerminal::Store(cacheDir).erase(appId);
 		// Decide marker retention only after both publication and cache locks are
 		// held. A concurrent synthetic publication must be visible here before

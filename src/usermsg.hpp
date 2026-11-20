@@ -36,8 +36,6 @@ enum class UserMsg
 	InitializationFailed,      // could not locate required patterns, aborted
 
 	// --- install / download ---
-	ContentServersUnavailable, // CDN unreachable / 5xx; {detail} = HTTP code
-	DownloadAuthUnavailable,   // could not obtain a manifest request code
 	DownloadTimedOut,          // timed out waiting on Steam's servers
 	ManifestNotReady,          // exact version is not in the shared archive yet
 	GameMetadataUnavailable,  // no network and no local metadata; {detail}=appid
@@ -161,23 +159,6 @@ inline UiMessage messageFor(UserMsg m, Lang lang)
 			              "is running without any modifications. This usually happens "
 			              "after a Steam update. Leave the Steam beta channel and run "
 			              "the install command again.",
-			         Severity::Error };
-
-		case UserMsg::ContentServersUnavailable:
-			return { pt ? "Os servidores de conteúdo da Steam estão temporariamente "
-			              "indisponíveis ({detail}). Aguarde alguns minutos e tente "
-			              "baixar o jogo novamente."
-			            : "Steam's content servers are temporarily unavailable "
-			              "({detail}). Please wait a few minutes and try downloading "
-			              "the game again.",
-			         Severity::Error };
-
-		case UserMsg::DownloadAuthUnavailable:
-			return { pt ? "Não foi possível obter autorização de download junto à "
-			              "Steam agora. Aguarde um momento e tente baixar o jogo "
-			              "novamente."
-			            : "Couldn't get download authorization from Steam right now. "
-			              "Please wait a moment and try downloading the game again.",
 			         Severity::Error };
 
 		case UserMsg::DownloadTimedOut:

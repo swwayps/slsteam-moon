@@ -57,7 +57,7 @@ int main()
 	g_pLog = std::unique_ptr<CLog>(new CLog(logPath.c_str()));
 
 	HotReload::initialize();
-	HotReload::publish({42}, true);
+	HotReload::publish({42});
 
 	// The owner IPC thread publishes a Proton title after its mapping. A pass
 	// holding its mutex must not stall that thread; the publication waits for
@@ -150,7 +150,7 @@ int main()
 
 	// A HotReload publication holds its coordinator while it waits here.
 	AppInfoProvision::cachePublicationMutex().lock();
-	std::thread([] { HotReload::publish({42, 43}, true); }).detach();
+	std::thread([] { HotReload::publish({42, 43}); }).detach();
 	std::this_thread::sleep_for(std::chrono::milliseconds(500));
 	CHECK(returnsPromptly([] { (void)HotReload::takeMissingCacheRepairRequests(); }),
 	      "cache repair scheduling does not wait for a HotReload publication");

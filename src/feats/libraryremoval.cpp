@@ -114,13 +114,13 @@ void processOneRemoval(void* controller)
 		{
 			auto* const flags = reinterpret_cast<std::uint32_t*>(
 				static_cast<std::uint8_t*>(app) + g_ownershipFlagsOffset);
-			*flags = LibraryRemovalPolicy::hiddenOwnershipFlags(*flags);
+			// A removed app shows none of the ownership presentation flags.
+			*flags = 0;
 		}
 	}
 
-	// MarkAppChange is invoked through its original trampoline. This avoids a
-	// recursive capture. Queue::begin already published the effective state, so
-	// a synchronous complete-change callback observes the right removed list.
+	// MarkAppChange is invoked through its original trampoline, which avoids a
+	// recursive capture.
 	mark(source, appId->appId, kAppInfoOrConfig);
 
 	if (g_pLog != nullptr)
@@ -216,7 +216,7 @@ bool setup() noexcept
 		{
 			g_queue.close();
 			if (g_pLog != nullptr)
-				g_pLog->once(
+				g_pLog->warn(
 					"LibraryRemoval: optional SteamUI capability unavailable; "
 					"visual removals will complete after a natural refresh or restart\n");
 			return false;
@@ -234,7 +234,7 @@ bool setup() noexcept
 		{
 			rollback();
 			if (g_pLog != nullptr)
-				g_pLog->once(
+				g_pLog->warn(
 					"LibraryRemoval: optional SteamUI hooks could not be installed; "
 					"visual removals will complete after a natural refresh or restart\n");
 			return false;
@@ -251,7 +251,7 @@ bool setup() noexcept
 	{
 		rollback();
 		if (g_pLog != nullptr)
-			g_pLog->once(
+			g_pLog->warn(
 				"LibraryRemoval: optional SteamUI setup failed; visual removals "
 				"will complete after a natural refresh or restart\n");
 		return false;

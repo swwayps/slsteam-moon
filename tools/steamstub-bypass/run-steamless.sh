@@ -14,11 +14,9 @@
 #   run-steamless.sh --prewarm             # initialise the Wine prefix
 #                                          #   only; no exe required
 #
-# The --prewarm form is meant to be called once at SLSsteam startup
-# in the background so the slow first-time Wine boot (~30s) completes
-# before the user clicks Play. Subsequent unpacks finish in ~3s
-# because the prefix is already initialised and the wineserver is
-# still warm.
+# SLSsteam runs the --prewarm form once per session before the first
+# exe, so the first-time Wine boot (~30s) has its own time limit; an
+# unpack on an initialised prefix takes ~3s.
 #
 # Exit codes:
 #   0  helper succeeded (or prewarm finished); when run with an exe
@@ -96,13 +94,8 @@ if [ "$PREWARM" -eq 0 ]; then
     # Quick exit if neither marker is present, to avoid the 5-30 s
     # Wine startup cost on plain non-stub'd binaries.
     #
-    # Detection is done entirely in python3 (already a hard dependency of
-    # this script) so it depends on nothing beyond a base install. An
-    # earlier version read the v2 magic via `dd | xxd`; `xxd` ships in
-    # vim-common and is absent from minimal installs (e.g. Fedora), so
-    # under `set -euo pipefail` the missing tool aborted the whole helper
-    # with rc=127 before any signature was examined — silently disabling
-    # DRM removal for every SteamStub title on those distros.
+    # Detection runs in python3, which this script already requires, so it
+    # needs no other tool (xxd, for one, is missing from minimal installs).
     stub_kind="$(python3 - "$EXE_PATH" <<'PY'
 import struct, sys
 
@@ -258,9 +251,8 @@ done
 # ── 6. lazy prefix init (~30s on first run) ─────────────────────────────
 if [ ! -f "$WINEPREFIX/system.reg" ]; then
     log "initializing Wine prefix at $WINEPREFIX (one-time, ~30s)"
-    # Both operations can wait on a broken Wine runtime forever.  Keep the
-    # prewarm worker bounded so a detach-failure recovery join cannot hang
-    # Steam indefinitely; the launch-time path remains the fallback.
+    # Both operations can wait on a broken Wine runtime forever, and the
+    # caller waits inside Steam's launch hook, so each one is bounded.
     if ! "$TIMEOUT_BIN" 90 "$WINE_BIN" wineboot --init >/dev/null 2>&1; then
         die "wineboot --init failed or timed out" 4
     fi
@@ -289,16 +281,9 @@ cd "$STEAMLESS_HOME"
 # 90s timeout is generous; Skyrim's 37 MB exe takes ~3s on a warm prefix.
 # Steamless CLI exit codes: 0 = unpacked OK, 1 = no SteamStub DRM present
 # (benign — treat as "nothing to do"), >1 = real failure.
-# The log used to be redirected to /tmp/steamless-bypass.$$.log. A shell
-# redirect FOLLOWS symlinks, so a local process that guessed the pid and
-# pre-created that path as a symlink had an arbitrary file of the user's
-# truncated and overwritten — and the `cat` below would then have printed
-# whatever it pointed at. mktemp creates the file itself, refusing an existing
-# name, inside a private directory.
-# Own subdirectory, deliberately NOT the SLSsteam directory the injected library
-# manages. Two owners chmod'ing one directory with their results discarded means a
-# failure here would make the C++ side refuse that directory and silently lose
-# both the API contract and the load lock.
+# The log is a mktemp file in a private directory: a predictable name could be
+# pre-created as a symlink, and a shell redirect follows it. The directory is
+# our own, not the SLSsteam one the library manages and checks the mode of.
 SL_LOG_DIR="${XDG_RUNTIME_DIR:-$HOME/.cache}/slsteam-steamless"
 mkdir -p "$SL_LOG_DIR" 2>/dev/null || true
 chmod 700 "$SL_LOG_DIR" 2>/dev/null || true

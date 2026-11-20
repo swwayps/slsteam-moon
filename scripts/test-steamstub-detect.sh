@@ -72,8 +72,11 @@ mkdir -p "$POISON"
 cat > "$POISON/xxd" <<'SH'
 #!/usr/bin/env bash
 echo "POISONED-XXD-CALLED" >&2
+echo called >> "$XXD_MARK"
 exit 99
 SH
+# Every case appends here; err.log only holds the last one.
+export XXD_MARK="$WORK/xxd-called"
 chmod +x "$POISON/xxd"
 
 # Detection happens before Steamless.CLI.exe is resolved; pointing
@@ -119,7 +122,7 @@ rc="$(run_detect "$WORK/v2.exe")"
                 || bad "v2 expected exit 4 (detected, CLI missing), got $rc"
 
 # 5. the poison xxd must never have been called.
-if grep -q "POISONED-XXD-CALLED" "$WORK/err.log" 2>/dev/null; then
+if [ -e "$XXD_MARK" ]; then
     bad "detector invoked xxd (poison shim was hit)"
 else
     ok "xxd shim never invoked across all cases"

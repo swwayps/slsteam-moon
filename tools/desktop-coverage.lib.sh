@@ -82,6 +82,9 @@ dc_autostart_dirs() {
 # and backup root directly.
 : "${DC_LAUNCHER_TAG:=# slsteam-moon system launcher shim}"
 : "${DC_LAUNCHER_BACKUP_ROOT:=}"
+# Root's tree for captured originals of launchers only root can write (see
+# launcher-shim.lib.sh).
+: "${DC_LAUNCHER_SYSTEM_BACKUP_ROOT:=${LS_SYSTEM_BACKUP_ROOT:-/var/lib/slsteam-moon/launcher-backup}}"
 
 dc_launcher_dirs() {
 	local dir
@@ -124,7 +127,7 @@ dc_launcher_shim_references_backup() {
 }
 
 dc_launcher_coverage_active() {
-	local dir launcher detected=0 shim_count=0 complete=1 backup legacy
+	local dir launcher detected=0 shim_count=0 complete=1 complete_one backup legacy
 	legacy="$(dc_launcher_backup_root)/steam.orig"
 	while IFS= read -r dir; do
 		[ -n "$dir" ] || continue
@@ -139,15 +142,20 @@ dc_launcher_coverage_active() {
 			continue
 		fi
 		shim_count=$((shim_count + 1))
-		backup="$(dc_launcher_backup_path "$launcher")"
-		if [ ! -f "$backup" ] || [ ! -x "$backup" ] || \
-		   head -3 "$backup" 2>/dev/null | grep -qF "$DC_LAUNCHER_TAG"; then
-			complete=0
-		elif ! dc_launcher_shim_references_backup "$launcher" "$backup"; then
-			# A valid mirror is not enough if the live shim would execute a
-			# different or missing original after the wrapper disappears.
-			complete=0
-		fi
+		# The mirror in root's tree or in the user's: a valid mirror is not
+		# enough if the live shim would execute a different or missing original
+		# after the wrapper disappears.
+		complete_one=0
+		for backup in "${DC_LAUNCHER_SYSTEM_BACKUP_ROOT%/}/${launcher#/}.orig" \
+		              "$(dc_launcher_backup_path "$launcher")"; do
+			if [ -f "$backup" ] && [ -x "$backup" ] && \
+			   ! head -3 "$backup" 2>/dev/null | grep -qF "$DC_LAUNCHER_TAG" && \
+			   dc_launcher_shim_references_backup "$launcher" "$backup"; then
+				complete_one=1
+				break
+			fi
+		done
+		[ "$complete_one" -eq 1 ] || complete=0
 	done < <(dc_launcher_dirs)
 	if [ "$detected" -gt 0 ] && [ "$detected" -eq "$shim_count" ] && [ "$complete" -eq 1 ]; then
 		return 0
@@ -400,18 +408,6 @@ dc_rewrite_exec_line() {
 	_dc_exec_scan rewrite "$1"
 }
 
-# dc_file_has_wrapper_exec <desktop-file> — true when an Exec line tokenizes to
-# the exact wrapper path, including commands with a valid env prefix.
-dc_file_has_wrapper_exec() {
-	local f="$1" line
-	[ -f "$f" ] || return 1
-	while IFS= read -r line || [ -n "$line" ]; do
-		case "$line" in
-			Exec=*) _dc_exec_scan wrapper "${line#Exec=}" >/dev/null && return 0 ;;
-		esac
-	done < "$f"
-	return 1
-}
 
 # _dc_file_exec_syntax_valid <desktop-file> — reject the whole entry before any
 # mutation when an Exec line contains malformed or unterminated quoting.
@@ -573,8 +569,7 @@ _dc_exec_is_steam_shell_wrapper() {
 # and tagging such a file would make every later run believe it is done.
 # $2="sudo" for system files. Returns 0 on patch, 1 on no-op/failure.
 dc_patch_one() {
-	local f="$1" S="${2:-}" bak tmp kind
-	bak="$(dc_backup_path "$f")"
+	local f="$1" S="${2:-}" tmp tagged kind
 	[ -f "$f" ] || return 1
 	_dc_file_exec_syntax_valid "$f" || return 1
 	kind="$(dc_classify "$f")"
@@ -608,11 +603,17 @@ dc_patch_one() {
 		rm -f "$tmp"
 		return 1
 	fi
-	# drop stale tag, then insert one line after the first [Desktop Entry]
-	grep -vxF "$DC_TAG" "$tmp" > "$tmp.2" 2>/dev/null && mv "$tmp.2" "$tmp"
-	awk -v tag="$DC_TAG" '
+	# One pass drops a stale tag and inserts one after the first [Desktop Entry],
+	# into a second file mktemp creates (a name derived from $tmp could already
+	# exist in a shared temp folder).
+	tagged="$(mktemp)" || { rm -f "$tmp"; return 1; }
+	if ! awk -v tag="$DC_TAG" '
+		$0 == tag { next }
 		!done && /^\[Desktop Entry\]/ { print; print tag; done=1; next } { print }
-	' "$tmp" > "$tmp.2" 2>/dev/null && mv "$tmp.2" "$tmp"
+	' "$tmp" > "$tagged" 2>/dev/null || ! mv -f -- "$tagged" "$tmp"; then
+		rm -f "$tmp" "$tagged"
+		return 1
+	fi
 	# Preserve inode/mtime on converged regular files. Symlinks are still
 	# replaced so managed entries remain ordinary files.
 	if [ ! -L "$f" ] && cmp -s "$tmp" "$f" 2>/dev/null; then
@@ -620,11 +621,10 @@ dc_patch_one() {
 		rm -f "$tmp"
 		return 0
 	fi
-	if ! $S cp --remove-destination -- "$tmp" "$f" 2>/dev/null; then
-		rm -f "$tmp"
-		return 1
-	fi
-	if ! $S chmod 0644 "$f" 2>/dev/null; then
+	# The user's shell opens the temp file, so a privileged write never reads a
+	# path the user could swap for a link. install replaces a link like cp
+	# --remove-destination did.
+	if ! $S install -m 0644 /dev/stdin "$f" < "$tmp" 2>/dev/null; then
 		rm -f "$tmp"
 		return 1
 	fi
@@ -636,8 +636,8 @@ dc_patch_one() {
 # regular, trusted, executable file so the DE renders it as "Steam". We do NOT
 # create one where the user had none, and we do NOT use a symlink (GNOME shows a
 # symlinked .desktop as the raw filename + an untrusted link emblem). Steam may
-# restore a vanilla copy on a re-bootstrap; the per-launch/Lumen re-assert
-# re-patches it then.
+# restore a vanilla copy on a re-bootstrap; the next guardian pass re-patches it
+# then. Returns 1 only when a shortcut it should cover is not covered.
 dc_activate_shortcut() {
 	local shortcut="$1"
 	chmod 0755 "$shortcut" 2>/dev/null || return 1
@@ -669,28 +669,35 @@ dc_patch_shortcut() {
 			# after bootstrap.
 			:
 		else
-			rm -f "$sc"
+			# Older versions linked the shortcut to our menu entry, also when
+			# the user had none, so an unbacked link there is ours to remove.
+			# A link the user made elsewhere is patched below instead.
+			case "$(readlink "$sc")" in
+				"$(dc_data_home)/applications/steam.desktop"|"$DC_HOME/.local/share/applications/steam.desktop")
+					rm -f "$sc" ;;
+			esac
 		fi
 		[ -e "$sc" ] || return 0
 	fi
 	case "$(dc_classify "$sc")" in
 		launcher|patched)
-			dc_patch_one "$sc"
-			dc_activate_shortcut "$sc" || true
+			dc_patch_one "$sc" || return 1
+			dc_activate_shortcut "$sc" || return 1
 			;;
 		stub)
 			[ "${DC_STEAM_INSTALLED:-0}" = 1 ] || return 0
-			dc_patch_one "$sc"
-			dc_activate_shortcut "$sc" || true
+			dc_patch_one "$sc" || return 1
+			dc_activate_shortcut "$sc" || return 1
 			;;
 	esac
+	return 0
 }
 
 # Overridable roots (tests inject fakes; real callers leave them at defaults).
 : "${DC_SYS_APPS:=/usr/share/applications}"
 : "${DC_SYS_AUTOSTART:=/etc/xdg/autostart}"
-# Command used to write system-owned files. Default "sudo"; tests set it empty.
-: "${DC_SUDO:=sudo}"
+# Command used to write system-owned files; empty unless the caller grants one.
+: "${DC_SUDO:=}"
 
 # dc_desktop_dir — honour XDG_DESKTOP_DIR from user-dirs.dirs, else ~/Desktop.
 # Parse the one supported assignment without sourcing the file. Only literal
@@ -877,65 +884,6 @@ EOF
 	return 1
 }
 
-# dc_seed_application_shadows — discover supported donors in every system XDG
-# application layer. The first real donor for an ID wins; installer stubs are
-# globally ignored when any real donor exists. Existing exact-ID user entries
-# retain their metadata and are backed up/patched by dc_patch_one.
-dc_seed_application_shadows() {
-	local user_dir dir source kind id target have_real=0 seen=''
-	user_dir="$(dc_user_app_dir)"
-
-	while IFS= read -r dir; do
-		[ "$dir" = "$user_dir" ] && continue
-		[ -d "$dir" ] || continue
-		for source in "$dir"/*; do
-			_dc_application_source "$source" || continue
-			[ "$(_dc_application_donor_kind "$source")" = launcher ] \
-				&& have_real=1
-		done
-	done < <(dc_application_dirs)
-
-	while IFS= read -r dir; do
-		[ "$dir" = "$user_dir" ] && continue
-		[ -d "$dir" ] || continue
-		for source in "$dir"/*; do
-			_dc_application_source "$source" || continue
-			kind="$(_dc_application_donor_kind "$source")"
-			case "$kind" in
-				launcher) : ;;
-				stub)
-					[ "$have_real" = 0 ] \
-						&& [ "${DC_STEAM_INSTALLED:-0}" = 1 ] || continue
-					;;
-				*) continue ;;
-			esac
-			id="$(dc_desktop_id "$source")"
-			printf '%s\n' "$seen" | grep -qxF "$id" 2>/dev/null && continue
-			seen="${seen}${seen:+
-}$id"
-			target="$user_dir/$id"
-			if [ "${DC_STEAM_INSTALLED:-0}" != 1 ] && \
-			   dc_is_prebootstrap_seed "$target"; then
-				continue
-			fi
-			_dc_discard_dangling_application_shadow "$target" || continue
-			if [ -e "$target" ] || [ -L "$target" ]; then
-				[ -r "$target" ] || chmod 0644 "$target" 2>/dev/null || true
-				dc_patch_one "$target" 2>/dev/null || true
-			else
-				_dc_publish_application_shadow "$source" "$target" "$kind" || true
-			fi
-		done
-	done < <(dc_application_dirs)
-	return 0
-}
-
-# Reconcile same-ID shadows before the existing broad user application pass.
-dc_reconcile_application_entries() {
-	dc_seed_application_shadows
-	dc_patch_glob "" "$(dc_user_app_dir)"
-}
-
 # dc_seed_autostart_override — when the desktop session auto-launches Steam via a
 # SYSTEM autostart entry (SteamOS/Bazzite: /etc/xdg/autostart/steam.desktop, often
 # read-only) and the user has NO ~/.config/autostart/steam.desktop, seed a
@@ -956,20 +904,24 @@ dc_seed_autostart_override() {
 	[ -f "$sys_as" ] || return 0
 	grep -q "^Name=Install Steam" "$sys_as" 2>/dev/null && return 0
 	grep -qiE '^Exec=.*steam' "$sys_as" 2>/dev/null || return 0
-	mkdir -p "$(dirname "$user_as")" 2>/dev/null || return 0
-	cp -- "$sys_as" "$user_as" 2>/dev/null || return 0
+	# From here a seed is needed, so a failure returns 1 for the caller to
+	# retry rather than remember the pass.
+	mkdir -p "$(dirname "$user_as")" 2>/dev/null || return 1
+	cp -- "$sys_as" "$user_as" 2>/dev/null || return 1
 	# Mark it seeded BEFORE patching so dc_patch_one never captures this
 	# just-created file as an original.
 	if ! grep -qxF "$DC_SEED_TAG" "$user_as" 2>/dev/null; then
-		local tmp; tmp="$(mktemp)" || return 0
+		local tmp; tmp="$(mktemp)" || return 1
 		awk -v s="$DC_SEED_TAG" '
 			!d && /^\[Desktop Entry\]/ { print; print s; d=1; next } { print }
 		' "$user_as" > "$tmp" 2>/dev/null && cat "$tmp" > "$user_as"
 		rm -f "$tmp"
 	fi
-	dc_patch_one "$user_as"
+	local status=0
+	dc_patch_one "$user_as" || status=1
 	# Defensive cleanup for an interrupted older seeding implementation.
 	rm -f "$user_as.slssteam-backup" "$user_as.slsteam-bak" "$(dc_backup_path "$user_as")"
+	return "$status"
 }
 
 # Guardian commands are injectable so tests can observe lock/cache behavior.
@@ -1040,6 +992,11 @@ dc_guardian_repair_dir() {
 		[ -f "$f" ] || [ -L "$f" ] || continue
 		name="$(dc_desktop_id "$f" | tr '[:upper:]' '[:lower:]')"
 		case "$name" in *.desktop) : ;; *) continue ;; esac
+		# Older installs left Steam entries without a read bit; one of the
+		# user's own is made readable so it is repaired, not misread.
+		case "$name" in
+			*steam*.desktop) [ -L "$f" ] || [ -r "$f" ] || chmod 0644 -- "$f" 2>/dev/null || true ;;
+		esac
 		if [ "${DC_STEAM_INSTALLED:-0}" != 1 ] && dc_is_prebootstrap_seed "$f"; then
 			continue
 		fi
@@ -1060,9 +1017,11 @@ dc_guardian_repair_dir() {
 	done
 }
 
-# Seed only missing application IDs here; all existing user entries are repaired
-# by the following directory pass. This preserves the required shadow->repair
-# order and avoids counting the same existing entry twice.
+# Seed a user shadow for every Steam ID a system XDG application layer offers:
+# the first real donor for an ID wins, and installer stubs are ignored when any
+# real donor exists. Only missing IDs are seeded here; existing user entries keep
+# their metadata and are repaired by the following directory pass, which keeps
+# the shadow->repair order and counts each entry once.
 dc_guardian_seed_application_shadows() {
 	local user_dir dir source kind id target have_real=0 seen='' result
 	user_dir="$(dc_user_app_dir)"
@@ -1161,9 +1120,10 @@ dc_guardian_patch_shortcut() {
 			;;
 	esac
 	before="$(dc_guardian_fingerprint "$shortcut")"
-	if dc_patch_one "$shortcut" && _dc_file_has_primary_wrapper_exec "$shortcut"; then
-		dc_activate_shortcut "$shortcut" \
-			|| { dc_guardian_record_result other 2; return 0; }
+	# dc_patch_shortcut may remove a link an older version made; a shortcut
+	# that is still there must run the wrapper.
+	if dc_patch_shortcut "$shortcut" && \
+	   { [ ! -e "$shortcut" ] || _dc_file_has_primary_wrapper_exec "$shortcut"; }; then
 		after="$(dc_guardian_fingerprint "$shortcut")"
 		if [ "$before" = "$after" ]; then result=1; else result=0; fi
 	else
@@ -1295,8 +1255,9 @@ dc_forget_policy() {
 DC_FINGERPRINT_VERSION=3
 
 # Where the last successful pass' digest lives. One file per scope: the guardian
-# (mandatory, user-only), the legacy best-effort --user pass and the optional
-# --system pass do different work and must not satisfy each other's cache.
+# (user entries) and the optional --system pass do different work and must not
+# satisfy each other's cache. Older versions also kept a `user` scope, which
+# dc_coverage_forget still removes.
 dc_fingerprint_path() {
 	local scope="${1:-user}"
 	printf '%s/coverage.fingerprint.%s\n' \
@@ -1403,38 +1364,50 @@ dc_coverage_forget() {
 	return 0
 }
 
-dc_guardian_write_summary() {
-	local dir log timestamp
+# _dc_guardian_log <text>  append one timestamped line to guardian.log. Every
+# trigger appends and the timer alone fires every five minutes, so past 2000
+# lines the log keeps its newest 1000.
+_dc_guardian_log() {
+	local dir log timestamp lines kept
 	dir="$(dc_state_home)/slsteam-moon"
 	log="$dir/guardian.log"
 	mkdir -p "$dir" 2>/dev/null || return 2
 	timestamp="$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null)" || return 2
-	printf '%s examined=%s changed=%s app_changed=%s autostart_changed=%s skipped=%s failed=%s\n' \
-		"$timestamp" "$DC_EXAMINED" "$DC_CHANGED" "$DC_APP_CHANGED" \
-		"$DC_AUTOSTART_CHANGED" "$DC_SKIPPED" "$DC_FAILED" >> "$log" 2>/dev/null \
-		|| return 2
+	lines="$({ wc -l < "$log"; } 2>/dev/null)" || lines=0
+	if [ "${lines:-0}" -ge 2000 ] && kept="$(mktemp "$log.XXXXXX" 2>/dev/null)"; then
+		if ! { tail -n 1000 "$log" > "$kept" && mv -f -- "$kept" "$log"; } 2>/dev/null; then
+			rm -f -- "$kept"
+		fi
+	fi
+	printf '%s %s\n' "$timestamp" "$1" >> "$log" 2>/dev/null || return 2
+}
+
+dc_guardian_write_summary() {
+	_dc_guardian_log "$(printf 'examined=%s changed=%s app_changed=%s autostart_changed=%s skipped=%s failed=%s' \
+		"$DC_EXAMINED" "$DC_CHANGED" "$DC_APP_CHANGED" \
+		"$DC_AUTOSTART_CHANGED" "$DC_SKIPPED" "$DC_FAILED")"
 }
 
 # A skipped pass is still one recorded pass per trigger: the note says WHY it did
 # no work, and the ordinary all-zero summary line follows it, so log consumers
 # (and the tests) keep seeing the same six-counter shape as the last line.
 dc_guardian_write_cached_note() {
-	local dir log timestamp
-	dir="$(dc_state_home)/slsteam-moon"
-	log="$dir/guardian.log"
-	mkdir -p "$dir" 2>/dev/null || return 2
-	timestamp="$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null)" || return 2
-	printf '%s unchanged: desktop launch sources match the last reconciliation -> skipped\n' \
-		"$timestamp" >> "$log" 2>/dev/null || return 2
+	_dc_guardian_log 'unchanged: desktop launch sources match the last reconciliation -> skipped'
 }
 
 # dc_guardian_run — serialized, mandatory user-only reconciliation. Lock
 # contention is a successful no-op. No system mutation or sudo path is reachable.
 dc_guardian_run() {
-	local runtime uid lock result shortcut status=0
-	runtime="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}"
+	local uid lock result shortcut status=0
 	uid="${UID:-$(id -u)}"
-	lock="${runtime%/}/slsteam-desktop-guardian-${uid}.lock"
+	if [ -n "${XDG_RUNTIME_DIR:-}" ]; then
+		lock="${XDG_RUNTIME_DIR%/}/slsteam-desktop-guardian-${uid}.lock"
+	else
+		# Without a runtime dir (su, cron) a shared temp name could belong to
+		# another account; the state folder is the user's own.
+		mkdir -p "$(dc_state_home)/slsteam-moon" 2>/dev/null || return 2
+		lock="$(dc_state_home)/slsteam-moon/guardian.lock"
+	fi
 	command -v "$DC_FLOCK" >/dev/null 2>&1 || return 2
 	# The braces keep the stderr redirect off the caller's shell.
 	{ exec 9>"$lock"; } 2>/dev/null || return 2
@@ -1491,57 +1464,37 @@ dc_guardian_run() {
 	return "$status"
 }
 
-# dc_run [--user|--system] — patch all known *steam*.desktop locations. --user
-# (default) does user-owned dirs only (no sudo). --system additionally patches
-# the system menu dir + stub (caller must provide sudo rights). An existing
-# desktop shortcut is patched in place; one is never created implicitly.
+# dc_run --system — patch the system menu and autostart entries with the
+# privilege command the caller grants in DC_SUDO. User entries are the
+# guardian's (dc_guardian_run), which setup.sh runs first.
 dc_run() {
-	local mode="${1:---user}" menu user_apps user_autostart failed=0 scope
-	case "$mode" in
-		--system) scope=system ;;
-		*) scope=user ;;
+	local failed=0
+	[ "${1:-}" = --system ] || return 2
+	# A successful mutable launcher shim owns the system launch path, so system
+	# desktop entries stay untouched while that policy is active. An explicit
+	# environment override remains available to tests/diagnostics; persisted
+	# state is trusted only after checking the live shim and its captured original.
+	case "${SLSM_COVERAGE_POLICY:-}" in
+		launcher) return 0 ;;
+		desktop) : ;;
+		*)
+			if [ "$(dc_read_policy)" = launcher ] && dc_launcher_coverage_active; then
+				return 0
+			fi
+			;;
 	esac
-	# A successful mutable launcher shim owns the system launch path. Keep the
-	# mandatory user reconciliation independent, but never mutate system desktop
-	# entries while that primary launcher policy is active. An explicit environment
-	# override remains available to tests/diagnostics; persisted state is trusted
-	# only after checking the live shim and its captured original.
-	if [ "$mode" = "--system" ]; then
-		case "${SLSM_COVERAGE_POLICY:-}" in
-			launcher) return 0 ;;
-			desktop) : ;;
-			*)
-				if [ "$(dc_read_policy)" = launcher ] && dc_launcher_coverage_active; then
-					return 0
-				fi
-				;;
-		esac
-	fi
-	# Same unchanged-input fast path as the guardian (see dc_coverage_unchanged):
-	# this is the per-launch legacy path on desktops without a working user
-	# manager, so it also runs while Steam is starting.
-	if dc_coverage_unchanged "$scope" "$mode"; then
+	if dc_coverage_unchanged system --system; then
 		return 0
 	fi
-	user_apps="$(dc_data_home)/applications"
-	user_autostart="$(dc_config_home)/autostart"
-	menu="$user_apps/steam.desktop"
-	# Migration must precede every repatch: adjacent .desktop backups are active
-	# launch candidates on KDE's systemd XDG-autostart implementation.
-	dc_migrate_legacy_backups "$mode" || failed=1
-	# Create/repair authoritative same-ID shadows before the legacy filename glob.
-	dc_reconcile_application_entries
-	# Seed a user autostart override from the system entry (SteamOS/Bazzite) BEFORE
-	# the autostart glob, so a freshly seeded file is (idempotently) re-patched too.
-	dc_seed_autostart_override
-	dc_patch_glob "" "$user_autostart" || failed=1
-	if [ "$mode" = "--system" ]; then
-		dc_patch_glob "$DC_SUDO" "$DC_SYS_APPS" || failed=1
-		dc_patch_glob "$DC_SUDO" "$DC_SYS_AUTOSTART" || failed=1
-	fi
-	[ -f "$menu" ] && dc_patch_shortcut "$(dc_desktop_dir)/steam.desktop"
+	# Migration must precede the repatch: adjacent .desktop backups are active
+	# launch candidates on KDE's systemd XDG-autostart implementation. A failed
+	# step is not remembered, so the next pass retries it.
+	dc_migrate_legacy_dir "$DC_SYS_APPS" "$DC_SUDO" || failed=1
+	dc_migrate_legacy_dir "$DC_SYS_AUTOSTART" "$DC_SUDO" || failed=1
+	dc_patch_glob "$DC_SUDO" "$DC_SYS_APPS" || failed=1
+	dc_patch_glob "$DC_SUDO" "$DC_SYS_AUTOSTART" || failed=1
 	[ "$failed" = 0 ] || return 2
-	dc_coverage_remember "$scope" "$mode" || true
+	dc_coverage_remember system --system || true
 	return 0
 }
 
@@ -1550,7 +1503,7 @@ dc_run() {
 # entries carrying our tag. A symlink we made is replaced by its central
 # original when available.
 dc_restore_one() {
-	local f="$1" S="${2:-}" bak
+	local f="$1" S="${2:-}" bak mode
 	# Accept and immediately centralize both historical adjacent suffixes.
 	dc_migrate_legacy_file "$f.slssteam-backup" "$S" || true
 	dc_migrate_legacy_file "$f.slsteam-bak" "$S" || true
@@ -1566,17 +1519,17 @@ dc_restore_one() {
 	# entries (LibreOffice does) and those stay.
 	if [ -L "$f" ]; then
 		[ -f "$bak" ] || return 0
-		$S rm -f -- "$f" 2>/dev/null || return 1
-		if $S cp -- "$bak" "$f" 2>/dev/null; then
-			rm -f -- "$bak" 2>/dev/null
-		else
-			return 1
-		fi
-		return 0
 	fi
+	# The backup lives in the user's home: the user's shell opens it and the
+	# privileged side only writes the entry (install replaces a link). System
+	# entries go back as 0644; a user's own file keeps its mode, so a desktop
+	# shortcut stays executable.
 	if [ -f "$bak" ]; then
-		if $S cp --remove-destination -- "$bak" "$f" 2>/dev/null; then
-			$S chmod 0644 "$f" 2>/dev/null || true
+		mode=0644
+		if [ -z "$S" ] && [ -f "$f" ] && [ ! -L "$f" ]; then
+			mode="$(stat -c '%a' "$f" 2>/dev/null)" || mode=0644
+		fi
+		if $S install -m "$mode" /dev/stdin "$f" < "$bak" 2>/dev/null; then
 			rm -f -- "$bak" 2>/dev/null
 			return 0
 		fi

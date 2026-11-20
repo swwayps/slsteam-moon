@@ -14,6 +14,8 @@
 
 #include "appinfo_text.hpp"
 #include "base64/base64.hpp"
+#include "hotreload_state.hpp"
+#include "kvtext.hpp"
 #include "provision_cache.hpp"
 #include "synthmark.hpp"
 #include "yaml-cpp/yaml.h"
@@ -27,6 +29,7 @@
 #include <filesystem>
 #include <fstream>
 #include <ios>
+#include <mutex>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -277,97 +280,8 @@ bool readV41(const std::string& path, AppInfoFile& out, std::string& err)
 //
 // PICS responses deliver KeyValues in *text* format (quoted strings,
 // {} blocks, whitespace).  We tokenize the text and emit binary KV1 with
-// keys as string-table indices.
-//
-// The text grammar is small:
-//   document := pair*
-//   pair    := string string | string '{' pair* '}'
-//   string  := '"' (escaped chars)* '"' | bare_word
-// We accept '\\' '\"' '\n' '\t' as escapes inside quoted strings.
+// keys as string-table indices (lexer: kvtext.hpp).
 // ---------------------------------------------------------------------------
-
-class TextLexer
-{
-public:
-	TextLexer(const char* p, const char* end) : p_(p), end_(end) {}
-
-	enum class Tok { String, OpenBrace, CloseBrace, End };
-
-	Tok next(std::string& out)
-	{
-		out.clear();
-		skipWs();
-		if (p_ >= end_) return Tok::End;
-
-		const char c = *p_;
-		if (c == '{') { ++p_; return Tok::OpenBrace; }
-		if (c == '}') { ++p_; return Tok::CloseBrace; }
-		if (c == '"') return readQuoted(out);
-		return readBare(out);
-	}
-
-private:
-	void skipWs()
-	{
-		while (p_ < end_)
-		{
-			const unsigned char c = static_cast<unsigned char>(*p_);
-			if (c == ' ' || c == '\t' || c == '\r' || c == '\n')
-			{
-				++p_;
-				continue;
-			}
-			// Skip "// ..." line comments (rare but legal in KV1 text).
-			if (c == '/' && p_ + 1 < end_ && p_[1] == '/')
-			{
-				while (p_ < end_ && *p_ != '\n') ++p_;
-				continue;
-			}
-			break;
-		}
-	}
-
-	Tok readQuoted(std::string& out)
-	{
-		++p_; // opening quote
-		while (p_ < end_)
-		{
-			const char c = *p_++;
-			if (c == '"') return Tok::String;
-			if (c == '\\' && p_ < end_)
-			{
-				const char e = *p_++;
-				switch (e)
-				{
-					case 'n':  out.push_back('\n'); break;
-					case 't':  out.push_back('\t'); break;
-					case 'r':  out.push_back('\r'); break;
-					case '"':  out.push_back('"');  break;
-					case '\\': out.push_back('\\'); break;
-					default:   out.push_back(e);    break;
-				}
-				continue;
-			}
-			out.push_back(c);
-		}
-		return Tok::End; // unterminated string treated as EOF
-	}
-
-	Tok readBare(std::string& out)
-	{
-		while (p_ < end_)
-		{
-			const unsigned char c = static_cast<unsigned char>(*p_);
-			if (c == ' ' || c == '\t' || c == '\r' || c == '\n' ||
-			    c == '{' || c == '}' || c == '"') break;
-			out.push_back(*p_++);
-		}
-		return Tok::String;
-	}
-
-	const char* p_;
-	const char* end_;
-};
 
 // Try to encode a value as Int32 if it parses cleanly; otherwise emit String.
 // PICS appinfo text doesn't tag types, so we mirror what Steam does: read
@@ -386,24 +300,24 @@ void emitString(std::vector<uint8_t>& out, AppInfoFile& f,
 	out.push_back(0);
 }
 
-bool emitObject(TextLexer& lex, AppInfoFile& f,
+bool emitObject(KvText::Lexer& lex, AppInfoFile& f,
                 std::vector<uint8_t>& out, std::string& err);
 
 // Emit a single pair starting from a key.  Caller has just read `key` as a
 // string token; this consumes either another string (-> leaf) or an open
 // brace (-> nested object) and writes the pair.
-bool emitPair(TextLexer& lex, AppInfoFile& f,
+bool emitPair(KvText::Lexer& lex, AppInfoFile& f,
               const std::string& key, std::vector<uint8_t>& out,
               std::string& err)
 {
 	std::string tok;
 	const auto t = lex.next(tok);
-	if (t == TextLexer::Tok::String)
+	if (t == KvText::Lexer::Tok::String)
 	{
 		emitString(out, f, key, tok);
 		return true;
 	}
-	if (t == TextLexer::Tok::OpenBrace)
+	if (t == KvText::Lexer::Tok::OpenBrace)
 	{
 		const uint32_t idx = f.internStringIndex(key);
 		out.push_back(KV::ChildObject);
@@ -415,24 +329,24 @@ bool emitPair(TextLexer& lex, AppInfoFile& f,
 	return false;
 }
 
-bool emitObject(TextLexer& lex, AppInfoFile& f,
+bool emitObject(KvText::Lexer& lex, AppInfoFile& f,
                 std::vector<uint8_t>& out, std::string& err)
 {
 	std::string tok;
 	while (true)
 	{
 		const auto t = lex.next(tok);
-		if (t == TextLexer::Tok::CloseBrace)
+		if (t == KvText::Lexer::Tok::CloseBrace)
 		{
 			out.push_back(KV::End);
 			return true;
 		}
-		if (t == TextLexer::Tok::End)
+		if (t == KvText::Lexer::Tok::End || t == KvText::Lexer::Tok::Invalid)
 		{
 			err = "unterminated object";
 			return false;
 		}
-		if (t != TextLexer::Tok::String)
+		if (t != KvText::Lexer::Tok::String)
 		{
 			err = "expected key";
 			return false;
@@ -448,28 +362,23 @@ bool translateWireToIndexed(const std::string& wire,
 {
 	if (wire.empty()) { err = "empty wire buffer"; return false; }
 
-	// PICS-wire buffer is null-terminated text.  Trim the trailing null
-	// (and any trailing whitespace) before lexing.
-	size_t len = wire.size();
-	while (len > 0 && (wire[len - 1] == '\0' || wire[len - 1] == '\n' ||
-	                   wire[len - 1] == ' '  || wire[len - 1] == '\t' ||
-	                   wire[len - 1] == '\r'))
-	{
-		--len;
-	}
-
-	TextLexer lex(wire.data(), wire.data() + len);
-
-	// The PICS buffer is a single top-level pair: "appinfo" { ... }.
+	// The PICS buffer is one top-level pair, "appinfo" { ... }, ending in a
+	// NUL; nothing may follow it.
+	KvText::Lexer lex(KvText::trimmed(wire));
 	std::string topKey;
-	const auto topTok = lex.next(topKey);
-	if (topTok != TextLexer::Tok::String)
+	if (lex.next(topKey) != KvText::Lexer::Tok::String || topKey != "appinfo")
 	{
-		err = "wire buffer doesn't start with a key";
+		err = "wire buffer doesn't start with \"appinfo\"";
 		return false;
 	}
 
 	if (!emitPair(lex, f, topKey, outVdf, err)) return false;
+	std::string trailing;
+	if (lex.next(trailing) != KvText::Lexer::Tok::End)
+	{
+		err = "data after the appinfo object";
+		return false;
+	}
 
 	// Append the trailing root-level End that v41 binary KV expects.
 	outVdf.push_back(KV::End);
@@ -1019,7 +928,7 @@ bool injectApp(const std::string& path,
                const std::string& wireBuffer)
 {
 	ProcessLock::FileLock lock(appInfoLockPath(path));
-	if (!lock.acquired())
+	if (lock.heldByAnother())
 	{
 		g_pLog->info("AppInfoVdf: another writer owns %s; skipping app=%u\n",
 		              appInfoLockPath(path).c_str(), appid);
@@ -1054,18 +963,105 @@ bool injectApp(const std::string& path,
 	return true;
 }
 
+namespace
+{
+// Entries Steam holds from our splices, and those a runtime splice wrote but
+// Steam has not reloaded yet. Steam's CM thread reads them, so readers only
+// try the lock, while g_splicedApps serves the outgoing filter lock-free.
+std::mutex g_heldEntriesMu;
+std::unordered_map<uint32_t, HeldEntry> g_heldEntries;
+std::unordered_map<uint32_t, HeldEntry> g_stagedEntries;
+HotReloadState::Store g_splicedApps;
+
+void publishSplicedAppsLocked()
+{
+	std::unordered_set<uint32_t> ids;
+	ids.reserve(g_heldEntries.size() + g_stagedEntries.size());
+	for (const auto& [appId, _] : g_heldEntries) ids.insert(appId);
+	for (const auto& [appId, _] : g_stagedEntries) ids.insert(appId);
+	(void)g_splicedApps.publish(ids);
+}
+
+void recordEntries(std::unordered_map<uint32_t, HeldEntry>& into,
+                   std::vector<std::pair<uint32_t, HeldEntry>> entries)
+{
+	std::lock_guard<std::mutex> lock(g_heldEntriesMu);
+	for (auto& [appId, entry] : entries) into[appId] = std::move(entry);
+	publishSplicedAppsLocked();
+}
+} // namespace
+
+std::optional<HeldEntry> heldEntry(uint32_t appId) noexcept
+{
+	try
+	{
+		std::unique_lock<std::mutex> lock(g_heldEntriesMu, std::try_to_lock);
+		if (!lock.owns_lock()) return std::nullopt;
+		const auto found = g_heldEntries.find(appId);
+		if (found != g_heldEntries.end()) return found->second;
+		const auto staged = g_stagedEntries.find(appId);
+		if (staged != g_stagedEntries.end()) return staged->second;
+		return std::nullopt;
+	}
+	catch (...)
+	{
+		return std::nullopt;
+	}
+}
+
+bool hasSplicedEntry(uint32_t appId) noexcept
+{
+	try
+	{
+		return g_splicedApps.readHandle().contains(appId);
+	}
+	catch (...)
+	{
+		return false;
+	}
+}
+
+void commitLiveEntries(const std::vector<uint32_t>& appIds) noexcept
+{
+	try
+	{
+		std::lock_guard<std::mutex> lock(g_heldEntriesMu);
+		for (const uint32_t appId : appIds)
+		{
+			const auto staged = g_stagedEntries.find(appId);
+			if (staged == g_stagedEntries.end()) continue;
+			g_heldEntries[appId] = std::move(staged->second);
+			g_stagedEntries.erase(staged);
+		}
+		publishSplicedAppsLocked();
+	}
+	catch (...)
+	{
+	}
+}
+
+void dropStagedEntries(const std::vector<uint32_t>& appIds) noexcept
+{
+	try
+	{
+		std::lock_guard<std::mutex> lock(g_heldEntriesMu);
+		for (const uint32_t appId : appIds) g_stagedEntries.erase(appId);
+		publishSplicedAppsLocked();
+	}
+	catch (...)
+	{
+	}
+}
+
 int injectAllCached(const std::string& path)
 {
 	const auto cacheDir = g_config.getDir() + "/cache";
 	std::error_code cacheDirError;
 	if (!std::filesystem::exists(cacheDir, cacheDirError)) return 0;
 
-	// Contention is the only reason to stand down. This is the boot splice: it
-	// is the single thing that makes a managed app visible on the next start, so
-	// an untrustworthy lock path must not silently cost the whole pass. The
-	// publish below is conditional on the file identity captured after the read,
-	// so proceeding without a trusted lock cannot clobber a competing writer.
-	ProcessLock::FileLock lock(appInfoLockPath(path));
+	// Wait for any competing login splice so this process merges after it and
+	// records every entry Steam will read; an unusable lock proceeds cleanly.
+	ProcessLock::FileLock lock(appInfoLockPath(path), false);
 	if (lock.heldByAnother())
 	{
 		g_pLog->info("AppInfoVdf: another writer owns %s; skipping cache splice\n",
@@ -1120,7 +1116,9 @@ int injectAllCached(const std::string& path)
 	for (std::filesystem::directory_iterator it(cacheDir, iterError), end;
 	     it != end && !iterError; it.increment(iterError))
 	{
-		if (!it->is_regular_file()) continue;
+		// An entry that cannot be stat-ed (a symlink loop) is skipped.
+		std::error_code typeError;
+		if (!it->is_regular_file(typeError) || typeError) continue;
 		const auto fname = it->path().filename().string();
 		uint32_t expectedAppId = 0;
 		if (parsePicsBufferName(fname, expectedAppId))
@@ -1131,6 +1129,7 @@ int injectAllCached(const std::string& path)
 			  return a.path < b.path;
 	          });
 
+	std::vector<std::pair<uint32_t, HeldEntry>> spliced;
 	int injected = 0;
 	bool changed = false;
 	for (const auto& record : metadata)
@@ -1159,6 +1158,7 @@ int injectAllCached(const std::string& path)
 		{
 			++injected;
 			changed = changed || entryChanged;
+			spliced.push_back({cb.appid, {cb.change_number, cb.sha, cb.buffer.size()}});
 		}
 		else
 		{
@@ -1180,6 +1180,8 @@ int injectAllCached(const std::string& path)
 			return 0;
 		}
 	}
+	// The boot splice runs before Steam reads the file.
+	recordEntries(g_heldEntries, std::move(spliced));
 	if (injected > 0)
 	{
 		g_pLog->debug("AppInfoVdf: injectAllCached -> %d entries\n", injected);
@@ -1230,6 +1232,7 @@ int injectCachedApps(const std::string& path,
 
 	const auto managed = g_config.managedAppIds.get();
 	const auto cacheDir = g_config.getDir() + "/cache";
+	std::vector<std::pair<uint32_t, HeldEntry>> spliced;
 	int injected = 0;
 	bool changed = false;
 	for (const uint32_t appId : requestedApps)
@@ -1255,6 +1258,7 @@ int injectCachedApps(const std::string& path,
 		}
 		++injected;
 		changed = changed || entryChanged;
+		spliced.push_back({cb.appid, {cb.change_number, cb.sha, cb.buffer.size()}});
 	}
 	if (changed)
 	{
@@ -1266,6 +1270,8 @@ int injectCachedApps(const std::string& path,
 			return 0;
 		}
 	}
+	// Steam holds these only after it reloads the file (commitLiveEntries).
+	recordEntries(g_stagedEntries, std::move(spliced));
 	return injected;
 }
 

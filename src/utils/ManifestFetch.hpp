@@ -2,17 +2,12 @@
 #pragma once
 
 #include <atomic>
-#include <cerrno>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <mutex>
-#include <optional>
 #include <string>
 #include <string_view>
-#include <sys/types.h>
-#include <unistd.h>
-#include <vector>
 
 
 namespace ManifestFetch
@@ -22,8 +17,9 @@ namespace ManifestFetch
 		return (state & (0x100u | 0x400u)) != 0;
 	}
 
-	// Remembers one answer for a short window. Concurrent askers wait for the
-	// running scan instead of starting their own.
+	// Remembers one answer for a short window. The scan calls Steam, so it runs
+	// outside the lock: a caller that holds a Steam lock must never wait for a
+	// scan that waits for that lock. Callers in a stale window may both scan.
 	class DownloadActivityCache
 	{
 	public:
@@ -32,14 +28,16 @@ namespace ManifestFetch
 		template <typename Scan>
 		bool get(std::int64_t nowMs, Scan&& scan)
 		{
-			std::lock_guard lock(m_mutex);
-			if (!m_valid || nowMs - m_checkedAtMs >= kWindowMs)
 			{
-				m_active = scan();
-				m_checkedAtMs = nowMs;
-				m_valid = true;
+				std::lock_guard lock(m_mutex);
+				if (m_valid && nowMs - m_checkedAtMs < kWindowMs) return m_active;
 			}
-			return m_active;
+			const bool active = scan();
+			std::lock_guard lock(m_mutex);
+			m_active = active;
+			m_checkedAtMs = nowMs;
+			m_valid = true;
+			return active;
 		}
 
 	private:
@@ -63,10 +61,13 @@ namespace ManifestFetch
 	// archive is reachable whenever it answers at all — including a 404, which
 	// only means the manifest has not been donated yet, not that we are offline.
 	// A transport error or a 5xx means the host is unreachable; 429 is a rate
-	// limit that opens the circuit immediately.
+	// limit that opens the circuit immediately. A transfer the job's own budget
+	// stopped (`stoppedByUs`) says nothing either way.
 	inline ArchiveOutcome classifyArchiveOutcome(bool networkError,
-	                                              long httpStatus) noexcept
+	                                              long httpStatus,
+	                                              bool stoppedByUs = false) noexcept
 	{
+		if (networkError && stoppedByUs) return {false, false, false};
 		if (networkError) return {false, false, true};
 		if (httpStatus == 429) return {false, true, false};
 		if (httpStatus >= 500) return {false, false, true};
@@ -170,6 +171,8 @@ namespace ManifestFetch
 
 
 		bool open() const noexcept { return m_open; }
+		// When an open circuit admits its probe.
+		std::int64_t retryAtMs() const noexcept { return m_retryAtMs; }
 		// Open and not yet due for its probe. Updates are held back only for
 		// this window: after it, the next update plan is the probe.
 		bool coolingDown(std::int64_t nowMs) const noexcept
@@ -217,15 +220,6 @@ namespace ManifestFetch
 		{
 			if (requested) promoted.store(true, std::memory_order_release);
 		}
-		inline void promoteAppId(std::atomic<uint32_t>& stored,
-		                         uint32_t candidate) noexcept
-		{
-			if (!candidate) return;
-			uint32_t missing = 0;
-			(void)stored.compare_exchange_strong(
-				missing, candidate, std::memory_order_acq_rel);
-		}
-
 	} // namespace detail
 
 	// A blob job has one deadline shared by all callers. A caller that times
@@ -260,26 +254,22 @@ namespace ManifestFetch
 		std::atomic<bool> cancelled{false};
 	};
 
-	int getTimeoutSec();
-
-	void submitManifestBlob(uint64_t manifestGid,
-	                        uint32_t appId, uint32_t depotId,
+	// Blob jobs are keyed by depot and gid, the archive's address.
+	void submitManifestBlob(uint64_t manifestGid, uint32_t depotId,
 	                        bool bypassArchiveMiss = false);
 
-	// Submit (or join an in-flight one) and block up to timeoutSec for the
+	// Submit (or join an in-flight one) and block up to 12 s for the
 	// manifest blob to land on disk.  Returns true if the .manifest file is
 	// now present (or was already there).  Used by BYldRequestDepotManifest
 	// to avoid the "no internet / hit retry" UX: Steam's first install
 	// attempt finds the file already cached.
-	bool awaitManifestBlob(uint64_t manifestGid, uint32_t appId,
-	                       uint32_t depotId,
-	                       int timeoutSec, bool activeRequest = false);
+	bool awaitManifestBlob(uint64_t manifestGid, uint32_t depotId,
+	                       bool activeRequest = false);
 
 	// Join the exact blob job for at most timeoutMs. Used by the real Steam
 	// install plan so every depot shares one total deadline instead of each
 	// blocking a Steam worker for a fresh 12 seconds.
-	bool awaitManifestBlobFor(uint64_t manifestGid, uint32_t appId,
-	                          uint32_t depotId,
+	bool awaitManifestBlobFor(uint64_t manifestGid, uint32_t depotId,
 	                          int timeoutMs, bool notifyOnTimeout,
 	                          bool activeRequest = false);
 
@@ -287,6 +277,10 @@ namespace ManifestFetch
 	void resetSessionState();
 
 	bool areProvidersOffline();
+
+	// Record whether a depot is installed from a local manifest instead of its
+	// public one; offline_<appId> exists while any depot of the game is.
+	void setDepotOnFallback(uint32_t appId, uint32_t depotId, bool onFallback);
 
 	// Remove the offline flags of the previous session. Called from load(), so
 	// only the client that runs the session clears them.

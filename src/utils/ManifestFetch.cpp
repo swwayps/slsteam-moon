@@ -9,6 +9,7 @@
 #include "../sdk/IClientAppManager.hpp"
 
 #include "curl_api.hpp"
+#include "curl_sink.hpp"
 #include <curl/curl.h>
 
 #include <algorithm>
@@ -30,6 +31,7 @@
 #include <string_view>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <thread>
 #include <unistd.h>
 #include <unordered_map>
 #include <vector>
@@ -43,24 +45,29 @@ namespace
 
 std::atomic<uint64_t> g_sessionEpoch{1};
 
-void setOfflineStatus(bool offline)
+// The flags Lumen shows live next to config.yaml.
+void setFlag(const std::string& name, bool present)
 {
-	const char* home = std::getenv("HOME");
-	if (!home) return;
-	std::string path = std::string(home) + "/.config/SLSsteam/offline";
-	if (offline)
+	const std::string path = g_config.getDir() + "/" + name;
+	if (present)
 	{
-		std::ofstream f(path);
-		if (f.is_open())
-		{
-			f << "1\n";
-		}
+		std::ofstream f(path, std::ios::trunc);
+		if (f.is_open()) f << "1\n";
 	}
 	else
 	{
 		std::remove(path.c_str());
 	}
 }
+
+void setOfflineStatus(bool offline)
+{
+	setFlag("offline", offline);
+}
+
+// Depots of each game that this session installs from a local manifest.
+std::mutex g_fallbackLock;
+std::unordered_map<uint32_t, std::set<uint32_t>> g_fallbackDepots;
 
 std::mutex g_circuitLock;
 ProviderCircuit g_providerCircuit(
@@ -71,6 +78,13 @@ std::int64_t steadyNowMs()
 	return std::chrono::duration_cast<std::chrono::milliseconds>(
 	    std::chrono::steady_clock::now().time_since_epoch()).count();
 }
+
+// The session whose open circuit has a probe loop running (0: none).
+// Guarded by g_circuitLock.
+uint64_t g_probeEpoch = 0;
+
+BoundedExecutor& blobExecutor();
+void probeArchiveUntilReachable(uint64_t sessionEpoch);
 
 uint64_t beginProviderAttempt(uint64_t sessionEpoch)
 {
@@ -87,6 +101,7 @@ void finishProviderAttempt(uint64_t sessionEpoch,
 {
 	bool wasOffline = false;
 	bool nowOffline = false;
+	bool startProbe = false;
 	{
 		std::lock_guard<std::mutex> lock(g_circuitLock);
 		if (sessionEpoch != g_sessionEpoch.load(std::memory_order_acquire))
@@ -98,14 +113,38 @@ void finishProviderAttempt(uint64_t sessionEpoch,
 		g_providerCircuit.finishAttempt(
 		    attemptToken, steadyNowMs(), success, rateLimited, transportFailure);
 		nowOffline = g_providerCircuit.open();
+		// Only a reachable answer closes the circuit, and Lumen reads only the
+		// offline flag: probe the archive once the cooldown ends instead of
+		// waiting for a manifest download, which an up-to-date library never
+		// starts.
+		startProbe = nowOffline && g_probeEpoch != sessionEpoch;
+		if (startProbe) g_probeEpoch = sessionEpoch;
 	}
+	if (startProbe)
+	{
+		bool submitted = false;
+		try
+		{
+			submitted = blobExecutor().submit(
+			    [sessionEpoch] { probeArchiveUntilReachable(sessionEpoch); });
+		}
+		catch (...)
+		{
+		}
+		if (!submitted)
+		{
+			std::lock_guard<std::mutex> lock(g_circuitLock);
+			if (g_probeEpoch == sessionEpoch) g_probeEpoch = 0;
+		}
+	}
+	if (wasOffline == nowOffline) return;
 	setOfflineStatus(nowOffline);
-	if (!wasOffline && nowOffline)
+	if (nowOffline)
 	{
 		g_pLog->info(
 		    "ManifestFetch: manifest archive unreachable; marking providers offline until it recovers\n");
 	}
-	else if (wasOffline && !nowOffline)
+	else
 	{
 		g_pLog->info(
 		    "ManifestFetch: manifest archive reachable again; clearing offline state\n");
@@ -154,17 +193,6 @@ void clearArchiveMiss(uint32_t depotId, uint64_t gid)
 	g_archiveMisses.erase({depotId, gid});
 }
 
-struct BodySink { std::string* out; std::size_t limit; };
-
-std::size_t curlWriteCb(const char* p, std::size_t sz, std::size_t n, BodySink* sink)
-{
-	if (sz && n > SIZE_MAX / sz) return 0;
-	const std::size_t bytes = sz * n;
-	if (bytes > sink->limit - sink->out->size()) return 0;
-	sink->out->append(p, bytes);
-	return bytes;
-}
-
 
 struct TransferControl
 {
@@ -211,7 +239,7 @@ HttpResponse httpGetHere(const std::string& url, const JobBudget* budget,
 		return r;
 	}
 	curl_slist* requestHeaders = nullptr;
-	BodySink sink{&r.body, maxBodyBytes};
+	CurlBodySink sink{&r.body, maxBodyBytes};
 	if (!hostHeader.empty())
 	{
 		const std::string host = "Host: " + std::string(hostHeader);
@@ -227,12 +255,8 @@ HttpResponse httpGetHere(const std::string& url, const JobBudget* budget,
 	}
 	curlApi()->easy_setopt(c, CURLOPT_URL, url.c_str());
 	curlApi()->easy_setopt(c, CURLOPT_FOLLOWLOCATION, method == "POST" ? 0L : 1L);
-	// A redirect never downgrades an https request to plain http.
-	curlApi()->easy_setopt(c, CURLOPT_REDIR_PROTOCOLS,
-	                       url.rfind("https://", 0) == 0
-	                           ? static_cast<long>(CURLPROTO_HTTPS)
-	                           : static_cast<long>(CURLPROTO_HTTP | CURLPROTO_HTTPS));
-	curlApi()->easy_setopt(c, CURLOPT_WRITEFUNCTION, curlWriteCb);
+	curlApi()->easy_setopt(c, CURLOPT_REDIR_PROTOCOLS, curlRedirectProtocols(url));
+	curlApi()->easy_setopt(c, CURLOPT_WRITEFUNCTION, curlBodySinkWrite);
 	curlApi()->easy_setopt(c, CURLOPT_WRITEDATA, &sink);
 	curlApi()->easy_setopt(c, CURLOPT_ACCEPT_ENCODING, "");
 	if (method == "HEAD") curlApi()->easy_setopt(c, CURLOPT_NOBODY, 1L);
@@ -317,6 +341,43 @@ HttpResponse httpGet(const std::string& url, const JobBudget* budget = nullptr,
 	});
 }
 
+// Runs on a blob worker while the session's circuit is open: once the
+// cooldown ends it asks the archive root for headers (any answer but a 5xx or
+// a 429 counts as reachable), and again after each failed probe, until the
+// circuit closes or the session ends.
+void probeArchiveUntilReachable(uint64_t sessionEpoch)
+{
+	for (;;)
+	{
+		std::int64_t waitMs = 0;
+		{
+			std::lock_guard<std::mutex> lock(g_circuitLock);
+			if (sessionEpoch != g_sessionEpoch.load(std::memory_order_acquire) ||
+			    !g_providerCircuit.open())
+			{
+				if (g_probeEpoch == sessionEpoch) g_probeEpoch = 0;
+				return;
+			}
+			waitMs = g_providerCircuit.retryAtMs() - steadyNowMs();
+		}
+		// Sleep in short steps: a new session, or a download that closed the
+		// circuit, ends the wait. A download that holds the one attempt the
+		// open circuit admits makes beginProviderAttempt return 0.
+		const uint64_t token = waitMs > 0 ? 0 : beginProviderAttempt(sessionEpoch);
+		if (token == 0)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(
+			    std::clamp<std::int64_t>(waitMs, 100, 1000)));
+			continue;
+		}
+		const HttpResponse answer = httpGet(
+		    "https://manifest.luastools.xyz/", nullptr, {}, "HEAD", {}, 64u * 1024u, 10000);
+		const auto outcome = classifyArchiveOutcome(answer.networkError, answer.status);
+		finishProviderAttempt(sessionEpoch, token, outcome.success,
+		                      outcome.rateLimited, outcome.transportFailure);
+	}
+}
+
 } // namespace
 
 
@@ -389,14 +450,11 @@ bool writeManifestFile(const std::string& path, const void* data,
 	return close(fd) == 0;
 }
 
-bool fetchManifestBlob(uint64_t gid, uint32_t appId, uint32_t depotId,
+bool fetchManifestBlob(uint64_t gid, uint32_t depotId,
                        const std::string& depotcacheDir,
                        const std::shared_ptr<JobBudget>& budget,
                        bool bypassArchiveMiss, uint64_t sessionEpoch)
 {
-	// appId is part of the shared blob API but not needed here: the archive is
-	// addressed by depot and gid only.
-	(void)appId;
 	if (budget && budget->shouldStop()) return false;
 	std::string targetPath = depotcacheDir + "/" + std::to_string(depotId)
 	                          + "_" + std::to_string(gid) + ".manifest";
@@ -434,8 +492,8 @@ bool fetchManifestBlob(uint64_t gid, uint32_t appId, uint32_t depotId,
 		// counts as reachable — the manifest just has not been donated yet.
 		if (const uint64_t token = beginProviderAttempt(sessionEpoch))
 		{
-			const auto outcome = classifyArchiveOutcome(archived.networkError,
-			                                            archived.status);
+			const auto outcome = classifyArchiveOutcome(
+			    archived.networkError, archived.status, budget && budget->shouldStop());
 			finishProviderAttempt(sessionEpoch, token, outcome.success,
 			                      outcome.rateLimited, outcome.transportFailure);
 		}
@@ -491,18 +549,21 @@ bool fetchManifestBlob(uint64_t gid, uint32_t appId, uint32_t depotId,
 
 bool isAnyManagedDownloadActive(uint32_t appIdHint)
 {
-	const std::string steamRoot = findSteamRootForBlob();
-	const auto downloading = [&steamRoot](uint32_t appId)
+	// Steam writes an appmanifest from the state its app manager holds, so the
+	// file is only read before that interface is resolved.
+	IClientAppManager* const appManager = g_pClientAppManager;
+	std::string steamRoot;
+	if (!appManager) steamRoot = findSteamRootForBlob();
+	const auto downloading = [appManager, &steamRoot](uint32_t appId)
 	{
-		if (g_pClientAppManager &&
-		    appStateIsDownloading(static_cast<uint32_t>(
-			    g_pClientAppManager->getAppInstallState(appId))))
-			return true;
-		return appStateIsDownloading(appManifestState(steamRoot, appId));
+		const uint32_t state = appManager
+			? static_cast<uint32_t>(appManager->getAppInstallState(appId))
+			: appManifestState(steamRoot, appId);
+		return appStateIsDownloading(state);
 	};
 	if (appIdHint && downloading(appIdHint)) return true;
-	// Asked once per depot while Steam plans; the fleet scan reads one
-	// appmanifest per managed app, so it runs once per window.
+	// Asked once per depot while Steam plans, so the fleet answer is reused
+	// for a short window.
 	static DownloadActivityCache fleet;
 	return fleet.get(steadyNowMs(), [&]
 	{
@@ -537,7 +598,6 @@ struct BlobJob
 	std::shared_future<bool> future;
 	std::shared_ptr<JobBudget> budget;
 	uint64_t sessionEpoch = 0;
-	std::atomic<uint32_t> appId{0};
 	std::atomic<bool> bypassArchiveMiss{false};
 };
 
@@ -552,8 +612,7 @@ BoundedExecutor& blobExecutor()
 	return *executor;
 }
 
-std::shared_ptr<BlobJob> launchOrJoinBlob(uint64_t gid, uint32_t appId,
-	                                      uint32_t depotId,
+std::shared_ptr<BlobJob> launchOrJoinBlob(uint64_t gid, uint32_t depotId,
                                           const std::string& depotcacheDir,
                                           bool bypassArchiveMiss)
 {
@@ -569,27 +628,13 @@ std::shared_ptr<BlobJob> launchOrJoinBlob(uint64_t gid, uint32_t appId,
 		g_blobInflight.erase(it);
 		it = g_blobInflight.end();
 	}
+	// A job is in the map only while it runs: both completion paths below
+	// settle the promise and erase the entry under this lock.
 	if (it != g_blobInflight.end())
 	{
-		auto job = it->second;
-		detail::promoteAppId(job->appId, appId);
-		detail::promoteArchiveMissBypass(job->bypassArchiveMiss,
+		detail::promoteArchiveMissBypass(it->second->bypassArchiveMiss,
 		                                bypassArchiveMiss);
-		// If the previous job finished successfully AND the manifest is
-		// still on disk, return that. If it finished but failed, OR the
-		// file is gone, drop the entry so a fresh re-fetch happens.
-		if (job->future.wait_for(std::chrono::seconds(0)) ==
-		    std::future_status::ready)
-		{
-			const bool onDisk = ManifestStore::isInDepotcache(depotId, gid);
-			if (job->future.get() && onDisk)
-				return job;
-			g_blobInflight.erase(it);
-		}
-		else
-		{
-			return job;
-		}
+		return it->second;
 	}
 
 	auto completion = std::make_shared<std::promise<bool>>();
@@ -598,12 +643,13 @@ std::shared_ptr<BlobJob> launchOrJoinBlob(uint64_t gid, uint32_t appId,
 	job->budget = std::make_shared<JobBudget>(
 		std::chrono::seconds(60));
 	job->sessionEpoch = sessionEpoch;
-	detail::promoteAppId(job->appId, appId);
 	detail::promoteArchiveMissBypass(job->bypassArchiveMiss,
 	                                bypassArchiveMiss);
-	g_blobInflight.emplace(key, job);
-
-	const bool accepted = blobExecutor().submit(
+	// Everything that can throw (the executor, the task's storage) runs before
+	// the entry is published: an entry whose task never started keeps a
+	// promise nobody sets, and every later wait for it would get a broken one.
+	auto& executor = blobExecutor();
+	std::function<void()> task =
 	    [gid, depotId, depotcacheDir, completion, job, key]
 	    {
 	        bool ok = false;
@@ -623,9 +669,7 @@ std::shared_ptr<BlobJob> launchOrJoinBlob(uint64_t gid, uint32_t appId,
 	                    ok = (firstAttempt &&
 	                          ManifestStore::restoreToDepotcache(depotId, gid))
 	                         || fetchManifestBlob(
-	                             gid,
-	                             job->appId.load(std::memory_order_acquire),
-	                             depotId, depotcacheDir, job->budget,
+	                             gid, depotId, depotcacheDir, job->budget,
 	                             bypass, job->sessionEpoch);
 	                }
 	            }
@@ -655,15 +699,16 @@ std::shared_ptr<BlobJob> launchOrJoinBlob(uint64_t gid, uint32_t appId,
 	                g_blobInflight.erase(entry);
 	            break;
 	        }
-	    });
-	if (!accepted)
+	    };
+	g_blobInflight.emplace(key, job);
+	if (!executor.submit(std::move(task)))
 	{
-		g_pLog->debug(
-		    "ManifestFetch: blob depot=%u gid=%llu executor queue unavailable\n",
-		    depotId, static_cast<unsigned long long>(gid));
 		job->budget->cancel();
 		try { completion->set_value(false); } catch (...) {}
 		g_blobInflight.erase(key);
+		g_pLog->debug(
+		    "ManifestFetch: blob depot=%u gid=%llu executor queue unavailable\n",
+		    depotId, static_cast<unsigned long long>(gid));
 	}
 	return job;
 }
@@ -672,12 +717,7 @@ std::shared_ptr<BlobJob> launchOrJoinBlob(uint64_t gid, uint32_t appId,
 
 
 
-int getTimeoutSec()
-{
-	return 12;
-}
-
-void submitManifestBlob(uint64_t manifestGid, uint32_t appId, uint32_t depotId,
+void submitManifestBlob(uint64_t manifestGid, uint32_t depotId,
                         bool bypassArchiveMiss)
 {
 	const auto steamRoot = findSteamRootForBlob();
@@ -689,29 +729,26 @@ void submitManifestBlob(uint64_t manifestGid, uint32_t appId, uint32_t depotId,
 		return;
 	}
 	const std::string depotcacheDir = steamRoot + "/depotcache";
-	(void)launchOrJoinBlob(manifestGid, appId, depotId, depotcacheDir,
+	(void)launchOrJoinBlob(manifestGid, depotId, depotcacheDir,
 	                       bypassArchiveMiss);
 }
 
-bool awaitManifestBlob(uint64_t manifestGid, uint32_t appId,
-                       uint32_t depotId, int timeoutSec, bool activeRequest)
+bool awaitManifestBlob(uint64_t manifestGid, uint32_t depotId,
+                       bool activeRequest)
 {
-	if (timeoutSec <= 0) timeoutSec = getTimeoutSec();
-	return awaitManifestBlobFor(
-	    manifestGid, appId, depotId, timeoutSec * 1000,
-	    /*notifyOnTimeout=*/true,
-	    activeRequest);
+	constexpr int kAwaitMs = 12 * 1000;
+	return awaitManifestBlobFor(manifestGid, depotId, kAwaitMs,
+	                            /*notifyOnTimeout=*/true, activeRequest);
 }
 
-bool awaitManifestBlobFor(uint64_t manifestGid, uint32_t appId,
-                          uint32_t depotId,
+bool awaitManifestBlobFor(uint64_t manifestGid, uint32_t depotId,
                           int timeoutMs, bool notifyOnTimeout,
                           bool activeRequest)
 {
 	const auto steamRoot = findSteamRootForBlob();
 	if (steamRoot.empty()) return false;
 	const std::string depotcacheDir = steamRoot + "/depotcache";
-	auto job = launchOrJoinBlob(manifestGid, appId, depotId, depotcacheDir,
+	auto job = launchOrJoinBlob(manifestGid, depotId, depotcacheDir,
 	                            /*bypassArchiveMiss=*/activeRequest);
 	if (timeoutMs < 0) timeoutMs = 0;
 	if (job->future.wait_for(std::chrono::milliseconds(timeoutMs)) !=
@@ -727,13 +764,32 @@ bool awaitManifestBlobFor(uint64_t manifestGid, uint32_t appId,
 }
 
 
+void setDepotOnFallback(uint32_t appId, uint32_t depotId, bool onFallback)
+{
+	if (!appId || !depotId) return;
+	std::lock_guard lock(g_fallbackLock);
+	auto& depots = g_fallbackDepots[appId];
+	const bool wasFlagged = !depots.empty();
+	if (onFallback) depots.insert(depotId);
+	else depots.erase(depotId);
+	const bool flagged = !depots.empty();
+	if (!flagged) g_fallbackDepots.erase(appId);
+	if (wasFlagged != flagged) setFlag("offline_" + std::to_string(appId), flagged);
+}
+
 void clearOfflineFlags()
 {
-	const char* home = std::getenv("HOME");
-	if (!home) return;
-	const std::filesystem::path dir = std::filesystem::path(home) / ".config/SLSsteam";
+	{
+		std::lock_guard lock(g_fallbackLock);
+		g_fallbackDepots.clear();
+	}
+	const std::filesystem::path dir = g_config.getDir();
 	std::error_code ec;
 	std::filesystem::remove(dir / "offline", ec);
+	// Older versions kept the global flag below $HOME/.config even when
+	// XDG_CONFIG_HOME points elsewhere.
+	if (const char* home = std::getenv("HOME"))
+		std::filesystem::remove(std::filesystem::path(home) / ".config/SLSsteam/offline", ec);
 	for (std::filesystem::directory_iterator it(dir, ec), end; !ec && it != end;
 	     it.increment(ec))
 	{

@@ -306,12 +306,11 @@ inline bool manifestInstalledState(
 	    std::filesystem::exists(gameDir / ".DepotDownloader", ec) && !ec;
 	ec.clear();
 	bool hasContent = false;
-	std::filesystem::directory_iterator gameEntries(
-	    gameDir, std::filesystem::directory_options::skip_permission_denied, ec);
-	if (ec) return false;
-	for (const auto& gameEntry : gameEntries)
+	for (std::filesystem::directory_iterator it(
+	         gameDir, std::filesystem::directory_options::skip_permission_denied, ec), end;
+	     !ec && it != end; it.increment(ec))
 	{
-		if (gameEntry.path().filename() != ".DepotDownloader")
+		if (it->path().filename() != ".DepotDownloader")
 		{
 			hasContent = true;
 			break;
@@ -333,13 +332,13 @@ scanInstalledApps(const std::vector<std::filesystem::path>& steamAppsRoots)
 	for (const auto& steamapps : steamAppsRoots)
 	{
 		std::error_code ec;
-		std::filesystem::directory_iterator entries(
-		    steamapps, std::filesystem::directory_options::skip_permission_denied, ec);
-		if (ec) continue;
-
-		for (const auto& entry : entries)
+		for (std::filesystem::directory_iterator it(
+		         steamapps, std::filesystem::directory_options::skip_permission_denied, ec), end;
+		     !ec && it != end; it.increment(ec))
 		{
-			if (!entry.is_regular_file(ec) || ec) { ec.clear(); continue; }
+			const auto& entry = *it;
+			std::error_code fileEc;
+			if (!entry.is_regular_file(fileEc) || fileEc) continue;
 			const uint32_t appId = appIdFromManifestName(
 			    entry.path().filename().string());
 			if (appId == 0) continue;

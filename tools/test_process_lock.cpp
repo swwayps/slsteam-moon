@@ -3,10 +3,28 @@
 #include "../src/utils/process_lock.hpp"
 
 #include <cassert>
+#include <csignal>
+#include <cstdio>
 #include <fcntl.h>
 #include <filesystem>
 #include <string>
+#include <sys/wait.h>
 #include <unistd.h>
+
+// Linked with -Wl,--wrap=flock: a non-zero value makes flock fail with it.
+static int g_flockError = 0;
+extern "C" int __real_flock(int fd, int operation);
+extern "C" int __wrap_flock(int fd, int operation)
+{
+	if (g_flockError != 0)
+	{
+		errno = g_flockError;
+		return -1;
+	}
+	return __real_flock(fd, operation);
+}
+
+static void onAlarm(int) {}
 
 int main()
 {
@@ -59,6 +77,51 @@ int main()
 		assert(!missingDir.usable());
 		assert(!missingDir.heldByAnother());
 	}
+
+	// A blocking wait interrupted by a signal (a handler without SA_RESTART)
+	// keeps waiting: it is not contention, and reading it as "held elsewhere"
+	// skipped the guarded work for that pass.
+	{
+		int ready[2];
+		assert(pipe(ready) == 0);
+		const pid_t holder = fork();
+		if (holder == 0)
+		{
+			ProcessLock::FileLock held(path);
+			const char byte = held.acquired() ? 1 : 0;
+			(void)!write(ready[1], &byte, 1);
+			sleep(2);
+			_exit(0);
+		}
+		char byte = 0;
+		assert(read(ready[0], &byte, 1) == 1 && byte == 1);
+		struct sigaction action {};
+		action.sa_handler = onAlarm;
+		action.sa_flags = 0;
+		sigemptyset(&action.sa_mask);
+		sigaction(SIGALRM, &action, nullptr);
+		alarm(1);
+		ProcessLock::FileLock waited(path, false);
+		const bool acquired = waited.acquired();
+		const bool held = waited.heldByAnother();
+		waitpid(holder, nullptr, 0);
+		if (!acquired) std::puts("FAIL: an interrupted blocking wait gave up on the lock");
+		assert(acquired && !held);
+	}
+	std::filesystem::remove(path, ec);
+
+	// Any flock error other than contention (ENOLCK on a network home) is no
+	// lock we can trust, so the caller proceeds.
+	{
+		g_flockError = ENOLCK;
+		ProcessLock::FileLock broken(path, false);
+		g_flockError = 0;
+		if (broken.heldByAnother()) std::puts("FAIL: an flock error reads as held by another");
+		assert(!broken.acquired());
+		assert(!broken.usable());
+		assert(!broken.heldByAnother());
+	}
+	std::filesystem::remove(path, ec);
 
 	return 0;
 }

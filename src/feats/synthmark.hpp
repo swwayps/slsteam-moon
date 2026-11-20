@@ -36,11 +36,9 @@
 #include <fcntl.h>
 #include <functional>
 #include <limits>
-#include <mutex>
 #include <string>
 #include <system_error>
 #include <sys/syscall.h>
-#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <unistd.h>
@@ -114,32 +112,6 @@ namespace SynthMark
 		}
 		return out;
 	}
-
-	struct StripLimits
-	{
-		std::uint64_t maxStrips = 8;
-		std::uint64_t maxSeconds = 60;
-	};
-
-	struct StripState
-	{
-		std::uint64_t count = 0;
-		std::int64_t firstStripAt = 0;
-	};
-
-	enum class StripDecision
-	{
-		Allow,
-		Disabled,
-		CountLimit,
-		TimeLimit,
-	};
-
-	struct StripEvaluation
-	{
-		StripDecision decision = StripDecision::Disabled;
-		StripState nextState{};
-	};
 
 	namespace detail
 	{
@@ -281,63 +253,6 @@ namespace SynthMark
 		return names;
 	}
 }
-
-	// Pure state transition for one candidate strip.  The caller owns the
-	// per-app state (and may protect it with a mutex); this helper only decides
-	// whether the attempt is allowed and returns the state after that attempt.
-	inline StripEvaluation evaluateStrip(const StripState& state,
-	                                     const StripLimits& limits,
-	                                     std::int64_t now)
-	{
-		if (limits.maxStrips == 0)
-			return {StripDecision::Disabled, state};
-		if (state.count >= limits.maxStrips)
-			return {StripDecision::CountLimit, state};
-		if (state.count != 0 && now >= state.firstStripAt &&
-		    static_cast<std::uint64_t>(now - state.firstStripAt) >=
-		        limits.maxSeconds)
-		{
-			return {StripDecision::TimeLimit, state};
-		}
-
-		StripState next = state;
-		if (next.count == 0) next.firstStripAt = now;
-		++next.count;
-		return {StripDecision::Allow, next};
-	}
-
-	// Thread-safe process-local strip budget. The caller decides whether an
-	// app is eligible; this component only reserves one strip and retains the
-	// count/timestamp independently for each appid.
-	class StripBudget
-	{
-	public:
-		StripEvaluation reserve(std::uint32_t appId,
-		                        const StripLimits& limits,
-		                        std::int64_t now)
-		{
-			std::lock_guard<std::mutex> lock(mutex_);
-			const auto it = states_.find(appId);
-			const StripState state =
-			    it == states_.end() ? StripState{} : it->second;
-			const StripEvaluation evaluation = evaluateStrip(state, limits, now);
-			if (evaluation.decision == StripDecision::Allow)
-				states_[appId] = evaluation.nextState;
-			return evaluation;
-		}
-
-	private:
-		std::mutex mutex_;
-		std::unordered_map<std::uint32_t, StripState> states_;
-	};
-
-	inline bool isManagedSynthetic(
-	    std::uint32_t appId,
-	    const std::function<bool(std::uint32_t)>& isSynthetic,
-	    const std::function<bool(std::uint32_t)>& isManaged)
-	{
-		return isManaged && isManaged(appId) && isSynthetic && isSynthetic(appId);
-	}
 
 	// Install-state gate for the outgoing-PICS protection. Until the app
 	// manager interface is resolved, preserve the early-boot behavior and
@@ -494,16 +409,5 @@ namespace SynthMark
 			if (isSynthetic(requestedAppIds[static_cast<size_t>(i)]))
 				out.push_back(i);
 		return out;
-	}
-
-	inline std::vector<int> stripIndices(
-	    const std::vector<uint32_t>& requestedAppIds,
-	    const std::function<bool(uint32_t)>& isSynthetic,
-	    const std::function<bool(uint32_t)>& isManaged)
-	{
-		return stripIndices(requestedAppIds,
-		    [&](uint32_t appId) {
-				return isManagedSynthetic(appId, isSynthetic, isManaged);
-		    });
 	}
 }

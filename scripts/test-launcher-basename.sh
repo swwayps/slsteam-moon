@@ -33,6 +33,14 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 SETUP="$REPO_ROOT/setup.sh"
 TMP="$(mktemp -d)"
 trap 'chmod -R u+w "$TMP" 2>/dev/null || true; rm -rf "$TMP"' EXIT
+# The shim trusts a captured original only when root or the caller owns every
+# folder above it. In a test sandbox / and /tmp are not root's (user
+# namespace), so this stub reports them as root's, as on a real system.
+mkdir -p "$TMP/stat-stub"
+printf '#!/bin/sh\nlast=""\nfor a in "$@"; do last="$a"; done\ncase "$last:$*" in\n\t/:*%%u*|/tmp:*%%u*) echo 0; exit 0 ;;\nesac\nexec "%s" "$@"\n' \
+  "$(command -v stat)" > "$TMP/stat-stub/stat"
+chmod +x "$TMP/stat-stub/stat"
+export PATH="$TMP/stat-stub:$PATH"
 PASS=0; FAIL=0
 check() {
 	if [ "$2" = "$3" ]; then
@@ -83,6 +91,8 @@ chmod 0755 "$HOME/.local/share/SLSsteam/path/steam"
 
 LS_SLSDIR="$HOME/.local/share/SLSsteam"
 LS_BACKUP_ROOT="$LS_SLSDIR/system-launcher-backup"
+# Never the host's /var/lib.
+LS_SYSTEM_BACKUP_ROOT="$TMP/var-lib/slsteam-moon/launcher-backup"
 LS_LAUNCHER_DIRS=("$BIN_DIR")
 LS_STEAM_ROOT="$STEAM_ROOT"
 LS_SUDO=""
@@ -120,8 +130,7 @@ check "healed alias points at the captured original" "$(ls_backup_path "$BIN_DIR
 # captured original under a rejected name: fall through to the data-dir
 # steam.sh, which ignores its own argv[0].
 if [ "$(id -u)" -eq 0 ]; then
-	printf 'ok   - unobtainable-alias fallback skipped under root\n'
-	PASS=$((PASS+1))
+	printf 'skip - unobtainable-alias fallback (root can write anything)\n'
 else
 	rm -f "$ALIAS" "$HOME/.local/share/SLSsteam/path/steam"
 	chmod a-w "$ALIAS_DIR"

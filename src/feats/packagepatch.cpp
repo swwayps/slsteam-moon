@@ -15,6 +15,7 @@
 #include "../sdk/CSteamEngine.hpp"
 #include "../sdk/CUser.hpp"
 
+#include "depotkey.hpp"
 #include "depotquarantine.hpp"
 #include "depotquarantine_store.hpp"
 #include "appinfostate.hpp"
@@ -28,13 +29,9 @@
 
 #include <atomic>
 #include <algorithm>
-#include <charconv>
 #include <cstdint>
-#include <filesystem>
-#include <fstream>
 #include <limits>
 #include <mutex>
-#include <regex>
 #include <set>
 #include <sstream>
 #include <string>
@@ -176,71 +173,6 @@ namespace
 		if (!claimed) return;
 		g_licenseReconciled.store(false, std::memory_order_release);
 		reconcileLicensesOnce();
-	}
-
-	// Walk the SLSsteam depot-key cache (`<config>/cache/depotkey_*.yaml`)
-	// and return every depot id whose recorded appId is in `appFilter`.
-	// Each cache file is plain YAML with `appId:` and `depotId:` fields.
-	std::vector<uint32_t> collectDepotsForApps(const std::unordered_set<uint32_t>& appFilter)
-	{
-		std::vector<uint32_t> out;
-		const auto dir = std::filesystem::path(g_config.getDir().c_str()) / "cache";
-		std::error_code dirEc;
-		if (appFilter.empty() || !std::filesystem::is_directory(dir, dirEc))
-		{
-			return out;
-		}
-
-		static const std::regex appIdRe("^appId:\\s*(\\d+)\\s*$");
-		static const std::regex depotIdRe("^depotId:\\s*(\\d+)\\s*$");
-		// Runs on the LoadPackage boot path outside any handler: no throws.
-		const auto parseId = [](const std::ssub_match& digits, uint32_t& dest)
-		{
-			const std::string text = digits.str();
-			uint32_t value = 0;
-			if (std::from_chars(text.data(), text.data() + text.size(), value).ec ==
-			    std::errc())
-				dest = value;
-		};
-
-		for (std::filesystem::directory_iterator it(dir, dirEc), end;
-		     !dirEc && it != end; it.increment(dirEc))
-		{
-			const auto& entry = *it;
-			std::error_code fileEc;
-			if (!entry.is_regular_file(fileEc) || fileEc) continue;
-			const auto& p = entry.path();
-			const auto name = p.filename().string();
-			if (name.rfind("depotkey_", 0) != 0 || p.extension() != ".yaml")
-			{
-				continue;
-			}
-
-			std::ifstream f(p);
-			if (!f.is_open()) continue;
-
-			uint32_t fileAppId = 0;
-			uint32_t fileDepotId = 0;
-			std::string line;
-			while (std::getline(f, line))
-			{
-				std::smatch m;
-				if (std::regex_match(line, m, appIdRe))
-				{
-					parseId(m[1], fileAppId);
-				}
-				else if (std::regex_match(line, m, depotIdRe))
-				{
-					parseId(m[1], fileDepotId);
-				}
-			}
-
-			if (fileAppId && fileDepotId && appFilter.count(fileAppId))
-			{
-				out.push_back(fileDepotId);
-			}
-		}
-		return out;
 	}
 
 	struct VectorPlan
@@ -702,7 +634,7 @@ namespace
 		// depots are eligible.
 		std::unordered_set<uint32_t> appFilter(injectable.begin(), injectable.end());
 		const auto depotIds = DepotQuarantineStore::withoutIds(
-			collectDepotsForApps(appFilter), excluded);
+			DepotKey::depotsForApps(appFilter), excluded);
 		const uint32_t depotsAdded = appendToVecLocked(
 			pPkg->DepotIdVec, depotIds, g_seededDepotIds, "DepotIdVec");
 

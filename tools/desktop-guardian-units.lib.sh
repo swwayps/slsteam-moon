@@ -45,7 +45,6 @@ Description=Periodic Steam desktop launch coverage reconciliation
 [Timer]
 OnStartupSec=30s
 OnUnitActiveSec=5min
-Persistent=true
 Unit=slsteam-desktop-guardian.service
 
 [Install]
@@ -328,10 +327,12 @@ dgu_autostart_sources() {
 			lower="$(printf '%s' "$id" | tr '[:upper:]' '[:lower:]')"
 			case "$lower" in *.desktop) : ;; *) continue ;; esac
 			printf '%s\n' "$seen" | grep -qxF "$id" 2>/dev/null && continue
-			grep -q '^Name=Install Steam$' "$file" 2>/dev/null && continue
-			args="$(dgu_autostart_args "$file")" || continue
+			# The first file for an ID is the one the generator uses, even when
+			# it is not one we can cover: a lower layer must not stand in for it.
 			seen="${seen}${seen:+
 }$id"
+			grep -q '^Name=Install Steam$' "$file" 2>/dev/null && continue
+			args="$(dgu_autostart_args "$file")" || continue
 			printf '%s\n' "$file"
 		done
 	done < <(dc_autostart_dirs)

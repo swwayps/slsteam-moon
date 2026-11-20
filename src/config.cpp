@@ -110,7 +110,9 @@ static std::string findSteamRootForConfig()
 	};
 	for (const auto& candidate : candidates)
 	{
-		if (std::filesystem::exists(candidate + "/steam.sh"))
+		// A candidate that cannot be stat-ed (a symlink loop) is skipped.
+		std::error_code ec;
+		if (std::filesystem::exists(candidate + "/steam.sh", ec))
 		{
 			return candidate;
 		}
@@ -135,12 +137,15 @@ std::unordered_set<uint32_t> CConfig::discoverStPluginAppIds()
 	if (steamRoot.empty()) return result;
 
 	const auto stplug = steamRoot + "/config/stplug-in";
-	if (!std::filesystem::exists(stplug)) return result;
-
 	std::error_code ec;
-	for (const auto& entry : std::filesystem::directory_iterator(stplug, ec))
+	if (!std::filesystem::exists(stplug, ec)) return result;
+
+	for (std::filesystem::directory_iterator it(stplug, ec), end; !ec && it != end;
+	     it.increment(ec))
 	{
-		if (!entry.is_regular_file()) continue;
+		const auto& entry = *it;
+		std::error_code fileEc;
+		if (!entry.is_regular_file(fileEc) || fileEc) continue;
 		const auto& path = entry.path();
 		if (path.extension() != ".lua") continue;
 
@@ -342,7 +347,7 @@ static void onFileChange()
 
 	// Steam-owned package and license work is serialized by OwnerWork.  Only
 	// the stplug-in/luaappids union enters this complete desired-state snapshot.
-	HotReload::publish(afterManaged, true);
+	HotReload::publish(afterManaged);
 	g_pLog->notify("Config reloaded!");
 }
 
@@ -934,13 +939,16 @@ bool CConfig::isAddedAppId(uint32_t appId)
 
 uint64_t CConfig::getManifestPin(uint32_t appId, uint32_t depotId)
 {
-	return ManifestPins::getPinForContext(manifestPinsByApp.get(), appId, depotId);
+	return manifestPinsByApp.read([&](const ManifestPins::PinMap& pins) {
+		return ManifestPins::getPinForContext(pins, appId, depotId);
+	});
 }
 
 uint64_t CConfig::getManifestPinForPlanner(uint32_t appId, uint32_t depotId)
 {
-	return ManifestPins::getPinForPlannerEntry(
-	    manifestPinsByApp.get(), appId, depotId);
+	return manifestPinsByApp.read([&](const ManifestPins::PinMap& pins) {
+		return ManifestPins::getPinForPlannerEntry(pins, appId, depotId);
+	});
 }
 
 bool CConfig::isAppLocked(uint32_t appId)

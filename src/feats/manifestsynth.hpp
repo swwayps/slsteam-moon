@@ -21,8 +21,8 @@
 // install.  ManifestSynth rebuilds the absent `depots` block from those
 // (depotId -> gid) pairs, in the exact wire shape Steam's appinfo uses, so
 // the normal prune/splice tail (pruneUnsupportedDepots, the Proton
-// CompatTool mapping for windows-only depots, the synchronous manifest
-// staging) runs unchanged and the first-attempt install succeeds.
+// CompatTool mapping for windows-only depots) runs unchanged and the
+// first-attempt install succeeds.
 //
 // Kept free of globals/I/O (only yaml-cpp + std) so it is host-unit-
 // testable (tools/test_manifestsynth.cpp); the disk gather (which depots a

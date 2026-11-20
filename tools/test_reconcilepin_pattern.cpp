@@ -3,7 +3,7 @@
 // the production call-site locator finds its call to the builder that
 // Patterns::CUserAppManager::BuildDepotDependency resolves to, and the context
 // depot vector decodes from the function's own per-entry loop.
-// Build with: g++ -std=c++20 -I src tools/test_reconcilepin_pattern.cpp -o /tmp/test_reconcilepin_pattern
+// Build: make test-reconcilepin-pattern (STEAMCLIENT=<path> names the client)
 #include "feats/reconcilepin.hpp"
 #include <algorithm>
 #include <cstdint>

@@ -3,6 +3,7 @@
 #include "dlc_metadata.hpp"
 
 #include "dlcids.hpp"
+#include "kvtext.hpp"
 
 #include "../ascii.hpp"
 
@@ -18,129 +19,6 @@ namespace DlcMetadata
 {
 namespace
 {
-class VdfReader
-{
-public:
-	VdfReader(const char* begin, const char* end) : current_(begin), end_(end) {}
-
-	YAML::Node parseAppinfo()
-	{
-		std::string token;
-		if (next(token) != Token::String || token != "appinfo")
-			return YAML::Node(YAML::NodeType::Undefined);
-		if (next(token) != Token::OpenBrace)
-			return YAML::Node(YAML::NodeType::Undefined);
-		bool closed = false;
-		YAML::Node result = parseObject(closed);
-		if (!closed) return YAML::Node(YAML::NodeType::Undefined);
-		if (next(token) != Token::End)
-			return YAML::Node(YAML::NodeType::Undefined);
-		return result;
-	}
-
-private:
-	enum class Token { String, OpenBrace, CloseBrace, End, Invalid };
-
-	YAML::Node parseObject(bool& closed)
-	{
-		closed = false;
-		YAML::Node node(YAML::NodeType::Map);
-		std::string key;
-		for (;;)
-		{
-			const Token keyToken = next(key);
-			if (keyToken == Token::CloseBrace)
-			{
-				closed = true;
-				return node;
-			}
-			if (keyToken != Token::String)
-				return YAML::Node(YAML::NodeType::Undefined);
-
-			std::string value;
-			const Token valueToken = next(value);
-			if (valueToken == Token::String)
-			{
-				node[key] = value;
-				continue;
-			}
-			if (valueToken != Token::OpenBrace)
-				return YAML::Node(YAML::NodeType::Undefined);
-
-			bool childClosed = false;
-			YAML::Node child = parseObject(childClosed);
-			if (!childClosed || !child)
-				return YAML::Node(YAML::NodeType::Undefined);
-			node[key] = child;
-		}
-	}
-
-	Token next(std::string& output)
-	{
-		output.clear();
-		skipWhitespace();
-		if (current_ >= end_) return Token::End;
-		if (*current_ == '{') { ++current_; return Token::OpenBrace; }
-		if (*current_ == '}') { ++current_; return Token::CloseBrace; }
-		if (*current_ == '"') return quoted(output);
-		return bare(output);
-	}
-
-	void skipWhitespace()
-	{
-		while (current_ < end_)
-		{
-			const unsigned char value = static_cast<unsigned char>(*current_);
-			if (Ascii::isSpace(value)) { ++current_; continue; }
-			if (*current_ == '/' && current_ + 1 < end_ && current_[1] == '/')
-			{
-				while (current_ < end_ && *current_ != '\n') ++current_;
-				continue;
-			}
-			break;
-		}
-	}
-
-	Token quoted(std::string& output)
-	{
-		++current_;
-		while (current_ < end_)
-		{
-			const char value = *current_++;
-			if (value == '"') return Token::String;
-			if (value == '\\' && current_ < end_)
-			{
-				const char escaped = *current_++;
-				switch (escaped)
-				{
-					case 'n': output.push_back('\n'); break;
-					case 'r': output.push_back('\r'); break;
-					case 't': output.push_back('\t'); break;
-					default: output.push_back(escaped); break;
-				}
-				continue;
-			}
-			output.push_back(value);
-		}
-		return Token::Invalid;
-	}
-
-	Token bare(std::string& output)
-	{
-		while (current_ < end_)
-		{
-			const unsigned char value = static_cast<unsigned char>(*current_);
-			if (Ascii::isSpace(value) || *current_ == '{' || *current_ == '}' ||
-				*current_ == '"') break;
-			output.push_back(*current_++);
-		}
-		return output.empty() ? Token::Invalid : Token::String;
-	}
-
-	const char* current_;
-	const char* end_;
-};
-
 bool parseAppId(const YAML::Node& node, std::uint32_t& output)
 {
 	output = 0;
@@ -150,48 +28,6 @@ bool parseAppId(const YAML::Node& node, std::uint32_t& output)
 		value.data(), value.data() + value.size(), output);
 	return parsed.ec == std::errc{} &&
 		parsed.ptr == value.data() + value.size() && output != 0;
-}
-
-void emitEscaped(std::string& output, const std::string& value)
-{
-	output.push_back('"');
-	for (const char character : value)
-	{
-		if (character == '\\' || character == '"') output.push_back('\\');
-		output.push_back(character);
-	}
-	output.push_back('"');
-}
-
-void emitMap(std::string& output, const YAML::Node& node, int depth)
-{
-	for (auto item = node.begin(); item != node.end(); ++item)
-	{
-		if (!item->first.IsScalar()) continue;
-		const std::string key = item->first.as<std::string>();
-		const YAML::Node value = item->second;
-		output.append(static_cast<std::size_t>(depth), '\t');
-		emitEscaped(output, key);
-		if (value.IsMap())
-		{
-			output.append("\n");
-			output.append(static_cast<std::size_t>(depth), '\t');
-			output.append("{\n");
-			emitMap(output, value, depth + 1);
-			output.append(static_cast<std::size_t>(depth), '\t');
-			output.append("}\n");
-		}
-		else if (value.IsScalar())
-		{
-			output.append("\t\t");
-			emitEscaped(output, value.as<std::string>(""));
-			output.push_back('\n');
-		}
-		else
-		{
-			output.append("\t\t\"\"\n");
-		}
-	}
 }
 
 std::string lower(std::string value)
@@ -216,17 +52,7 @@ bool normalize(
 
 	try
 	{
-		std::size_t wireSize = cmWire.size();
-		while (wireSize != 0)
-		{
-			const unsigned char trailing =
-				static_cast<unsigned char>(cmWire[wireSize - 1]);
-			if (trailing != 0 && !Ascii::isSpace(trailing)) break;
-			--wireSize;
-		}
-		if (wireSize == 0) return false;
-		VdfReader reader(cmWire.data(), cmWire.data() + wireSize);
-		const YAML::Node body = reader.parseAppinfo();
+		const YAML::Node body = KvText::parseAppinfo(cmWire);
 		if (!body || !body.IsMap()) return false;
 
 		std::uint32_t wireAppId = 0;
@@ -266,9 +92,7 @@ bool normalize(
 		if (extended && extended.IsMap())
 			safe["extended"] = YAML::Clone(extended);
 
-		normalizedWire = "\"appinfo\"\n{\n";
-		emitMap(normalizedWire, safe, 1);
-		normalizedWire.append("}\n");
+		normalizedWire = KvText::emitAppinfo(safe);
 		return true;
 	}
 	catch (...)

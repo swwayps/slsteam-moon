@@ -5,16 +5,33 @@
 #include "../src/feats/manifestcode.hpp"
 #include "../src/hooks.hpp"
 #include "../src/log.hpp"
+#include "../src/sdk/protobufs/steammessages_base.pb.h"
 #include "../src/sdk/CNetPacket.hpp"
 #include "../src/sdk/steam.hpp"
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <memory>
+#include <new>
 #include <string>
 #include <sys/mman.h>
 #include <sys/wait.h>
 #include <unistd.h>
+// Counts down allocations on this thread; the one that reaches zero fails.
+static thread_local int t_failIn = 0;
+static thread_local bool t_failed = false;
+void* operator new(std::size_t size)
+{
+	if (t_failIn > 0 && --t_failIn == 0)
+	{
+		t_failed = true;
+		throw std::bad_alloc();
+	}
+	if (void* p = std::malloc(size ? size : 1)) return p;
+	throw std::bad_alloc();
+}
+void operator delete(void* p) noexcept { std::free(p); }
+void operator delete(void* p, std::size_t) noexcept { std::free(p); }
 static int g_failures = 0;
 #define CHECK(cond, msg)                                               \
 	do {                                                               \
@@ -30,9 +47,17 @@ void* countingAlloc(int size)
 	++g_allocations;
 	return std::malloc(static_cast<std::size_t>(size));
 }
+int g_sends = 0;
 bool recordSend(void*, EWebSocketOpCode, uint8_t* data, uint32_t)
 {
+	++g_sends;
 	g_sentData = data;
+	return true;
+}
+int g_manifestRequests = 0;
+bool recordManifestRequest(void*, uint32_t, uint32_t, uint64_t, const char*, void*)
+{
+	++g_manifestRequests;
 	return true;
 }
 }
@@ -66,12 +91,15 @@ int main()
 		if (child == 0)
 		{
 			CNetPacket::detectLayout(reinterpret_cast<const CNetPacket*>(unknown));
-			std::_Exit(CNetPacket::layoutSettled() ? 1 : 0);
+			if (CNetPacket::layoutSettled()) std::_Exit(1);
+			// Until a shift settles, the packet type is not read through the body.
+			std::_Exit(reinterpret_cast<const CNetPacket*>(unknown)->isProtoBuf() ? 2 : 0);
 		}
 		int status = -1;
 		waitpid(child, &status, 0);
 		CHECK(mapped && WIFEXITED(status) && WEXITSTATUS(status) == 0,
-		      "layout detection skips a body pointer into unmapped memory");
+		      "layout detection skips a body pointer into unmapped memory, and the "
+		      "packet type is not read through it before the layout settles");
 	}
 
 	// A received packet on the classic layout settles the shift at 0.
@@ -85,5 +113,65 @@ int main()
 	ManifestCode::hkBBuildAndAsyncSendFrame(nullptr, k_eWebSocketOpCode_Binary, frame, sizeof(frame));
 	CHECK(CNetPacket::layoutSettled() && g_allocations == 1,
 	      "once the layout is known a frame goes through the rewrite path");
+
+	// Our work in these hooks runs on Steam's threads: an allocation that
+	// fails anywhere in it must not unwind into Steam, and Steam's own call
+	// still runs once.
+	CMsgProtoBufHeader header;
+	header.set_target_job_name("ContentServerDirectory.GetManifestRequestCode#1");
+	header.set_steamid(76561198000000001ULL);
+	header.set_client_sessionid(7);
+	const std::string headerBytes = header.SerializeAsString();
+	std::vector<uint8_t> call(8 + headerBytes.size());
+	const uint32_t eMsg = 151u | 0x80000000u; // ServiceMethodCallFromClient
+	const uint32_t headerLength = static_cast<uint32_t>(headerBytes.size());
+	std::memcpy(call.data(), &eMsg, 4);
+	std::memcpy(call.data() + 4, &headerLength, 4);
+	std::memcpy(call.data() + 8, headerBytes.data(), headerBytes.size());
+	int sendRounds = 0;
+	bool sendEscaped = false;
+	bool sendOnce = true;
+	for (int k = 1; k <= 400; ++k)
+	{
+		g_sends = 0;
+		t_failed = false;
+		t_failIn = k;
+		try
+		{
+			ManifestCode::hkBBuildAndAsyncSendFrame(
+			    nullptr, k_eWebSocketOpCode_Binary, call.data(), static_cast<uint32_t>(call.size()));
+		}
+		catch (...) { sendEscaped = true; }
+		t_failIn = 0;
+		if (!t_failed) break;
+		++sendRounds;
+		sendOnce = sendOnce && g_sends == 1;
+	}
+	CHECK(sendRounds > 0 && !sendEscaped && sendOnce,
+	      "an allocation failure in the send hook does not reach Steam, and the frame is sent once");
+
+	Hooks::CDepotDownloadMgr_BYldRequestDepotManifest.tramp.fn = recordManifestRequest;
+	int manifestRounds = 0;
+	bool manifestEscaped = false;
+	bool manifestOnce = true;
+	for (int k = 1; k <= 400; ++k)
+	{
+		g_manifestRequests = 0;
+		t_failed = false;
+		t_failIn = k;
+		try
+		{
+			ManifestCode::hkCDepotDownloadMgr_BYldRequestDepotManifest(
+			    nullptr, 42, 4201, 7, "", nullptr);
+		}
+		catch (...) { manifestEscaped = true; }
+		t_failIn = 0;
+		if (!t_failed) break;
+		++manifestRounds;
+		manifestOnce = manifestOnce && g_manifestRequests == 1;
+	}
+	CHECK(manifestRounds > 0 && !manifestEscaped && manifestOnce,
+	      "an allocation failure in the manifest request hook does not reach Steam, "
+	      "and Steam's request runs once");
 	return g_failures == 0 ? 0 : 1;
 }

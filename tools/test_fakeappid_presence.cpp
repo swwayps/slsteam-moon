@@ -84,6 +84,8 @@ void route(uint32_t realAppId, uint32_t fakeAppId, uint32_t expected)
 	packet.setBody(body);
 	packet.setOriginalBody(body);
 	packet.setSize(packetSize);
+	// The receive hook settles the field layout on the first live packet.
+	CNetPacket::detectLayout(&packet);
 	FakeAppIds::sendMsg(&packet);
 
 	CMsgProtoBufHeader routed;

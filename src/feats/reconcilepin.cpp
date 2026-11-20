@@ -2,6 +2,7 @@
 //
 // See reconcilepin.hpp for the design.
 
+#include "reconcilepin_guard.hpp"
 #include "reconcilepin.hpp"
 
 #include "../config.hpp"
@@ -37,8 +38,6 @@ namespace
 	lm_size_t    g_size = 0;
 
 	bool g_pinActive = false;   // SLSSTEAM_RECONCILE_PIN: perform the gid rewrite
-	bool g_trace = false;       // SLSSTEAM_RECONCILE_TRACE: per-call logging
-	std::atomic<int> g_traceBudget{400};
 
 	// ctx layout on x86-64 (entry reads `mov edx,[rdi+8]` for the flags and
 	// `[rbx+0xc]` for the app id; i386 had +0x04 / +0x08).
@@ -91,38 +90,6 @@ namespace
 		*gidp = pin;
 		*sizep = *pinSize;
 		return true;
-	}
-
-	void traceLog(uint32_t appId, uint32_t flags, void* base, int32_t count)
-	{
-		if (!g_trace) return;
-		const bool added = g_config.isAddedAppId(appId);
-		const bool locked = g_config.isAppLocked(appId);
-		// Locked apps are the ones we're debugging: never let the global
-		// budget (exhausted by the startup batch of all apps) hide their
-		// reconcile calls, especially mid-loop.  Non-locked apps still
-		// respect the budget so the log doesn't flood.
-		if (!locked && g_traceBudget.fetch_sub(1) <= 0) return;
-		g_pLog->info("ReconcilePin[trace]: app=%u flags=0x%x added=%d locked=%d "
-		             "side=%s depots@%p count=%d\n",
-		             appId, flags, static_cast<int>(added),
-		             static_cast<int>(locked),
-		             (flags & kFlagTargetSide) ? "target" : "active",
-		             base, count);
-		if (base && count > 0 && count <= kMaxDepots)
-		{
-			const auto* e = reinterpret_cast<const uint8_t*>(base);
-			for (int32_t i = 0; i < count; ++i, e += kDepotEntryStride)
-			{
-				g_pLog->info("ReconcilePin[trace]:   depot=%u gid=%llu pin=%llu\n",
-				    *reinterpret_cast<const uint32_t*>(e),
-				    static_cast<unsigned long long>(
-				        *reinterpret_cast<const uint64_t*>(e + kDepotEntryGidOff)),
-				    static_cast<unsigned long long>(
-				        g_config.getManifestPin(appId,
-				            *reinterpret_cast<const uint32_t*>(e))));
-			}
-		}
 	}
 
 	int32_t filterEmptyManaged(uint8_t* base, int32_t count,
@@ -235,14 +202,8 @@ namespace
 	                    void* a4, void* ctx, void* a6, void* a7)
 	{
 		void* r = g_origBuild(a0, appId, a2, targetVec, a4, ctx, a6, a7);
-		try
-		{
-			if (targetVec) patchTargetVec(targetVec, appId);
-		}
-		catch (...)
-		{
-			notePatchFailure();
-		}
+		if (targetVec)
+			ReconcilePin::detail::runPatched([&] { patchTargetVec(targetVec, appId); }, notePatchFailure);
 		return r;
 	}
 
@@ -332,26 +293,14 @@ namespace
 	{
 		if (ctx)
 		{
-			try
+			ReconcilePin::detail::runPatched([&]
 			{
 				const auto* c = reinterpret_cast<const uint8_t*>(ctx);
 				const uint32_t appId = *reinterpret_cast<const uint32_t*>(c + kCtxAppIdOff);
 				const uint32_t flags = *reinterpret_cast<const uint32_t*>(c + kCtxFlagsOff);
 
-				if (g_trace && g_ctxDepotVecOff != 0)
-				{
-					void* base =
-					    *reinterpret_cast<void* const*>(c + g_ctxDepotVecOff);
-					const int32_t count = *reinterpret_cast<const int32_t*>(
-					    c + g_ctxDepotVecOff + kCtxVecCountOff);
-					traceLog(appId, flags, base, count);
-				}
 				patchTargetCtx(ctx, appId, flags);
-			}
-			catch (...)
-			{
-				notePatchFailure();
-			}
+			}, notePatchFailure);
 		}
 		return g_orig(ctx, user, a2);
 	}
@@ -370,10 +319,6 @@ namespace ReconcilePin
 		if (const char* e = std::getenv("SLSSTEAM_RECONCILE_PIN"))
 		{
 			g_pinActive = !(e[0] == '0' && e[1] == '\0');
-		}
-		if (const char* e = std::getenv("SLSSTEAM_RECONCILE_TRACE"))
-		{
-			g_trace = !(e[0] == '0' && e[1] == '\0');
 		}
 		auto& pat = Patterns::CDepotDownloadMgr::EvaluateConfigChanges;
 		if (pat.address == LM_ADDRESS_BAD)
@@ -416,10 +361,9 @@ namespace ReconcilePin
 		}
 		g_orig = reinterpret_cast<ReconFn_t>(g_tramp);
 		g_pLog->info("ReconcilePin: hooked EvaluateConfigChanges at %p "
-		             "(pin=%d empty=1 trace=%d ctx_depots=+0x%zx)\n",
+		             "(pin=%d empty=1 ctx_depots=+0x%zx)\n",
 		             reinterpret_cast<void*>(g_addr),
-		             static_cast<int>(g_pinActive), static_cast<int>(g_trace),
-		             g_ctxDepotVecOff);
+		             static_cast<int>(g_pinActive), g_ctxDepotVecOff);
 
 		// Redirect EvaluateConfigChanges' builder call so the -0x90(ebp) target local
 		// is patched too, even with pinning off: the empty-depot filter always runs.

@@ -5,15 +5,16 @@
 // The LuaTools frontend edits the AdditionalApps block-list by hand. A writer
 // bug could leave the block with INCONSISTENT indentation (some items indented,
 // some flush-left), which yaml-cpp rejects for the WHOLE document
-// ("end of map not found") -> in the release build the throw can escape the
-// catch and abort Steam at startup (boot loop); at best the entire config is
+// ("end of map not found") or folds into the wrong list, so the config is
 // discarded and every managed game reads as unmanaged.
 //
 // repairSeqIndent() normalises the indentation of flat block-sequence items so
 // the document parses again. It is a pure text transform (no yaml-cpp, no
 // globals). ConfLoad::parseWithRepair runs it BEFORE parsing and persists a
-// changed result that parses, so a run whose items open a nested block (valid
-// YAML) is left alone. On a file that is already consistent it returns the
+// changed result that parses. A run is the items of one list: it ends at an
+// item indented less than the key that opened it, a block scalar's text is
+// not items, and a run whose items open a nested block is left alone. On a
+// file that is already consistent it returns the
 // input BYTE-IDENTICAL (changed=false), so it never triggers a spurious
 // rewrite / FileWatcher thrash.
 
@@ -73,6 +74,31 @@ namespace ConfNormalize
 				    && tail.find_first_not_of("|>+-0123456789") == std::string::npos);
 		}
 
+		inline size_t indentOf(const std::string& line)
+		{
+			size_t i = 0;
+			while (i < line.size() && line[i] == ' ') i++;
+			return i;
+		}
+		// A line whose value is a block scalar header ("key: |", "key: >-",
+		// "- |"): the lines after it that are blank or deeper are its text.
+		inline bool opensBlockScalar(const std::string& line)
+		{
+			std::string text = line;
+			const size_t comment = text.find(" #");
+			if (comment != std::string::npos) text.resize(comment);
+			const size_t end = text.find_last_not_of(" \t");
+			if (end == std::string::npos) return false;
+			text.resize(end + 1);
+			const size_t lastToken = text.find_last_of(" \t");
+			if (lastToken == std::string::npos) return false;
+			const std::string tail = text.substr(lastToken + 1);
+			if ((tail[0] != '|' && tail[0] != '>')
+			    || tail.find_first_not_of("|>+-0123456789") != std::string::npos)
+				return false;
+			const size_t before = text.find_last_not_of(" \t", lastToken);
+			return before != std::string::npos && (text[before] == ':' || text[before] == '-');
+		}
 		inline std::string stripLeadingSpaces(const std::string& line)
 		{
 			size_t i = 0;
@@ -114,14 +140,41 @@ namespace ConfNormalize
 
 		bool didChange = false;
 		const size_t n = lines.size();
+		// Lines that are a block scalar's text, never items or keys.
+		std::vector<bool> scalarText(n, false);
+		for (size_t k = 0; k < n; k++)
+		{
+			if (scalarText[k] || !detail::opensBlockScalar(lines[k])) continue;
+			const size_t header = detail::indentOf(lines[k]);
+			for (size_t m = k + 1; m < n; m++)
+			{
+				const bool blank = lines[m].find_first_not_of(" \t") == std::string::npos;
+				if (!blank && detail::indentOf(lines[m]) <= header) break;
+				scalarText[m] = true;
+			}
+		}
 		size_t i = 0;
 		while (i < n)
 		{
 			size_t firstIndent = 0;
-			if (!detail::isSeqItem(lines[i], firstIndent))
+			if (scalarText[i] || !detail::isSeqItem(lines[i], firstIndent))
 			{
 				i++;
 				continue;
+			}
+			// The key that opened this list. An item indented less than it
+			// belongs to an outer list, so it ends the run.
+			bool hasOpener = false;
+			size_t openerIndent = 0;
+			for (size_t p = i; p-- > 0;)
+			{
+				size_t ind = 0;
+				if (scalarText[p] || detail::isBlankOrComment(lines[p])
+				    || detail::isSeqItem(lines[p], ind))
+					continue;
+				hasOpener = true;
+				openerIndent = detail::indentOf(lines[p]);
+				break;
 			}
 
 			// Extend the run over consecutive seq-item lines, tolerating blank
@@ -132,8 +185,10 @@ namespace ConfNormalize
 			while (k < n)
 			{
 				size_t ind = 0;
+				if (scalarText[k]) break;
 				if (detail::isSeqItem(lines[k], ind))
 				{
+					if (hasOpener && ind < openerIndent) break;
 					lastItem = k;
 					k++;
 				}

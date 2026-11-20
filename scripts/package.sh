@@ -19,9 +19,7 @@
 #     setup.sh                     (installer the user runs)
 #     tools/
 #       steamstub-bypass/          (helper called by setup.sh install_steamstub)
-#         install-steamless.sh
 #         run-steamless.sh
-#         scan-all.sh
 #       steamless-bin/             (Steamless kit, bundled verbatim — see
 #                                   docs/LICENSE/steamless; enables offline
 #                                   SteamStub DRM removal, no download)

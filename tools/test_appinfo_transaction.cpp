@@ -162,8 +162,17 @@ int main()
 	writeCache(cacheDir, 1002, 20, second);
 	writeCache(cacheDir, 1003, 30, orphan);
 	writeCache(cacheDir, 1004, 40, wireFor(111), true);
+	// A cache entry that cannot be stat-ed (a link to itself) is skipped. A
+	// throw here left Steam unhooked at every boot while it existed.
+	std::filesystem::create_symlink("loop", cacheDir + "/loop");
 
-	assert(AppInfoVdf::injectAllCached(appinfo) == 2);
+	bool injectThrew = false;
+	int injected = -1;
+	try { injected = AppInfoVdf::injectAllCached(appinfo); }
+	catch (...) { injectThrew = true; }
+	if (injectThrew) std::puts("FAIL: injectAllCached threw on an entry it cannot stat");
+	assert(!injectThrew && injected == 2);
+	std::filesystem::remove(cacheDir + "/loop");
 	assert(!std::filesystem::exists(cacheDir + "/picsbuffer_1003.bin"));
 	assert(!std::filesystem::exists(cacheDir + "/picsbuffer_1003.yaml"));
 	bool orphanQuarantined = false;
@@ -239,9 +248,17 @@ int main()
 	const auto existingDlcAppinfo = root + "/appcache/existing-dlc.vdf";
 	createEmptyAppInfo(existingDlcAppinfo);
 	const std::string existingDlcWire = wireFor(424242);
-	assert(AppInfoVdf::injectApp(
-		existingDlcAppinfo, 2001, 78, sha1Of(existingDlcWire),
-		existingDlcWire));
+	// A writer lock that is not a private file of ours (mode 0644) is no lock,
+	// so the write goes ahead instead of reading it as another writer.
+	std::ofstream(existingDlcAppinfo + ".slssteam.lock").close();
+	std::filesystem::permissions(existingDlcAppinfo + ".slssteam.lock",
+	                             std::filesystem::perms(0644));
+	const bool injectedPastSharedLock = AppInfoVdf::injectApp(
+		existingDlcAppinfo, 2001, 78, sha1Of(existingDlcWire), existingDlcWire);
+	if (!injectedPastSharedLock)
+		std::puts("FAIL: an unusable appinfo lock stopped the write");
+	assert(injectedPastSharedLock);
+	std::filesystem::remove(existingDlcAppinfo + ".slssteam.lock");
 	const auto existingDlcBefore = readAll(existingDlcAppinfo);
 	assert(AppInfoVdf::injectValidatedMetadataApps(
 		existingDlcAppinfo, metadataApps) == 1);

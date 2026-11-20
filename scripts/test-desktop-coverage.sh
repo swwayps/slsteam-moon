@@ -17,6 +17,15 @@ check() { # desc expected actual
 }
 
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
+REAL_HOME="$HOME"
+# Every default of the library that names the host (the invoking user's home,
+# the system XDG layers, the runtime and state folders, sudo) points into $TMP;
+# cases that need a layer still pass their own.
+export HOME="$TMP/home" DC_HOME="$TMP/home" XDG_STATE_HOME="$TMP/home/.local/state" \
+  XDG_RUNTIME_DIR="$TMP/runtime" XDG_DATA_DIRS="$TMP/xdg-data" XDG_CONFIG_DIRS="$TMP/xdg-config" \
+  DC_SYS_APPS="$TMP/xdg-data/applications" DC_SYS_AUTOSTART="$TMP/xdg-config/autostart" DC_SUDO="" \
+  DC_UPDATE_DESKTOP_DATABASE=: DC_KBUILDSYCOCA=:
+mkdir -p "$HOME" "$XDG_RUNTIME_DIR" "$XDG_DATA_DIRS" "$XDG_CONFIG_DIRS"
 
 # classify: real launcher
 cat > "$TMP/real.desktop" <<EOF
@@ -146,7 +155,7 @@ printf '[Desktop Entry]\nName=Steam\nExec=env MANGOHUD=1 /usr/bin/steam %%U\n' >
 DC_BACKUP_ROOT="$TMP/central-env" dc_patch_one "$TMP/env-patch.desktop"
 check "patch_one accepts env-prefixed rewritten Exec" "patched" "$(dc_classify "$TMP/env-patch.desktop")"
 check "env-prefixed patch keeps prefix" "Exec=env MANGOHUD=1 $WRAPPER %U" "$(grep -m1 '^Exec=' "$TMP/env-patch.desktop")"
-if dc_file_has_wrapper_exec "$TMP/env-patch.desktop"; then wrapper_valid=yes; else wrapper_valid=no; fi
+if _dc_file_has_primary_wrapper_exec "$TMP/env-patch.desktop"; then wrapper_valid=yes; else wrapper_valid=no; fi
 check "env-prefixed patch validates exact wrapper token" "yes" "$wrapper_valid"
 
 # A stale desktop entry may already carry the old LD_AUDIT assignment.  The
@@ -163,13 +172,13 @@ WRAPPER='/tmp/sls\fake/path/steam'
 backslash_rewrite="$(dc_rewrite_exec_line '/usr/bin/steam %U')"
 check "rewrite uses four backslashes for Desktop Entry" '"/tmp/sls\\\\fake/path/steam" %U' "$backslash_rewrite"
 printf '[Desktop Entry]\nExec=%s\n' "$backslash_rewrite" > "$TMP/backslash-wrapper.desktop"
-if dc_file_has_wrapper_exec "$TMP/backslash-wrapper.desktop"; then wrapper_valid=yes; else wrapper_valid=no; fi
+if _dc_file_has_primary_wrapper_exec "$TMP/backslash-wrapper.desktop"; then wrapper_valid=yes; else wrapper_valid=no; fi
 check "validation matches wrapper backslashes exactly" "yes" "$wrapper_valid"
 WRAPPER='/tmp/sls#fake/path/steam'
 reserved_rewrite="$(dc_rewrite_exec_line '/usr/bin/steam %U')"
 check "rewrite quotes reserved wrapper characters" '"/tmp/sls#fake/path/steam" %U' "$reserved_rewrite"
 printf '[Desktop Entry]\nExec=%s\n' "$reserved_rewrite" > "$TMP/reserved-wrapper.desktop"
-if dc_file_has_wrapper_exec "$TMP/reserved-wrapper.desktop"; then wrapper_valid=yes; else wrapper_valid=no; fi
+if _dc_file_has_primary_wrapper_exec "$TMP/reserved-wrapper.desktop"; then wrapper_valid=yes; else wrapper_valid=no; fi
 check "validation resolves reserved wrapper exactly" "yes" "$wrapper_valid"
 WRAPPER="$normal_wrapper"
 
@@ -236,17 +245,68 @@ check "post-bootstrap installer shortcut is patched" "patched" \
 check "post-bootstrap conversion captures the original" "yes" \
   "$([ -f "$PREBOOT_BACKUP_ROOT/${PREBOOT_SYMLINK#/}" ] && echo yes || echo no)"
 
-# dc_run --user patches menu + autostart but NOT the stub; --system also stub
+# A shortcut link the user made to a vanilla launcher is patched into a regular
+# file. Only a link to our own menu entry (what older versions made, also when
+# the user had no shortcut) is removed when no backup exists for it.
+X9="$TMP/x9home"; mkdir -p "$X9/.local/share/applications" "$X9/Desktop" "$TMP/x9sys"
+printf '[Desktop Entry]\n%s\nName=Steam\nExec=%s %%U\n' "$DC_TAG" "$WRAPPER" \
+  > "$X9/.local/share/applications/steam.desktop"
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/games/steam %%U\n' > "$TMP/x9sys/steam.desktop"
+ln -s "$TMP/x9sys/steam.desktop" "$X9/Desktop/steam.desktop"
+DC_HOME="$X9" DC_BACKUP_ROOT="$X9/backup" DC_STEAM_INSTALLED=1 dc_patch_shortcut "$X9/Desktop/steam.desktop"
+check "a user link to a vanilla launcher is patched, not removed" "patched:regular" \
+  "$(dc_classify "$X9/Desktop/steam.desktop"):$([ -f "$X9/Desktop/steam.desktop" ] && [ ! -L "$X9/Desktop/steam.desktop" ] && echo regular || echo other)"
+rm -f "$X9/Desktop/steam.desktop"
+ln -s "$X9/.local/share/applications/steam.desktop" "$X9/Desktop/steam.desktop"
+DC_HOME="$X9" DC_BACKUP_ROOT="$X9/backup-ours" DC_STEAM_INSTALLED=1 dc_patch_shortcut "$X9/Desktop/steam.desktop"
+check "an unbacked link to our menu entry is removed" "no" \
+  "$({ [ -e "$X9/Desktop/steam.desktop" ] || [ -L "$X9/Desktop/steam.desktop" ]; } && echo yes || echo no)"
+# The guardian's shortcut step is the same one.
+X9G="$TMP/x9guardian"; mkdir -p "$X9G/.local/share/applications" "$X9G/Desktop"
+printf '[Desktop Entry]\n%s\nName=Steam\nExec=%s %%U\n' "$DC_TAG" "$WRAPPER" \
+  > "$X9G/.local/share/applications/steam.desktop"
+ln -s "$X9G/.local/share/applications/steam.desktop" "$X9G/Desktop/steam.desktop"
+XDG_DATA_DIRS="$TMP/none" DC_HOME="$X9G" DC_BACKUP_ROOT="$X9G/backup" DC_STEAM_INSTALLED=1 \
+  dc_guardian_run >/dev/null 2>&1
+check "the guardian removes an unbacked link to our menu entry" "no" \
+  "$({ [ -e "$X9G/Desktop/steam.desktop" ] || [ -L "$X9G/Desktop/steam.desktop" ]; } && echo yes || echo no)"
+# A shortcut left without its exec bit does not launch: the pass fails, so the
+# next trigger retries it.
+X9F="$TMP/x9fail"; mkdir -p "$X9F/.local/share/applications" "$X9F/Desktop" "$TMP/chmod-fail"
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/games/steam %%U\n' > "$X9F/Desktop/steam.desktop"
+printf '#!/bin/sh\n[ "$1" = 0755 ] && exit 1\nexec %s "$@"\n' "$(command -v chmod)" > "$TMP/chmod-fail/chmod"
+chmod 0755 "$TMP/chmod-fail/chmod"
+if PATH="$TMP/chmod-fail:$PATH" XDG_DATA_DIRS="$TMP/none" DC_HOME="$X9F" DC_BACKUP_ROOT="$X9F/backup" \
+   DC_STEAM_INSTALLED=1 dc_guardian_run >/dev/null 2>&1; then x9f_status=0; else x9f_status=$?; fi
+check "a shortcut left without its exec bit fails the pass" "2" "$x9f_status"
+
+# The guardian patches menu + autostart but NOT the system stub; the system pass
+# patches the stub.
 H="$TMP/home"; mkdir -p "$H/.local/share/applications" "$H/.config/autostart"
 SYS="$TMP/sys"; mkdir -p "$SYS"
 printf '[Desktop Entry]\nName=Steam\nExec=/usr/games/steam %%U\n' > "$H/.local/share/applications/steam.desktop"
 printf '[Desktop Entry]\nName=Steam\nExec=/usr/games/steam -silent %%U\n' > "$H/.config/autostart/steam.desktop"
 printf '[Desktop Entry]\nName=Install Steam\nExec=/usr/games/steam %%U\n' > "$SYS/steam.desktop"
-DC_HOME="$H" DC_BACKUP_ROOT="$H/.local/share/SLSsteam/backup" DC_SYS_APPS="$SYS" DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" DC_STEAM_INSTALLED=1 dc_run --user
+DC_HOME="$H" DC_BACKUP_ROOT="$H/.local/share/SLSsteam/backup" DC_SYS_APPS="$SYS" DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" DC_STEAM_INSTALLED=1 dc_guardian_run
 check "user run patches menu" "patched" "$(dc_classify "$H/.local/share/applications/steam.desktop")"
 check "user run patches autostart" "patched" "$(dc_classify "$H/.config/autostart/steam.desktop")"
 check "user run leaves stub alone" "stub" "$(dc_classify "$SYS/steam.desktop")"
 check "user run leaves no adjacent autostart backup" "no" "$([ -e "$H/.config/autostart/steam.desktop.slssteam-backup" ] && echo yes || echo no)"
+# A user pass whose menu patch fails reports it and records no digest, so the
+# next pass retries instead of taking the unchanged fast path.
+HX7="$TMP/home-x7"; mkdir -p "$HX7/.local/share/applications"
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/games/steam %%U\n' > "$HX7/.local/share/applications/steam.desktop"
+x7() {
+  XDG_DATA_DIRS="$TMP/none" DC_HOME="$HX7" DC_BACKUP_ROOT="$HX7/backup" \
+    DC_FINGERPRINT_DIR="$HX7/state" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" \
+    DC_SUDO="" DC_STEAM_INSTALLED=1 dc_guardian_run
+}
+if ( export TMPDIR="$TMP/missing-x7"; x7 ); then x7_status=0; else x7_status=$?; fi
+check "a user pass whose patch fails reports it and records nothing" "2:no" \
+  "$x7_status:$([ -e "$HX7/state/coverage.fingerprint.guardian" ] && echo yes || echo no)"
+x7 || true
+check "the next user pass retries the failed patch" "patched" \
+  "$(dc_classify "$HX7/.local/share/applications/steam.desktop")"
 
 # Valve's Debian bootstrap may leave the user menu entry as a dangling symlink
 # into deb-installer/. It still shadows the valid system desktop ID, so coverage
@@ -259,7 +319,7 @@ ln -s "$HD/.steam/debian-installation/deb-installer/steam.desktop" \
 XDG_DATA_DIRS="${SD%/applications}" DC_HOME="$HD" \
   DC_BACKUP_ROOT="$HD/.local/share/SLSsteam/backup" \
   DC_SYS_APPS="$SD" DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" \
-  DC_STEAM_INSTALLED=1 dc_run --user
+  DC_STEAM_INSTALLED=1 dc_guardian_run
 check "dangling menu shadow becomes a regular file" "yes" \
   "$([ -f "$HD/.local/share/applications/steam.desktop" ] && \
       [ ! -L "$HD/.local/share/applications/steam.desktop" ] && echo yes || echo no)"
@@ -272,7 +332,7 @@ H5="$TMP/home5"; mkdir -p "$H5/.local/share/applications"
 printf '#!/usr/bin/env xdg-open\n[Desktop Entry]\n%s\nName=Steam\nExec=%s %%U\n' "$DC_TAG" "$WRAPPER" \
   > "$H5/.local/share/applications/steam.desktop"
 chmod 0711 "$H5/.local/share/applications/steam.desktop"
-DC_HOME="$H5" DC_BACKUP_ROOT="$H5/.local/share/SLSsteam/backup" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" dc_run --user
+DC_HOME="$H5" DC_BACKUP_ROOT="$H5/.local/share/SLSsteam/backup" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" dc_guardian_run
 check "migrate: still patched" "patched" "$(dc_classify "$H5/.local/share/applications/steam.desktop")"
 check "migrate: 0711 -> 0644" "644" "$(stat -c '%a' "$H5/.local/share/applications/steam.desktop")"
 check "migrate: shebang stripped" "[Desktop Entry]" "$(head -1 "$H5/.local/share/applications/steam.desktop")"
@@ -282,9 +342,18 @@ check "migrate: shebang stripped" "[Desktop Entry]" "$(head -1 "$H5/.local/share
 H6="$TMP/home6"; mkdir -p "$H6/.local/share/applications"
 printf '[Desktop Entry]\nName=Steam\nExec=/usr/games/steam %%U\n' > "$H6/.local/share/applications/steam.desktop"
 chmod 000 "$H6/.local/share/applications/steam.desktop"
-DC_HOME="$H6" DC_BACKUP_ROOT="$H6/.local/share/SLSsteam/backup" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" dc_run --user
+# Only the user's own Steam entries change mode: not another entry, and not a
+# file a Steam-named link points at.
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/games/steam %%U\n' > "$TMP/h6-elsewhere.desktop"
+chmod 000 "$TMP/h6-elsewhere.desktop"
+ln -s "$TMP/h6-elsewhere.desktop" "$H6/.local/share/applications/steam-link.desktop"
+printf '[Desktop Entry]\nName=Private\nExec=/usr/bin/private\n' > "$H6/.local/share/applications/private.desktop"
+chmod 000 "$H6/.local/share/applications/private.desktop"
+DC_HOME="$H6" DC_BACKUP_ROOT="$H6/.local/share/SLSsteam/backup" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" dc_guardian_run
 check "migrate unreadable: patched" "patched" "$(dc_classify "$H6/.local/share/applications/steam.desktop")"
 check "migrate unreadable: 0644" "644" "$(stat -c '%a' "$H6/.local/share/applications/steam.desktop")"
+check "migrate unreadable: other entries and link targets keep their mode" "0:0" \
+  "$(stat -c '%a' "$TMP/h6-elsewhere.desktop"):$(stat -c '%a' "$H6/.local/share/applications/private.desktop")"
 
 DC_HOME="$H" DC_BACKUP_ROOT="$H/.local/share/SLSsteam/backup" DC_SYS_APPS="$SYS" DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" DC_STEAM_INSTALLED=1 dc_run --system
 check "system run patches stub (steam installed)" "patched" "$(dc_classify "$SYS/steam.desktop")"
@@ -301,12 +370,13 @@ HOME="$H2" DC_HOME="$H2" DC_BACKUP_ROOT="$H2/.local/share/SLSsteam/backup" DC_SY
   bash "$HERE/ensure-desktop-coverage.sh" --user >/dev/null 2>&1
 check "CLI --user patches menu entry" "patched" "$(dc_classify "$H2/.local/share/applications/steam.desktop")"
 
-# restore: dc_run then dc_restore_all -> entries back to vanilla, backups consumed
+# restore: a guardian pass then dc_restore_all -> entries back to vanilla,
+# backups consumed
 H4="$TMP/home4"; mkdir -p "$H4/.local/share/applications" "$H4/.config/autostart" "$H4/Desktop"
 printf '[Desktop Entry]\nName=Steam\nExec=/usr/games/steam %%U\n' > "$H4/.local/share/applications/steam.desktop"
 printf '[Desktop Entry]\nName=Steam\nExec=/usr/games/steam -silent %%U\n' > "$H4/.config/autostart/steam.desktop"
 printf '[Desktop Entry]\nName=Steam\nExec=/usr/games/steam %%U\n' > "$H4/Desktop/steam.desktop"
-DC_HOME="$H4" DC_BACKUP_ROOT="$H4/.local/share/SLSsteam/backup" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" dc_run --user
+DC_HOME="$H4" DC_BACKUP_ROOT="$H4/.local/share/SLSsteam/backup" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" dc_guardian_run
 check "before restore: menu patched" "patched" "$(dc_classify "$H4/.local/share/applications/steam.desktop")"
 check "before restore: shortcut patched (regular file)" "patched" "$(dc_classify "$H4/Desktop/steam.desktop")"
 menu4_backup="$H4/.local/share/SLSsteam/backup/${H4#/}/.local/share/applications/steam.desktop"
@@ -327,6 +397,8 @@ printf '[Desktop Entry]\nName=Steam\nExec=/usr/bin/steam -silent %%U\n' > "$H10/
 printf '[Desktop Entry]\nName=Steam\nExec=/usr/bin/steam %%U\n' > "$H10/Desktop/steam.desktop.slsteam-bak"
 printf '[Desktop Entry]\nName=Steam\nExec=/usr/bin/steam %%U\n' > "$SYS10/steam.desktop.slssteam-backup"
 printf '[Desktop Entry]\nName=Steam\nExec=/usr/bin/steam -silent %%U\n' > "$SYSAS10/steam.desktop.slssteam-backup"
+# setup.sh's order: the guardian's user pass, then the system pass.
+DC_HOME="$H10" DC_BACKUP_ROOT="$H10/.local/share/SLSsteam/backup" DC_SYS_APPS="$SYS10" DC_SYS_AUTOSTART="$SYSAS10" DC_SUDO="" dc_guardian_run
 DC_HOME="$H10" DC_BACKUP_ROOT="$H10/.local/share/SLSsteam/backup" DC_SYS_APPS="$SYS10" DC_SYS_AUTOSTART="$SYSAS10" DC_SUDO="" dc_run --system
 legacy_as_central="$H10/.local/share/SLSsteam/backup/${H10#/}/.config/autostart/steam.desktop"
 legacy_sys_central="$H10/.local/share/SLSsteam/backup/${SYS10#/}/steam.desktop"
@@ -339,12 +411,12 @@ check "legacy migration removes system applications backup" "no" "$([ -e "$SYS10
 check "legacy migration removes system autostart backup" "no" "$([ -e "$SYSAS10/steam.desktop.slssteam-backup" ] && echo yes || echo no)"
 
 # SEED autostart override (SteamOS/Bazzite): a SYSTEM autostart exists but the
-# user has no ~/.config/autostart/steam.desktop -> dc_run seeds a patched user
-# override that shadows the read-only system entry.
+# user has no ~/.config/autostart/steam.desktop -> the guardian seeds a patched
+# user override that shadows the read-only system entry.
 H7="$TMP/home7"; mkdir -p "$H7/.local/share/applications" "$H7/.config/autostart"
 SYSAS7="$TMP/sysas7"; mkdir -p "$SYSAS7"
 printf '[Desktop Entry]\nName=Steam\nExec=/usr/bin/steam -silent %%U\n' > "$SYSAS7/steam.desktop"
-DC_HOME="$H7" DC_BACKUP_ROOT="$H7/.local/share/SLSsteam/backup" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$SYSAS7" DC_SUDO="" dc_run --user
+DC_HOME="$H7" DC_BACKUP_ROOT="$H7/.local/share/SLSsteam/backup" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$SYSAS7" DC_SUDO="" dc_guardian_run
 check "seed: user autostart created" "yes" "$([ -f "$H7/.config/autostart/steam.desktop" ] && echo yes || echo no)"
 check "seed: user autostart patched" "patched" "$(dc_classify "$H7/.config/autostart/steam.desktop")"
 check "seed: wrapper Exec + silent arg kept" "Exec=$WRAPPER -silent %U" "$(grep -m1 '^Exec=' "$H7/.config/autostart/steam.desktop")"
@@ -358,7 +430,7 @@ check "seed restore: override removed" "no" "$([ -e "$H7/.config/autostart/steam
 # NOT create an autostart entry where the user had none.
 H8="$TMP/home8"; mkdir -p "$H8/.local/share/applications" "$H8/.config/autostart"
 printf '[Desktop Entry]\nName=Steam\nExec=/usr/games/steam %%U\n' > "$H8/.local/share/applications/steam.desktop"
-DC_HOME="$H8" DC_BACKUP_ROOT="$H8/.local/share/SLSsteam/backup" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" dc_run --user
+DC_HOME="$H8" DC_BACKUP_ROOT="$H8/.local/share/SLSsteam/backup" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" dc_guardian_run
 check "no-seed: autostart NOT created on normal desktop" "no" "$([ -e "$H8/.config/autostart/steam.desktop" ] && echo yes || echo no)"
 
 # SEED is a no-op when the user ALREADY has an autostart entry (the normal glob
@@ -367,7 +439,7 @@ H9="$TMP/home9"; mkdir -p "$H9/.local/share/applications" "$H9/.config/autostart
 SYSAS9="$TMP/sysas9"; mkdir -p "$SYSAS9"
 printf '[Desktop Entry]\nName=Steam\nExec=/usr/bin/steam -silent %%U\n' > "$SYSAS9/steam.desktop"
 printf '[Desktop Entry]\nName=Steam\nExec=/usr/games/steam -silent %%U\n' > "$H9/.config/autostart/steam.desktop"
-DC_HOME="$H9" DC_BACKUP_ROOT="$H9/.local/share/SLSsteam/backup" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$SYSAS9" DC_SUDO="" dc_run --user
+DC_HOME="$H9" DC_BACKUP_ROOT="$H9/.local/share/SLSsteam/backup" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$SYSAS9" DC_SUDO="" dc_guardian_run
 check "seed no-op: existing user autostart patched in place" "patched" "$(dc_classify "$H9/.config/autostart/steam.desktop")"
 seed9_backup="$H9/.local/share/SLSsteam/backup/${H9#/}/.config/autostart/steam.desktop"
 check "seed no-op: central backup kept for pre-existing entry" "yes" "$([ -f "$seed9_backup" ] && echo yes || echo no)"
@@ -418,7 +490,7 @@ printf '[Desktop Entry]\nName=Steam\nExec=/usr/bin/steam %%U\n' > "$H12/Desk/ste
 printf '[Desktop Entry]\nName=Steam\nExec=/usr/bin/steam %%U\n' > "$H12/conf/autostart/old-steam.desktop.slssteam-backup"
 XDG_DATA_HOME="$H12/data" XDG_CONFIG_HOME="$H12/conf" DC_HOME="$H12" \
   DC_BACKUP_ROOT="$H12/backup" DC_SYS_APPS="$TMP/none" \
-  DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" dc_run --user
+  DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" dc_guardian_run
 check "custom roots: application patched" "patched" \
   "$(dc_classify "$H12/data/applications/steam.desktop")"
 check "custom roots: autostart patched" "patched" \
@@ -489,7 +561,7 @@ steam_donor_before="$(sha256sum "$S13A/steam.desktop" | awk '{print $1}')"
 com_donor_before="$(sha256sum "$S13B/com.valvesoftware.Steam.desktop" | awk '{print $1}')"
 XDG_DATA_HOME="$H13/data" XDG_DATA_DIRS="${S13A%/applications}:${S13B%/applications}" \
   DC_HOME="$H13" DC_BACKUP_ROOT="$H13/backup" DC_SYS_APPS="$TMP/none" \
-  DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" DC_STEAM_INSTALLED=1 dc_run --user
+  DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" DC_STEAM_INSTALLED=1 dc_guardian_run
 steam_shadow="$U13/steam.desktop"
 com_shadow="$U13/com.valvesoftware.Steam.desktop"
 check "shadows: steam.desktop same-ID created" "yes" \
@@ -537,7 +609,7 @@ com_shadow_first="$(sha256sum "$com_shadow" 2>/dev/null | awk '{print $1}')"
 com_backup_first="$(sha256sum "$com13_backup" 2>/dev/null | awk '{print $1}')"
 XDG_DATA_HOME="$H13/data" XDG_DATA_DIRS="${S13A%/applications}:${S13B%/applications}" \
   DC_HOME="$H13" DC_BACKUP_ROOT="$H13/backup" DC_SYS_APPS="$TMP/none" \
-  DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" DC_STEAM_INSTALLED=1 dc_run --user
+  DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" DC_STEAM_INSTALLED=1 dc_guardian_run
 check "shadows: second run leaves seeded bytes unchanged" "$steam_shadow_first" \
   "$(sha256sum "$steam_shadow" 2>/dev/null | awk '{print $1}')"
 check "shadows: second run leaves pre-existing bytes unchanged" "$com_shadow_first" \
@@ -562,7 +634,7 @@ printf '[Desktop Entry]\nType=Application\nName=Steam Notes\nExec=/usr/bin/notes
   > "$S14/Steam-Notes.desktop"
 XDG_DATA_HOME="$H14/data" XDG_DATA_DIRS="${S14%/applications}" DC_HOME="$H14" \
   DC_BACKUP_ROOT="$H14/backup" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" \
-  DC_SUDO="" DC_STEAM_INSTALLED=1 dc_run --user
+  DC_SUDO="" DC_STEAM_INSTALLED=1 dc_guardian_run
 check "shadows discovery: mixed-case filename seeded by same ID" "patched" \
   "$(dc_classify "$U14/StEaM-Client.desktop")"
 check "shadows discovery: unrelated Name=Steam entry rejected" "no" \
@@ -579,7 +651,7 @@ printf '[Desktop Entry]\nType=Application\nName=Steam\nExec=/usr/bin/steam %%U\n
   > "$S15B/com.valvesoftware.Steam.desktop"
 XDG_DATA_HOME="$H15/data" XDG_DATA_DIRS="${S15A%/applications}:${S15B%/applications}" \
   DC_HOME="$H15" DC_BACKUP_ROOT="$H15/backup" DC_SYS_APPS="$TMP/none" \
-  DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" DC_STEAM_INSTALLED=1 dc_run --user
+  DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" DC_STEAM_INSTALLED=1 dc_guardian_run
 check "shadows stub: real donor prevents Install Steam shadow" "no" \
   "$([ -e "$U15/steam.desktop" ] && echo yes || echo no)"
 check "shadows stub: real donor still gets same-ID shadow" "patched" \
@@ -595,7 +667,7 @@ Exec=sh -c 'STEAM_FRAME_FORCE_CLOSE=1 steam %U'
 EOF
 XDG_DATA_HOME="$H16/data" XDG_DATA_DIRS="${S16%/applications}" DC_HOME="$H16" \
   DC_BACKUP_ROOT="$H16/backup" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" \
-  DC_SUDO="" DC_STEAM_INSTALLED=1 dc_run --user
+  DC_SUDO="" DC_STEAM_INSTALLED=1 dc_guardian_run
 check "shadows Debian stub-only: minimal same-ID entry created" "yes" \
   "$([ -f "$U16/steam.desktop" ] && echo yes || echo no)"
 check "shadows Debian stub-only: installer identity not copied" "Name=Steam" \
@@ -684,6 +756,31 @@ check "compound shell command is left untouched" \
   "Exec=sh -c 'mangohud steam %U && notify-send done'" \
   "$(grep -m1 '^Exec=' "$AFC4/steam.desktop" 2>/dev/null || true)"
 
+# The privileged side only writes system entries: the temp file and the backups
+# live in user folders, where the user could swap a file for a link, so the
+# user's shell opens them and root never names them.
+X10="$TMP/x10"; X10S="$X10/sys/applications"; X10T="$X10/usertmp"; X10B="$X10/userbackup"
+X10LOG="$X10/privileged.log"
+mkdir -p "$X10S" "$X10T"
+printf '#!/bin/sh\nprintf "%%s\\n" "$*" >> "%s"\nexec "$@"\n' "$X10LOG" > "$X10/priv"
+chmod 0755 "$X10/priv"
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/bin/steam %%U\n' > "$X10S/steam.desktop"
+x10() { TMPDIR="$X10T" DC_HOME="$X10" DC_BACKUP_ROOT="$X10B" "$@"; }
+x10 dc_patch_one "$X10S/steam.desktop" "$X10/priv"
+check "a privileged patch wraps the system entry" "patched" "$(dc_classify "$X10S/steam.desktop")"
+x10 dc_restore_one "$X10S/steam.desktop" "$X10/priv"
+check "a privileged restore puts the system entry back" "Exec=/usr/bin/steam %U" \
+  "$(grep -m1 '^Exec=' "$X10S/steam.desktop")"
+x10link_bak="$(x10 dc_backup_path "$X10S/steam-link.desktop")"
+mkdir -p "$(dirname "$x10link_bak")"
+printf '[Desktop Entry]\nName=Steam\nExec=steam %%U\n' > "$x10link_bak"
+ln -s "$X10/elsewhere.desktop" "$X10S/steam-link.desktop"
+x10 dc_restore_one "$X10S/steam-link.desktop" "$X10/priv"
+check "a privileged restore replaces our link with its original" "regular:Exec=steam %U" \
+  "$([ -L "$X10S/steam-link.desktop" ] && echo link || echo regular):$(grep -m1 '^Exec=' "$X10S/steam-link.desktop")"
+check "privileged commands name no file in the user's folders" "" \
+  "$(grep -F -e "$X10T/" -e "$X10B/" "$X10LOG")"
+
 # Guardian command shims make serialization and cache ordering observable.
 GUARDIAN_EVENTS="$TMP/guardian-events"
 FLOCK_SHIM="$TMP/flock-shim"
@@ -758,6 +855,45 @@ if XDG_DATA_HOME="$H17b/data" XDG_DATA_DIRS="$TMP/empty17" XDG_CONFIG_HOME="$H17
   DC_TEST_APP="$H17b/data/applications/steam.desktop" \
   dc_guardian_run; then guardian17b_status=0; else guardian17b_status=$?; fi
 check "guardian ignores a dangling desktop shortcut link" "0" "$guardian17b_status"
+# guardian13 <home> [VAR=value...]: one guardian pass over a home that is
+# already reconciled; prints its status.
+guardian13() {
+  local h="$1"; shift
+  env "$@" XDG_DATA_HOME="$h/data" XDG_DATA_DIRS="$TMP/empty17" XDG_CONFIG_HOME="$h/conf" \
+    XDG_STATE_HOME="$h/state" DC_HOME="$h" DC_BACKUP_ROOT="$h/backup" \
+    DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" DC_FLOCK="$FLOCK_SHIM" \
+    DC_UPDATE_DESKTOP_DATABASE="$UPDATE_SHIM" DC_KBUILDSYCOCA="$KBUILD_SHIM" \
+    DC_TEST_EVENTS="$TMP/events13" DC_TEST_STATE_LOG="$h/state/slsteam-moon/guardian.log" \
+    DC_TEST_APP="$h/data/applications/steam.desktop" WRAPPER="$WRAPPER" \
+    bash -c '. "$1/tools/desktop-coverage.lib.sh"; dc_guardian_run; echo "$?"' bash "$HERE"
+}
+H13a="$TMP/home13a"; mkdir -p "$H13a/data/applications" "$H13a/conf/autostart" "$H13a/state" "$TMP/shared13"
+printf '[Desktop Entry]\n%s\nName=Steam\nExec=%s %%U\n' "$DC_TAG" "$WRAPPER" \
+  > "$H13a/data/applications/steam.desktop"
+# Without XDG_RUNTIME_DIR (su, cron) another account could own the shared temp
+# name; the lock then lives in the user's own state folder.
+mkdir -p "$TMP/shared13/slsteam-desktop-guardian-${UID:-$(id -u)}.lock"
+check "without a runtime dir the guardian locks in its state folder" "0" \
+  "$(guardian13 "$H13a" -u XDG_RUNTIME_DIR TMPDIR="$TMP/shared13")"
+# The log keeps its newest lines: every trigger appends and the timer fires
+# every five minutes.
+mkdir -p "$H13a/state/slsteam-moon"
+seq 1 2000 | sed 's/^/2026-01-01T00:00:00Z old line /' > "$H13a/state/slsteam-moon/guardian.log"
+guardian13 "$H13a" XDG_RUNTIME_DIR="$H13a/state" > /dev/null
+check "the guardian log stays bounded" "yes" \
+  "$([ "$(wc -l < "$H13a/state/slsteam-moon/guardian.log")" -le 1100 ] && echo yes || echo no)"
+check "the bounded log still ends with the pass summary" "yes" \
+  "$(tail -1 "$H13a/state/slsteam-moon/guardian.log" | grep -Eq ' examined=[0-9]+ .* failed=[0-9]+$' && echo yes || echo no)"
+# A restored desktop shortcut keeps the executable bit the desktop needs to
+# launch it.
+H13d="$TMP/home13d"; mkdir -p "$H13d/.local/share/applications" "$H13d/Desktop"
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/games/steam %%U\n' > "$H13d/.local/share/applications/steam.desktop"
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/games/steam %%U\n' > "$H13d/Desktop/steam.desktop"
+chmod 0755 "$H13d/Desktop/steam.desktop"
+DC_HOME="$H13d" DC_BACKUP_ROOT="$H13d/backup" DC_STEAM_INSTALLED=1 dc_guardian_run
+DC_HOME="$H13d" DC_BACKUP_ROOT="$H13d/backup" dc_restore_all
+check "a restored desktop shortcut keeps its executable mode" "755:Exec=/usr/games/steam %U" \
+  "$(stat -c %a "$H13d/Desktop/steam.desktop"):$(grep -m1 '^Exec=' "$H13d/Desktop/steam.desktop")"
 # Publishing an application shadow precedes cache convergence. Runtime guardian
 # must never invoke the privileged system fallback or mutate its donor.
 H18="$TMP/home18"; S18="$TMP/sys18/applications"
@@ -901,7 +1037,21 @@ H22="$TMP/home22"; mkdir -p "$H22/data/applications" "$H22/conf/autostart" \
 printf '[Desktop Entry]\nName=Steam\nExec="/usr/bin/steam %%U\n' > "$H22/data/applications/steam.desktop"
 : > "$GUARDIAN_EVENTS"
 check "CLI --user is accepted and best-effort" "0" "$(cli_status "$H22" --user)"
-check "CLI --system is accepted" "0" "$(cli_status "$H22" --system)"
+# The per-launch CLI runs the guardian's pass: its summary, and the menu cache
+# refresh after an application entry changed.
+H22b="$TMP/home22b"; mkdir -p "$H22b/data/applications" "$H22b/conf/autostart" \
+  "$H22b/state" "$H22b/runtime"
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/bin/steam %%U\n' > "$H22b/data/applications/steam.desktop"
+: > "$GUARDIAN_EVENTS"
+cli_status "$H22b" --user >/dev/null
+check "CLI --user reconciles through the guardian" "patched:yes:yes" \
+  "$(dc_classify "$H22b/data/applications/steam.desktop"):$(grep -qxF "update:wrapped:$H22b/data/applications" "$GUARDIAN_EVENTS" && echo yes || echo no):$(grep -Eq ' examined=[1-9][0-9]* .* failed=0$' "$H22b/state/slsteam-moon/guardian.log" 2>/dev/null && echo yes || echo no)"
+# setup.sh patches the system layer in process, so the CLI has no mode for it.
+check "CLI rejects --system" "2" "$(cli_status "$H22" --system)"
+# The library grants no privilege on its own: a system pass uses sudo only when
+# its caller passes it.
+check "the library defaults to no privilege command" "" \
+  "$(env -u DC_SUDO bash -c '. "$1/tools/desktop-coverage.lib.sh"; printf %s "$DC_SUDO"' bash "$HERE")"
 check "CLI --guardian reports mandatory failure" "2" "$(cli_status "$H22" --guardian)"
 check "CLI rejects missing mode" "2" "$(cli_status "$H22")"
 check "CLI rejects unknown mode" "2" "$(cli_status "$H22" --unknown)"
@@ -979,6 +1129,20 @@ check "system fallback propagates failed privileged patch" "2" "$system25_status
 check "failed system fallback leaves source unchanged" "$sys25_before" \
   "$(sha256sum "$S25/steam.desktop" | awk '{print $1}')"
 
+# The system pass is the system layer only: user entries are the guardian's, and
+# setup.sh runs it first.
+H26="$TMP/home26"; S26="$TMP/sys26/applications"
+mkdir -p "$H26/.local/share/applications" "$S26"
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/bin/steam %%U\n' > "$H26/.local/share/applications/steam.desktop"
+printf '[Desktop Entry]\nName=Steam\nExec=/usr/bin/steam %%U\n' > "$S26/steam.desktop"
+DC_HOME="$H26" DC_BACKUP_ROOT="$H26/backup" DC_SYS_APPS="$S26" DC_SYS_AUTOSTART="$TMP/none" \
+  DC_SUDO="" DC_FORCE=1 dc_run --system >/dev/null 2>&1
+check "the system pass leaves the user entries to the guardian" "patched:launcher" \
+  "$(dc_classify "$S26/steam.desktop"):$(dc_classify "$H26/.local/share/applications/steam.desktop")"
+check "dc_run takes only the system mode" "2:launcher" \
+  "$(DC_HOME="$H26" DC_BACKUP_ROOT="$H26/backup" DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" \
+     DC_SUDO="" DC_FORCE=1 dc_run --user >/dev/null 2>&1; echo "$?"):$(dc_classify "$H26/.local/share/applications/steam.desktop")"
+
 # ── unchanged-input fast path ───────────────────────────────────────────────
 # The pass is idempotent and does nothing on an untouched desktop, but costs
 # seconds of CPU to find that out — while Steam is starting. A fingerprint of
@@ -1001,54 +1165,54 @@ check "fingerprint digest is a single non-empty token" "yes" \
 check "fingerprint is stable across repeated reads" "$fp_digest_1" \
   "$(fp_env dc_coverage_digest --user)"
 check "fingerprint has no recorded digest yet" "no" \
-  "$(fp_env dc_coverage_unchanged user --user && echo yes || echo no)"
-fp_env dc_run --user
+  "$(fp_env dc_coverage_unchanged guardian --user && echo yes || echo no)"
+fp_env dc_guardian_run
 check "first pass patches the entry" "patched" "$(dc_classify "$FP_APPS/steam.desktop")"
 check "first pass records a digest" "yes" \
-  "$([ -s "$(fp_env dc_fingerprint_path user)" ] && echo yes || echo no)"
+  "$([ -s "$(fp_env dc_fingerprint_path guardian)" ] && echo yes || echo no)"
 check "second pass sees unchanged inputs" "yes" \
-  "$(fp_env dc_coverage_unchanged user --user && echo yes || echo no)"
+  "$(fp_env dc_coverage_unchanged guardian --user && echo yes || echo no)"
 check "DC_FORCE ignores the recorded digest" "no" \
-  "$(DC_FORCE=1 fp_env dc_coverage_unchanged user --user && echo yes || echo no)"
+  "$(DC_FORCE=1 fp_env dc_coverage_unchanged guardian --user && echo yes || echo no)"
 # Drift 1: a hand-broken entry (wrapper Exec replaced) must still be repaired.
 printf '[Desktop Entry]\n%s\nName=Steam\nExec=/usr/bin/steam %%U\n' "$DC_TAG" \
   > "$FP_APPS/steam.desktop"
 check "hand-edited entry invalidates the digest" "no" \
-  "$(fp_env dc_coverage_unchanged user --user && echo yes || echo no)"
-fp_env dc_run --user
+  "$(fp_env dc_coverage_unchanged guardian --user && echo yes || echo no)"
+fp_env dc_guardian_run
 check "hand-edited entry is repaired" "Exec=$WRAPPER %U" \
   "$(grep -m1 '^Exec=' "$FP_APPS/steam.desktop")"
 # Drift 2: only the tag removed (a same-size edit) — the tag census catches it.
 check "repaired entry is cached again" "yes" \
-  "$(fp_env dc_coverage_unchanged user --user && echo yes || echo no)"
+  "$(fp_env dc_coverage_unchanged guardian --user && echo yes || echo no)"
 grep -vxF "$DC_TAG" "$FP_APPS/steam.desktop" > "$TMP/fp-untagged" \
   && cat "$TMP/fp-untagged" > "$FP_APPS/steam.desktop"
 check "removing our tag invalidates the digest" "no" \
-  "$(fp_env dc_coverage_unchanged user --user && echo yes || echo no)"
-fp_env dc_run --user
+  "$(fp_env dc_coverage_unchanged guardian --user && echo yes || echo no)"
+fp_env dc_guardian_run
 check "untagged entry is re-tagged" "patched" "$(dc_classify "$FP_APPS/steam.desktop")"
 # Drift 3: a new system donor appears -> a new same-ID shadow is still seeded.
 check "post-repair state is cached" "yes" \
-  "$(fp_env dc_coverage_unchanged user --user && echo yes || echo no)"
+  "$(fp_env dc_coverage_unchanged guardian --user && echo yes || echo no)"
 printf '[Desktop Entry]\nType=Application\nName=Valve Steam\nExec=/usr/bin/steam %%U\n' \
   > "$FP_SYS/com.valvesoftware.Steam.desktop"
 check "a new donor invalidates the digest" "no" \
-  "$(fp_env dc_coverage_unchanged user --user && echo yes || echo no)"
-fp_env dc_run --user
+  "$(fp_env dc_coverage_unchanged guardian --user && echo yes || echo no)"
+fp_env dc_guardian_run
 check "new donor gets its same-ID shadow" "patched" \
   "$(dc_classify "$FP_APPS/com.valvesoftware.Steam.desktop")"
 # Drift 4: the wrapper path itself changes (a reinstall elsewhere).
 check "state after seeding is cached" "yes" \
-  "$(fp_env dc_coverage_unchanged user --user && echo yes || echo no)"
-check "a different wrapper path invalidates the digest" "no" \
-  "$(WRAPPER="/tmp/other/path/steam" fp_env dc_coverage_unchanged user --user && echo yes || echo no)"
-check "a different library version invalidates the digest" "no" \
-  "$(DC_FINGERPRINT_VERSION=99 fp_env dc_coverage_unchanged user --user && echo yes || echo no)"
-# Scopes are independent: the --user digest must not satisfy the guardian.
-check "guardian scope has its own digest" "no" \
   "$(fp_env dc_coverage_unchanged guardian --user && echo yes || echo no)"
+check "a different wrapper path invalidates the digest" "no" \
+  "$(WRAPPER="/tmp/other/path/steam" fp_env dc_coverage_unchanged guardian --user && echo yes || echo no)"
+check "a different library version invalidates the digest" "no" \
+  "$(DC_FINGERPRINT_VERSION=99 fp_env dc_coverage_unchanged guardian --user && echo yes || echo no)"
+# Scopes are independent: the guardian's digest must not satisfy the system pass.
+check "system scope has its own digest" "no" \
+  "$(fp_env dc_coverage_unchanged system --system && echo yes || echo no)"
 check "forget drops the recorded digest" "no" \
-  "$(fp_env dc_coverage_forget user; fp_env dc_coverage_unchanged user --user && echo yes || echo no)"
+  "$(fp_env dc_coverage_forget guardian; fp_env dc_coverage_unchanged guardian --user && echo yes || echo no)"
 
 # The guardian takes the same fast path: an unchanged desktop is skipped (and
 # says so in its log), while a hand-broken entry is still repaired.
@@ -1244,6 +1408,20 @@ DC_LAUNCHER_BACKUP_ROOT="$MIRROR_MISMATCH_ROOT/backup"
 check "unreferenced mirrored backup invalidates launcher policy" "no" \
   "$(dc_launcher_coverage_active && echo yes || echo no)"
 
+# A launcher only root can write keeps its captured original in root's tree; a
+# shim that runs that copy keeps the launcher policy.
+SYSTEM_POLICY_ROOT="$TMP/policy-system-root"
+SYSTEM_POLICY_COPY="$SYSTEM_POLICY_ROOT/var-lib/${SYSTEM_POLICY_ROOT#/}/launcher/steam.orig"
+mkdir -p "$SYSTEM_POLICY_ROOT/launcher" "$(dirname "$SYSTEM_POLICY_COPY")" "$SYSTEM_POLICY_ROOT/home-backup"
+printf '#!/bin/sh\n# slsteam-moon system launcher shim\nSLSM_ORIG="%s"\n' \
+  "$SYSTEM_POLICY_COPY" > "$SYSTEM_POLICY_ROOT/launcher/steam"
+printf '#!/bin/sh\nprintf "SYSTEM-ORIGINAL\\n"\n' > "$SYSTEM_POLICY_COPY"
+chmod 0755 "$SYSTEM_POLICY_ROOT/launcher/steam" "$SYSTEM_POLICY_COPY"
+DC_LAUNCHER_DIRS=("$SYSTEM_POLICY_ROOT/launcher")
+DC_LAUNCHER_BACKUP_ROOT="$SYSTEM_POLICY_ROOT/home-backup"
+check "a shim that runs root's copy keeps the launcher policy" "yes" \
+  "$(DC_LAUNCHER_SYSTEM_BACKUP_ROOT="$SYSTEM_POLICY_ROOT/var-lib" dc_launcher_coverage_active && echo yes || echo no)"
+
 # A persisted launcher policy is active only when every currently detected
 # distro launcher remains shimmed with its own mirrored backup. A package
 # replacement of one path must reopen the system desktop fallback.
@@ -1293,7 +1471,7 @@ check "runtime CLI leaves pre-bootstrap Install Steam vanilla" "stub" \
     dc_classify "$CLI_HOME/.local/share/applications/steam.desktop")"
 
 # A minimal entry created before bootstrap is tagged for ownership but must not
-# be rewritten through the wrapper by a later user/guardian reconciliation.
+# be rewritten through the wrapper by a guardian pass until Steam bootstraps.
 MIN_HOME="$TMP/minimal-prebootstrap-home"
 MIN_APPS="$MIN_HOME/.local/share/applications"
 MIN_WRAPPER="$MIN_HOME/.local/share/SLSsteam/path/steam"
@@ -1309,14 +1487,6 @@ XDG_DATA_HOME="$MIN_HOME/.local/share" XDG_DATA_DIRS="$TMP/minimal-empty" \
   XDG_STATE_HOME="$MIN_HOME/state" DC_HOME="$MIN_HOME" WRAPPER="$MIN_WRAPPER" \
   DC_STEAM_INSTALLED=0 DC_BACKUP_ROOT="$MIN_HOME/backup" \
   DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" DC_FORCE=1 \
-  dc_run --user >/dev/null 2>&1
-check "pre-bootstrap minimal entry survives user reconciliation" "$MIN_BEFORE" \
-  "$(sha256sum "$MIN_APPS/steam.desktop" | awk '{print $1}')"
-XDG_DATA_HOME="$MIN_HOME/.local/share" XDG_DATA_DIRS="$TMP/minimal-empty" \
-  XDG_CONFIG_HOME="$MIN_HOME/.config" XDG_CONFIG_DIRS="$TMP/minimal-empty" \
-  XDG_STATE_HOME="$MIN_HOME/state" DC_HOME="$MIN_HOME" WRAPPER="$MIN_WRAPPER" \
-  DC_STEAM_INSTALLED=0 DC_BACKUP_ROOT="$MIN_HOME/backup" \
-  DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" DC_FORCE=1 \
   dc_guardian_run >/dev/null 2>&1
 check "pre-bootstrap minimal entry survives guardian reconciliation" "$MIN_BEFORE" \
   "$(sha256sum "$MIN_APPS/steam.desktop" | awk '{print $1}')"
@@ -1325,7 +1495,7 @@ XDG_DATA_HOME="$MIN_HOME/.local/share" XDG_DATA_DIRS="$TMP/minimal-empty" \
   XDG_STATE_HOME="$MIN_HOME/state" DC_HOME="$MIN_HOME" WRAPPER="$MIN_WRAPPER" \
   DC_STEAM_INSTALLED=1 DC_BACKUP_ROOT="$MIN_HOME/backup" \
   DC_SYS_APPS="$TMP/none" DC_SYS_AUTOSTART="$TMP/none" DC_SUDO="" DC_FORCE=1 \
-  dc_run --user >/dev/null 2>&1
+  dc_guardian_run >/dev/null 2>&1
 check "post-bootstrap minimal entry becomes wrapped" "Exec=$MIN_WRAPPER %U" \
   "$(grep -m1 '^Exec=' "$MIN_APPS/steam.desktop")"
 
@@ -1352,6 +1522,10 @@ stderrE=$( (XDG_DATA_HOME="$HE/data" XDG_DATA_DIRS="$TMP/emptyE" XDG_CONFIG_HOME
   dc_guardian_run >/dev/null; echo STDERR-MARK >&2) 2>&1 )
 check "guardian pass leaves the caller's stderr open" "yes" \
   "$(case "$stderrE" in *STDERR-MARK*) echo yes ;; *) echo no ;; esac)"
+# Backups mirror the patched path, so a case that fell back to the invoking
+# user's home would leave this run's tmp tree in that user's backup store.
+check "the run stores nothing in the invoking user's home" "no" \
+  "$([ -e "$REAL_HOME/.local/share/SLSsteam/backup/${TMP#/}" ] && echo yes || echo no)"
 
 [ "$fail" = 0 ] && echo "ALL PASS" || echo "FAILURES"
 exit "$fail"

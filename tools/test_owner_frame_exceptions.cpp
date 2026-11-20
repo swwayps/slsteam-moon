@@ -49,7 +49,7 @@ int main()
 	const std::string logPath = std::string(home) + "/test.log";
 	g_pLog = std::unique_ptr<CLog>(new CLog(logPath.c_str()));
 	HotReload::initialize();
-	HotReload::publish({42}, true);
+	HotReload::publish({42});
 	OwnerWork::latchOwnerThread();
 	// A Proton title whose mapping is requested; a provisioning pass holds its
 	// lock, so the publication is parked for a later owner frame.

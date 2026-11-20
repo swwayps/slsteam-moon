@@ -3,9 +3,10 @@
 #
 # test-setup-steamless.sh — unit test for setup.sh::install_steamstub.
 #
-# Asserts the installer (1) prefers the verbatim-bundled Steamless kit
-# over a network download, and (2) warns LOUDLY when no kit ends up
-# installed (the silent-failure regression behind "load error 6").
+# Asserts the installer (1) installs the verbatim-bundled Steamless kit,
+# (2) warns LOUDLY when no kit ends up installed (the silent-failure
+# regression behind "load error 6"), and (3) removes the helpers older
+# releases installed next to run-steamless.sh.
 #
 # The real function is extracted from setup.sh and run against stub
 # log_* helpers and a fake repo tree, so we test shipped code, not a copy.
@@ -41,13 +42,9 @@ run_case() {
 make_fakeroot() {
     local root; root="$(mktemp -d)"
     mkdir -p "$root/tools/steamstub-bypass"
-    for s in run-steamless.sh install-steamless.sh scan-all.sh; do
-        # install-steamless.sh stub must NOT touch the network; if the
-        # fallback runs it, it just no-ops (leaving the kit absent).
-        echo '#!/usr/bin/env bash' > "$root/tools/steamstub-bypass/$s"
-        echo 'exit 0' >> "$root/tools/steamstub-bypass/$s"
-        chmod +x "$root/tools/steamstub-bypass/$s"
-    done
+    echo '#!/usr/bin/env bash' > "$root/tools/steamstub-bypass/run-steamless.sh"
+    echo 'exit 0' >> "$root/tools/steamstub-bypass/run-steamless.sh"
+    chmod +x "$root/tools/steamstub-bypass/run-steamless.sh"
     echo "$root"
 }
 
@@ -84,6 +81,26 @@ else
     bad "no loud warning emitted when kit missing: $(cat "$WARN_LOG")"
 fi
 rm -rf "$R2" "$T2" "$WARN_LOG"
+
+# Case 3: an update installs the helper and removes what older releases
+# installed next to it: scan-all.sh (it processed every app, opted in or not)
+# and install-steamless.sh (an unpinned upstream download).
+R3="$(make_fakeroot)"
+T3="$(mktemp -d)"; WARN_LOG="$(mktemp)"
+mkdir -p "$T3/steamstub-bypass"
+printf '#!/bin/sh\nexit 0\n' > "$T3/steamstub-bypass/scan-all.sh"
+printf '#!/bin/sh\nexit 0\n' > "$T3/steamstub-bypass/install-steamless.sh"
+run_case "$R3" "$T3" >/dev/null 2>&1
+[ -x "$T3/steamstub-bypass/run-steamless.sh" ] \
+    && ok "the helper is installed" \
+    || bad "the helper is not installed"
+[ ! -e "$T3/steamstub-bypass/scan-all.sh" ] \
+    && ok "an older scan-all.sh is removed" \
+    || bad "an older scan-all.sh is still installed"
+[ ! -e "$T3/steamstub-bypass/install-steamless.sh" ] \
+    && ok "an older install-steamless.sh is removed" \
+    || bad "an older install-steamless.sh is still installed"
+rm -rf "$R3" "$T3" "$WARN_LOG"
 
 echo "== test-setup-steamless: install_steamstub checks done =="
 

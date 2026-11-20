@@ -164,11 +164,13 @@ public:
 		return getType() != INVALID_MESSAGE_TYPE;
 	}
 
-	// Reports INVALID for an implausible body/size: null-page and top-page
-	// values are rejected here, and detectLayout probed a body before it
-	// settled the layout, so a wrong layout is not read through.
+	// Reports INVALID until a live packet settled the field layout (until
+	// then the body word may be read at the wrong offset), and for an
+	// implausible body or size.
 	ENetPacket getType() const
 	{
+		if (!layoutSettled())
+			return INVALID_MESSAGE_TYPE;
 		CNetPacketBody* b = body();
 		if (!plausibleBody(b))
 			return INVALID_MESSAGE_TYPE;

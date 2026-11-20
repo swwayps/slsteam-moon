@@ -246,6 +246,27 @@ int main()
 		      "an emptied luaappids.yaml removes its apps");
 	}
 
+	// A path the load cannot stat (here: links to themselves, one as a Steam
+	// root candidate and one as a script) is skipped. Thrown out of setup(), it
+	// left SLSsteam off for the whole session.
+	{
+		std::ofstream(configHome + "/SLSsteam/config.yaml", std::ios::trunc)
+			<< "AchievementOwnerId: 0\nNotifications: no\n";
+		std::ofstream(configHome + "/SLSsteam/luaappids.yaml", std::ios::trunc) << "";
+		std::filesystem::create_directories(root + "/.steam");
+		std::filesystem::create_directory_symlink("steam", root + "/.steam/steam");
+		std::filesystem::create_symlink("7.lua", steam + "/config/stplug-in/7.lua");
+		bool threw = false;
+		bool loaded = false;
+		try { loaded = g_config.loadSettings(); }
+		catch (...) { threw = true; }
+		check(!threw && loaded && g_config.managedAppIds.contains(10) &&
+		          g_config.managedAppIds.contains(12),
+		      "paths that cannot be stat-ed are skipped and the scripts stay managed");
+		std::filesystem::remove(steam + "/config/stplug-in/7.lua");
+		std::filesystem::remove(root + "/.steam/steam");
+	}
+
 	std::filesystem::remove_all(root);
 	if (failures != 0)
 	{

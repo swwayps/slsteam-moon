@@ -213,6 +213,10 @@ namespace Hooks
 
 	extern DetourHook<CGameInfoDialog_ServerResponded_t> CGameInfoDialog_ServerResponded;
 	bool setup();
+	// LaunchApp's own work (FakeAppIds, ticket, SteamStub check). Never throws:
+	// Steam's launch goes ahead whatever happens here.
+	void launchAppWork(void* pClientAppManager, GameId_t gameId,
+	                   uint32_t a2, uint32_t a3, const char* a4) noexcept;
 	// False when a required hook could not be placed.
 	bool place();
 	void remove();

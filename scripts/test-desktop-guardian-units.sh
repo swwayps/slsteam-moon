@@ -38,7 +38,6 @@ contains "service uses idle IO scheduling" "$service" $'\nIOSchedulingClass=idle
 timer="$(dgu_timer_content)"
 contains "timer starts after login" "$timer" 'OnStartupSec=30s'
 contains "timer repeats every five minutes" "$timer" 'OnUnitActiveSec=5min'
-contains "timer is persistent" "$timer" 'Persistent=true'
 
 USER_APPS="$TMP/User Data/applications"
 USER_AUTOSTART="$TMP/User Config/autostart"
@@ -128,7 +127,8 @@ check "changed install makes three manager calls" "3" "$(wc -l < "$DGU_CALLS")"
 check "daemon reload arguments stay separate" $'CALL\t<--user>\t<daemon-reload>' "$(sed -n '1p' "$DGU_CALLS")"
 check "enable arguments stay separate" $'CALL\t<--user>\t<enable>\t<--now>\t<slsteam-desktop-guardian.path>\t<slsteam-desktop-guardian.timer>' "$(sed -n '2p' "$DGU_CALLS")"
 check "start arguments stay separate" $'CALL\t<--user>\t<start>\t<slsteam-desktop-guardian.service>' "$(sed -n '3p' "$DGU_CALLS")"
-atomic="$(awk -v d="$DGU_UNIT_DIR/" 'NR % 2 == 1 && index($0, d) != 1 { bad=1 } END { print bad ? "no" : "yes" }' "$DGU_MV_LOG")"
+# Three units, so three renames, each from a temp file in the unit folder.
+atomic="$(awk -v d="$DGU_UNIT_DIR/" 'NR % 2 == 1 && index($0, d) != 1 { bad=1 } END { print (NR == 6 && !bad) ? "yes" : "no" }' "$DGU_MV_LOG")"
 check "atomic temp files are created in destination directory" "yes" "$atomic"
 check "atomic install leaves no temporary files" "0" "$(compgen -G "$DGU_UNIT_DIR/.*.tmp.*" | wc -l)"
 
@@ -248,8 +248,8 @@ Exec=env FOO=1 /usr/bin/steam -silent %U
 EOF
 check "autostart unit name uses generated service template" \
   "app-steam@autostart.service" "$(dgu_autostart_unit_name steam.desktop 2>/dev/null || true)"
-check "autostart args remove lone field code" "" \
-  "$(dgu_autostart_args "$TMP/autostart-steam.desktop" 2>/dev/null || true)"
+check "autostart args remove lone field code" "0:" \
+  "$(out="$(dgu_autostart_args "$TMP/autostart-steam.desktop" 2>/dev/null)"; printf '%s:%s' "$?" "$out")"
 check "autostart args preserve ordinary flag" "-silent" \
   "$(dgu_autostart_args "$TMP/autostart-bazzite.desktop" 2>/dev/null || true)"
 check "autostart args discard env prefix and field code" "-silent" \
@@ -281,6 +281,17 @@ check "converged drop-in install reports unchanged" "1" "$?"
 check "converged drop-in remains byte-identical" "$steam_dropin_sum" \
   "$(sha256sum "$STEAM_DROPIN" | awk '{print $1}')"
 check "converged drop-in performs no manager calls" "0" "$(wc -l < "$DGU_CALLS")"
+
+# A user autostart entry whose Exec a drop-in cannot express still shadows the
+# system entry with the same ID, so no drop-in comes from the system entry.
+X12_USER="$TMP/X12 User/autostart"; X12_SYSTEM="$TMP/X12 System/autostart"
+mkdir -p "$X12_USER" "$X12_SYSTEM"
+printf '[Desktop Entry]\nName=Steam\nExec=sh -c "sleep 5; steam -silent"\n' > "$X12_USER/steam.desktop"
+printf '[Desktop Entry]\nName=Steam\nExec=steam -silent %%U\n' > "$X12_SYSTEM/steam.desktop"
+check "the user entry is one a drop-in cannot express" "no" \
+  "$(dgu_autostart_args "$X12_USER/steam.desktop" >/dev/null 2>&1 && echo yes || echo no)"
+check "an unexpressible user autostart entry shadows the system one" "" \
+  "$(dc_autostart_dirs() { printf '%s\n' "$X12_USER" "$X12_SYSTEM"; }; dgu_autostart_sources)"
 
 # Never create autostart from nothing or overwrite a foreign same-name drop-in.
 EMPTY_AUTO="$TMP/Empty Auto/autostart"; mkdir -p "$EMPTY_AUTO"

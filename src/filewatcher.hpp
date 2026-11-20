@@ -19,6 +19,8 @@ public:
 		std::string path;
 		// For a directory: the entry names whose events count. Empty: all.
 		std::vector<std::string> names;
+		// For a directory: only entries ending in this count. Empty: all.
+		std::string suffix;
 	};
 
 	int notifyFd;
@@ -33,7 +35,8 @@ public:
 	CFileWatcher(const FileModifyEvent_t onModify);
 	~CFileWatcher();
 
-	bool addFile(const char* path, std::vector<std::string> names = {});
+	bool addFile(const char* path, std::vector<std::string> names = {},
+	             std::string suffix = {});
 	// Whether a batch of inotify events holds one that should reload.
 	bool wants(const char* events, std::size_t size) const;
 	void rearm();

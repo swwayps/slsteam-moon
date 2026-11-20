@@ -1,4 +1,5 @@
 // Standalone contract test for the IClientApps vtable wrapper.
+// Build: make test-clientapps
 
 #include "../src/sdk/IClientApps.hpp"
 #include "../src/vftableinfo.hpp"

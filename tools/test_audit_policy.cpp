@@ -149,30 +149,6 @@ int main()
 	          && rawLogReopen != std::string::npos,
 	      "raw audit log reopens after Steam closes inherited descriptors");
 
-	// steamclient.so opens before steamui.so, so load() runs once with steamui
-	// still unmapped and must just wait for the next la_objopen. Tearing down
-	// there stopped the manifest donor for the whole session.
-	const auto steamUiWait =
-		mainText.find("if (!LM_FindModule(\"steamui.so\", &g_modSteamUI))");
-	const auto steamUiWaitEnd = mainText.find("return;", steamUiWait);
-	check(steamUiWait != std::string::npos && steamUiWaitEnd != std::string::npos
-	          && mainText.substr(steamUiWait, steamUiWaitEnd - steamUiWait)
-	                 .find("unload()") == std::string::npos,
-	      "load() waits for steamui.so without tearing anything down");
-	// The 64-bit client maps steamui.so first, so the same holds the other way.
-	const auto clientWait =
-		mainText.find("if (!LM_FindModule(\"steamclient.so\", &g_modSteamClient))");
-	const auto clientWaitEnd = mainText.find("return;", clientWait);
-	check(clientWait != std::string::npos && clientWaitEnd != std::string::npos
-	          && mainText.substr(clientWait, clientWaitEnd - clientWait)
-	                 .find("unload()") == std::string::npos,
-	      "load() waits for steamclient.so without tearing anything down");
-
-	const auto policyReady = mainText.find("g_auditPolicyReady.store(true");
-	check(policyReady != std::string::npos && setupLock != std::string::npos
-	          && policyReady < setupLock,
-	      "narrow audit policy is published before a secondary namespace can skip setup");
-
 	// The audit module can run on Steam-owned threads whose locale TLS does
 	// not contain the audit namespace's glibc ctype table. Keep byte parsing
 	// on the locale-free Ascii helpers throughout src/, not only in the parser

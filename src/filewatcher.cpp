@@ -6,6 +6,7 @@
 #include "ownerwork.hpp"
 
 #include <algorithm>
+#include <string_view>
 #include <atomic>
 #include <cstdlib>
 #include <mutex>
@@ -178,7 +179,8 @@ CFileWatcher::~CFileWatcher()
 	}
 }
 
-bool CFileWatcher::addFile(const char* path, std::vector<std::string> names)
+bool CFileWatcher::addFile(const char* path, std::vector<std::string> names,
+                           std::string suffix)
 {
 	int fd = inotify_add_watch(notifyFd, path, maskForPath(path));
 	if (fd == -1)
@@ -186,7 +188,7 @@ bool CFileWatcher::addFile(const char* path, std::vector<std::string> names)
 		return false;
 	}
 
-	watchedPaths.push_back({path, std::move(names)});
+	watchedPaths.push_back({path, std::move(names), std::move(suffix)});
 	fileFdMap[fd] = watchedPaths.size() - 1;
 	g_pLog->debug("Added %s to FileWatcher %i\n", path, notifyFd);
 	return true;
@@ -223,8 +225,11 @@ bool CFileWatcher::wants(const char* events, std::size_t size) const
 		{
 			return true;
 		}
-		const auto& names = watchedPaths[it->second].names;
-		if (names.empty() || std::find(names.begin(), names.end(), event->name) != names.end())
+		const auto& watch = watchedPaths[it->second];
+		const std::string_view name(event->name);
+		const bool named = watch.names.empty()
+			|| std::find(watch.names.begin(), watch.names.end(), name) != watch.names.end();
+		if (named && name.ends_with(watch.suffix))
 		{
 			return true;
 		}

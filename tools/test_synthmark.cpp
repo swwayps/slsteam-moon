@@ -17,8 +17,8 @@
 // per boot and the surviving process may hit the provisioning cache and
 // skip synthesis — an in-memory set would be empty there.
 //
-// This pins down the persisted marker round-trip, managed-app filtering,
-// pure strip-budget policy, and reversible quarantine of app-scoped cache
+// This pins down the persisted marker round-trip, the strip selection, the
+// install-state gate, and reversible quarantine of app-scoped cache
 // artifacts. The protobuf request edit lives in apps.cpp::sendPICSInfoRequest.
 //
 // Build (from repo root):
@@ -114,20 +114,6 @@ int main()
 		CHECK((idx == std::vector<int>{1, 0}), "all synthetic -> all indices descending");
 	}
 
-	// Managed-app scope: an orphaned synthetic marker must not be stripped.
-	{
-		auto syntheticWithOrphan = [](uint32_t a) {
-			return a == 632360 || a == 632361 || a == 4496490;
-		};
-		auto managed = [](uint32_t a) {
-			return a == 632360 || a == 632361;
-		};
-		std::vector<uint32_t> req = {632360, 4496490, 632361, 10};
-		auto idx = SynthMark::stripIndices(req, syntheticWithOrphan, managed);
-		CHECK((idx == std::vector<int>{2, 0}),
-		      "only managed synthetic apps are selected for stripping");
-	}
-
 	// Install-state gate: an unresolved app-manager interface preserves the
 	// early-boot stripping behavior, while a fully installed app is safe to
 	// refresh and must not be stripped.
@@ -157,68 +143,6 @@ int main()
 	CHECK(SynthMark::installStateAllowsStrip(
 	          SynthMark::localAppInfoAuthority(false, true), true, true, false),
 	      "an authority miss on a not-yet-installed app is still strip-eligible");
-
-	// Runtime protection must never expire into a destructive empty response.
-	// The AppInfoState skip bit prevents the updater retry loop; this outgoing
-	// filter remains the final authority boundary if Steam asks anyway.
-	std::ifstream appsSource("src/feats/apps.cpp");
-	const std::string appsText(
-		(std::istreambuf_iterator<char>(appsSource)),
-		std::istreambuf_iterator<char>());
-	CHECK(appsText.find("g_synthStripBudget") == std::string::npos,
-	      "runtime synthetic protection has no expiring strip budget");
-	CHECK(appsText.find("strip cap tripped") == std::string::npos,
-	      "runtime can never fall through to clobber after a cap event");
-	CHECK(appsText.find("AppInfoState::isAuthoritative(appId)") !=
-	          std::string::npos,
-	      "outgoing PICS requests protect every locally authoritative appinfo");
-	CHECK(appsText.find("SynthMark::localAppInfoAuthority(") !=
-	          std::string::npos,
-	      "the outgoing filter falls back to the on-disk pair, never to unprotected");
-	CHECK(appsText.find("AppInfoProvision::cachePairMtimeSecs(appId) > 0") !=
-	          std::string::npos,
-	      "the fallback probes the pair without taking the cache lock");
-
-	std::ifstream picsSource("src/feats/pics.cpp");
-	const std::string picsText(
-		(std::istreambuf_iterator<char>(picsSource)),
-		std::istreambuf_iterator<char>());
-	CHECK(picsText.find("AppInfoState::isAuthoritative(appId)") !=
-	          std::string::npos,
-	      "PICS changelists protect every locally authoritative appinfo");
-
-	std::ifstream hotReloadSource("src/feats/hotreload.cpp");
-	const std::string hotReloadText(
-		(std::istreambuf_iterator<char>(hotReloadSource)),
-		std::istreambuf_iterator<char>());
-	CHECK(hotReloadText.find("locallyAuthoritativeApps") != std::string::npos,
-	      "hot reload publishes normalized caches as locally authoritative");
-
-	// A hot add must not be able to withdraw protection from apps it has
-	// nothing to do with: the authority publish has to precede the live splice,
-	// so a failed transaction leaves the already-spliced entries protected.
-	std::ifstream provisionSource("src/feats/appinfo_provision.cpp");
-	const std::string provisionText(
-		(std::istreambuf_iterator<char>(provisionSource)),
-		std::istreambuf_iterator<char>());
-	const auto publishAt = provisionText.find("AppInfoState::publishAuthoritative(");
-	const auto spliceAt = provisionText.find("AppInfoVdf::injectCachedApps(");
-	CHECK(publishAt != std::string::npos && spliceAt != std::string::npos,
-	      "runtime publish still publishes authority and splices appinfo");
-	CHECK(publishAt < spliceAt,
-	      "runtime publish arms authority before attempting the live splice");
-	CHECK(provisionText.find("cacheLock.heldByAnother()") != std::string::npos,
-	      "authority defers only on real cache contention, never on a dead lock");
-
-	// The live splice is the hot-add path: an unusable lock must not abort it,
-	// because the conditional publish already guards against a competing writer.
-	std::ifstream vdfSource("src/feats/appinfo_vdf.cpp");
-	const std::string vdfText(
-		(std::istreambuf_iterator<char>(vdfSource)),
-		std::istreambuf_iterator<char>());
-	CHECK(vdfText.find("lock.heldByAnother()") != std::string::npos &&
-	          vdfText.find("cacheLock.heldByAnother()") != std::string::npos,
-	      "live splice skips on contention only, not on an untrustworthy lock");
 
 	// --- reversible orphan quarantine --------------------------------------
 

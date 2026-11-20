@@ -30,31 +30,18 @@
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
-#include <fstream>
 #include <mutex>
 #include <optional>
 #include <string>
 #include <sys/stat.h>
 #include <unordered_map>
+#include <atomic>
+#include <cstring>
 #include <vector>
 
 
 namespace
 {
-	void setGameOfflineStatus(uint32_t appId, bool offline)
-	{
-		if (!appId) return;
-		std::string path = g_config.getDir() + "/offline_" + std::to_string(appId);
-		if (offline)
-		{
-			std::ofstream ofs(path, std::ios::trunc);
-			if (ofs.is_open()) ofs << "1";
-		}
-		else
-		{
-			std::remove(path.c_str());
-		}
-	}
 	// Two cooperating detours in CDepotDownloadMgr (see patterns.cpp
 	// CDepotDownloadMgr for the full RE).  Both share this x86-64 signature:
 	//   (mgr, user, appId, depotId, uint64 manifestId, branch) -> rax
@@ -369,10 +356,10 @@ namespace
 		// Only content WE manage.  A merely-observed key (owned game / Proton
 		// runtime) must NOT pull the depot in here: redirectGid would archive
 		// it into the ManifestStore and could redirect an owned depot to a
-		// stale local gid.  The store holds LuaTools depots only.
-		return DepotKey::manifestInManagedScope(
-		    appId, depotId,
-		    /*depotHasPin=*/g_config.getManifestPin(appId, depotId) != 0);
+		// stale local gid.  The store holds LuaTools depots only.  A pinned
+		// depot never gets here: redirectGid returns before the scope check.
+		return DepotKey::manifestInManagedScope(appId, depotId,
+		                                        /*depotHasPin=*/false);
 	}
 
 	// Shared redirect decision: when the planned (public) gid's manifest is
@@ -400,9 +387,9 @@ namespace
 					// so leaf and planner calls cannot each wait the full 12 s.
 					const bool activeRequest =
 						ManifestFetch::isAnyManagedDownloadActive(appId);
-					ManifestFetch::submitManifestBlob(pin, appId, depotId, activeRequest);
+					ManifestFetch::submitManifestBlob(pin, depotId, activeRequest);
 					(void)ManifestFetch::awaitManifestBlobFor(
-					    pin, appId, depotId, remainingPlanBudgetMs(depotId, pin),
+					    pin, depotId, remainingPlanBudgetMs(depotId, pin),
 					    /*notifyOnTimeout=*/false, activeRequest);
 				}
 			}
@@ -423,14 +410,21 @@ namespace
 		if (steamRoot.empty()) return manifestId;
 
 		const std::string dc = steamRoot + "/depotcache";
+		// The exact gid is on disk, so this depot needs no local manifest.
+		const auto exactReady = [&]
+		{
+			ManifestFetch::setDepotOnFallback(appId, depotId, false);
+			return freezePlanGid(depotId, manifestId, manifestId, consumeFrozen);
+		};
 
-		if (auto frozen =
-		        frozenPlanGid(depotId, manifestId, consumeFrozen))
+		if (auto frozen = frozenPlanGid(depotId, manifestId, false))
 		{
 			g_pLog->debug(
 			    "ManifestBind[%s]: depot=%u gid=%llu reusing frozen choice=%llu\n",
 			    site, depotId, static_cast<unsigned long long>(manifestId),
 			    static_cast<unsigned long long>(*frozen));
+			// Consumed only after the log line, so a failure there keeps it.
+			if (consumeFrozen) (void)frozenPlanGid(depotId, manifestId, true);
 			return *frozen;
 		}
 
@@ -442,8 +436,7 @@ namespace
 			{
 				ManifestStore::markPreferredGid(depotId, manifestId);
 			}
-			return freezePlanGid(
-			    depotId, manifestId, manifestId, consumeFrozen);
+			return exactReady();
 		}
 
 		// The planned gid is NOT in depotcache.  If the store holds this EXACT
@@ -458,8 +451,7 @@ namespace
 			             "from store (no internet needed)\n",
 			             site, depotId,
 			             static_cast<unsigned long long>(manifestId));
-			return freezePlanGid(
-			    depotId, manifestId, manifestId, consumeFrozen);
+			return exactReady();
 		}
 
 		// BuildDepotDependency normally started this exact fetch already.
@@ -468,11 +460,10 @@ namespace
 		// remaining in the plan-wide budget.
 		const bool activeRequest =
 			ManifestFetch::isAnyManagedDownloadActive(appId);
-		ManifestFetch::submitManifestBlob(
-			manifestId, appId, depotId, activeRequest);
+		ManifestFetch::submitManifestBlob(manifestId, depotId, activeRequest);
 		const int waitMs = remainingPlanBudgetMs(depotId, manifestId);
 		const bool fetched = ManifestFetch::awaitManifestBlobFor(
-		    manifestId, appId, depotId, waitMs,
+		    manifestId, depotId, waitMs,
 		    /*notifyOnTimeout=*/false,
 		    activeRequest);
 		if (fetched && ManifestStore::isInDepotcache(depotId, manifestId))
@@ -481,8 +472,7 @@ namespace
 			g_pLog->info(
 			    "ManifestBind[%s]: depot=%u exact gid=%llu ready from provider\n",
 			    site, depotId, static_cast<unsigned long long>(manifestId));
-			return freezePlanGid(
-			    depotId, manifestId, manifestId, consumeFrozen);
+			return exactReady();
 		}
 
 		// Exact gid failed, timed out, or was confirmed absent. Prefer the
@@ -508,12 +498,12 @@ namespace
 			}
 		}
 
-		const auto decision = ManifestSelection::choose(
-		    manifestId, ManifestSelection::ExactState::Unavailable,
-		    preferred, legacy);
+		const auto decision =
+		    ManifestSelection::choose(manifestId, preferred, legacy);
 		if (decision.gid == manifestId)
 		{
-			g_pLog->info(
+			// Every re-plan asks again while the archive lacks this gid.
+			g_pLog->infoOnce(
 			    "ManifestBind[%s]: depot=%u exact gid=%llu unavailable and "
 			    "no local fallback exists\n",
 			    site, depotId, static_cast<unsigned long long>(manifestId));
@@ -532,7 +522,7 @@ namespace
 			    depotId, manifestId, manifestId, consumeFrozen);
 		}
 
-		setGameOfflineStatus(appId, true);
+		ManifestFetch::setDepotOnFallback(appId, depotId, true);
 
 		g_pLog->info(
 		    "ManifestBind[%s]: depot=%u public gid=%llu not staged; "
@@ -547,19 +537,92 @@ namespace
 		    depotId, manifestId, decision.gid, consumeFrozen);
 	}
 
+	// Our work inside a download-plan hook failed (an allocation, the logger):
+	// note it once per hook. Steam's own call still runs.
+	void noteHookFailure(std::atomic<bool>& noted, const char* hook) noexcept
+	{
+		if (noted.exchange(true, std::memory_order_relaxed)) return;
+		try
+		{
+			if (g_pLog) g_pLog->warn("ManifestBind: %s failed; Steam plans as it would\n", hook);
+		}
+		catch (...)
+		{
+		}
+	}
+
+	// Both stages must use one gid: after a failure, take the choice the
+	// other stage froze, if any, else Steam's own.
+	uint64_t gidAfterFailure(uint32_t depotId, uint64_t manifestId, bool consume) noexcept
+	{
+		try
+		{
+			if (const auto frozen = frozenPlanGid(depotId, manifestId, consume)) return *frozen;
+		}
+		catch (...)
+		{
+		}
+		return manifestId;
+	}
+
+	struct ActivePlannerCall
+	{
+		bool active = false;
+		uint32_t depotId = 0;
+		uint64_t gid = 0;
+	};
+	thread_local ActivePlannerCall t_activePlannerCall{};
+
+	struct PlannerCallScope
+	{
+		ActivePlannerCall previous;
+		PlannerCallScope(uint32_t depotId, uint64_t gid) noexcept
+		    : previous(t_activePlannerCall)
+		{
+			t_activePlannerCall = {true, depotId, gid};
+		}
+		~PlannerCallScope() noexcept { t_activePlannerCall = previous; }
+	};
+
 	void* hkProcessDepot(void* ctx, void* a0C, uint32_t appId,
 	                     uint32_t depotId, uint64_t manifestId, void* a20)
 	{
-		const uint64_t useGid =
-		    redirectGid("leaf", appId, depotId, manifestId, false);
+		// PrepareDepotDownload calls this leaf with the gid it already chose.
+		if (t_activePlannerCall.active &&
+		    t_activePlannerCall.depotId == depotId &&
+		    t_activePlannerCall.gid == manifestId)
+		{
+			return g_leaf.orig(ctx, a0C, appId, depotId, manifestId, a20);
+		}
+		uint64_t useGid = manifestId;
+		try
+		{
+			useGid = redirectGid("leaf", appId, depotId, manifestId, false);
+		}
+		catch (...)
+		{
+			static std::atomic<bool> noted{false};
+			noteHookFailure(noted, "ProcessDepotManifest");
+			useGid = gidAfterFailure(depotId, manifestId, false);
+		}
 		return g_leaf.orig(ctx, a0C, appId, depotId, useGid, a20);
 	}
 
 	void* hkPrepareDepot(void* ctx, void* a0C, uint32_t appId,
 	                     uint32_t depotId, uint64_t manifestId, void* a20)
 	{
-		const uint64_t useGid =
-		    redirectGid("plan", appId, depotId, manifestId, true);
+		uint64_t useGid = manifestId;
+		try
+		{
+			useGid = redirectGid("plan", appId, depotId, manifestId, true);
+		}
+		catch (...)
+		{
+			static std::atomic<bool> noted{false};
+			noteHookFailure(noted, "PrepareDepotDownload");
+			useGid = gidAfterFailure(depotId, manifestId, true);
+		}
+		PlannerCallScope nested(depotId, useGid);
 		return g_planner.orig(ctx, a0C, appId, depotId, useGid, a20);
 	}
 
@@ -573,7 +636,7 @@ namespace
 	//
 	// Defensive: bail on an implausible vector (null base / out-of-range count)
 	// so a signature/ABI drift degrades to a harmless pass-through.
-	void* hkBuildDepot(void* ctx, uint32_t flag, void* depots, void* a3)
+	void planDepots(uint32_t flag, void* depots)
 	{
 		if (depots)
 		{
@@ -593,6 +656,10 @@ namespace
 			if (base && ManifestSelection::validVectorBounds(
 			                count, capacity, kDepotEntryStride))
 			{
+				// Filter a copy and publish it whole below: a failure half-way
+				// leaves Steam's list as it came, never half-compacted.
+				std::vector<char> plan(base, base + static_cast<size_t>(count) * kDepotEntryStride);
+				char* const work = plan.data();
 				// Start every first-import pin before waiting on any one of
 				// them. The bounded executor may then fetch concurrently while
 				// the rewrite loop below joins each job against one shared
@@ -602,7 +669,7 @@ namespace
 					for (int32_t i = 0; i < count; ++i)
 					{
 						const char* const e =
-						    base + static_cast<size_t>(i) * kDepotEntryStride;
+						    work + static_cast<size_t>(i) * kDepotEntryStride;
 						const uint32_t depotId =
 						    *reinterpret_cast<const uint32_t*>(e);
 						const uint32_t entryAppId =
@@ -612,7 +679,7 @@ namespace
 						if (pin && !ManifestStore::installedSize(depotId, pin))
 						{
 							ManifestFetch::submitManifestBlob(
-							    pin, entryAppId, depotId,
+							    pin, depotId,
 							    ManifestFetch::isAnyManagedDownloadActive(entryAppId));
 						}
 					}
@@ -621,7 +688,7 @@ namespace
 				int32_t writeIdx = 0;
 				for (int32_t i = 0; i < count; ++i)
 				{
-					char* e = base + static_cast<size_t>(i) * kDepotEntryStride;
+					char* e = work + static_cast<size_t>(i) * kDepotEntryStride;
 					const uint32_t depotId =
 					    *reinterpret_cast<const uint32_t*>(e);
 					auto* const sizep =
@@ -673,7 +740,7 @@ namespace
 						    [depotId, pin, entryAppId](int waitMs)
 						    {
 							return ManifestFetch::awaitManifestBlobFor(
-							    pin, entryAppId, depotId, waitMs,
+							    pin, depotId, waitMs,
 							    /*notifyOnTimeout=*/false,
 							    ManifestFetch::isAnyManagedDownloadActive(entryAppId));
 						    });
@@ -722,18 +789,19 @@ namespace
 						        planDepotcache, depotId, targetGid))
 						{
 							ManifestFetch::submitManifestBlob(
-							    targetGid, entryAppId, depotId,
+							    targetGid, depotId,
 							    ManifestFetch::isAnyManagedDownloadActive(entryAppId));
 						}
 					}
 
 					if (writeIdx != i)
 					{
-						char* dest = base + static_cast<size_t>(writeIdx) * kDepotEntryStride;
+						char* dest = work + static_cast<size_t>(writeIdx) * kDepotEntryStride;
 						std::memcpy(dest, e, kDepotEntryStride);
 					}
 					++writeIdx;
 				}
+				std::memcpy(base, work, static_cast<size_t>(writeIdx) * kDepotEntryStride);
 				*countPtr = writeIdx;
 			}
 			else
@@ -743,6 +811,19 @@ namespace
 				    "(base=%p count=%d capacity=%d); passing through\n",
 				    static_cast<void*>(base), count, capacity);
 			}
+		}
+	}
+
+	void* hkBuildDepot(void* ctx, uint32_t flag, void* depots, void* a3)
+	{
+		try
+		{
+			planDepots(flag, depots);
+		}
+		catch (...)
+		{
+			static std::atomic<bool> noted{false};
+			noteHookFailure(noted, "BuildDepotDependency");
 		}
 		return g_builder.orig(ctx, flag, depots, a3);
 	}

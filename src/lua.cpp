@@ -418,7 +418,9 @@ void Lua::init(const bool fullReload)
 		if (!watcher)
 		{
 			watcher = new CFileWatcher(onFileChange);
-			if (!watcher->addFile(dir.c_str()) || !watcher->start())
+			// Only plugins count, as upstream: a plugin that writes its own
+			// state into this folder must not reload every plugin again.
+			if (!watcher->addFile(dir.c_str(), {}, ".lua") || !watcher->start())
 			{
 				LOG_NOTIFYERROR("Failed to watch plugin directory!\nHot reload will be unavailable");
 			}
@@ -649,7 +651,7 @@ bool Lua::fixPerms(const std::filesystem::path& path)
 
 void Lua::onFileChange()
 {
-	// The local watcher reports a batch, not a file: any change in the plugin
+	// The watcher reports a batch, not a file: any *.lua change in the plugin
 	// directory reloads.
 	Lua::reload();
 }

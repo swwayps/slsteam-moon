@@ -14,6 +14,9 @@ namespace ManifestCode
 	struct CodeRequest
 	{
 		uint64_t jobId = 0;
+		// Steam accepted the frame. False when nothing reached Steam (no send
+		// context, a rejected frame): the zero result is then not an answer.
+		bool sent = false;
 		std::future<uint64_t> result;
 	};
 	CodeRequest requestCode(uint32_t appId, uint32_t depotId, uint64_t gid);

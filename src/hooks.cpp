@@ -391,29 +391,61 @@ bool LuaHook::remove()
 	return true;
 }
 
+// Our work in the CM receive hook failed (an allocation, the logger): note it
+// once and let Steam have the packet.
+static void noteRecvFailure() noexcept
+{
+	static std::atomic<bool> logged{false};
+	if (logged.exchange(true, std::memory_order_relaxed)) return;
+	try
+	{
+		if (g_pLog)
+			g_pLog->warn("RecvPkt: our pre-dispatch work failed; Steam keeps the packet\n");
+	}
+	catch (...)
+	{
+	}
+}
+
 static void hkCMInterface_RecvPkt(void* pCMInterface, CNetPacket* pNetPacket)
 {
-	// Settle the packet field layout from the first live Steam-owned packet
-	// before any field is read.  No-op once settled; stays at shift 0 (the
-	// stable layout) unless a packet fails to validate there.
-	CNetPacket::detectLayout(pNetPacket);
-
-	if (g_config.extendedLogging.get())
+	// Everything before the dispatch boundary runs on Steam's receive thread,
+	// so nothing it throws may unwind into Steam.
+	bool choke = false;
+	try
 	{
-		g_pLog->debug(
-			"RecvPkt %u\n",
-			pNetPacket ? pNetPacket->getType() : CNetPacket::INVALID_MESSAGE_TYPE);
+		// Settle the packet field layout from the first live Steam-owned packet
+		// before any field is read.  No-op once settled; stays at shift 0 (the
+		// stable layout) unless a packet fails to validate there.
+		CNetPacket::detectLayout(pNetPacket);
+
+		if (g_config.extendedLogging.get())
+		{
+			g_pLog->debug(
+				"RecvPkt %u\n",
+				pNetPacket ? pNetPacket->getType() : CNetPacket::INVALID_MESSAGE_TYPE);
+		}
+
+		if (pNetPacket && pNetPacket->isProtoBuf() &&
+		    FamilyShare::shouldChoke(g_config.disableFamilyLock.get(), *pNetPacket))
+		{
+			choke = true;
+			g_pLog->debug("Choking Family Share message %u\n",
+			              static_cast<uint32_t>(pNetPacket->getProtoBufType()));
+		}
+	}
+	catch (...)
+	{
+		noteRecvFailure();
+	}
+	if (choke)
+	{
+		pNetPacket->free();
+		return;
 	}
 
 	if (pNetPacket && pNetPacket->isProtoBuf())
 	{
-		if (FamilyShare::shouldChoke(g_config.disableFamilyLock.get(), *pNetPacket))
-		{
-			g_pLog->debug("Choking Family Share message %u\n",
-			              static_cast<uint32_t>(pNetPacket->getProtoBufType()));
-			pNetPacket->free();
-			return;
-		}
 
 		// Route the CM protobuf frame through the message features (depot key,
 		// PICS, ticket, wallet/email, license list, login-state).
@@ -741,7 +773,7 @@ static bool hkUserAppManager_BuildDepotDependency
 		    && DepotKey::manifestInManagedScope(depot->appId, depot->depotId)
 		    && !ManifestStore::isInDepotcache(depot->depotId, depot->manifestId))
 		{
-			ManifestFetch::submitManifestBlob(depot->manifestId, depot->appId, depot->depotId,
+			ManifestFetch::submitManifestBlob(depot->manifestId, depot->depotId,
 				ManifestFetch::isAnyManagedDownloadActive(depot->appId));
 		}
 	}
@@ -794,25 +826,44 @@ static bool hkClientAppManager_BCanRemotePlayTogether(void* pClientAppManager, u
 	return true;
 }
 
-static void* hkClientAppManager_LaunchApp(void* pClientAppManager, GameId_t* pGameId, uint32_t a2, uint32_t a3, const char* a4)
+void Hooks::launchAppWork(void* pClientAppManager, GameId_t gameId,
+                          uint32_t a2, uint32_t a3, const char* a4) noexcept
 {
-	if (pGameId)
+	try
 	{
-		const auto appId = static_cast<uint32_t>(*pGameId);
+		const auto appId = static_cast<uint32_t>(gameId);
 		g_pLog->debugOnce
 		(
 			"%s(%p, %llu, %u, %u, %p)\n",
 			Hooks::IClientAppManager_LaunchApp.name.c_str(),
 			pClientAppManager,
-			static_cast<unsigned long long>(*pGameId),
+			static_cast<unsigned long long>(gameId),
 			a2,
 			a3,
 			static_cast<const void*>(a4)
 		);
-		FakeAppIds::launchApp(*pGameId);
+		FakeAppIds::launchApp(gameId);
 		Ticket::launchApp(appId);
 		SteamStub::onLaunchApp(appId);
 	}
+	catch (...)
+	{
+		static std::atomic<bool> logged{false};
+		if (logged.exchange(true, std::memory_order_relaxed)) return;
+		try
+		{
+			if (g_pLog) g_pLog->warn("LaunchApp: our launch work failed; Steam launches as it would\n");
+		}
+		catch (...)
+		{
+		}
+	}
+}
+
+static void* hkClientAppManager_LaunchApp(void* pClientAppManager, GameId_t* pGameId, uint32_t a2, uint32_t a3, const char* a4)
+{
+	// Steam's IPC thread: our work never unwinds into the launch.
+	if (pGameId) Hooks::launchAppWork(pClientAppManager, *pGameId, a2, a3, a4);
 	return Hooks::IClientAppManager_LaunchApp.originalFn.fn(pClientAppManager, pGameId, a2, a3, a4);
 }
 

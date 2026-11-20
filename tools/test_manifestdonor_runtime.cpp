@@ -6,6 +6,7 @@
 #include "../src/feats/manifestdonor.hpp"
 #include "../src/feats/stats_policy.hpp"
 #include "../src/log.hpp"
+#include "../src/sdk/CPackageInfo.hpp"
 #include "../src/sdk/protobufs/steammessages_clientserver.pb.h"
 #include "../src/utils/ManifestFetch.hpp"
 #include <atomic>
@@ -25,6 +26,8 @@ namespace
 	int failures = 0;
 	std::atomic<int> codeRequests{0};
 	std::atomic<int> httpRequests{0};
+	std::atomic<int> depot20Requests{0};
+	std::atomic<bool> wantedListed{false};
 	std::string logPath;
 	void check(bool condition, const std::string& message)
 	{
@@ -54,26 +57,47 @@ namespace
 }
 namespace ManifestCode
 {
-	CodeRequest requestCode(uint32_t, uint32_t, uint64_t)
+	// Depot 20: the first request finds no send context (nothing reaches
+	// Steam); later ones are sent and answered with a code.
+	CodeRequest requestCode(uint32_t, uint32_t depotId, uint64_t)
 	{
 		++codeRequests;
 		std::promise<uint64_t> promise;
 		CodeRequest request;
 		request.result = promise.get_future();
-		promise.set_value(0);
+		if (depotId == 20 && depot20Requests++ > 0)
+		{
+			request.jobId = 1;
+			request.sent = true;
+			promise.set_value(777);
+		}
+		else
+		{
+			promise.set_value(0);
+		}
 		return request;
 	}
 	void discardRequest(uint64_t) {}
 }
 namespace ManifestFetch
 {
-	HttpResponse archiveRequest(const std::string&, const std::string&,
+	HttpResponse archiveRequest(const std::string& method, const std::string& url,
 	                            const std::string&, std::size_t, long,
 	                            const std::atomic<bool>*)
 	{
 		++httpRequests;
 		HttpResponse response;
 		response.status = 404;
+		if (wantedListed && method == "GET" &&
+		    url.size() >= 15 && url.compare(url.size() - 15, 15, "/manifestwanted") == 0)
+		{
+			response.status = 200;
+			response.body = "10:20:30\n";
+		}
+		else if (method == "POST")
+		{
+			response.status = 200;
+		}
 		return response;
 	}
 }
@@ -117,6 +141,9 @@ int main()
 	      "with Donate.Enabled off no Steam code request or archive request is made");
 
 	CConfig::DonateSettings on;
+	// Cycles every second, without the spacing between requests.
+	on.intervalSecs = 1;
+	on.minMintIntervalMs = 0;
 	g_config.donate.set(on);
 	ManifestDonor::onLicenseList(&licenses);
 	check(waitForLog("Donor: started", std::chrono::milliseconds(3000)),
@@ -124,6 +151,32 @@ int main()
 	std::this_thread::sleep_for(std::chrono::milliseconds(1500));
 	check(codeRequests.load() == 0,
 	      "a probe file does not make the worker request a manifest code");
+
+	// A request Steam never received (no send context yet, as right after a
+	// CM reconnect) is not a refusal: the next cycle asks for the depot again
+	// instead of skipping it for an hour.
+	{
+		uint32_t depots[] = {20};
+		PackageInfo package{};
+		package.PackageId = 99;
+		package.DepotIdVec.memory.base = depots;
+		package.DepotIdVec.memory.alloc = 1;
+		package.DepotIdVec.size = 1;
+		ManifestDonor::observePackage(&package, true);
+		CMsgClientLicenseList owned;
+		owned.set_eresult(1);
+		owned.add_licenses()->set_package_id(99);
+		wantedListed = true;
+		ManifestDonor::onLicenseList(&owned);
+		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+		while (depot20Requests.load() < 2 && std::chrono::steady_clock::now() < deadline)
+			std::this_thread::sleep_for(std::chrono::milliseconds(50));
+		check(depot20Requests.load() >= 2,
+		      "a request Steam never received is asked again on the next cycle (asked " +
+		      std::to_string(depot20Requests.load()) + ")");
+		if (depot20Requests.load() < 2)
+			std::fputs(logText().c_str(), stderr);
+	}
 
 	ManifestDonor::stop();
 	g_pLog.reset();

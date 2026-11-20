@@ -48,13 +48,6 @@ int main()
 	CHECK(bypass.load(), "active join promotes an existing blob job");
 	ManifestFetch::detail::promoteArchiveMissBypass(bypass, false);
 	CHECK(bypass.load(), "archive retry promotion is monotonic");
-	std::atomic<uint32_t> appId{0};
-	ManifestFetch::detail::promoteAppId(appId, 0);
-	CHECK(appId.load() == 0, "missing app id does not replace the job context");
-	ManifestFetch::detail::promoteAppId(appId, 11);
-	CHECK(appId.load() == 11, "blob job retains a real app id for depot-aware lookup");
-	ManifestFetch::detail::promoteAppId(appId, 22);
-	CHECK(appId.load() == 11, "first real app id remains stable across joiners");
 
 	std::string manifest("\xd0\x17\xf6\x71", 4);
 	manifest.append(8, '\0');
@@ -163,6 +156,19 @@ int main()
 		const auto limited = classifyArchiveOutcome(false, 429);
 		CHECK(limited.rateLimited && !limited.success && !limited.transportFailure,
 		      "a 429 archive response is a rate limit");
+		// A download the job's own 60 s budget stopped (a big install on a
+		// slow link) says nothing about whether the archive answers.
+		const auto stopped = classifyArchiveOutcome(true, 0, /*stoppedByUs=*/true);
+		CHECK(!stopped.success && !stopped.rateLimited && !stopped.transportFailure,
+		      "a download stopped by its own budget is neither reachable nor an outage");
+		ProviderCircuit budgetCircuit(2, 30000);
+		for (int round = 0; round < 2; ++round)
+		{
+			const auto token = budgetCircuit.beginAttempt(0);
+			budgetCircuit.finishAttempt(token, 0, stopped.success, stopped.rateLimited,
+			                            stopped.transportFailure);
+		}
+		CHECK(!budgetCircuit.open(), "two budget stops in a row do not open the circuit");
 	}
 
 	// The planner asks "is any managed download running" once per depot; the

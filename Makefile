@@ -57,7 +57,7 @@ endif
 #	LDFLAGS += -fuse-ld=mold
 #endif
 
-.PHONY: all build rebuild clean install release test-ascii test-cmwire test-cmclient-loader test-cmclient-session test-provision-locks test-cmrecv-exceptions test-hook-placement test-hotreload-prepared test-cache-repair test-donor-connection test-owner-frame-exceptions test-route-msg-bounds test-cache-validation test-depot-prune test-offline-flags test-ticket-cache test-send-frame test-notify-async test-log-once test-catalog-trust test-clientcompat test-dlcids test-dlc-scope test-dlc-metadata test-config-path test-config-discovery test-lua-import test-steamstub-launch test-ownerwork-policy test-filewatcher-burst test-provision-notice test-mtvar-contains test-synthmark test-appinfostate test-pattern-catalog test-pattern-cache test-pattern-refresh test-process-lock test-process-runtime test-atomic-file test-cache-pair test-appinfo-transaction test-appinfo-reload test-audit-symbols test-audit-eh test-audit-tier0 test-audit-policy test-memhlp-target test-memhlp-prologue test-memhlp-pic test-utils-sha test-provision-cache test-provision-refresh test-provision-result test-provision-terminal test-pending-proton test-provision-schedule test-provision-pass test-runtime-dependencies test-thread-start test-steamstub-warmup test-steamstub-launchopt test-boundedexecutor test-steamless-prewarm test-depotkey-scope test-curl-timeout test-manifest-index test-manifestselection test-manifeststore-io test-hotreload-inputs test-hotreload-package test-ownerqueue test-hotreload-capabilities test-libraryremoval test-pics test-yaml-runtime test-manifestpin-patterns test-optional-locators test-patternscan test-fakeappid-presence test-ticket test-familyshare
+.PHONY: all build rebuild clean install release test-ascii test-cmwire test-cmclient-loader test-cmclient-session test-provision-locks test-cmrecv-exceptions test-hook-placement test-hotreload-prepared test-cache-repair test-donor-connection test-owner-frame-exceptions test-route-msg-bounds test-cache-validation test-depot-prune test-offline-flags test-download-activity test-ticket-cache test-send-frame test-notify-async test-log-once test-catalog-trust test-local-catalog test-depotkey-snapshot test-blob-alloc test-clientcompat test-dlcids test-dlc-scope test-dlc-metadata test-config-path test-config-discovery test-lua-import test-steamstub-launch test-ownerwork-policy test-filewatcher-burst test-provision-notice test-mtvar-contains test-synthmark test-appinfostate test-pattern-catalog test-pattern-cache test-pattern-refresh test-process-lock test-process-runtime test-atomic-file test-cache-pair test-appinfo-transaction test-appinfo-reload test-audit-symbols test-audit-eh test-audit-tier0 test-audit-policy test-audit-entry test-memhlp-target test-memhlp-prologue test-memhlp-pic test-utils-sha test-provision-cache test-provision-refresh test-provision-result test-provision-terminal test-pending-proton test-provision-schedule test-provision-pass test-runtime-dependencies test-thread-start test-steamstub-launchopt test-boundedexecutor test-steamless-prewarm test-depotkey-scope test-curl-timeout test-manifest-index test-manifestselection test-manifeststore-io test-hotreload-inputs test-hotreload-package test-ownerqueue test-hotreload-capabilities test-libraryremoval test-pics test-yaml-runtime test-manifestpin-patterns test-optional-locators test-patternscan test-fakeappid-presence test-ticket test-familyshare
 .NOTPARALLEL: clean rebuild
 .PHONY: uninstall clean-libs clean-tools schema-grabber ticket-grabber
 .PHONY: test-library-dates test-library-dates-hook test-depot-overrides
@@ -67,7 +67,7 @@ endif
 .PHONY: test-manifestdonor test-manifestdonor-runtime test-manifestfetch
 .PHONY: test-reconcilepin-scan test-hostexec
 .PHONY: test-depotkey-recv-policy
-.PHONY: test-private-apps test-config-settings test-config-tolerance test-config-watch test-config-create test-plugin-config test-curl-child test-legacy-cdkey test-utils-number test-launch-options
+.PHONY: test-curl-sink test-pin-lookup test-provision-mirror test-pics-answer test-private-apps test-config-settings test-config-tolerance test-config-watch test-config-create test-plugin-config test-curl-child test-legacy-cdkey test-utils-number test-launch-options
 
 test-manifestdonor:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror \
@@ -184,8 +184,11 @@ ticket-grabber:
 	$(MAKE) -C tools/ticket-grabber
 
 -include $(deps)
-obj/config.o: src/config.cpp res/config.yaml
-	$(shell ./embed-config.sh)
+# A real target, so a refused config fails the build instead of compiling the
+# header the repository already holds.
+src/config_default.hpp: res/config.yaml embed-config.sh
+	./embed-config.sh
+obj/config.o: src/config.cpp src/config_default.hpp
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -isysteminclude -MMD -MP -c $< -o $@
 
@@ -211,10 +214,10 @@ clean-tools:
 	-$(MAKE) -C tools/ticket-grabber clean
 
 install:
-	sh setup.sh install
+	bash setup.sh install
 
 uninstall:
-	sh setup.sh uninstall
+	bash setup.sh uninstall
 
 # Unit test for cmwire.hpp's protobuf-backed helpers (Task 3).  Links the
 # already-compiled protobuf objects + libprotobuf.a, matching the
@@ -260,6 +263,23 @@ test-provision-locks: $(objs) $(libs)
 		-I include -isysteminclude tools/test_provision_locks.cpp \
 		$(objs) $(libs) -lpthread -ldl -o /tmp/test_provision_locks
 	/tmp/test_provision_locks
+# Cold-start provisioning against a provider mirror that answers through
+# tools/fake_libcurl.cpp.
+test-provision-mirror: $(objs) $(libs)
+	mkdir -p /tmp/fakecurl-mirror
+	$(CXX) -std=c++20 -shared -fPIC -Wl,-soname,libcurl.so.4 \
+		tools/fake_libcurl.cpp -o /tmp/fakecurl-mirror/libcurl.so.4
+	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
+		-I include -isysteminclude tools/test_provision_mirror.cpp \
+		$(objs) $(libs) /tmp/fakecurl-mirror/libcurl.so.4 \
+		-Wl,-rpath,/tmp/fakecurl-mirror -lpthread -ldl \
+		-o /tmp/test_provision_mirror
+	/tmp/test_provision_mirror
+test-pics-answer: $(objs) $(libs)
+	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
+		-I include -isysteminclude tools/test_pics_answer.cpp \
+		$(objs) $(libs) -lpthread -ldl -o /tmp/test_pics_answer
+	/tmp/test_pics_answer
 test-cmrecv-exceptions: $(objs) $(libs)
 	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
 		-I include -isysteminclude tools/test_cmrecv_exceptions.cpp \
@@ -281,9 +301,13 @@ test-cache-repair: $(objs) $(libs)
 		$(objs) $(libs) -lpthread -ldl -o /tmp/test_cache_repair
 	/tmp/test_cache_repair
 test-hook-placement: $(objs) $(libs)
+	mkdir -p /tmp/fakecurl-hooks
+	$(CXX) -std=c++20 -shared -fPIC -Wl,-soname,libcurl.so.4 \
+		tools/fake_libcurl.cpp -o /tmp/fakecurl-hooks/libcurl.so.4
 	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
 		-I include -isysteminclude tools/test_hook_placement.cpp \
-		$(objs) $(libs) -lpthread -ldl -o /tmp/test_hook_placement
+		$(objs) $(libs) /tmp/fakecurl-hooks/libcurl.so.4 \
+		-Wl,-rpath,/tmp/fakecurl-hooks -lpthread -ldl -o /tmp/test_hook_placement
 	/tmp/test_hook_placement
 test-cache-validation: $(objs) $(libs)
 	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
@@ -291,6 +315,11 @@ test-cache-validation: $(objs) $(libs)
 		$(objs) $(libs) -Wl,--wrap=dlsym -lpthread -ldl \
 		-o /tmp/test_cache_validation
 	/tmp/test_cache_validation
+test-blob-alloc: $(objs) $(libs)
+	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
+		-I include -isysteminclude tools/test_blob_alloc.cpp \
+		$(objs) $(libs) -lpthread -ldl -o /tmp/test_blob_alloc
+	/tmp/test_blob_alloc
 test-send-frame: $(objs) $(libs)
 	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
 		-I include -isysteminclude tools/test_send_frame.cpp \
@@ -312,10 +341,19 @@ test-ticket-cache: $(objs) $(libs)
 		$(objs) $(libs) -lpthread -ldl -o /tmp/test_ticket_cache
 	/tmp/test_ticket_cache
 test-offline-flags: $(objs) $(libs)
+	mkdir -p /tmp/fakecurl-offline
+	$(CXX) -std=c++20 -shared -fPIC -Wl,-soname,libcurl.so.4 \
+		tools/fake_libcurl.cpp -o /tmp/fakecurl-offline/libcurl.so.4
 	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
 		-I include -isysteminclude tools/test_offline_flags.cpp \
-		$(objs) $(libs) -lpthread -ldl -o /tmp/test_offline_flags
+		$(objs) $(libs) /tmp/fakecurl-offline/libcurl.so.4 \
+		-Wl,-rpath,/tmp/fakecurl-offline -lpthread -ldl -o /tmp/test_offline_flags
 	/tmp/test_offline_flags
+test-download-activity: $(objs) $(libs)
+	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
+		-I include -isysteminclude tools/test_download_activity.cpp \
+		$(objs) $(libs) -lpthread -ldl -o /tmp/test_download_activity
+	/tmp/test_download_activity
 test-depot-prune: $(objs) $(libs)
 	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
 		-I include -isysteminclude tools/test_depot_prune.cpp \
@@ -337,6 +375,15 @@ test-catalog-trust: $(objs) $(libs)
 		$(objs) $(libs) -Wl,--wrap=LM_EnumSegments -lpthread -ldl \
 		-o /tmp/test_catalog_trust
 	/tmp/test_catalog_trust
+test-local-catalog: $(objs) $(libs)
+	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
+		-I include -isysteminclude tools/test_local_catalog.cpp \
+		$(objs) $(libs) -Wl,--build-id -lpthread -ldl -o /tmp/test_local_catalog
+	/tmp/test_local_catalog
+test-curl-sink:
+	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -Werror -I include \
+		tools/test_curl_sink.cpp -o /tmp/test_curl_sink
+	/tmp/test_curl_sink
 test-cmclient-loader:
 	$(CXX) -std=c++20 -ffunction-sections -fdata-sections -I include -I src \
 		tools/test_cmclient_loader.cpp src/feats/cmclient.cpp \
@@ -479,6 +526,13 @@ test-audit-policy:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src \
 		tools/test_audit_policy.cpp -o /tmp/test_audit_policy
 	/tmp/test_audit_policy
+# The audit entry points with libmem's process and module lookups wrapped.
+test-audit-entry: $(objs) $(libs)
+	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
+		-I include -isysteminclude tools/test_audit_entry.cpp \
+		$(objs) $(libs) -Wl,--wrap=LM_GetProcess -Wl,--wrap=LM_FindModule \
+		-Wl,--wrap=getenv -lpthread -ldl -o /tmp/test_audit_entry
+	/tmp/test_audit_entry
 
 test-depotkey-scope:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I include \
@@ -570,11 +624,6 @@ test-thread-start:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src \
 		tools/test_thread_start.cpp -o /tmp/test_thread_start
 	/tmp/test_thread_start
-
-test-steamstub-warmup:
-	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src \
-		tools/test_steamstub_warmup.cpp -o /tmp/test_steamstub_warmup
-	/tmp/test_steamstub_warmup
 
 test-steamstub-launchopt:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src \
@@ -715,7 +764,7 @@ test-pics:
 
 test-process-lock:
 	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src \
-		tools/test_process_lock.cpp -o /tmp/test_process_lock
+		tools/test_process_lock.cpp -Wl,--wrap=flock -o /tmp/test_process_lock
 	/tmp/test_process_lock
 
 test-atomic-file:
@@ -782,6 +831,7 @@ test-config-watch: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
 test-steamstub-launch: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
 		obj/api.o obj/feats/depotkey.o \
 		obj/feats/librarydates.o obj/ownerwork.o obj/feats/steamstub.o \
+		obj/runtime_dependencies.o \
 		obj/sdk/protobufs/steammessages_clientserver_appinfo.pb.o \
 		obj/sdk/protobufs/steammessages_base.pb.o
 	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
@@ -801,6 +851,17 @@ test-lua-import: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
 		lib/libyaml-cpp.a lib/libprotobuf.a -lcrypto -lpthread -ldl \
 		-o /tmp/test_lua_import
 	/tmp/test_lua_import
+test-depotkey-snapshot: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
+		obj/api.o obj/feats/depotkey.o \
+		obj/feats/librarydates.o obj/ownerwork.o \
+		obj/sdk/protobufs/steammessages_clientserver_appinfo.pb.o \
+		obj/sdk/protobufs/steammessages_base.pb.o
+	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
+		-I include -isysteminclude tools/test_depotkey_snapshot.cpp \
+		$(filter obj/%.o,$^) \
+		lib/libyaml-cpp.a lib/libprotobuf.a -lcrypto -lpthread -ldl \
+		-o /tmp/test_depotkey_snapshot
+	/tmp/test_depotkey_snapshot
 test-ownerwork-policy: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
 		obj/api.o obj/feats/depotkey.o \
 		obj/feats/librarydates.o obj/ownerwork.o \
@@ -812,6 +873,17 @@ test-ownerwork-policy: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
 		lib/libyaml-cpp.a lib/libprotobuf.a -lcrypto -lpthread -ldl \
 		-o /tmp/test_ownerwork_policy
 	/tmp/test_ownerwork_policy
+test-pin-lookup: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
+		obj/api.o obj/feats/depotkey.o \
+		obj/feats/librarydates.o obj/ownerwork.o \
+		obj/sdk/protobufs/steammessages_clientserver_appinfo.pb.o \
+		obj/sdk/protobufs/steammessages_base.pb.o
+	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 \
+		-I include -isysteminclude tools/test_pin_lookup.cpp \
+		$(filter obj/%.o,$^) \
+		lib/libyaml-cpp.a lib/libprotobuf.a -lcrypto -lpthread -ldl \
+		-o /tmp/test_pin_lookup
+	/tmp/test_pin_lookup
 test-config-create: obj/log.o obj/config.o obj/globals.o obj/filewatcher.o \
 		obj/api.o obj/feats/depotkey.o \
 		obj/feats/librarydates.o obj/ownerwork.o \
@@ -924,3 +996,127 @@ endif
 
 release:
 	bash scripts/release.sh
+
+# Header-only and small-source tests (scripts/test-make-targets.sh checks that
+# every tools/test_*.cpp has a target).
+.PHONY: test-appdata-layout test-appinfo-text test-appticket test-cainfo
+.PHONY: test-cefport test-clientapps test-cmlist-cache test-compattool test-confload
+.PHONY: test-confnormalize test-curl-transfer test-depotquarantine test-depotquarantine-store test-dir-walks
+.PHONY: test-emptydepot test-hotreload-state test-license-refresh test-loadlock
+.PHONY: test-manageddepotfilter test-manifestpins test-manifestsynth test-notify
+.PHONY: test-playerstats test-provision-network test-reconcilepin-guard
+.PHONY: test-reconcilepin-pattern test-runtime-attestation test-runtimedir test-sha1
+.PHONY: test-strsplit test-usabledepot test-usermsg
+test-appdata-layout:
+	$(CXX) -std=c++20 -I include -I src tools/test_appdata_layout.cpp -pthread \
+		-o /tmp/test_appdata_layout
+	/tmp/test_appdata_layout
+test-appinfo-text:
+	$(CXX) -std=c++20 -I include tools/test_appinfo_text.cpp -o /tmp/test_appinfo_text
+	/tmp/test_appinfo_text
+test-appticket:
+	$(CXX) -std=c++20 -I include tools/test_appticket.cpp -o /tmp/test_appticket
+	/tmp/test_appticket
+test-cainfo:
+	$(CXX) -std=c++20 -I include tools/test_cainfo.cpp -o /tmp/test_cainfo
+	/tmp/test_cainfo
+test-cefport:
+	$(CXX) -std=c++20 -I include tools/test_cefport.cpp -o /tmp/test_cefport
+	/tmp/test_cefport
+test-clientapps:
+	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -I include -I src \
+		tools/test_clientapps.cpp src/sdk/IClientApps.cpp -pthread -o /tmp/test_clientapps
+	/tmp/test_clientapps
+test-cmlist-cache:
+	$(CXX) -std=c++20 -I include tools/test_cmlist_cache.cpp -o /tmp/test_cmlist_cache
+	/tmp/test_cmlist_cache
+test-compattool:
+	$(CXX) -std=c++20 -I include tools/test_compattool.cpp -o /tmp/test_compattool
+	/tmp/test_compattool
+test-confload:
+	$(CXX) -O3 -flto=auto -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -I include -I src \
+		tools/test_confload.cpp lib/libyaml-cpp.a -lpthread -o /tmp/test_confload
+	/tmp/test_confload
+test-confnormalize:
+	$(CXX) -O3 -flto=auto -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -I include -I src \
+		tools/test_confnormalize.cpp lib/libyaml-cpp.a -lpthread -o /tmp/test_confnormalize
+	/tmp/test_confnormalize
+test-curl-transfer:
+	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem include -I src \
+		tools/test_curl_transfer.cpp -pthread -o /tmp/test_curl_transfer
+	/tmp/test_curl_transfer
+test-depotquarantine:
+	$(CXX) -std=c++20 tools/test_depotquarantine.cpp -o /tmp/test_depotquarantine
+	/tmp/test_depotquarantine
+test-depotquarantine-store:
+	$(CXX) -std=c++20 tools/test_depotquarantine_store.cpp -o /tmp/test_depotquarantine_store
+	/tmp/test_depotquarantine_store
+# test_dir_walks defines both readdir and readdir64, which the 64-bit file
+# offset define in CXX would turn into one symbol.
+test-dir-walks:
+	$(CXX) -U_FILE_OFFSET_BITS -std=c++20 -Wall -Wextra -I src -I include \
+		tools/test_dir_walks.cpp -ldl -o /tmp/test_dir_walks
+	/tmp/test_dir_walks
+test-emptydepot:
+	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -I include \
+		tools/test_emptydepot.cpp lib/libyaml-cpp.a -o /tmp/test_emptydepot
+	/tmp/test_emptydepot
+test-hotreload-state:
+	$(CXX) -std=c++20 -I include -I src tools/test_hotreload_state.cpp -pthread \
+		-o /tmp/test_hotreload_state
+	/tmp/test_hotreload_state
+test-license-refresh:
+	$(CXX) -std=c++20 -I include -I src tools/test_license_refresh.cpp -pthread \
+		-o /tmp/test_license_refresh
+	/tmp/test_license_refresh
+test-loadlock:
+	$(CXX) -std=c++20 tools/test_loadlock.cpp -o /tmp/test_loadlock
+	/tmp/test_loadlock
+test-manageddepotfilter:
+	$(CXX) -std=c++20 tools/test_manageddepotfilter.cpp -o /tmp/test_manageddepotfilter
+	/tmp/test_manageddepotfilter
+test-manifestpins:
+	$(CXX) -std=c++20 -I include tools/test_manifestpins.cpp -o /tmp/test_manifestpins
+	/tmp/test_manifestpins
+test-manifestsynth:
+	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -I include \
+		tools/test_manifestsynth.cpp lib/libyaml-cpp.a -o /tmp/test_manifestsynth
+	/tmp/test_manifestsynth
+test-notify:
+	$(CXX) -std=c++20 -I include tools/test_notify.cpp -o /tmp/test_notify
+	/tmp/test_notify
+test-playerstats:
+	$(CXX) -std=c++20 -I include tools/test_playerstats.cpp -o /tmp/test_playerstats
+	/tmp/test_playerstats
+test-provision-network:
+	$(CXX) -std=c++20 -I include tools/test_provision_network.cpp \
+		-o /tmp/test_provision_network
+	/tmp/test_provision_network
+test-reconcilepin-guard:
+	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src tools/test_reconcilepin_guard.cpp \
+		-o /tmp/test_reconcilepin_guard
+	/tmp/test_reconcilepin_guard
+test-reconcilepin-pattern:
+	$(CXX) -std=c++20 -I src tools/test_reconcilepin_pattern.cpp \
+		-o /tmp/test_reconcilepin_pattern
+	/tmp/test_reconcilepin_pattern "$(STEAMCLIENT)"
+test-runtime-attestation:
+	$(CXX) -std=c++20 -I include -I src tools/test_runtime_attestation.cpp -pthread \
+		-o /tmp/test_runtime_attestation
+	/tmp/test_runtime_attestation
+test-runtimedir:
+	$(CXX) -std=c++20 -I include tools/test_runtimedir.cpp -o /tmp/test_runtimedir
+	/tmp/test_runtimedir
+test-sha1:
+	$(CXX) -std=c++20 -Wall -Wextra -Wpedantic -I src tools/test_sha1.cpp -o /tmp/test_sha1
+	/tmp/test_sha1
+test-strsplit:
+	$(CXX) -std=c++20 -I include tools/test_strsplit.cpp src/utils.cpp -o /tmp/test_strsplit
+	/tmp/test_strsplit
+test-usabledepot:
+	$(CXX) -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=0 -I include \
+		tools/test_usabledepot.cpp lib/libyaml-cpp.a -o /tmp/test_usabledepot
+	/tmp/test_usabledepot
+test-usermsg:
+	$(CXX) -std=c++20 -I include tools/test_usermsg.cpp -o /tmp/test_usermsg
+	/tmp/test_usermsg

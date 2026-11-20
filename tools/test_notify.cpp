@@ -1,16 +1,6 @@
-// Standalone test for the desktop-notification command builder.
-//
-// Bug: every SLSsteam notify-send popup EXCEPT the
-// "Loaded successfully" (NotifyShort) one stays on screen forever.  Root
-// cause: the Warn branch emitted `notify-send -u "critical"` with NO `-t`.
-// Per the freedesktop spec, urgency=critical notifications are "resident"
-// and most daemons (e.g. GNOME) IGNORE the expire timeout for them, so
-// warn-level popups never auto-dismiss.
-//
-// Fix: a pure mapping (Notify::specForLevel) gives every notifying level an
-// explicit timeout and a non-critical urgency, and Notify::buildCommand
-// renders the notify-send command (escaping the body so a stray `"` / `$`
-// / backtick in a log message can't break or inject into the shell).
+// Standalone test for the desktop-notification command builder: the
+// notify-send command, its shell escaping, the per-category throttle and
+// the gamepad queue.
 //
 // Build (from repo root):
 //   g++ -std=c++20 -I include tools/test_notify.cpp -o /tmp/test_notify && /tmp/test_notify
@@ -37,80 +27,13 @@ static bool contains(const std::string& hay, const std::string& needle)
 
 int main()
 {
-	// 1) THE FIX: Warn must auto-dismiss -> enabled, a positive timeout, and
-	//    a NON-critical urgency (critical is what makes daemons keep it
-	//    resident regardless of -t).
-	{
-		const Notify::Spec s = Notify::specForLevel(LogLevel::Warn);
-		CHECK(s.enabled, "Warn produces a desktop notification");
-		CHECK(s.timeoutMs > 0, "Warn has an explicit expire timeout");
-		CHECK(std::string(s.urgency) != "critical",
-		      "Warn urgency is not critical (so it auto-dismisses)");
-	}
-
-	// 2) NotifyShort/NotifyLong keep their existing, working behaviour.
-	{
-		const Notify::Spec sShort = Notify::specForLevel(LogLevel::NotifyShort);
-		CHECK(sShort.enabled && sShort.timeoutMs == 10000 &&
-		      std::string(sShort.urgency) == "normal",
-		      "NotifyShort = {enabled, 10000ms, normal}");
-
-		const Notify::Spec sLong = Notify::specForLevel(LogLevel::NotifyLong);
-		CHECK(sLong.enabled && sLong.timeoutMs == 30000 &&
-		      std::string(sLong.urgency) == "normal",
-		      "NotifyLong = {enabled, 30000ms, normal}");
-	}
-
-	// 3) Non-notifying levels never raise a popup.
-	{
-		CHECK(!Notify::specForLevel(LogLevel::Once).enabled,  "Once does not notify");
-		CHECK(!Notify::specForLevel(LogLevel::Debug).enabled, "Debug does not notify");
-		CHECK(!Notify::specForLevel(LogLevel::Info).enabled,  "Info does not notify");
-		CHECK(!Notify::specForLevel(LogLevel::None).enabled,  "None does not notify");
-	}
-
-	// 4) buildCommand: notifying levels render a notify-send with -t and -u.
-	{
-		const std::string warnCmd = Notify::buildCommand(LogLevel::Warn, "boom");
-		CHECK(contains(warnCmd, "notify-send"), "Warn cmd invokes notify-send");
-		CHECK(contains(warnCmd, "-t "), "Warn cmd carries an explicit -t timeout");
-		CHECK(!contains(warnCmd, "critical"), "Warn cmd is not critical urgency");
-		CHECK(contains(warnCmd, "boom"), "Warn cmd carries the message body");
-
-		const std::string shortCmd = Notify::buildCommand(LogLevel::NotifyShort, "hi");
-		CHECK(contains(shortCmd, "-t 10000"), "NotifyShort cmd uses 10000ms");
-	}
-
-	// 5) Non-notifying levels build an empty command (caller skips system()).
-	{
-		CHECK(Notify::buildCommand(LogLevel::Info, "x").empty(),
-		      "Info builds no command");
-		CHECK(Notify::buildCommand(LogLevel::Debug, "x").empty(),
-		      "Debug builds no command");
-	}
-
-	// 6) The body is escaped so a stray quote / shell metachar can't break
-	//    or inject into the system() command (fixes the old TODO).
-	{
-		const std::string cmd = Notify::buildCommand(LogLevel::Warn, "a\"b");
-		CHECK(contains(cmd, "a\\\"b"), "double-quote in body is backslash-escaped");
-
-		const std::string inj = Notify::buildCommand(LogLevel::Warn, "x`id`$(id)");
-		CHECK(contains(inj, "\\`id\\`"), "backticks in body are escaped");
-		CHECK(contains(inj, "\\$(id)"), "dollar in body is escaped");
-	}
-
-	// 7) REGRESSION: __log builds `formatted` with snprintf(size)+1 then
-	//    resize(size), leaving an embedded trailing '\0' in the std::string.
-	//    The command must NOT carry that null into the middle of the shell
-	//    word, or system()'s c_str() truncates it -> the closing quote is
-	//    lost -> shell syntax error -> notification never appears. (This is
-	//    exactly the real-Steam failure the unit literals didn't reproduce.)
+	// A NUL in a body is dropped: system() would stop at it and lose the
+	// closing quote.
 	{
 		std::string withNull = "Loaded successfully";
-		withNull.push_back('\0'); // mimic the resize(strlen+1) artifact
-		const std::string cmd = Notify::buildCommand(LogLevel::NotifyShort, withNull);
-		// What system() actually executes is cmd.c_str() (stops at \0).
+		withNull.push_back('\0');
+		const std::string cmd =
+			Notify::buildCommandRaw("SLSsteam-moon", withNull, 10000, "normal");
 		const std::string asExecuted(cmd.c_str());
 		CHECK(asExecuted == cmd,
 		      "command carries no embedded null (would truncate in system())");
@@ -118,10 +41,8 @@ int main()
 		      "command ends with the closing quote (not truncated mid-word)");
 	}
 
-	// 9) buildCommandRaw: the user-facing popup path needs a command builder
-	//    that takes an explicit title, body, timeout and urgency (the catalog
-	//    layer decides those), reusing the same shell-escaping as the
-	//    level-based builder.
+	// 9) buildCommandRaw: the user-facing popup path takes an explicit title,
+	//    body, timeout and urgency (the catalog layer decides those).
 	{
 		const std::string cmd =
 			Notify::buildCommandRaw("SLSsteam-moon", "servers busy", 30000, "normal");
